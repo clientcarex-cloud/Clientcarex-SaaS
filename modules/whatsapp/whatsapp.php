@@ -13,8 +13,11 @@ define('WHATSAPP_MODULE_NAME', 'whatsapp');
 define('WHATSAPP_MODULE_VERSION', '2.1.0');
 
 // Bumped whenever install.php gains a table/column, so the model re-runs it.
+// 2.1.1 does not add anything new — it forces one re-run to repair installs
+// where the ADD COLUMN upgrades were skipped against CI's stale schema cache
+// (see the probe closures at the top of install.php).
 if (!defined('WHATSAPP_SCHEMA_VERSION')) {
-    define('WHATSAPP_SCHEMA_VERSION', '2.1.0');
+    define('WHATSAPP_SCHEMA_VERSION', '2.1.1');
 }
 
 // Graph API version used for every OAuth / Cloud API call. Bump in one place.

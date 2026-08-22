@@ -20,11 +20,40 @@ $p  = db_prefix();
 require_once(__DIR__ . '/helpers/whatsapp_helper.php');
 
 /**
+ * Schema probes that ask the server, never CodeIgniter's cache.
+ *
+ * CI caches list_tables() / list_fields() in $db->data_cache for the whole
+ * request, and table_exists() / field_exists() read that cache. The first
+ * probe in this file therefore froze a picture of the schema taken BEFORE any
+ * CREATE TABLE below had run — so every table created here still looked
+ * absent to the $wapi_add_column() calls that follow it, and each of those
+ * ALTERs was silently skipped. That is how a fresh install ended up with the
+ * base CREATE TABLE columns only and none of the later ones (is_registered,
+ * credit_status, source, …), while the schema stamp at the bottom still
+ * recorded the run as complete so it never self-healed.
+ */
+$wapi_table_exists = function ($table) use ($CI, $p) {
+    return (bool) $CI->db->query(
+        'SELECT 1 FROM information_schema.TABLES
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1',
+        [$p . $table]
+    )->num_rows();
+};
+
+$wapi_field_exists = function ($column, $table) use ($CI, $p) {
+    return (bool) $CI->db->query(
+        'SELECT 1 FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+        [$p . $table, $column]
+    )->num_rows();
+};
+
+/**
  * Add a column only when it is missing — lets this file double as the upgrade
  * path for installs created before the column existed.
  */
-$wapi_add_column = function ($table, $column, $ddl) use ($CI, $p) {
-    if ($CI->db->table_exists($p . $table) && !$CI->db->field_exists($column, $p . $table)) {
+$wapi_add_column = function ($table, $column, $ddl) use ($CI, $p, $wapi_table_exists, $wapi_field_exists) {
+    if ($wapi_table_exists($table) && !$wapi_field_exists($column, $table)) {
         $CI->db->query("ALTER TABLE `{$p}{$table}` ADD COLUMN {$ddl}");
     }
 };
@@ -33,7 +62,7 @@ $wapi_add_column = function ($table, $column, $ddl) use ($CI, $p) {
 
 if (function_exists('whatsapp_is_master') ? whatsapp_is_master() : true) {
 
-    if (!$CI->db->table_exists($p . 'whatsapp_connections')) {
+    if (!$wapi_table_exists('whatsapp_connections')) {
         $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_connections` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
             `tenant_slug` VARCHAR(191) NOT NULL,
@@ -53,7 +82,7 @@ if (function_exists('whatsapp_is_master') ? whatsapp_is_master() : true) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
     }
 
-    if (!$CI->db->table_exists($p . 'whatsapp_numbers')) {
+    if (!$wapi_table_exists('whatsapp_numbers')) {
         $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_numbers` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
             `phone_number_id` VARCHAR(64) NOT NULL,
@@ -123,7 +152,7 @@ if (function_exists('whatsapp_is_master') ? whatsapp_is_master() : true) {
      * through a provider-owned phone_number_id, restricted to an approved
      * template allowlist and metered here.
      */
-    if (!$CI->db->table_exists($p . 'whatsapp_shared_grants')) {
+    if (!$wapi_table_exists('whatsapp_shared_grants')) {
         $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_shared_grants` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
             `tenant_slug` VARCHAR(191) NOT NULL,
@@ -149,7 +178,7 @@ if (function_exists('whatsapp_is_master') ? whatsapp_is_master() : true) {
 
     // The approved templates a tenant may use. Only consulted when the grant's
     // template_mode is 'selected' — 'all' hands over the whole approved library.
-    if (!$CI->db->table_exists($p . 'whatsapp_shared_templates')) {
+    if (!$wapi_table_exists('whatsapp_shared_templates')) {
         $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_shared_templates` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
             `tenant_slug` VARCHAR(191) NOT NULL,
@@ -164,7 +193,7 @@ if (function_exists('whatsapp_is_master') ? whatsapp_is_master() : true) {
 
     // Daily counters per tenant. One row per tenant per day keeps the quota
     // check a single indexed read while staying auditable month by month.
-    if (!$CI->db->table_exists($p . 'whatsapp_shared_usage')) {
+    if (!$wapi_table_exists('whatsapp_shared_usage')) {
         $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_shared_usage` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
             `tenant_slug` VARCHAR(191) NOT NULL,
@@ -223,7 +252,7 @@ if (function_exists('whatsapp_is_master') ? whatsapp_is_master() : true) {
 /* ─────────────────────── TENANT tables (local) ──────────────────────── */
 /* The master also gets these so the provider can use the module itself.  */
 
-if (!$CI->db->table_exists($p . 'whatsapp_api_messages')) {
+if (!$wapi_table_exists('whatsapp_api_messages')) {
     $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_api_messages` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `phone_number_id` VARCHAR(64) DEFAULT NULL,
@@ -251,7 +280,7 @@ if (!$CI->db->table_exists($p . 'whatsapp_api_messages')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
-if (!$CI->db->table_exists($p . 'whatsapp_api_contacts')) {
+if (!$wapi_table_exists('whatsapp_api_contacts')) {
     $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_api_contacts` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `phone` VARCHAR(30) NOT NULL,
@@ -268,7 +297,7 @@ if (!$CI->db->table_exists($p . 'whatsapp_api_contacts')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
-if (!$CI->db->table_exists($p . 'whatsapp_api_templates')) {
+if (!$wapi_table_exists('whatsapp_api_templates')) {
     $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_api_templates` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `template_id` VARCHAR(64) DEFAULT NULL,
@@ -290,7 +319,7 @@ if (!$CI->db->table_exists($p . 'whatsapp_api_templates')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
-if (!$CI->db->table_exists($p . 'whatsapp_api_campaigns')) {
+if (!$wapi_table_exists('whatsapp_api_campaigns')) {
     $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_api_campaigns` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `name` VARCHAR(191) NOT NULL,
@@ -317,7 +346,7 @@ if (!$CI->db->table_exists($p . 'whatsapp_api_campaigns')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
-if (!$CI->db->table_exists($p . 'whatsapp_api_campaign_recipients')) {
+if (!$wapi_table_exists('whatsapp_api_campaign_recipients')) {
     $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_api_campaign_recipients` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `campaign_id` INT(11) NOT NULL,
@@ -336,7 +365,7 @@ if (!$CI->db->table_exists($p . 'whatsapp_api_campaign_recipients')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
-if (!$CI->db->table_exists($p . 'whatsapp_api_bot_rules')) {
+if (!$wapi_table_exists('whatsapp_api_bot_rules')) {
     $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_api_bot_rules` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `name` VARCHAR(191) NOT NULL,
@@ -403,7 +432,7 @@ $wapi_add_column('whatsapp_api_templates', 'source', "`source` VARCHAR(10) NOT N
  * one 24-hour window, so credits are charged once per window and the whole
  * thing stays auditable. See helpers/whatsapp_credits_helper.php.
  */
-if (!$CI->db->table_exists($p . 'whatsapp_api_conversations')) {
+if (!$wapi_table_exists('whatsapp_api_conversations')) {
     $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}whatsapp_api_conversations` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
         `phone` VARCHAR(30) NOT NULL,
@@ -486,14 +515,14 @@ if ((string) get_option('whatsapp_tz_corrected') !== '1') {
 
     if (abs($wapi_offset) >= 60) {
         foreach (['whatsapp_api_messages', 'whatsapp_api_campaigns', 'whatsapp_api_campaign_recipients', 'whatsapp_api_contacts'] as $wapi_tz_table) {
-            if (!$CI->db->table_exists($p . $wapi_tz_table)) {
+            if (!$wapi_table_exists($wapi_tz_table)) {
                 continue;
             }
             // updated_at is shifted in the same statement, otherwise its
             // ON UPDATE CURRENT_TIMESTAMP would re-stamp it on DB time.
             $wapi_sets = ['`created_at` = DATE_ADD(`created_at`, INTERVAL ? SECOND)'];
             $wapi_bind = [$wapi_offset];
-            if ($CI->db->field_exists('updated_at', $p . $wapi_tz_table)) {
+            if ($wapi_field_exists('updated_at', $wapi_tz_table)) {
                 $wapi_sets[] = '`updated_at` = DATE_ADD(`updated_at`, INTERVAL ? SECOND)';
                 $wapi_bind[] = $wapi_offset;
             }
@@ -525,7 +554,7 @@ add_option('whatsapp_perms_backfilled', '');
 if ((string) get_option('whatsapp_perms_backfilled') !== '1') {
     $wapi_perm_table = $p . 'staff_permissions';
 
-    if ($CI->db->table_exists($wapi_perm_table)) {
+    if ($wapi_table_exists('staff_permissions')) {
         $wapi_existing = $CI->db->select('staff_id, capability')
             ->where('feature', 'whatsapp')
             ->get($wapi_perm_table)->result();
@@ -556,3 +585,11 @@ if ((string) get_option('whatsapp_perms_backfilled') !== '1') {
 
 // Stamp the schema so the model only re-runs this file after an upgrade.
 update_option('whatsapp_schema_version', defined('WHATSAPP_SCHEMA_VERSION') ? WHATSAPP_SCHEMA_VERSION : '1.5.0');
+
+/**
+ * Drop CI's schema cache so the REST of this request sees what was just
+ * created. Without it, code running later in the same page load (the shared
+ * template mirror checks for the `source` column, the model checks its own
+ * tables) keeps answering from the pre-install picture and quietly no-ops.
+ */
+$CI->db->data_cache = [];
