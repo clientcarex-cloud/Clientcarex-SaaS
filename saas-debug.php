@@ -78,18 +78,73 @@ function env_map(): array
     return $map;
 }
 
-function env(string $key, string $default = ''): string
+/**
+ * Values baked into application/config/app-config.php.
+ *
+ * Installations without a .env keep their real base URL and database
+ * credentials as the literal fallbacks of the app_env_value() calls in that
+ * file, so parsing them out is the only way to see what the CRM is actually
+ * running on. Nothing read here is ever printed except the base URL, the
+ * database name and the database host.
+ */
+function config_defaults(): array
 {
-    $map = env_map();
-    foreach ([$key, str_replace('_DEFAULT', '', $key)] as $candidate) {
-        if (isset($map[$candidate]) && $map[$candidate] !== '') {
-            return $map[$candidate];
-        }
-        $runtime = getenv($candidate);
-        if (is_string($runtime) && $runtime !== '') {
-            return $runtime;
+    static $out = null;
+    if ($out !== null) {
+        return $out;
+    }
+
+    $out  = [];
+    $file = __DIR__ . '/application/config/app-config.php';
+    if (!is_readable($file)) {
+        return $out;
+    }
+
+    $src = (string) @file_get_contents($file);
+    if (preg_match_all("/define\\(\\s*'([A-Z0-9_]+)'\\s*,(.*?)\\);/s", $src, $matches, PREG_SET_ORDER)) {
+        foreach ($matches as $hit) {
+            // The innermost app_env_value() argument is the literal default.
+            if (preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $hit[2], $literals) && $literals[1]) {
+                $out[$hit[1]] = stripslashes((string) end($literals[1]));
+            }
         }
     }
+
+    return $out;
+}
+
+/** Where a resolved value came from — used to explain the report. */
+$value_sources = [];
+
+function env(string $key, string $default = ''): string
+{
+    global $value_sources;
+
+    $map = env_map();
+    $cfg = config_defaults();
+
+    foreach ([$key, str_replace('_DEFAULT', '', $key)] as $candidate) {
+        if (isset($map[$candidate]) && $map[$candidate] !== '') {
+            $value_sources[$key] = '.env';
+
+            return $map[$candidate];
+        }
+
+        $runtime = getenv($candidate);
+        if (is_string($runtime) && $runtime !== '') {
+            $value_sources[$key] = 'environment';
+
+            return $runtime;
+        }
+
+        if (isset($cfg[$candidate]) && $cfg[$candidate] !== '') {
+            $value_sources[$key] = 'application/config/app-config.php';
+
+            return $cfg[$candidate];
+        }
+    }
+
+    $value_sources[$key] = 'not found';
 
     return $default;
 }
@@ -185,9 +240,18 @@ $masterHost  = normalise_host($baseUrl);
 row('info', 'Request host', $currentHost === '' ? '(none)' : $currentHost);
 row('info', 'Host being resolved', $testedHost === '' ? '(none)' : $testedHost,
     $testedHost === $currentHost ? '' : 'Overridden with ?host=');
-row($masterHost === '' ? 'fail' : 'ok', 'APP_BASE_URL_DEFAULT host', $masterHost === '' ? '(unset)' : $masterHost,
-    $masterHost === '' ? 'Set APP_BASE_URL_DEFAULT in .env — tenant detection is derived from it.' : '');
-row(isset(env_map()['__FILE__']) ? 'ok' : 'warn', '.env file', env_map()['__FILE__'] ?? 'not found');
+$hostMatchesMaster = $masterHost !== '' && $currentHost !== '' && $currentHost === $masterHost;
+row($masterHost === '' ? 'fail' : ($hostMatchesMaster ? 'ok' : 'warn'),
+    'APP_BASE_URL_DEFAULT host',
+    $masterHost === '' ? '(unset)' : $masterHost,
+    $masterHost === ''
+        ? 'Tenant detection derives from it; without it no subdomain can ever resolve.'
+        : ($hostMatchesMaster
+            ? 'Tenant subdomains are matched against *.' . $masterHost
+            : 'This does NOT match the host you are on (' . $currentHost . '). Subdomains of ' .
+              $currentHost . ' are not recognised as tenants at all — they are matched against *.' . $masterHost . '.'));
+row('info', 'Base URL comes from', $value_sources['APP_BASE_URL_DEFAULT'] ?? 'not found');
+row(isset(env_map()['__FILE__']) ? 'info' : 'info', '.env file', env_map()['__FILE__'] ?? 'none (config literals used instead)');
 
 $slug = '';
 $mode = 'unknown — APP_BASE_URL_DEFAULT is not readable';
@@ -240,6 +304,41 @@ if ($dbName === '' || $dbUser === '') {
             $dbError = 'Table *' . COMPANIES_TABLE_SUFFIX . ' does not exist — the SaaS module is not installed on this database.';
         } else {
             row('ok', 'Tenants table', $table);
+
+            // Whatever precedes the module suffix is Perfex's own table prefix.
+            $prefix  = substr($table, 0, -strlen(COMPANIES_TABLE_SUFFIX));
+            $wanted  = [
+                'perfex_saas_cpanel_enabled'            => 'cPanel integration',
+                'perfex_saas_cpanel_enable_addondomain' => 'cPanel creates domains',
+                'perfex_saas_cpanel_addondomain_mode'   => 'cPanel domain mode',
+                'perfex_saas_cpanel_document_root'      => 'cPanel document root',
+                'perfex_saas_cpanel_primary_domain'     => 'cPanel primary domain',
+                'perfex_saas_tenancy_access_mode'       => 'Tenancy access mode',
+            ];
+            $options = [];
+            $inList  = "'" . implode("','", array_keys($wanted)) . "'";
+            $res = @mysqli_query($link, "SELECT `name`, `value` FROM `{$prefix}options` WHERE `name` IN ($inList)");
+            while ($res && ($opt = mysqli_fetch_assoc($res))) {
+                $options[$opt['name']] = (string) $opt['value'];
+            }
+
+            foreach ($wanted as $name => $label) {
+                $value = $options[$name] ?? '';
+                $set   = trim($value) !== '';
+
+                if ($name === 'perfex_saas_cpanel_document_root') {
+                    row($set ? 'ok' : 'fail', $label, $set ? $value : '(empty)',
+                        $set
+                            ? ($sameRoot && rtrim($value, '/') !== rtrim($here, '/')
+                                ? 'Does not match this installation (' . $here . '); new tenant domains land elsewhere.'
+                                : '')
+                            : 'Empty — cPanel invents /public_html/<slug> for every new tenant domain, which is why ' .
+                              'Apache 404s them. Set it to ' . $here . ' under SaaS → Settings → Integrations → cPanel.');
+                    continue;
+                }
+
+                row($set ? 'info' : 'warn', $label, $set ? $value : '(not set)');
+            }
 
             $res = @mysqli_query(
                 $link,
