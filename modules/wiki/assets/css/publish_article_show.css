@@ -1,0 +1,10 @@
+img.wiki-mindmap-thumb-content{
+    display: block;
+    margin: auto;
+    max-width: 100%;
+    height: auto;
+}
+
+.content-main img{
+    max-width: 100% !important;
+}

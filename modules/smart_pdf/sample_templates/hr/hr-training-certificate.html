@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!--
+  Smart PDF template — Training Completion Certificate
+  Premium framed certificate: double gold border, guilloché-style corners, wax seal.
+  A4 portrait. Shares the canonical certificate frame.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Training Completion Certificate</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+  :root{--ink:#0b2e33; --teal:#0e4d54; --gold:#b6923d; --gold-lt:#d9bd77; --muted:#5f7275;}
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{margin:0;}
+  body{background:#eceeed; font-family:'Source Sans 3','Segoe UI',sans-serif; color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  .sheet{
+    width:210mm; min-height:297mm; margin:16px auto; background:#fffdf8; position:relative;
+    padding:14mm; box-shadow:0 6px 30px rgba(11,46,51,.16);
+  }
+  /* decorative double frame */
+  .frame{position:absolute; inset:8mm; border:2px solid var(--gold);}
+  .frame::before{content:''; position:absolute; inset:2.6mm; border:0.6px solid var(--gold-lt);}
+  .corner{position:absolute; width:16mm; height:16mm; border:0 solid var(--teal);}
+  .corner.tl{top:8mm;left:8mm;border-top-width:4px;border-left-width:4px;}
+  .corner.tr{top:8mm;right:8mm;border-top-width:4px;border-right-width:4px;}
+  .corner.bl{bottom:8mm;left:8mm;border-bottom-width:4px;border-left-width:4px;}
+  .corner.br{bottom:8mm;right:8mm;border-bottom-width:4px;border-right-width:4px;}
+
+  .inner{position:relative; z-index:2; padding:22mm 20mm; text-align:center; min-height:269mm; display:flex; flex-direction:column;}
+  .brand{display:flex; align-items:center; justify-content:center; gap:3mm; margin-bottom:2mm;}
+  .brand-logo{height:7mm; width:auto; max-width:35mm; object-fit:contain;}
+  .cert-wm{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:120mm; height:auto; max-height:150mm; object-fit:contain; opacity:.04; z-index:0; pointer-events:none;}
+  .brand-name{font-family:'Playfair Display',serif; font-size:8mm; font-weight:700; color:var(--ink);}
+  .brand-sub{font-size:2.8mm; letter-spacing:4px; text-transform:uppercase; color:var(--gold); margin-bottom:8mm;}
+
+  .cert-kicker{font-size:3.4mm; letter-spacing:6px; text-transform:uppercase; color:var(--muted); margin-bottom:3mm;}
+  .cert-title{font-family:'Playfair Display',serif; font-size:13mm; font-weight:700; color:var(--teal); line-height:1.05; margin-bottom:2mm;}
+  .flourish{width:52mm; height:0; border-top:1px solid var(--gold); position:relative; margin:5mm auto 8mm;}
+  .flourish::after{content:'\2766'; position:absolute; top:-3.4mm; left:50%; transform:translateX(-50%); background:#fffdf8; padding:0 3mm; color:var(--gold); font-size:5mm;}
+
+  .body{font-family:'Cormorant Garamond',Georgia,serif; font-size:6mm; line-height:1.9; color:#243a3d; max-width:150mm; margin:0 auto;}
+  .body .name{font-weight:700; color:var(--ink); font-size:7mm;}
+  .body .hl{color:var(--teal); font-weight:600;}
+  .details{display:flex; justify-content:center; gap:14mm; margin:9mm 0 4mm; font-family:'Source Sans 3',sans-serif;}
+  .details .d{text-align:center;}
+  .details .d .k{font-size:2.6mm; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:1mm;}
+  .details .d .v{font-size:4mm; font-weight:700; color:var(--ink);}
+
+  .foot{margin-top:auto; display:flex; align-items:flex-end; justify-content:space-between; padding-top:12mm; font-family:'Source Sans 3',sans-serif;}
+  .issue{text-align:left; font-size:3mm; color:var(--muted);}
+  .issue b{color:var(--ink);}
+  .seal{width:30mm; height:30mm; border-radius:50%; border:1.5mm solid var(--gold); display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--gold); transform:rotate(-8deg); text-align:center; line-height:1.3;}
+  .seal .s1{font-size:2.4mm; letter-spacing:1px; text-transform:uppercase;}
+  .seal .s2{font-family:'Playfair Display',serif; font-size:3.4mm; color:var(--teal); font-weight:700;}
+  .sign{text-align:right; font-size:3mm;}
+  .sign .line{width:52mm; border-bottom:1.4px solid var(--ink); height:14mm; margin-bottom:2mm;}
+  .sign .nm{font-weight:700; color:var(--ink); font-size:3.6mm;}
+  .sign .rl{color:var(--muted);}
+
+  @media print{ body{background:#fff;} .sheet{margin:0; box-shadow:none; width:auto; min-height:auto;} @page{size:A4; margin:0;} }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="frame"></div>
+    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+    <img class="cert-wm" src="{{clinic_favicon_url}}" alt="">
+
+    <div class="inner">
+      <div class="brand">
+        <img class="brand-logo" src="{{clinic_logo_url}}" alt="">
+        <span class="brand-name">{{clinic_name}}</span>
+      </div>
+      <div class="brand-sub">Human Resources Department</div>
+
+      <div class="cert-kicker">Certificate of</div>
+      <div class="cert-title">Completion</div>
+      <div class="flourish"></div>
+
+      <div class="body">
+        This is to certify that <span class="name">{{employee_name}}</span>
+        (<span class="hl">{{employee_designation}}</span>, <span class="hl">{{employee_department}}</span>)
+        has successfully completed the training programme
+        &ldquo;<span class="hl">{{training_title}}</span>&rdquo; conducted by
+        <span class="hl">{{clinic_name}}</span> from <span class="hl">{{training_from}}</span>
+        to <span class="hl">{{training_to}}</span>, with a duration of
+        <span class="hl">{{training_hours}}</span> hours.
+        <br><br>
+        We commend their commitment to professional growth and continued excellence in service.
+      </div>
+
+      <div class="details">
+        <div class="d"><div class="k">Programme</div><div class="v">{{training_title}}</div></div>
+        <div class="d"><div class="k">Duration</div><div class="v">{{training_hours}} hrs</div></div>
+        <div class="d"><div class="k">Reference</div><div class="v">{{document_no}}</div></div>
+      </div>
+
+      <div class="foot">
+        <div class="issue">
+          Issued at <b>{{clinic_address}}</b><br>
+          Date: <b>{{current_date}}</b>
+        </div>
+        <div class="seal">
+          <span class="s1">Official</span>
+          <span class="s2">{{clinic_name}}</span>
+          <span class="s1">Seal</span>
+        </div>
+        <div class="sign">
+          <div class="line"></div>
+          <div class="nm">{{staff_name}}</div>
+          <div class="rl">Authorised Signatory · HR</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<!--
+  Smart PDF template — HR Employment Agreement
+  Reuses the canonical "letter base" chrome (deep-teal + gold letterhead,
+  Playfair Display + Source Sans 3, watermark, footer, signature styles).
+  Autofilled employee_* + system tags; manual fields become popup inputs.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Employment Agreement</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#0b2e33; --teal:#0e4d54; --teal-soft:#e8f0ef;
+    --gold:#b6923d; --gold-soft:#f3ead5;
+    --muted:#5f7275; --line:#dbe4e3; --paper:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#eef1f0;
+    font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;
+    color:var(--ink); font-size:12.5px; line-height:1.7;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .sheet{
+    width:210mm; min-height:297mm; margin:16px auto; background:var(--paper);
+    display:flex; flex-direction:column; position:relative; overflow:hidden;
+    padding:20mm 20mm 15mm; box-shadow:0 6px 30px rgba(11,46,51,.14);
+  }
+  /* faint monogram watermark */
+  .watermark{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:135mm; height:auto; max-height:150mm; object-fit:contain;
+    opacity:.045; z-index:0; pointer-events:none;
+  }
+  .sheet > *:not(.watermark){position:relative; z-index:1;}
+
+  /* ---------- Letterhead ---------- */
+  .letterhead{display:flex; align-items:center; justify-content:space-between; gap:18px;}
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-logo{
+    height:27px; width:auto; max-width:105px; object-fit:contain; flex-shrink:0;
+  }
+  .brand-name{font-family:'Playfair Display',serif; font-size:25px; font-weight:700; color:var(--ink); line-height:1.1;}
+  .brand-sub{font-size:10.5px; letter-spacing:2.5px; text-transform:uppercase; color:var(--gold); margin-top:3px;}
+  .doc-meta{text-align:right; font-size:11px; color:var(--muted);}
+  .doc-meta b{color:var(--ink);}
+  .rule{height:3px; border:0; margin:14px 0 6px;
+    background:linear-gradient(90deg,var(--teal) 0%,var(--teal) 62%,var(--gold) 62%,var(--gold) 100%);}
+  .rule-thin{height:1px; background:var(--line); border:0; margin:0 0 20px;}
+
+  /* ---------- Title ---------- */
+  .doc-title{text-align:center; margin:8px 0 22px;}
+  .doc-title h1{font-family:'Playfair Display',serif; font-size:26px; font-weight:700; letter-spacing:1px; margin:0; color:var(--teal);}
+  .doc-title .kicker{font-size:10.5px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:6px;}
+
+  /* ---------- Body ---------- */
+  .body{flex:1;}
+  .meta-row{display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:16px;}
+  .salutation{margin:0 0 12px; font-weight:600;}
+  p{margin:0 0 12px; text-align:justify;}
+  .lead strong,strong{color:var(--ink);}
+  .highlight{color:var(--teal); font-weight:600;}
+
+  .terms-card{
+    background:var(--teal-soft); border:1px solid #cfe0de; border-left:4px solid var(--teal);
+    border-radius:6px; padding:14px 18px; margin:14px 0;
+  }
+  .terms-card h3{margin:0 0 10px; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--teal);}
+  table.kv{width:100%; border-collapse:collapse; font-size:12px;}
+  table.kv td{padding:6px 4px; vertical-align:top;}
+  table.kv td.k{color:var(--muted); width:42%;}
+  table.kv td.v{color:var(--ink); font-weight:600;}
+  table.kv tr + tr td{border-top:1px dashed #cfdedc;}
+
+  ol.clauses{margin:6px 0 12px; padding-left:20px;}
+  ol.clauses li{margin-bottom:7px; text-align:justify;}
+  ol.clauses > li{margin-bottom:11px;}
+  ol.clauses > li::marker{font-weight:700; color:var(--teal);}
+  .clause-h{font-weight:700; color:var(--ink); text-transform:uppercase; letter-spacing:.5px; font-size:11.5px;}
+
+  /* ---------- Signature ---------- */
+  .signoff{margin-top:22px; display:flex; justify-content:space-between; align-items:flex-end; gap:30px;}
+  .sig-block{width:46%;}
+  .sig-line{border-bottom:1.5px solid var(--ink); height:34px; margin-bottom:6px;}
+  .sig-name{font-weight:700; color:var(--ink);}
+  .sig-role{font-size:11px; color:var(--muted);}
+  .accept-note{font-size:10.5px; color:var(--muted); font-style:italic; margin-top:2px;}
+  .seal{
+    width:96px; height:96px; border:2px solid var(--gold); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:8.5px; letter-spacing:1px; text-transform:uppercase; color:var(--gold);
+    transform:rotate(-9deg); opacity:.85; font-weight:600; line-height:1.3;
+  }
+  .witness{margin-top:26px; font-size:11.5px; color:var(--muted);}
+  .witness .sig-line{width:60%;}
+
+  /* ---------- Footer ---------- */
+  .foot{margin-top:auto; padding-top:12px;}
+  .foot-line{height:1px; background:var(--line); border:0; margin-bottom:8px;}
+  .foot-grid{display:flex; justify-content:space-between; font-size:10px; color:var(--muted); gap:12px;}
+  .foot-grid .c{flex:1;}
+  .foot-grid .r{text-align:right;}
+  .cg-note{text-align:center; font-size:9.5px; color:#9aa9a8; margin-top:8px; letter-spacing:.3px;}
+
+  @media print{
+    body{background:#fff;}
+    .sheet{margin:0; box-shadow:none; width:auto; min-height:auto;}
+    ol.clauses > li{break-inside:avoid;}
+    @page{size:A4; margin:0;}
+  }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <img class="watermark" src="{{clinic_favicon_url}}" alt="">
+
+    <!-- Letterhead -->
+    <div class="letterhead">
+      <div class="brand">
+        <img class="brand-logo" src="{{clinic_logo_url}}" alt="">
+        <div>
+          <div class="brand-name">{{clinic_name}}</div>
+          <div class="brand-sub">Human Resources</div>
+        </div>
+      </div>
+      <div class="doc-meta">
+        <div><b>Ref:</b> {{document_no}}</div>
+        <div><b>Date:</b> {{current_date}}</div>
+      </div>
+    </div>
+    <hr class="rule">
+    <div style="font-size:10px;color:var(--muted);letter-spacing:.3px;">{{clinic_address}} &nbsp;·&nbsp; {{clinic_phone}}</div>
+    <hr class="rule-thin">
+
+    <!-- Title -->
+    <div class="doc-title">
+      <span class="kicker">Private &amp; Confidential</span>
+      <h1>Employment Agreement</h1>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+      <p class="lead">This Employment Agreement ("the Agreement") is made and entered into on <strong>{{employee_doj}}</strong> by and between <strong>{{clinic_name}}</strong>, having its registered office at {{clinic_address}} (hereinafter referred to as <strong>"the Employer"</strong>, which expression shall, unless repugnant to the context, include its successors and assigns), of the First Part;</p>
+
+      <p style="text-align:center;font-weight:600;color:var(--teal);margin:2px 0;">AND</p>
+
+      <p><strong>{{employee_name}}</strong>, S/o {{employee_father_name}}, residing at {{employee_permanent_address}} (hereinafter referred to as <strong>"the Employee"</strong>), of the Second Part.</p>
+
+      <p>The Employer and the Employee are hereinafter individually referred to as a "Party" and collectively as the "Parties". This Agreement shall take effect from the date of joining, being <strong>{{employee_doj}}</strong>, and the Parties hereby agree to be bound by the following terms and conditions:</p>
+
+      <ol class="clauses">
+        <li><span class="clause-h">Appointment &amp; Designation.</span> The Employer hereby appoints the Employee to the position of <strong>{{employee_designation}}</strong> in the <strong>{{employee_department}}</strong> department, and the Employee accepts such appointment. The Employee shall be assigned Employee Code <strong>{{employee_code}}</strong> and shall ordinarily be based at {{employee_work_location}}. The nature of engagement shall be {{employee_employment_type}}.</li>
+
+        <li><span class="clause-h">Term &amp; Probation.</span> The Employee shall be on probation for a period of <strong>{{probation_months}} months</strong> from the date of joining, during which the Employer shall assess the Employee's performance, conduct and suitability. Upon satisfactory completion, the Employee's services shall be confirmed in writing. The Employer reserves the right to extend the probation period or to terminate the engagement during probation without assigning any reason.</li>
+
+        <li><span class="clause-h">Duties &amp; Standards of Care.</span> The Employee shall diligently perform all duties reasonably assigned and commensurate with the position, and shall at all times uphold the highest professional, clinical and ethical standards. The Employee shall comply with all applicable statutory requirements, clinical protocols, accreditation standards and the policies, rules and regulations of the Employer as amended from time to time, and shall act in the best interests of patients and the organisation.</li>
+
+        <li><span class="clause-h">Remuneration.</span> In consideration of the services rendered, the Employer shall pay the Employee a monthly basic salary of <strong>{{employee_basic_salary}}</strong>, together with such allowances and benefits as may be applicable under the Employer's prevailing compensation policy. Remuneration shall be subject to deduction of income tax, statutory contributions and other lawful deductions at source.</li>
+
+        <li><span class="clause-h">Working Hours &amp; Shifts.</span> The Employee shall observe the working hours, shift rosters and duty schedules notified by the Employer from time to time, including nights, weekends and public holidays as required for the continuity of patient care. The Employee acknowledges that the healthcare setting requires flexibility and may involve on-call or emergency duty as reasonably directed.</li>
+
+        <li><span class="clause-h">Confidentiality &amp; Patient Data.</span> The Employee shall maintain strict confidentiality of all patient records, protected health information, clinical data, and any proprietary, financial or operational information of the Employer, both during and after employment. The Employee shall handle all such information in accordance with applicable data-protection and medical-privacy laws and the Employer's information-security policies, and shall not disclose, copy or misuse any such information except as strictly necessary for the performance of duties.</li>
+
+        <li><span class="clause-h">Non-solicitation.</span> During employment and for a period of twelve (12) months following its cessation, the Employee shall not, directly or indirectly, solicit, induce or attempt to entice away any patient, employee, consultant or business associate of the Employer for the benefit of the Employee or any competing establishment.</li>
+
+        <li><span class="clause-h">Leave &amp; Attendance.</span> The Employee shall be entitled to leave in accordance with the Employer's leave policy and shall record attendance through the prescribed systems. All leave, save in cases of genuine emergency, shall be availed only with prior sanction. Unauthorised absence may be treated as misconduct and dealt with in accordance with the Employer's disciplinary policy.</li>
+
+        <li><span class="clause-h">Termination &amp; Notice.</span> After confirmation, either Party may terminate this Agreement by giving <strong>{{notice_period}}</strong> written notice, or salary in lieu thereof. The Employer may terminate the engagement forthwith and without notice in the event of misconduct, negligence, breach of this Agreement or any conduct prejudicial to the interests, reputation or patients of the Employer. Upon cessation, the Employee shall return all property, records and confidential materials belonging to the Employer.</li>
+
+        <li><span class="clause-h">Governing Law &amp; Jurisdiction.</span> This Agreement shall be governed by and construed in accordance with the laws in force, and the courts at <strong>{{jurisdiction}}</strong> shall have exclusive jurisdiction over any dispute arising out of or in connection with this Agreement. Any amendment hereto shall be valid only if made in writing and duly signed by both Parties.</li>
+      </ol>
+
+      <p>IN WITNESS WHEREOF, the Parties hereto have set their hands to this Agreement on the date first written above, having read and understood its contents.</p>
+
+      <!-- Two-party signature -->
+      <div class="signoff">
+        <div class="sig-block">
+          <p style="margin-bottom:30px;">For and on behalf of the Employer,<br><strong>{{clinic_name}}</strong></p>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{staff_name}}</div>
+          <div class="sig-role">Authorised Signatory · Human Resources</div>
+        </div>
+        <div class="seal">{{clinic_name}}<br>HR Seal</div>
+        <div class="sig-block" style="text-align:right;">
+          <p style="margin-bottom:30px;">Read, Agreed &amp; Accepted,<br>The Employee</p>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{employee_name}}</div>
+          <div class="accept-note">Signature &amp; Date</div>
+        </div>
+      </div>
+
+      <div class="witness">
+        <div style="margin-bottom:4px;">Signed in the presence of Witness:</div>
+        <div class="sig-line"></div>
+        Name &amp; Signature: {{witness_name}}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="foot">
+      <hr class="foot-line">
+      <div class="foot-grid">
+        <div class="c"><b>{{clinic_name}}</b><br>{{clinic_address}}</div>
+        <div class="c r">{{clinic_phone}}<br>Ref: {{document_no}}</div>
+      </div>
+      <div class="cg-note">This is a computer-generated document and is valid without a physical signature when issued through the HR system.</div>
+    </div>
+  </div>
+</body>
+</html>

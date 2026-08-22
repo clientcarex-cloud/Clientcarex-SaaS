@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- Smart PDF template — Employee ID Card (FRONT). CR80 portrait 54 × 85.6 mm. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Employee ID Card — Front</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap');
+  :root{--ink:#0b2e33; --teal:#0e4d54; --teal2:#12666f; --gold:#c2a24d; --muted:#6a7d80; --line:#e3ebea;}
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#dfe4e3; font-family:'Source Sans 3','Segoe UI',sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  .card{
+    width:54mm; height:85.6mm; margin:18px auto; background:#fff; border-radius:4mm;
+    overflow:hidden; position:relative; box-shadow:0 8px 26px rgba(11,46,51,.22); color:var(--ink);
+  }
+  /* header band */
+  .head{
+    height:26mm; background:#fff; position:relative; color:var(--ink); text-align:center;
+    /* Vertically centre the logo/subtitle in the header zone ABOVE the overlapping
+       photo — bottom padding reserves that photo area so nothing collides. */
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.8mm;
+    padding:1.5mm 3mm 10mm;
+  }
+  .head::after{content:''; position:absolute; left:0; right:0; bottom:0; height:2mm; background:var(--gold);}
+  .brand{display:flex; align-items:center; justify-content:center; gap:1.4mm; min-height:9mm;}
+  /* Transparent logo (no white chip). Header is white, so a normal colour logo reads well;
+     use Branding > Logo Studio (remove background) for a clean transparent PNG. */
+  .brand-logo{height:auto; width:auto; max-height:9mm; max-width:40mm; object-fit:contain;}
+  .brand-name{font-family:'Playfair Display',serif; font-size:3.5mm; font-weight:700; letter-spacing:.2px;}
+  /* When no company name is set (logo already includes it), drop the empty span
+     so its flex gap doesn't push the logo off-centre. */
+  .brand-name:empty{display:none;}
+  .brand-sub{font-size:1.9mm; letter-spacing:1.4px; text-transform:uppercase; opacity:.85; margin-top:.6mm;}
+  /* This CR80 card sizes its own header logo/name — override the global (A4-oriented)
+     Branding Center injection so the logo is not blown up on the small card. */
+  .card .head .brand-logo{height:auto !important; width:auto !important; max-height:9mm !important; max-width:40mm !important; background:transparent !important; padding:0 !important; border-radius:0 !important;}
+  .card .head .brand-name{font-size:3.5mm !important;}
+  /* photo */
+  .photo-wrap{position:absolute; top:17mm; left:50%; transform:translateX(-50%); z-index:3;}
+  .photo{
+    width:22mm; height:22mm; border-radius:50%; object-fit:cover; background:#eef2f1;
+    border:1mm solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.2); display:block;
+  }
+  /* body — bottom padding clears the 8mm absolute footer so the last row never hides under it */
+  .body{padding:15mm 3.5mm 8mm; text-align:center;}
+  .name{font-size:4mm; font-weight:800; color:var(--ink); line-height:1.15; margin-bottom:0.6mm;}
+  .role{display:inline-block; font-size:2.5mm; font-weight:600; color:var(--teal); background:#e9f1f0; border:0.3mm solid #cfe0de; padding:.7mm 3mm; border-radius:6mm; margin-bottom:1.6mm;}
+  .grid{text-align:left; font-size:2.5mm; border-top:0.3mm solid var(--line); padding-top:1.5mm; margin-top:0.4mm;}
+  .grid .row{display:flex; justify-content:space-between; padding:0.7mm 0; border-bottom:0.3mm dashed var(--line);}
+  .grid .row:last-child{border-bottom:0;}
+  .grid .k{color:var(--muted); text-transform:uppercase; letter-spacing:.4px; font-size:2.1mm;}
+  .grid .v{font-weight:700; color:var(--ink);}
+  .blood{color:#b0322b;}
+  /* footer */
+  .foot{position:absolute; bottom:0; left:0; right:0; height:6.5mm; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; padding:0 3.5mm;}
+  .foot .code{font-size:2.6mm; font-weight:700; letter-spacing:.6px;}
+  @media print{ body{background:#fff;} .card{margin:0; box-shadow:none; border-radius:0;} @page{size:54mm 85.6mm; margin:0;} }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <div class="brand">
+        <img class="brand-logo" src="{{clinic_logo_url}}" alt="">
+        <span class="brand-name">{{clinic_name}}</span>
+      </div>
+      <div class="brand-sub">Identity Card</div>
+    </div>
+    <div class="photo-wrap">
+      <img class="photo" src="{{employee_photo_url}}" alt="">
+    </div>
+    <div class="body">
+      <div class="name">{{employee_name}}</div>
+      <span class="role">{{employee_designation}}</span>
+      <div class="grid">
+        <div class="row"><span class="k">Emp Code</span><span class="v">{{employee_code}}</span></div>
+        <div class="row"><span class="k">Department</span><span class="v">{{employee_department}}</span></div>
+        <div class="row"><span class="k">Blood Group</span><span class="v blood">{{employee_blood_group}}</span></div>
+        <div class="row"><span class="k">Joined</span><span class="v">{{employee_doj}}</span></div>
+      </div>
+    </div>
+    <div class="foot">
+      <span class="code">{{employee_code}}</span>
+    </div>
+  </div>
+</body>
+</html>

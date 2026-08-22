@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<!--
+  Smart PDF template — HR Full & Final Settlement Statement
+  Reuses the canonical "letter base" chrome (deep-teal + gold letterhead,
+  Playfair Display + Source Sans 3, watermark, footer, signature styles).
+  Autofilled employee_* + system tags; manual fields become popup inputs.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Full &amp; Final Settlement</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#0b2e33; --teal:#0e4d54; --teal-soft:#e8f0ef;
+    --gold:#b6923d; --gold-soft:#f3ead5;
+    --muted:#5f7275; --line:#dbe4e3; --paper:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#eef1f0;
+    font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;
+    color:var(--ink); font-size:12.5px; line-height:1.7;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .sheet{
+    width:210mm; min-height:297mm; margin:16px auto; background:var(--paper);
+    display:flex; flex-direction:column; position:relative; overflow:hidden;
+    padding:20mm 20mm 15mm; box-shadow:0 6px 30px rgba(11,46,51,.14);
+  }
+  /* faint monogram watermark */
+  .watermark{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:135mm; height:auto; max-height:150mm; object-fit:contain;
+    opacity:.045; z-index:0; pointer-events:none;
+  }
+  .sheet > *:not(.watermark){position:relative; z-index:1;}
+
+  /* ---------- Letterhead ---------- */
+  .letterhead{display:flex; align-items:center; justify-content:space-between; gap:18px;}
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-logo{
+    height:27px; width:auto; max-width:105px; object-fit:contain; flex-shrink:0;
+  }
+  .brand-name{font-family:'Playfair Display',serif; font-size:25px; font-weight:700; color:var(--ink); line-height:1.1;}
+  .brand-sub{font-size:10.5px; letter-spacing:2.5px; text-transform:uppercase; color:var(--gold); margin-top:3px;}
+  .doc-meta{text-align:right; font-size:11px; color:var(--muted);}
+  .doc-meta b{color:var(--ink);}
+  .rule{height:3px; border:0; margin:14px 0 6px;
+    background:linear-gradient(90deg,var(--teal) 0%,var(--teal) 62%,var(--gold) 62%,var(--gold) 100%);}
+  .rule-thin{height:1px; background:var(--line); border:0; margin:0 0 20px;}
+
+  /* ---------- Title ---------- */
+  .doc-title{text-align:center; margin:8px 0 22px;}
+  .doc-title h1{font-family:'Playfair Display',serif; font-size:26px; font-weight:700; letter-spacing:1px; margin:0; color:var(--teal);}
+  .doc-title .kicker{font-size:10.5px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:6px;}
+
+  /* ---------- Body ---------- */
+  .body{flex:1;}
+  .meta-row{display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:16px;}
+  .salutation{margin:0 0 12px; font-weight:600;}
+  p{margin:0 0 12px; text-align:justify;}
+  .lead strong,strong{color:var(--ink);}
+  .highlight{color:var(--teal); font-weight:600;}
+
+  .terms-card{
+    background:var(--teal-soft); border:1px solid #cfe0de; border-left:4px solid var(--teal);
+    border-radius:6px; padding:14px 18px; margin:14px 0;
+  }
+  .terms-card h3{margin:0 0 10px; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--teal);}
+  table.kv{width:100%; border-collapse:collapse; font-size:12px;}
+  table.kv td{padding:6px 4px; vertical-align:top;}
+  table.kv td.k{color:var(--muted); width:42%;}
+  table.kv td.v{color:var(--ink); font-weight:600;}
+  table.kv tr + tr td{border-top:1px dashed #cfdedc;}
+
+  ol.clauses{margin:6px 0 12px; padding-left:20px;}
+  ol.clauses li{margin-bottom:7px; text-align:justify;}
+
+  /* ---------- Signature ---------- */
+  .signoff{margin-top:22px; display:flex; justify-content:space-between; align-items:flex-end; gap:30px;}
+  .sig-block{width:46%;}
+  .sig-line{border-bottom:1.5px solid var(--ink); height:34px; margin-bottom:6px;}
+  .sig-name{font-weight:700; color:var(--ink);}
+  .sig-role{font-size:11px; color:var(--muted);}
+  .accept-note{font-size:10.5px; color:var(--muted); font-style:italic; margin-top:2px;}
+  .seal{
+    width:96px; height:96px; border:2px solid var(--gold); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:8.5px; letter-spacing:1px; text-transform:uppercase; color:var(--gold);
+    transform:rotate(-9deg); opacity:.85; font-weight:600; line-height:1.3;
+  }
+
+  /* ---------- Footer ---------- */
+  .foot{margin-top:auto; padding-top:12px;}
+  .foot-line{height:1px; background:var(--line); border:0; margin-bottom:8px;}
+  .foot-grid{display:flex; justify-content:space-between; font-size:10px; color:var(--muted); gap:12px;}
+  .foot-grid .c{flex:1;}
+  .foot-grid .r{text-align:right;}
+  .cg-note{text-align:center; font-size:9.5px; color:#9aa9a8; margin-top:8px; letter-spacing:.3px;}
+
+  /* ---------- Settlement table ---------- */
+  table.fnf{width:100%;border-collapse:collapse;font-size:12px;margin:14px 0;}
+  table.fnf th{background:var(--teal);color:#fff;text-align:left;padding:7px 10px;font-size:11px;letter-spacing:.5px;text-transform:uppercase;}
+  table.fnf td{padding:6px 10px;border-bottom:1px solid var(--line);}
+  table.fnf td.amt{text-align:right;font-weight:600;}
+  table.fnf tr.total td{border-top:2px solid var(--teal);font-weight:700;color:var(--ink);background:var(--teal-soft);}
+
+  @media print{
+    body{background:#fff;}
+    .sheet{margin:0; box-shadow:none; width:auto; min-height:auto;}
+    @page{size:A4; margin:0;}
+  }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <img class="watermark" src="{{clinic_favicon_url}}" alt="">
+
+    <!-- Letterhead -->
+    <div class="letterhead">
+      <div class="brand">
+        <img class="brand-logo" src="{{clinic_logo_url}}" alt="">
+        <div>
+          <div class="brand-name">{{clinic_name}}</div>
+          <div class="brand-sub">Human Resources</div>
+        </div>
+      </div>
+      <div class="doc-meta">
+        <div><b>Ref:</b> {{document_no}}</div>
+        <div><b>Date:</b> {{current_date}}</div>
+      </div>
+    </div>
+    <hr class="rule">
+    <div style="font-size:10px;color:var(--muted);letter-spacing:.3px;">{{clinic_address}} &nbsp;·&nbsp; {{clinic_phone}}</div>
+    <hr class="rule-thin">
+
+    <!-- Title -->
+    <div class="doc-title">
+      <span class="kicker">Private &amp; Confidential</span>
+      <h1>Full &amp; Final Settlement Statement</h1>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+      <div class="meta-row">
+        <div>Employee<br><strong>{{employee_name}}</strong><br>{{employee_designation}}, {{employee_department}}</div>
+        <div style="text-align:right;">Employee Code<br><strong>{{employee_code}}</strong><br>Date of Joining: {{employee_doj}}</div>
+      </div>
+
+      <p class="lead">This statement sets out the full and final settlement of all dues payable to <strong>{{employee_name}}</strong> (Employee Code <strong>{{employee_code}}</strong>) on separation from the services of <strong>{{clinic_name}}</strong>, with effect from <strong>{{last_working_day}}</strong>. The particulars of earnings and deductions computed as on the last working day are detailed below.</p>
+
+      <table class="fnf">
+        <tr><th>Earnings</th><th style="text-align:right;">Amount</th></tr>
+        <tr><td>Salary Payable ({{settlement_days}} days)</td><td class="amt">{{salary_payable}}</td></tr>
+        <tr><td>Leave Encashment</td><td class="amt">{{leave_encashment}}</td></tr>
+        <tr><td>Gratuity</td><td class="amt">{{gratuity}}</td></tr>
+        <tr><td>Bonus</td><td class="amt">{{bonus}}</td></tr>
+        <tr><td>Other Earnings</td><td class="amt">{{other_earnings}}</td></tr>
+        <tr class="total"><td>Total Earnings</td><td class="amt">{{total_earnings}}</td></tr>
+      </table>
+
+      <table class="fnf">
+        <tr><th>Deductions</th><th style="text-align:right;">Amount</th></tr>
+        <tr><td>Notice Period Recovery</td><td class="amt">{{notice_recovery}}</td></tr>
+        <tr><td>Advance / Loan</td><td class="amt">{{advance_recovery}}</td></tr>
+        <tr><td>TDS</td><td class="amt">{{tds}}</td></tr>
+        <tr><td>Other Deductions</td><td class="amt">{{other_deductions}}</td></tr>
+        <tr class="total"><td>Total Deductions</td><td class="amt">{{total_deductions}}</td></tr>
+      </table>
+
+      <table class="fnf">
+        <tr class="total"><td>Net Settlement Payable</td><td class="amt">{{net_settlement}}</td></tr>
+      </table>
+
+      <p>The net settlement amount shall be credited to the employee's bank account: <strong>{{employee_bank_name}}</strong>, A/C <strong>{{employee_bank_account}}</strong>, IFSC <strong>{{employee_bank_ifsc}}</strong>. This settlement is made in full and final discharge of all claims and dues between the employee and the organisation.</p>
+
+      <!-- Signature -->
+      <div class="signoff">
+        <div class="sig-block">
+          <p style="margin-bottom:30px;">For <strong>{{clinic_name}}</strong></p>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{staff_name}}</div>
+          <div class="sig-role">Authorised Signatory · Human Resources</div>
+        </div>
+        <div class="seal">{{clinic_name}}<br>HR Seal</div>
+        <div class="sig-block" style="text-align:right;">
+          <p style="margin-bottom:30px;">Received in full &amp; final settlement,</p>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{employee_name}}</div>
+          <div class="accept-note">Employee Signature &amp; Date</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="foot">
+      <hr class="foot-line">
+      <div class="foot-grid">
+        <div class="c"><b>{{clinic_name}}</b><br>{{clinic_address}}</div>
+        <div class="c r">{{clinic_phone}}<br>Ref: {{document_no}}</div>
+      </div>
+      <div class="cg-note">This is a computer-generated document and is valid without a physical signature when issued through the HR system.</div>
+    </div>
+  </div>
+</body>
+</html>

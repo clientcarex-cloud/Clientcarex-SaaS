@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<!--
+  Smart PDF template — HR Job Invitation Letter (Interview Invitation)
+  Reuses the canonical "letter base" chrome (deep-teal + gold letterhead,
+  Playfair Display + Source Sans 3, watermark, footer, signature styles).
+  PRE-HIRE: addressed to a candidate via manual candidate_* fields.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Job Invitation Letter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#0b2e33; --teal:#0e4d54; --teal-soft:#e8f0ef;
+    --gold:#b6923d; --gold-soft:#f3ead5;
+    --muted:#5f7275; --line:#dbe4e3; --paper:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#eef1f0;
+    font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;
+    color:var(--ink); font-size:12.5px; line-height:1.7;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .sheet{
+    width:210mm; min-height:297mm; margin:16px auto; background:var(--paper);
+    display:flex; flex-direction:column; position:relative; overflow:hidden;
+    padding:20mm 20mm 15mm; box-shadow:0 6px 30px rgba(11,46,51,.14);
+  }
+  /* faint monogram watermark */
+  .watermark{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:135mm; height:auto; max-height:150mm; object-fit:contain;
+    opacity:.045; z-index:0; pointer-events:none;
+  }
+  .sheet > *:not(.watermark){position:relative; z-index:1;}
+
+  /* ---------- Letterhead ---------- */
+  .letterhead{display:flex; align-items:center; justify-content:space-between; gap:18px;}
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-logo{
+    height:27px; width:auto; max-width:105px; object-fit:contain; flex-shrink:0;
+  }
+  .brand-name{font-family:'Playfair Display',serif; font-size:25px; font-weight:700; color:var(--ink); line-height:1.1;}
+  .brand-sub{font-size:10.5px; letter-spacing:2.5px; text-transform:uppercase; color:var(--gold); margin-top:3px;}
+  .doc-meta{text-align:right; font-size:11px; color:var(--muted);}
+  .doc-meta b{color:var(--ink);}
+  .rule{height:3px; border:0; margin:14px 0 6px;
+    background:linear-gradient(90deg,var(--teal) 0%,var(--teal) 62%,var(--gold) 62%,var(--gold) 100%);}
+  .rule-thin{height:1px; background:var(--line); border:0; margin:0 0 20px;}
+
+  /* ---------- Title ---------- */
+  .doc-title{text-align:center; margin:8px 0 22px;}
+  .doc-title h1{font-family:'Playfair Display',serif; font-size:26px; font-weight:700; letter-spacing:1px; margin:0; color:var(--teal);}
+  .doc-title .kicker{font-size:10.5px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:6px;}
+
+  /* ---------- Body ---------- */
+  .body{flex:1;}
+  .meta-row{display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:16px;}
+  .salutation{margin:0 0 12px; font-weight:600;}
+  p{margin:0 0 12px; text-align:justify;}
+  .lead strong,strong{color:var(--ink);}
+  .highlight{color:var(--teal); font-weight:600;}
+
+  .terms-card{
+    background:var(--teal-soft); border:1px solid #cfe0de; border-left:4px solid var(--teal);
+    border-radius:6px; padding:14px 18px; margin:14px 0;
+  }
+  .terms-card h3{margin:0 0 10px; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--teal);}
+  table.kv{width:100%; border-collapse:collapse; font-size:12px;}
+  table.kv td{padding:6px 4px; vertical-align:top;}
+  table.kv td.k{color:var(--muted); width:42%;}
+  table.kv td.v{color:var(--ink); font-weight:600;}
+  table.kv tr + tr td{border-top:1px dashed #cfdedc;}
+
+  ol.clauses{margin:6px 0 12px; padding-left:20px;}
+  ol.clauses li{margin-bottom:7px; text-align:justify;}
+
+  /* ---------- Signature ---------- */
+  .signoff{margin-top:22px; display:flex; justify-content:space-between; align-items:flex-end; gap:30px;}
+  .sig-block{width:46%;}
+  .sig-line{border-bottom:1.5px solid var(--ink); height:34px; margin-bottom:6px;}
+  .sig-name{font-weight:700; color:var(--ink);}
+  .sig-role{font-size:11px; color:var(--muted);}
+  .accept-note{font-size:10.5px; color:var(--muted); font-style:italic; margin-top:2px;}
+  .seal{
+    width:96px; height:96px; border:2px solid var(--gold); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:8.5px; letter-spacing:1px; text-transform:uppercase; color:var(--gold);
+    transform:rotate(-9deg); opacity:.85; font-weight:600; line-height:1.3;
+  }
+
+  /* ---------- Footer ---------- */
+  .foot{margin-top:auto; padding-top:12px;}
+  .foot-line{height:1px; background:var(--line); border:0; margin-bottom:8px;}
+  .foot-grid{display:flex; justify-content:space-between; font-size:10px; color:var(--muted); gap:12px;}
+  .foot-grid .c{flex:1;}
+  .foot-grid .r{text-align:right;}
+  .cg-note{text-align:center; font-size:9.5px; color:#9aa9a8; margin-top:8px; letter-spacing:.3px;}
+
+  @media print{
+    body{background:#fff;}
+    .sheet{margin:0; box-shadow:none; width:auto; min-height:auto;}
+    @page{size:A4; margin:0;}
+  }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <img class="watermark" src="{{clinic_favicon_url}}" alt="">
+
+    <!-- Letterhead -->
+    <div class="letterhead">
+      <div class="brand">
+        <img class="brand-logo" src="{{clinic_logo_url}}" alt="">
+        <div>
+          <div class="brand-name">{{clinic_name}}</div>
+          <div class="brand-sub">Human Resources</div>
+        </div>
+      </div>
+      <div class="doc-meta">
+        <div><b>Ref:</b> {{document_no}}</div>
+        <div><b>Date:</b> {{current_date}}</div>
+      </div>
+    </div>
+    <hr class="rule">
+    <div style="font-size:10px;color:var(--muted);letter-spacing:.3px;">{{clinic_address}} &nbsp;·&nbsp; {{clinic_phone}}</div>
+    <hr class="rule-thin">
+
+    <!-- Title -->
+    <div class="doc-title">
+      <span class="kicker">Recruitment</span>
+      <h1>Interview Invitation</h1>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+      <div class="meta-row">
+        <div>To,<br><strong>{{candidate_name}}</strong><br>{{candidate_address}}</div>
+        <div style="text-align:right;">Position Applied<br><strong>{{position_applied}}</strong></div>
+      </div>
+
+      <p class="salutation">Dear {{candidate_name}},</p>
+
+      <p class="lead">Thank you for your interest in a career with <strong>{{clinic_name}}</strong>. Following a careful review of your application for the position of <strong>{{position_applied}}</strong>, we are pleased to invite you to attend a personal interview with our selection panel. We were impressed by your profile and look forward to the opportunity of meeting you in person.</p>
+
+      <div class="terms-card">
+        <h3>Interview Details</h3>
+        <table class="kv">
+          <tr><td class="k">Position</td><td class="v">{{position_applied}}</td></tr>
+          <tr><td class="k">Date</td><td class="v">{{interview_date}}</td></tr>
+          <tr><td class="k">Time</td><td class="v">{{interview_time}}</td></tr>
+          <tr><td class="k">Venue</td><td class="v">{{interview_venue}}</td></tr>
+          <tr><td class="k">Contact Person</td><td class="v">{{contact_person}} ({{contact_phone}})</td></tr>
+        </table>
+      </div>
+
+      <p>Kindly bring with you an updated copy of your curriculum vitae, the original certificates supporting your qualifications and experience, and a valid photo identity document. Please plan to arrive a few minutes ahead of the scheduled time so that we may complete the necessary formalities.</p>
+
+      <p>Should you require any assistance or need to reschedule, please contact <strong>{{contact_person}}</strong> on <strong>{{contact_phone}}</strong> at your earliest convenience. We look forward to welcoming you and wish you the very best for the interview.</p>
+
+      <!-- Signature -->
+      <div class="signoff">
+        <div class="sig-block">
+          <p style="margin-bottom:30px;">Yours sincerely,<br>For <strong>{{clinic_name}}</strong></p>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{staff_name}}</div>
+          <div class="sig-role">Authorised Signatory · Human Resources</div>
+        </div>
+        <div class="seal">{{clinic_name}}<br>HR Seal</div>
+        <div class="sig-block" style="text-align:right;">
+          <p style="margin-bottom:30px;">Kindly confirm your attendance,</p>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{candidate_name}}</div>
+          <div class="accept-note">Signature &amp; Date</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="foot">
+      <hr class="foot-line">
+      <div class="foot-grid">
+        <div class="c"><b>{{clinic_name}}</b><br>{{clinic_address}}</div>
+        <div class="c r">{{clinic_phone}}<br>Ref: {{document_no}}</div>
+      </div>
+      <div class="cg-note">This is a computer-generated document and is valid without a physical signature when issued through the HR system.</div>
+    </div>
+  </div>
+</body>
+</html>

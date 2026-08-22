@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<!--
+  Smart PDF template — HR No Objection Certificate
+  Shares the canonical "letter base" chrome (deep-teal + gold letterhead).
+  Autofilled employee_* + system tags; manual fields become popup inputs.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>No Objection Certificate</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#0b2e33; --teal:#0e4d54; --teal-soft:#e8f0ef;
+    --gold:#b6923d; --gold-soft:#f3ead5;
+    --muted:#5f7275; --line:#dbe4e3; --paper:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#eef1f0;
+    font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;
+    color:var(--ink); font-size:12.5px; line-height:1.7;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .sheet{
+    width:210mm; min-height:297mm; margin:16px auto; background:var(--paper);
+    display:flex; flex-direction:column; position:relative; overflow:hidden;
+    padding:20mm 20mm 15mm; box-shadow:0 6px 30px rgba(11,46,51,.14);
+  }
+  /* faint monogram watermark */
+  .watermark{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:135mm; height:auto; max-height:150mm; object-fit:contain;
+    opacity:.045; z-index:0; pointer-events:none;
+  }
+  .sheet > *:not(.watermark){position:relative; z-index:1;}
+
+  /* ---------- Letterhead ---------- */
+  .letterhead{display:flex; align-items:center; justify-content:space-between; gap:18px;}
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-logo{
+    height:27px; width:auto; max-width:105px; object-fit:contain; flex-shrink:0;
+  }
+  .brand-name{font-family:'Playfair Display',serif; font-size:25px; font-weight:700; color:var(--ink); line-height:1.1;}
+  .brand-sub{font-size:10.5px; letter-spacing:2.5px; text-transform:uppercase; color:var(--gold); margin-top:3px;}
+  .doc-meta{text-align:right; font-size:11px; color:var(--muted);}
+  .doc-meta b{color:var(--ink);}
+  .rule{height:3px; border:0; margin:14px 0 6px;
+    background:linear-gradient(90deg,var(--teal) 0%,var(--teal) 62%,var(--gold) 62%,var(--gold) 100%);}
+  .rule-thin{height:1px; background:var(--line); border:0; margin:0 0 20px;}
+
+  /* ---------- Title ---------- */
+  .doc-title{text-align:center; margin:8px 0 22px;}
+  .doc-title h1{font-family:'Playfair Display',serif; font-size:26px; font-weight:700; letter-spacing:1px; margin:0; color:var(--teal);}
+  .doc-title .kicker{font-size:10.5px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:6px;}
+
+  /* ---------- Body ---------- */
+  .body{flex:1;}
+  .meta-row{display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:16px;}
+  .salutation{margin:0 0 12px; font-weight:600;}
+  p{margin:0 0 12px; text-align:justify;}
+  .lead strong,strong{color:var(--ink);}
+  .highlight{color:var(--teal); font-weight:600;}
+
+  .terms-card{
+    background:var(--teal-soft); border:1px solid #cfe0de; border-left:4px solid var(--teal);
+    border-radius:6px; padding:14px 18px; margin:14px 0;
+  }
+  .terms-card h3{margin:0 0 10px; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--teal);}
+  table.kv{width:100%; border-collapse:collapse; font-size:12px;}
+  table.kv td{padding:6px 4px; vertical-align:top;}
+  table.kv td.k{color:var(--muted); width:42%;}
+  table.kv td.v{color:var(--ink); font-weight:600;}
+  table.kv tr + tr td{border-top:1px dashed #cfdedc;}
+
+  ol.clauses{margin:6px 0 12px; padding-left:20px;}
+  ol.clauses li{margin-bottom:7px; text-align:justify;}
+
+  /* ---------- Signature ---------- */
+  .signoff{margin-top:22px; display:flex; justify-content:space-between; align-items:flex-end; gap:30px;}
+  .sig-block{width:46%;}
+  .sig-line{border-bottom:1.5px solid var(--ink); height:34px; margin-bottom:6px;}
+  .sig-name{font-weight:700; color:var(--ink);}
+  .sig-role{font-size:11px; color:var(--muted);}
+  .accept-note{font-size:10.5px; color:var(--muted); font-style:italic; margin-top:2px;}
+  .seal{
+    width:96px; height:96px; border:2px solid var(--gold); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:8.5px; letter-spacing:1px; text-transform:uppercase; color:var(--gold);
+    transform:rotate(-9deg); opacity:.85; font-weight:600; line-height:1.3;
+  }
+
+  /* ---------- Footer ---------- */
+  .foot{margin-top:auto; padding-top:12px;}
+  .foot-line{height:1px; background:var(--line); border:0; margin-bottom:8px;}
+  .foot-grid{display:flex; justify-content:space-between; font-size:10px; color:var(--muted); gap:12px;}
+  .foot-grid .c{flex:1;}
+  .foot-grid .r{text-align:right;}
+  .cg-note{text-align:center; font-size:9.5px; color:#9aa9a8; margin-top:8px; letter-spacing:.3px;}
+
+  @media print{
+    body{background:#fff;}
+    .sheet{margin:0; box-shadow:none; width:auto; min-height:auto;}
+    @page{size:A4; margin:0;}
+  }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <img class="watermark" src="{{clinic_favicon_url}}" alt="">
+
+    <!-- Letterhead -->
+    <div class="letterhead">
+      <div class="brand">
+        <img class="brand-logo" src="{{clinic_logo_url}}" alt="">
+        <div>
+          <div class="brand-name">{{clinic_name}}</div>
+          <div class="brand-sub">Human Resources</div>
+        </div>
+      </div>
+      <div class="doc-meta">
+        <div><b>Ref:</b> {{document_no}}</div>
+        <div><b>Date:</b> {{current_date}}</div>
+      </div>
+    </div>
+    <hr class="rule">
+    <div style="font-size:10px;color:var(--muted);letter-spacing:.3px;">{{clinic_address}} &nbsp;·&nbsp; {{clinic_phone}}</div>
+    <hr class="rule-thin">
+
+    <!-- Title -->
+    <div class="doc-title">
+      <span class="kicker">Human Resources</span>
+      <h1>No Objection Certificate</h1>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+      <p class="salutation">To Whomsoever It May Concern,</p>
+
+      <p class="lead">This is to certify that <strong>{{clinic_name}}</strong> has <span class="highlight">no objection</span> to <strong>{{employee_name}}</strong> (Employee Code <strong>{{employee_code}}</strong>), presently serving as <span class="highlight">{{employee_designation}}</span> in the <span class="highlight">{{employee_department}}</span> department, proceeding with the purpose stated below.</p>
+
+      <div class="terms-card">
+        <h3>Certificate Particulars</h3>
+        <table class="kv">
+          <tr><td class="k">Employee Name</td><td class="v">{{employee_name}}</td></tr>
+          <tr><td class="k">Employee Code</td><td class="v">{{employee_code}}</td></tr>
+          <tr><td class="k">Designation</td><td class="v">{{employee_designation}}</td></tr>
+          <tr><td class="k">Department</td><td class="v">{{employee_department}}</td></tr>
+          <tr><td class="k">Employed Since</td><td class="v">{{employee_doj}}</td></tr>
+          <tr><td class="k">Purpose of NOC</td><td class="v">{{noc_purpose}}</td></tr>
+        </table>
+      </div>
+
+      <p>We confirm that the above-named employee has been in the continuous service of the organisation since <strong>{{employee_doj}}</strong>. This certificate is issued for the purpose of <strong>{{noc_purpose}}</strong>, and the organisation has no objection whatsoever to the same.</p>
+
+      <p>Where applicable, we further confirm that the leave and/or travel for the dates <strong>{{noc_dates}}</strong> has been duly approved, and the organisation raises no objection to the employee availing the same.</p>
+
+      <p>This certificate is issued at the request of the employee and is furnished in good faith without any liability on the part of {{clinic_name}}. Should you require any further confirmation, kindly contact the Human Resources department.</p>
+
+      <!-- Signature -->
+      <div class="signoff">
+        <div class="sig-block">
+          <p style="margin-bottom:30px;">For <strong>{{clinic_name}}</strong></p>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{staff_name}}</div>
+          <div class="sig-role">Authorised Signatory · Human Resources</div>
+        </div>
+        <div class="seal">{{clinic_name}}<br>HR Seal</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="foot">
+      <hr class="foot-line">
+      <div class="foot-grid">
+        <div class="c"><b>{{clinic_name}}</b><br>{{clinic_address}}</div>
+        <div class="c r">{{clinic_phone}}<br>Ref: {{document_no}}</div>
+      </div>
+      <div class="cg-note">This is a computer-generated document and is valid without a physical signature when issued through the HR system.</div>
+    </div>
+  </div>
+</body>
+</html>

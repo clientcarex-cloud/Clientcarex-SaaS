@@ -1,0 +1,519 @@
+/* WhatsApp (Official Cloud API) — admin UI */
+
+.wapi-wrap { max-width: 1280px; margin: 0 auto; }
+
+/* ── Header ── */
+.wapi-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+.wapi-title { margin: 0 0 2px; font-size: 22px; font-weight: 700; color: #111827; }
+.wapi-title .fa-whatsapp { color: #25d366; }
+.wapi-subtitle { margin: 0; color: #6b7280; font-size: 13px; }
+.wapi-conn-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+.wapi-conn-ok { background: #16a34a14; color: #16a34a; border: 1px solid #16a34a40; }
+.wapi-conn-billing { background: #0ea5e914; color: #0369a1; border: 1px solid #0ea5e940; margin-left: 6px; }
+
+/* ── Tabs ── */
+.wapi-tabs { display: flex; gap: 4px; border-bottom: 2px solid #e5e7eb; margin-bottom: 16px; flex-wrap: wrap; }
+.wapi-tab { appearance: none; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 14px; font-size: 13.5px; font-weight: 600; color: #6b7280; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+.wapi-tab:hover { color: #111827; }
+.wapi-tab.active { color: #128c7e; border-bottom-color: #25d366; }
+.wapi-count-badge { background: #25d366; color: #fff; border-radius: 999px; font-size: 10.5px; font-weight: 700; padding: 1px 7px; }
+
+/* ── Panels / cards ── */
+.wapi-panel { display: none; }
+.wapi-panel.active { display: block; }
+.wapi-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+.wapi-card-narrow { max-width: 620px; }
+.wapi-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.wapi-card-head h3 { margin: 0; font-size: 15.5px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 8px; }
+.wapi-h4 { font-size: 13.5px; font-weight: 700; color: #374151; margin: 18px 0 10px; }
+.wapi-master-card { border-left: 3px solid #128c7e; }
+
+/* ── Stats ── */
+.wapi-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.wapi-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.wapi-stat-num { font-size: 22px; font-weight: 800; color: #128c7e; line-height: 1.1; }
+.wapi-stat-label { font-size: 11.5px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+
+/* ── Tables ── */
+.wapi-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wapi-table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+.wapi-table td { padding: 10px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; color: #1f2937; }
+.wapi-table tr:last-child td { border-bottom: none; }
+.wapi-ta-r { text-align: right !important; }
+.wapi-muted { color: #9ca3af; }
+.wapi-danger-text { color: #ef4444; }
+.wapi-code { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 5px; padding: 1px 6px; font-size: 12px; color: #374151; word-break: break-all; }
+
+/* ── Buttons / badges ── */
+.wapi-btn { appearance: none; border: 1px solid transparent; border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; text-decoration: none !important; transition: background .15s; }
+.wapi-btn-sm { padding: 5px 10px; font-size: 12px; }
+.wapi-btn-primary { background: #128c7e; color: #fff !important; }
+.wapi-btn-primary:hover { background: #0e7265; }
+.wapi-btn-light { background: #f3f4f6; color: #374151 !important; border-color: #e5e7eb; }
+.wapi-btn-light:hover { background: #e5e7eb; }
+.wapi-btn-ghost { background: transparent; color: #6b7280 !important; }
+.wapi-btn-ghost:hover { background: #f3f4f6; }
+.wapi-btn.wapi-danger { color: #ef4444 !important; }
+.wapi-btn:disabled, .wapi-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.wapi-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+.wapi-badge-soft { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; }
+.wapi-badge-ok { background: #16a34a14; color: #16a34a; border: 1px solid #16a34a40; }
+.wapi-badge-warn { background: #f59e0b14; color: #b45309; border: 1px solid #f59e0b40; }
+
+.wapi-badge-dot { display: inline-flex !important; align-items: center; gap: 6px; }
+.wapi-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.wapi-stat-num small { font-size: 14px; font-weight: 600; color: #9ca3af; }
+.wapi-stat-danger { color: #ef4444; }
+.wapi-table-scroll { overflow-x: auto; }
+.wapi-numbers-table td { white-space: nowrap; }
+.wapi-numbers-table .wapi-row-actions { white-space: nowrap; }
+.wapi-numbers-table tr.wapi-row-danger td:first-child { box-shadow: inset 3px 0 0 #ef4444; }
+.wapi-kv-table th { text-transform: none; font-size: 12.5px; color: #6b7280; width: 42%; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid #f3f4f6; }
+
+/* ── Alerts (actionable errors + fix hints) ── */
+.wapi-alert { display: flex; gap: 12px; align-items: flex-start; border-radius: 9px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px; border: 1px solid; position: relative; }
+.wapi-alert > i { font-size: 16px; margin-top: 2px; flex-shrink: 0; }
+.wapi-alert p { margin: 4px 0 8px; line-height: 1.5; }
+.wapi-alert p:last-child { margin-bottom: 0; }
+.wapi-alert strong { display: block; }
+.wapi-alert-danger { background: #ef44440d; border-color: #ef444440; color: #991b1b; }
+.wapi-alert-danger > i { color: #ef4444; }
+.wapi-alert-warn { background: #f59e0b0d; border-color: #f59e0b40; color: #92400e; }
+.wapi-alert-warn > i { color: #f59e0b; }
+.wapi-alert-info { background: #0ea5e90d; border-color: #0ea5e940; color: #075985; }
+.wapi-alert-info > i { color: #0ea5e9; }
+.wapi-alert-floating { margin-bottom: 16px; }
+.wapi-alert-raw { font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wapi-alert-close { position: absolute; top: 8px; right: 10px; background: none; border: none; font-size: 20px; line-height: 1; color: #9ca3af; cursor: pointer; }
+.wapi-alert .wapi-btn { margin-right: 6px; }
+
+/* ── Diagnostics ── */
+.wapi-diag-loading { padding: 18px 4px; color: #9ca3af; font-size: 13px; }
+.wapi-checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+.wapi-check { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #e5e7eb; border-radius: 9px; padding: 11px 13px; background: #fff; }
+.wapi-check > i { font-size: 15px; margin-top: 1px; flex-shrink: 0; }
+.wapi-check-body { min-width: 0; }
+.wapi-check-body strong { font-size: 13px; color: #111827; display: block; }
+.wapi-check-body p { margin: 3px 0 0; font-size: 12.5px; color: #6b7280; line-height: 1.5; }
+.wapi-check-body .wapi-btn { margin-top: 8px; }
+.wapi-check-ok { border-color: #16a34a33; background: #16a34a08; }
+.wapi-check-ok > i { color: #16a34a; }
+.wapi-check-warn { border-color: #f59e0b40; background: #f59e0b08; }
+.wapi-check-warn > i { color: #f59e0b; }
+.wapi-check-fail { border-color: #ef444440; background: #ef44440a; }
+.wapi-check-fail > i { color: #ef4444; }
+
+/* ── Activity chart ── */
+.wapi-legend { display: flex; gap: 14px; font-size: 11.5px; color: #6b7280; font-weight: 600; flex-wrap: wrap; }
+.wapi-legend .wapi-dot { margin-right: 4px; }
+.wapi-chart-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+/* KPI strip */
+.wapi-chart-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.wapi-kpi { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: #fafafa; border: 1px solid #f3f4f6; border-radius: 8px; }
+.wapi-kpi-value { font-size: 18px; font-weight: 800; line-height: 1.15; }
+.wapi-kpi-label { font-size: 10.5px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+
+/* Plot area: y-axis gutter + gridlines behind the columns */
+.wapi-chart-wrap { display: flex; gap: 10px; position: relative; height: 190px; }
+.wapi-chart-yaxis { display: flex; flex-direction: column; justify-content: space-between; width: 38px; flex-shrink: 0; text-align: right; font-size: 10px; color: #9ca3af; font-variant-numeric: tabular-nums; }
+.wapi-chart-plot { position: relative; flex: 1; min-width: 0; }
+.wapi-chart-grid { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.wapi-grid-line { border-top: 1px dashed #eef0f2; height: 0; }
+.wapi-grid-line:last-child { border-top-style: solid; border-top-color: #e5e7eb; }
+
+.wapi-chart { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 3px; transition: opacity .2s; }
+.wapi-chart.is-loading { opacity: .4; }
+.wapi-chart-col { flex: 1; height: 100%; min-width: 0; display: flex; align-items: flex-end; cursor: pointer; border-radius: 4px 4px 0 0; }
+.wapi-chart-col:hover { background: #128c7e0d; }
+/* height:100% is required — the segments size themselves in %, which only
+   resolves against a parent with a definite height. */
+.wapi-chart-stack { width: 100%; height: 100%; max-width: 26px; margin: 0 auto; display: flex; flex-direction: column; justify-content: flex-end; }
+/* Zero days render nothing — a stub bar reads as data that is not there. */
+.wapi-chart-col.is-empty .wapi-chart-stack { border-bottom: 2px solid #e5e7eb; }
+.wapi-chart-seg { width: 100%; transition: height .3s ease; }
+.wapi-chart-seg:first-child { border-radius: 3px 3px 0 0; }
+.wapi-seg-out { background: #128c7e; }
+.wapi-seg-in { background: #25d366; }
+.wapi-seg-failed { background: #ef4444; }
+
+.wapi-chart-xaxis { display: flex; gap: 3px; margin: 6px 0 0 48px; }
+/* Only every Nth slot carries text on wide ranges, so let the label overflow
+   its own column rather than being clipped to a couple of characters. */
+.wapi-x-label { flex: 1; min-width: 0; text-align: center; font-size: 10px; color: #9ca3af; white-space: nowrap; overflow: visible; }
+
+/* Tooltip — positioned in-plot so it can never be clipped by the card edge */
+.wapi-chart-tip { display: none; position: absolute; z-index: 5; background: #111827; color: #fff; border-radius: 8px; padding: 9px 11px; font-size: 12px; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.22); min-width: 132px; }
+.wapi-tip-head { font-weight: 700; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid #ffffff22; }
+.wapi-tip-head .wapi-muted { color: #9ca3af; font-weight: 500; }
+.wapi-tip-row { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; color: #e5e7eb; }
+.wapi-tip-row strong { margin-left: auto; color: #fff; font-variant-numeric: tabular-nums; }
+.wapi-tip-total { margin-top: 6px; padding-top: 5px; border-top: 1px solid #ffffff22; display: flex; justify-content: space-between; color: #9ca3af; }
+.wapi-tip-total strong { color: #fff; }
+
+/* ── Number details drawer ── */
+.wapi-numdetails-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid; border-radius: 9px; padding: 12px 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.wapi-numdetails-phone { font-size: 16px; color: #111827; }
+.wapi-numdetails-head .wapi-muted { font-size: 12.5px; margin-top: 2px; }
+.wapi-modal-lead { font-size: 13px; color: #4b5563; margin: 0 0 12px; }
+.wapi-pin-input { letter-spacing: .5em; font-size: 18px !important; text-align: center; font-weight: 700; }
+
+.wapi-webhook-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+/* ── Tenant usage / cost ── */
+.wapi-usage-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wapi-total-row td { border-top: 2px solid #e5e7eb; background: #fafafa; font-size: 13px; }
+.wapi-total-row strong { color: #111827; }
+.wapi-usage-note { font-size: 11.5px; margin: 10px 0 0; line-height: 1.5; }
+
+/* ── Collapsible panels (closed by default, chevron to expand) ── */
+.wapi-details { padding: 0 !important; }
+.wapi-details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 20px; user-select: none; }
+.wapi-details > summary::-webkit-details-marker { display: none; }
+.wapi-details > summary::marker { content: ''; }
+.wapi-details > summary:hover { background: #fafafa; }
+.wapi-details[open] > summary { border-bottom: 1px solid #f3f4f6; }
+.wapi-details-title { font-size: 15.5px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 8px; }
+.wapi-details-right { display: flex; align-items: center; gap: 12px; font-size: 12.5px; }
+.wapi-details-body { padding: 16px 20px 18px; }
+.wapi-details-actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.wapi-details-inline { border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; margin: 16px 0; }
+.wapi-details-inline .wapi-details-title { font-size: 13.5px; }
+
+/* Chevron rotates on expand — used by both panel and guide summaries. */
+.wapi-chevron { transition: transform .2s ease; color: #9ca3af; font-size: 12px; }
+.wapi-details[open] > summary .wapi-chevron,
+.wapi-guide[open] > summary .wapi-chevron { transform: rotate(180deg); }
+.wapi-guide > summary { display: flex; align-items: center; gap: 8px; }
+.wapi-guide > summary .wapi-chevron { margin-left: auto; }
+
+/* Status pill shown in a collapsed panel's header. */
+.wapi-summary-ok { color: #16a34a; font-weight: 600; }
+.wapi-summary-warn { color: #b45309; font-weight: 600; }
+.wapi-summary-fail { color: #ef4444; font-weight: 700; }
+
+/* ── Business profile / branding ── */
+.wapi-inline-select { border: 1px solid #d1d5db; border-radius: 7px; padding: 5px 9px; font-size: 12.5px; background: #fff; margin-right: 6px; }
+.wapi-profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
+.wapi-profile-preview { position: sticky; top: 12px; }
+.wapi-pp-card { background: linear-gradient(#f7f9fa, #fff); border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px 18px; text-align: center; }
+.wapi-pp-avatar { width: 92px; height: 92px; border-radius: 50%; margin: 0 auto 12px; background: #128c7e; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 34px; overflow: hidden; }
+.wapi-pp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.wapi-pp-name { font-size: 16px; font-weight: 700; color: #111827; word-break: break-word; }
+.wapi-pp-phone { font-size: 12.5px; color: #6b7280; margin-top: 2px; }
+.wapi-pp-about { font-size: 12.5px; color: #4b5563; margin-top: 8px; font-style: italic; word-break: break-word; }
+.wapi-pp-about:empty { display: none; }
+.wapi-pp-meta { list-style: none; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid #f3f4f6; text-align: left; }
+.wapi-pp-meta li { display: flex; gap: 9px; align-items: flex-start; font-size: 12.5px; color: #4b5563; margin-bottom: 8px; line-height: 1.5; word-break: break-word; }
+.wapi-pp-meta li i { color: #128c7e; margin-top: 2px; width: 13px; flex-shrink: 0; }
+.wapi-pic-field { margin-top: 14px; }
+.wapi-pic-field input[type="file"] { width: 100%; font-size: 12px; }
+.wapi-counter { float: right; font-size: 10.5px; font-weight: 600; color: #9ca3af; }
+.wapi-counter-full { color: #ef4444; }
+
+/* ── Empty states ── */
+.wapi-empty { text-align: center; padding: 36px 16px; color: #9ca3af; }
+.wapi-empty i { font-size: 34px; margin-bottom: 10px; display: block; color: #d1d5db; }
+.wapi-empty p { margin: 0 0 14px; font-size: 13.5px; }
+.wapi-empty-sm { padding: 18px 12px; }
+.wapi-empty-sm p { margin: 0; }
+
+/* ── Forms ── */
+.wapi-field { margin-bottom: 13px; }
+.wapi-field label { display: block; font-size: 12.5px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.wapi-field input[type="text"], .wapi-field input[type="password"], .wapi-field input[type="number"],
+.wapi-field input[type="datetime-local"], .wapi-field select, .wapi-field textarea {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 7px; padding: 8px 11px; font-size: 13px; color: #111827; background: #fff; box-sizing: border-box;
+}
+.wapi-field textarea { resize: vertical; }
+.wapi-field input:focus, .wapi-field select:focus, .wapi-field textarea:focus { outline: none; border-color: #25d366; box-shadow: 0 0 0 3px #25d36622; }
+/* Locked because the value is immutable upstream (e.g. a template's name at Meta). */
+.wapi-field input[readonly], .wapi-field input:disabled, .wapi-field select:disabled, .wapi-field textarea[readonly] {
+    background: #f3f4f6; color: #6b7280; cursor: not-allowed; border-color: #e5e7eb;
+}
+.wapi-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.wapi-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 14px; }
+.wapi-radio { display: inline-flex !important; align-items: center; gap: 6px; margin-right: 18px; font-weight: 500 !important; cursor: pointer; }
+.wapi-template-preview { background: #f9fafb; border: 1px dashed #e5e7eb; border-radius: 7px; padding: 9px 12px; font-size: 12.5px; margin-top: 6px; white-space: pre-wrap; }
+.wapi-template-preview:empty { display: none; }
+.wapi-param-controls { display: flex; gap: 8px; }
+.wapi-param-controls select { max-width: 180px; }
+.wapi-param-controls select, .wapi-param-controls input { border: 1px solid #d1d5db; border-radius: 7px; padding: 8px 11px; font-size: 13px; flex: 1; }
+.wapi-preview-line { display: flex; align-items: center; gap: 12px; margin-bottom: 13px; }
+
+/* ── Central-app resync report (master) ── */
+.wapi-resync-report:not(:empty) { margin-top: 14px; padding-top: 14px; border-top: 1px solid #f3f4f6; }
+.wapi-resync-report .wapi-table { margin-top: 12px; }
+.wapi-resync-report .wapi-alert { margin-top: 12px; }
+.wapi-resync-table td:last-child { font-size: 12.5px; color: #6b7280; line-height: 1.5; }
+
+/* ── Copy rows / guide (master) ── */
+.wapi-copy-rows { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.wapi-copy-row { display: flex; align-items: center; gap: 10px; background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 8px 12px; flex-wrap: wrap; }
+.wapi-copy-label { font-size: 12px; font-weight: 700; color: #6b7280; min-width: 160px; }
+.wapi-guide { margin: 16px 0 4px; background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #374151; }
+.wapi-guide summary { cursor: pointer; font-weight: 700; color: #128c7e; }
+.wapi-guide ol { margin: 10px 0 4px; padding-left: 20px; }
+.wapi-guide li { margin-bottom: 6px; }
+.wapi-guide a { color: #128c7e; font-weight: 600; text-decoration: underline; }
+
+/* ── Billing setup guide ── */
+.wapi-guide-billing { background: #fff; border-color: #e5e7eb; margin: 4px 0 18px; padding: 12px 16px; }
+.wapi-guide-billing[open] > summary { margin-bottom: 6px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6; }
+.wapi-guide-step { font-size: 13px; font-weight: 700; color: #111827; margin: 16px 0 0; padding-left: 10px; border-left: 3px solid #25d366; line-height: 1.4; }
+.wapi-guide-step:first-of-type { margin-top: 10px; }
+.wapi-guide-billing ol { margin: 8px 0 0; padding-left: 26px; }
+.wapi-guide-billing li { margin-bottom: 5px; line-height: 1.55; color: #4b5563; }
+.wapi-guide-note { display: flex; gap: 9px; align-items: flex-start; background: #0ea5e90d; border: 1px solid #0ea5e940; border-radius: 8px; padding: 10px 12px; margin: 12px 0 0; font-size: 12.5px; line-height: 1.55; color: #075985; }
+.wapi-guide-note > i { margin-top: 2px; flex-shrink: 0; color: #0ea5e9; }
+.wapi-guide-note-warn { background: #f59e0b0d; border-color: #f59e0b40; color: #92400e; }
+.wapi-guide-note-warn > i { color: #f59e0b; }
+.wapi-guide-sub { margin: 8px 0 0; font-size: 12.5px; line-height: 1.55; color: #4b5563; }
+.wapi-guide-table { margin-top: 10px; }
+.wapi-guide-table td { font-size: 12.5px; line-height: 1.5; vertical-align: top; }
+.wapi-guide-table td:first-child { width: 34%; color: #111827; font-weight: 600; }
+
+/* ── Credit-line diagnosis ── */
+.wapi-biz-head { font-weight: 600; margin-top: 10px !important; }
+.wapi-biz-list { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; }
+.wapi-biz-list li { margin-bottom: 5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* ── Switches ── */
+.wapi-switch { position: relative; display: inline-block; width: 36px; height: 20px; vertical-align: middle; }
+.wapi-switch input { opacity: 0; width: 0; height: 0; }
+.wapi-slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 999px; transition: .18s; }
+.wapi-slider:before { content: ""; position: absolute; height: 14px; width: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .18s; }
+.wapi-switch input:checked + .wapi-slider { background: #25d366; }
+.wapi-switch input:checked + .wapi-slider:before { transform: translateX(16px); }
+.wapi-switch-label { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; color: #374151; cursor: pointer; margin: 0; }
+
+/* ── Bot settings bar ── */
+.wapi-bot-settings { background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.wapi-bot-hours { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: #4b5563; }
+.wapi-bot-hours input[type="time"] { border: 1px solid #d1d5db; border-radius: 6px; padding: 4px 7px; font-size: 12.5px; }
+.wapi-days { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.wapi-day { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; cursor: pointer; margin: 0; }
+
+/* ── Inbox notification settings ── */
+.wapi-notify-intro { font-size: 12.5px; line-height: 1.5; margin: -4px 0 14px; }
+.wapi-notify-switches { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 11px 18px; background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 13px 14px; margin-bottom: 16px; }
+.wapi-notify-staff { display: flex; flex-wrap: wrap; gap: 8px 18px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 11px 13px; }
+.wapi-notify-staff .wapi-day { font-size: 12.5px; font-weight: 500; }
+
+/* ── Progress ── */
+.wapi-progress { background: #f3f4f6; border-radius: 999px; height: 7px; width: 120px; overflow: hidden; margin-bottom: 3px; }
+.wapi-progress-bar { background: #25d366; height: 100%; border-radius: 999px; transition: width .4s; }
+
+/* ── Chat inbox ── */
+.wapi-chat { display: flex; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; height: calc(100vh - 260px); min-height: 460px; }
+.wapi-chat-side { width: 300px; min-width: 250px; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; background: #fafafa; }
+.wapi-chat-toolbar { display: flex; gap: 6px; align-items: center; padding: 9px 10px; border-bottom: 1px solid #e5e7eb; background: #fff; }
+.wapi-search-wrap { position: relative; flex: 1; min-width: 0; }
+.wapi-search-wrap i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 11.5px; }
+.wapi-search-wrap input { width: 100%; border: 1px solid #d1d5db; border-radius: 7px; padding: 6px 9px 6px 26px; font-size: 12.5px; box-sizing: border-box; }
+.wapi-search-wrap input:focus { outline: none; border-color: #25d366; box-shadow: 0 0 0 3px #25d36622; }
+.wapi-chat-toolbar select { border: 1px solid #d1d5db; border-radius: 7px; padding: 6px 7px; font-size: 12px; max-width: 120px; background: #fff; }
+.wapi-chat-threads { flex: 1; overflow-y: auto; }
+.wapi-thread { display: flex; gap: 10px; align-items: center; padding: 11px 13px; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
+.wapi-thread-time { font-size: 10.5px; color: #9ca3af; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+.wapi-thread-last i { font-size: 10px; margin-right: 2px; }
+.wapi-thread-last .wapi-read { color: #34b7f1; }
+.wapi-thread-last .wapi-failed { color: #ef4444; }
+.wapi-thread:hover { background: #f3f4f6; }
+.wapi-thread.active { background: #e8f7ef; }
+.wapi-thread-avatar { width: 36px; height: 36px; border-radius: 50%; background: #128c7e; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+.wapi-thread-body { flex: 1; min-width: 0; }
+.wapi-thread-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 13px; }
+.wapi-thread-top strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wapi-thread-last { font-size: 12px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wapi-chat-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.wapi-chat-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 16px; border-bottom: 1px solid #e5e7eb; background: #fff; font-size: 13.5px; }
+.wapi-chat-messages { flex: 1; overflow-y: auto; padding: 16px; background: #efeae2; }
+.wapi-chat-placeholder { text-align: center; color: #9ca3af; padding-top: 80px; }
+.wapi-chat-placeholder i { font-size: 44px; color: #d1d5db; display: block; margin-bottom: 10px; }
+.wapi-bubble-row { display: flex; margin-bottom: 7px; }
+.wapi-bubble-in { justify-content: flex-start; }
+.wapi-bubble-out, .wapi-bubble-bot { justify-content: flex-end; }
+.wapi-bubble { max-width: 68%; border-radius: 9px; padding: 7px 11px; font-size: 13.5px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.wapi-bubble-in .wapi-bubble { background: #fff; }
+.wapi-bubble-out .wapi-bubble { background: #d9fdd3; }
+.wapi-bubble-bot .wapi-bubble { background: #d5f0fa; }
+.wapi-bubble-text { white-space: pre-wrap; word-break: break-word; color: #111827; }
+.wapi-bubble-meta { font-size: 10.5px; color: #8696a0; text-align: right; margin-top: 3px; display: flex; gap: 5px; justify-content: flex-end; align-items: center; }
+.wapi-bubble-meta .wapi-read { color: #34b7f1; }
+.wapi-bubble-meta .wapi-failed { color: #ef4444; }
+.wapi-bot-tag { position: absolute; top: -7px; right: -5px; background: #0ea5e9; color: #fff; font-size: 9px; border-radius: 999px; padding: 2px 5px; }
+.wapi-media-link { color: #128c7e; font-weight: 600; }
+.wapi-chat-input { border-top: 1px solid #e5e7eb; padding: 10px 14px; background: #f7f8fa; }
+#wapi-chat-text-row { display: flex; gap: 9px; align-items: flex-end; }
+#wapi-chat-text-row textarea { flex: 1; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; font-size: 13.5px; resize: none; max-height: 110px; }
+.wapi-window-note { font-size: 12px; color: #b45309; margin-bottom: 7px; }
+.wapi-chat-template-controls { display: flex; gap: 8px; }
+.wapi-chat-template-controls select, .wapi-chat-template-controls input { flex: 1; border: 1px solid #d1d5db; border-radius: 7px; padding: 8px 11px; font-size: 13px; }
+.wapi-chat-template-preview { font-size: 12px; margin-top: 6px; white-space: pre-line; max-height: 64px; overflow-y: auto; }
+.wapi-chat-icon-btn { padding: 8px 10px; }
+.wapi-chat-icon-btn.active { background: #dcfce7; color: #15803d; }
+#wapi-chat-template-row { padding-top: 4px; }
+#wapi-chat-text-row + #wapi-chat-template-row { margin-top: 8px; border-top: 1px dashed #e5e7eb; padding-top: 10px; }
+.wapi-attach-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #eef2f7; border: 1px solid #d8dee8; border-radius: 8px; padding: 7px 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.wapi-attach-info { display: flex; align-items: center; gap: 7px; font-size: 12.5px; min-width: 0; }
+.wapi-attach-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.wapi-attach-controls { display: flex; gap: 7px; flex: 1; justify-content: flex-end; }
+.wapi-attach-controls input { flex: 1; max-width: 340px; border: 1px solid #d1d5db; border-radius: 7px; padding: 7px 10px; font-size: 12.5px; }
+.wapi-bubble-media { display: block; max-width: 260px; max-height: 300px; border-radius: 8px; margin: 2px 0; }
+video.wapi-bubble-media { width: 260px; }
+.wapi-bubble-audio { max-width: 250px; height: 36px; }
+.wapi-bubble-caption { margin-top: 4px; }
+
+/* ── WhatsApp text formatting, as the recipient sees it ── */
+.wapi-fmt-list { margin: 0; padding-left: 20px; }
+.wapi-fmt-list li { margin: 0; }
+.wapi-fmt-quote { border-left: 4px solid #c7cdd3; padding-left: 9px; margin: 2px 0; color: #3b4a54; }
+.wapi-fmt-mono, .wapi-fmt-code { font-family: Menlo, Consolas, monospace; font-size: .92em; background: #0000000a; border-radius: 4px; padding: 1px 4px; }
+.wapi-fmt-mono { display: inline-block; white-space: pre-wrap; }
+
+/* ── Modals ── */
+.wapi-modal { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .5); z-index: 1050; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+.wapi-modal.open { display: flex; }
+.wapi-modal-box { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; padding: 20px 22px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.wapi-modal-lg { max-width: 760px; }
+.wapi-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.wapi-modal-head h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.wapi-modal-close { appearance: none; background: none; border: none; font-size: 26px; line-height: 1; color: #9ca3af; cursor: pointer; }
+.wapi-modal-close:hover { color: #111827; }
+.wapi-modal-foot { display: flex; justify-content: flex-end; gap: 9px; margin-top: 16px; }
+.wapi-details-summary { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: #4b5563; margin-bottom: 12px; }
+.wapi-details-table-wrap { max-height: 420px; overflow-y: auto; }
+
+/* ── Templates: clickable rows + detail drawer ── */
+.wapi-tpl-row { cursor: pointer; }
+.wapi-tpl-row:hover { background: #f9fafb; }
+.wapi-tpl-row.wapi-row-danger td:first-child { box-shadow: inset 3px 0 0 #ef4444; }
+.wapi-tpl-row .wapi-row-actions { white-space: nowrap; cursor: default; }
+.wapi-tpldetails .wapi-details-title { margin-bottom: 8px; }
+.wapi-tpldetails .wapi-table { margin-bottom: 16px; }
+.wapi-tpldetails-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.wapi-tpldetails-note { font-size: 12px; margin: 0 0 16px; line-height: 1.5; }
+.wapi-tpl-preview { background: #efeae2; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+.wapi-tpl-preview .wapi-bubble { max-width: 100%; }
+.wapi-tpl-preview-header { font-weight: 700; color: #111827; font-size: 13.5px; margin-bottom: 4px; }
+.wapi-tpl-preview-media { background: #0000000a; border: 1px dashed #9ca3af; border-radius: 7px; padding: 14px; text-align: center; font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+.wapi-tpl-preview-footer { font-size: 11.5px; color: #8696a0; margin-top: 5px; }
+.wapi-tpl-preview-buttons { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.wapi-tpl-preview-btn { background: #fff; color: #027eb5; border-radius: 7px; padding: 7px 10px; font-size: 13px; text-align: center; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+#wapi-template-edit-note .wapi-alert { margin-bottom: 12px; }
+#wapi-template-header-note { display: block; margin-top: 5px; font-size: 11.5px; }
+
+/* ── Template composer: form on the left, live preview on the right ── */
+.wapi-modal-xl { max-width: 1020px; }
+.wapi-tplcompose { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; align-items: start; }
+.wapi-tplcompose-main { min-width: 0; }
+.wapi-tplcompose-side { position: sticky; top: 0; }
+.wapi-field-hint { display: block; margin-top: 5px; font-size: 11.5px; color: #9ca3af; line-height: 1.45; }
+.wapi-count { float: right; font-weight: 600; font-size: 11px; color: #9ca3af; letter-spacing: .02em; }
+.wapi-count-over { color: #ef4444; }
+
+/* Body formatting toolbar */
+.wapi-tplbar { display: flex; align-items: center; gap: 3px; margin-bottom: 6px; flex-wrap: wrap; }
+.wapi-tplbar-btn { appearance: none; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; color: #4b5563; cursor: pointer; font-size: 12px; line-height: 1; padding: 6px 9px; }
+.wapi-tplbar-btn:hover { background: #e5e7eb; color: #111827; }
+.wapi-tplbar-var { font-weight: 600; color: #128c7e; }
+.wapi-tplbar-sep { width: 1px; height: 18px; background: #e5e7eb; margin: 0 5px; }
+
+/* Sample values */
+.wapi-tplsamples { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 9px; padding: 12px 14px; margin-bottom: 13px; }
+.wapi-tplsamples-head { margin-bottom: 9px; }
+.wapi-tplsamples-head strong { display: block; font-size: 12.5px; color: #374151; }
+.wapi-tplsamples-head small { font-size: 11.5px; line-height: 1.45; display: block; margin-top: 2px; }
+.wapi-tplsample { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.wapi-tplsample:last-child { margin-bottom: 0; }
+.wapi-tplsample .wapi-var { flex: 0 0 96px; text-align: center; }
+.wapi-tplsample input { flex: 1 1 auto; min-width: 0; border: 1px solid #d1d5db; border-radius: 7px; padding: 7px 10px; font-size: 13px; background: #fff; }
+.wapi-tplsample input:focus { outline: none; border-color: #25d366; box-shadow: 0 0 0 3px #25d36622; }
+
+/* Variable chips — in the form and inside the preview bubble */
+.wapi-var { display: inline-block; background: #128c7e14; border: 1px solid #128c7e33; border-radius: 5px; color: #0e7265; font-size: 11.5px; font-weight: 600; padding: 1px 6px; }
+.wapi-var-filled { background: #f59e0b1a; border-color: #f59e0b40; color: #92400e; font-weight: 600; }
+
+/* Phone frame */
+.wapi-tplphone { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px rgba(17,24,39,.07); }
+.wapi-tplphone-top { display: flex; align-items: center; gap: 9px; background: #075e54; color: #fff; padding: 9px 12px; }
+.wapi-tplphone-avatar { width: 30px; height: 30px; border-radius: 50%; background: #ffffff26; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.wapi-tplphone-who { min-width: 0; flex: 1 1 auto; }
+.wapi-tplphone-who strong { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wapi-tplphone-who small { font-size: 10.5px; opacity: .75; }
+.wapi-tplphone-dots { opacity: .7; font-size: 13px; }
+.wapi-tplphone-screen { background: #efeae2; padding: 12px 10px; min-height: 180px; max-height: 420px; overflow-y: auto; }
+.wapi-tplphone-screen .wapi-tpl-preview { background: none; border: none; border-radius: 0; padding: 0; margin: 0; }
+.wapi-tplphone-screen .wapi-bubble { max-width: 100%; }
+.wapi-tplphone-foot { border-top: 1px solid #e5e7eb; padding: 8px 12px; }
+.wapi-tplphone-toggle { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 11.5px; font-weight: 600; color: #6b7280; cursor: pointer; }
+.wapi-tplphone-toggle input { margin: 0; }
+.wapi-tpl-preview-ph { color: #9ca3af; font-style: italic; }
+
+/* Pre-flight checks */
+.wapi-tpllint { margin-top: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; }
+.wapi-tpllint-title { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.wapi-tpllint ul { list-style: none; margin: 0; padding: 0; }
+.wapi-tpllint li { display: flex; gap: 8px; font-size: 12px; line-height: 1.5; margin-bottom: 6px; }
+.wapi-tpllint li:last-child { margin-bottom: 0; }
+.wapi-tpllint li i { margin-top: 2px; flex-shrink: 0; }
+.wapi-lint-bad { color: #991b1b; } .wapi-lint-bad i { color: #ef4444; }
+.wapi-lint-warn { color: #92400e; } .wapi-lint-warn i { color: #f59e0b; }
+.wapi-lint-ok { color: #4b5563; } .wapi-lint-ok i { color: #16a34a; }
+.wapi-tpllint-foot { font-size: 11.5px; color: #9ca3af; line-height: 1.5; margin: 9px 0 0; padding-top: 9px; border-top: 1px solid #e5e7eb; }
+.wapi-tplfoot-note { margin-right: auto; align-self: center; font-size: 12px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+    .wapi-tplcompose { grid-template-columns: 1fr; }
+    .wapi-tplcompose-side { position: static; }
+}
+@media (max-width: 860px) {
+    .wapi-tpldetails-grid { grid-template-columns: 1fr; }
+    .wapi-grid-2, .wapi-grid-3 { grid-template-columns: 1fr; }
+    .wapi-profile-grid { grid-template-columns: 1fr; }
+    .wapi-profile-preview { position: static; }
+    .wapi-chat { flex-direction: column; height: auto; }
+    .wapi-chat-side { width: 100%; border-right: none; border-bottom: 1px solid #e5e7eb; }
+    .wapi-chat-threads { max-height: 240px; }
+    .wapi-chat-messages { min-height: 320px; }
+}
+
+/* ── Shared WhatsApp number (provider-lent) ── */
+.wapi-conn-warn { background: #f59e0b14; color: #b45309; border: 1px solid #f59e0b40; }
+
+/* Provider console */
+.wapi-shared-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+.wapi-shared-kpi { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; }
+.wapi-shared-kpi-num { display: block; font-size: 20px; font-weight: 700; color: #111827; line-height: 1.2; }
+.wapi-shared-kpi-label { display: block; font-size: 11.5px; color: #6b7280; margin-top: 2px; }
+.wapi-row-muted td { opacity: .55; }
+.wapi-nowrap { white-space: nowrap; }
+
+/* Grant modal — template allowlist */
+.wapi-shared-templates { max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; margin-bottom: 14px; }
+.wapi-shared-tpl-tools { display: flex; gap: 6px; padding: 0 4px 6px; border-bottom: 1px solid #f3f4f6; margin-bottom: 6px; }
+.wapi-shared-tpl { display: flex; align-items: flex-start; gap: 9px; padding: 8px; border-radius: 6px; cursor: pointer; }
+.wapi-shared-tpl:hover { background: #f9fafb; }
+.wapi-shared-tpl input { margin-top: 3px; }
+.wapi-shared-tpl-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wapi-shared-tpl-main strong { font-size: 13px; color: #111827; }
+.wapi-shared-tpl-body { font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; }
+.wapi-check-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.wapi-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #374151; cursor: pointer; }
+.wapi-static-value { margin: 0; font-size: 13.5px; color: #111827; }
+.wapi-hint { display: block; margin-top: 4px; font-size: 11.5px; color: #6b7280; }
+
+/* Tenant-facing panel */
+.wapi-shared-panel { border: 1px dashed #25d36660; background: #25d3660a; border-radius: 10px; padding: 16px 18px; }
+.wapi-shared-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.wapi-shared-head h4 { margin: 0 0 3px; }
+.wapi-shared-head p { margin: 0; font-size: 12.5px; }
+.wapi-shared-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.wapi-shared-fact { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; }
+.wapi-shared-fact-label { display: block; font-size: 11.5px; color: #6b7280; }
+.wapi-shared-fact-value { display: block; font-size: 16px; font-weight: 700; color: #111827; margin-top: 2px; }
+.wapi-shared-note { font-size: 12px; margin: 0 0 12px; }
+.wapi-tpl-shared-tag { display: inline-block; padding: 0 7px; }
+.wapi-chat-shared-note { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-top: 1px solid #e5e7eb; background: #f9fafb; font-size: 12.5px; color: #6b7280; }

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<!-- Smart PDF template — Form No. 16 (TDS certificate, Section 203). Statutory tabular layout. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Form No. 16</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+  :root{--ink:#0b2e33; --teal:#0e4d54; --teal-soft:#e8f0ef; --gold:#b6923d; --muted:#5f7275; --line:#c9d6d5;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:#eef1f0; font-family:'Source Sans 3','Segoe UI',sans-serif; color:var(--ink); font-size:11px; line-height:1.5; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  .sheet{width:210mm; min-height:297mm; margin:16px auto; background:#fff; padding:14mm 14mm 12mm; box-shadow:0 6px 30px rgba(11,46,51,.14); position:relative;}
+
+  /* header */
+  .head{display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--teal); padding-bottom:8px; margin-bottom:4px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-logo{height:21px; width:auto; max-width:90px; object-fit:contain;}
+  .brand-name{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--ink);}
+  .brand-sub{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);}
+  .form-tag{text-align:right;}
+  .form-tag .fn{font-size:17px;font-weight:700;color:var(--teal);letter-spacing:1px;}
+  .form-tag .rule{font-size:9px;color:var(--muted);}
+
+  .subtitle{text-align:center; font-size:10px; color:#3a4c4f; margin:8px 0 4px; line-height:1.4;}
+  .subtitle b{color:var(--ink);}
+  .partbar{background:var(--teal); color:#fff; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:5px 10px; margin:12px 0 0; border-radius:3px 3px 0 0;}
+
+  table{width:100%; border-collapse:collapse;}
+  table.grid{border:1px solid var(--line); font-size:10.5px;}
+  table.grid td, table.grid th{border:1px solid var(--line); padding:5px 8px; vertical-align:top;}
+  table.grid th{background:var(--teal-soft); text-align:left; color:var(--ink); font-weight:600; text-transform:uppercase; font-size:9.5px; letter-spacing:.4px;}
+  .k{color:var(--muted);}
+  .v{font-weight:600; color:var(--ink);}
+  td.amt, th.amt{text-align:right;}
+  tr.sum td{background:var(--teal-soft); font-weight:700; color:var(--ink);}
+  .sectionhead{font-weight:700; color:var(--teal); font-size:10px; text-transform:uppercase; letter-spacing:.5px; padding-top:8px;}
+
+  .verify{margin-top:14px; border:1px solid var(--line); border-left:4px solid var(--teal); padding:10px 12px; font-size:10px; background:#fafcfb;}
+  .sign{margin-top:26px; display:flex; justify-content:space-between; align-items:flex-end;}
+  .sign .place{font-size:10px; color:var(--muted);}
+  .sign .place b{color:var(--ink);}
+  .sign .box{text-align:center; width:60mm;}
+  .sign .line{border-bottom:1.4px solid var(--ink); height:34px; margin-bottom:5px;}
+  .sign .nm{font-weight:700; color:var(--ink); font-size:11px;}
+  .sign .rl{font-size:9.5px; color:var(--muted);}
+  .foot{margin-top:14px; border-top:1px solid var(--line); padding-top:6px; text-align:center; font-size:8.5px; color:#9aa9a8;}
+
+  @media print{ body{background:#fff;} .sheet{margin:0; box-shadow:none; width:auto; min-height:auto;} @page{size:A4; margin:0;} }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <!-- Header -->
+    <div class="head">
+      <div class="brand">
+        <img class="brand-logo" src="{{clinic_logo_url}}" alt="">
+        <div>
+          <div class="brand-name">{{clinic_name}}</div>
+          <div class="brand-sub">Human Resources · Payroll</div>
+        </div>
+      </div>
+      <div class="form-tag">
+        <div class="fn">FORM NO. 16</div>
+        <div class="rule">[See rule 31(1)(a)]</div>
+      </div>
+    </div>
+    <div class="subtitle">
+      Certificate under Section 203 of the Income-tax Act, 1961 for tax deducted at source on salary paid to an employee<br>
+      <b>Assessment Year: {{assessment_year}}</b> &nbsp;·&nbsp; Period: <b>{{period_from}}</b> to <b>{{period_to}}</b>
+    </div>
+
+    <!-- PART A -->
+    <div class="partbar">Part A — Details of Employer, Employee &amp; Tax Deducted</div>
+    <table class="grid">
+      <tr>
+        <th style="width:25%;">Name &amp; Address of Employer</th>
+        <td style="width:35%;"><span class="v">{{clinic_name}}</span><br>{{clinic_address}}<br>{{clinic_phone}}</td>
+        <th style="width:20%;">Name &amp; Address of Employee</th>
+        <td style="width:20%;"><span class="v">{{employee_name}}</span><br>{{employee_address}}</td>
+      </tr>
+      <tr>
+        <th>TAN of Employer</th><td class="v">{{employer_tan}}</td>
+        <th>PAN of Employee</th><td class="v">{{employee_pan}}</td>
+      </tr>
+      <tr>
+        <th>PAN of Employer</th><td class="v">{{employer_pan}}</td>
+        <th>Employee Code / Designation</th><td class="v">{{employee_code}} · {{employee_designation}}</td>
+      </tr>
+    </table>
+
+    <div class="sectionhead">Summary of Tax Deducted at Source</div>
+    <table class="grid">
+      <tr>
+        <th>Quarter</th><th class="amt">Amount Paid / Credited</th><th class="amt">Tax Deducted (₹)</th><th class="amt">Tax Deposited (₹)</th>
+      </tr>
+      <tr><td>Quarter 1 (Apr–Jun)</td><td class="amt">{{q1_paid}}</td><td class="amt">{{q1_tds}}</td><td class="amt">{{q1_deposited}}</td></tr>
+      <tr><td>Quarter 2 (Jul–Sep)</td><td class="amt">{{q2_paid}}</td><td class="amt">{{q2_tds}}</td><td class="amt">{{q2_deposited}}</td></tr>
+      <tr><td>Quarter 3 (Oct–Dec)</td><td class="amt">{{q3_paid}}</td><td class="amt">{{q3_tds}}</td><td class="amt">{{q3_deposited}}</td></tr>
+      <tr><td>Quarter 4 (Jan–Mar)</td><td class="amt">{{q4_paid}}</td><td class="amt">{{q4_tds}}</td><td class="amt">{{q4_deposited}}</td></tr>
+      <tr class="sum"><td>Total</td><td class="amt">{{total_paid}}</td><td class="amt">{{tds_total}}</td><td class="amt">{{tds_total}}</td></tr>
+    </table>
+
+    <!-- PART B -->
+    <div class="partbar">Part B — Annexure : Details of Salary Paid &amp; Tax Computation</div>
+    <table class="grid">
+      <tr><td style="width:80%;"><b>1. Gross Salary</b></td><td class="amt v">{{gross_salary}}</td></tr>
+      <tr><td>2. Less: Allowances exempt under Section 10</td><td class="amt">{{exempt_allowances}}</td></tr>
+      <tr><td>3. Less: Deduction under Section 16 (Standard Deduction, Professional Tax)</td><td class="amt">{{std_deduction}}</td></tr>
+      <tr class="sum"><td>4. Income chargeable under the head "Salaries"</td><td class="amt">{{income_salary}}</td></tr>
+      <tr><td>5. Add: Any other income reported by the employee</td><td class="amt">{{other_income}}</td></tr>
+      <tr><td colspan="2" class="sectionhead">6. Deductions under Chapter VI-A</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;(a) Section 80C / 80CCC / 80CCD</td><td class="amt">{{ded_80c}}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;(b) Section 80D (Medical Insurance)</td><td class="amt">{{ded_80d}}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;(c) Other deductions (80E, 80G, etc.)</td><td class="amt">{{ded_other}}</td></tr>
+      <tr class="sum"><td>7. Total Taxable Income</td><td class="amt">{{total_income}}</td></tr>
+      <tr><td>8. Tax on Total Income</td><td class="amt">{{tax_on_income}}</td></tr>
+      <tr><td>9. Less: Rebate under Section 87A</td><td class="amt">{{rebate_87a}}</td></tr>
+      <tr><td>10. Add: Health &amp; Education Cess (4%)</td><td class="amt">{{cess}}</td></tr>
+      <tr class="sum"><td>11. Total Tax Payable</td><td class="amt">{{tax_payable}}</td></tr>
+      <tr><td>12. Less: Tax Deducted at Source (as per Part A)</td><td class="amt">{{tds_total}}</td></tr>
+      <tr class="sum"><td>13. Balance Tax Payable / (Refundable)</td><td class="amt">{{balance_tax}}</td></tr>
+    </table>
+
+    <!-- Verification -->
+    <div class="verify">
+      <b>Verification:</b> I, {{staff_name}}, working in the capacity of Authorised Signatory, do hereby certify that
+      a sum of ₹ {{tds_total}} has been deducted and deposited to the credit of the Central Government in respect of
+      the above employee. I further certify that the information given above is true, complete and correct, and is
+      based on the books of account, documents, TDS statements and other available records.
+    </div>
+
+    <div class="sign">
+      <div class="place">
+        Place: <b>{{clinic_address}}</b><br>
+        Date: <b>{{current_date}}</b><br>
+        Ref: <b>{{document_no}}</b>
+      </div>
+      <div class="box">
+        <div class="line"></div>
+        <div class="nm">{{staff_name}}</div>
+        <div class="rl">Authorised Signatory · For {{clinic_name}}</div>
+      </div>
+    </div>
+
+    <div class="foot">This is a computer-generated certificate issued through the HR/Payroll system. Figures are indicative and must be reconciled with the employer's TDS returns (Form 24Q) and TRACES.</div>
+  </div>
+</body>
+</html>

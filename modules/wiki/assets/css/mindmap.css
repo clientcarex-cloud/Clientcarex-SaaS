@@ -1,0 +1,28 @@
+#panel {
+  height: 30px;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  font-family: 'Inter', 'Hiragino Sans GB', 'Arial', 'Microsoft Yahei';
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  position: relative;
+  transition: transform .7s ease;
+  z-index: 11;
+  -webkit-user-select: none;
+  -webkit-app-region: drag;
+}
+
+/* Ensure canvas takes full height minus bottom bar */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #f8fafc;
+}
+#content-wrapper {
+  height: calc(100vh - 48px);
+  position: relative;
+}
+#kityminder {
+  height: calc(100% - 30px);
+}

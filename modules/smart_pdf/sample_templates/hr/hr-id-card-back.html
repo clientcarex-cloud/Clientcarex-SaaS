@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!-- Smart PDF template — Employee ID Card (BACK). CR80 portrait 54 × 85.6 mm. Pair with hr-id-card-front. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Employee ID Card — Back</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+  :root{--ink:#0b2e33; --teal:#0e4d54; --gold:#c2a24d; --muted:#6a7d80; --line:#e3ebea;}
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#dfe4e3; font-family:'Source Sans 3','Segoe UI',sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  .card{
+    width:54mm; height:85.6mm; margin:18px auto; background:#fff; border-radius:4mm;
+    overflow:hidden; position:relative; box-shadow:0 8px 26px rgba(11,46,51,.22); color:var(--ink);
+    display:flex; flex-direction:column;
+  }
+  /* Content flows in this padded region; the footer is a real flex child below
+     it, so the "return to" block can never slide under the footer bar. */
+  .body{flex:1 1 auto; min-height:0; overflow:hidden; padding:4mm 4mm 1.6mm; display:flex; flex-direction:column;}
+  .title{text-align:center; font-family:'Playfair Display',serif; font-size:3.4mm; font-weight:700; color:var(--teal); padding-bottom:1.4mm; border-bottom:0.4mm solid var(--gold); margin-bottom:2.2mm;}
+  .sect{margin-bottom:2mm;}
+  .sect h4{font-size:2.1mm; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:.8mm;}
+  .sect .val{font-size:2.7mm; font-weight:700; color:var(--ink); line-height:1.3;}
+  .row2{display:flex; gap:2mm;}
+  .row2 .sect{flex:1;}
+  .terms{font-size:2mm; color:#55666a; line-height:1.4; background:#f2f6f5; border-radius:2mm; padding:1.6mm 2.2mm; border-left:0.6mm solid var(--teal);}
+  .terms li{margin-left:3mm; margin-bottom:.4mm;}
+  .terms li:last-child{margin-bottom:0;}
+  .return{text-align:center; font-size:2mm; color:var(--muted); margin-top:auto; padding-top:1.6mm; line-height:1.35;}
+  .return b{color:var(--ink);}
+  .foot{flex:0 0 auto; height:6mm; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; gap:1.4mm; font-size:2mm;}
+  @media print{ body{background:#fff;} .card{margin:0; box-shadow:none; border-radius:0;} @page{size:54mm 85.6mm; margin:0;} }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="body">
+      <div class="title">{{clinic_name}}</div>
+
+      <div class="row2">
+        <div class="sect"><h4>Blood Group</h4><div class="val" style="color:#b0322b;">{{employee_blood_group}}</div></div>
+        <div class="sect"><h4>Emp Code</h4><div class="val">{{employee_code}}</div></div>
+      </div>
+
+      <div class="sect">
+        <h4>Emergency Contact</h4>
+        <div class="val">{{employee_emergency_contact}}</div>
+      </div>
+
+      <div class="sect">
+        <h4>In Case of Emergency</h4>
+        <div class="val" style="font-size:2.5mm;">{{clinic_phone}}</div>
+      </div>
+
+      <ul class="terms">
+        <li>This card is the property of {{clinic_name}} and is non-transferable.</li>
+        <li>Must be worn visibly within the premises at all times.</li>
+        <li>Report loss immediately to the HR department.</li>
+        <li>Return this card to HR upon separation from service.</li>
+      </ul>
+
+      <div class="return">
+        If found, please return to:<br>
+        <b>{{clinic_name}}</b><br>{{clinic_address}}
+      </div>
+    </div>
+
+    <div class="foot">Authorised by Human Resources</div>
+  </div>
+</body>
+</html>
