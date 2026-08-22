@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Checkout Flow';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Wybierz sposób realizacji transakcji Stripe, który będzie używany dla subskrypcji. Tryb konfiguracji najpierw zbiera metody płatności, a następnie tworzy subskrypcje. Tryb subskrypcji wyświetla szczegóły subskrypcji podczas realizacji zakupu i automatycznie obsługuje pobieranie płatności.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Tryb konfiguracji (starsze wersje)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Tryb subskrypcji (zalecany)';
-$lang['perfex_saas_sync_all_packages'] = 'Synchronizuj wszystko';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Subskrybuj, aby odblokować personalizację pakietu.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'To demo zostanie zresetowane w %s. Należy pamiętać, że wszystkie dodane dane zostaną wyczyszczone, a system może na chwilę zwolnić.';

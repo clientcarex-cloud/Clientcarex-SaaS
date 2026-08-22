@@ -184,6 +184,86 @@ $route['authentication/set_password/(:num)/(:num)/(:any)'] = 'admin/authenticati
 // For backward compatilibilty
 $route['survey/(:num)/(:any)'] = 'surveys/participate/index/$1/$2';
 
+// Short URL for public feedback forms (SMS/WhatsApp DLT friendly)
+$route['fb/(:any)'] = 'feedback/feedback_public/public_form/$1';
+
+// Short URL for public Smart Forms (smart_forms module)
+$route['form/(:any)'] = 'smart_forms/smart_forms_public/fill/$1';
+
+// Short URLs for public live voting (voting module)
+// /vote/{code} = telecast screen (question + QR + live results)
+// /v/{code}    = voter ballot (vote only, no results exposed)
+$route['vote/(:any)'] = 'voting/voting_public/live/$1';
+$route['v/(:any)']    = 'voting/voting_public/ballot/$1';
+
+// Short URL for self kiosk QR codes (self_kiosk module)
+$route['sk/(:any)'] = 'self_kiosk/kiosk/go/$1';
+
+// Short URL for token display screens (token_system module)
+$route['td/(:any)'] = 'token_system/token_display/short/$1';
+
+// Public meeting scheduling (pro_sales module) — order matters, the token and
+// the slug are catch-alls, so every specific path must be listed above them.
+// /meet/{token} = the invitee's own meeting page (view / reschedule / cancel)
+// /book/{slug}  = public booking page (Calendly-style slot picker)
+$route['meet/ics/(:any)']   = 'pro_sales/pro_sales_public/ics/$1';
+$route['meet/slots/(:any)'] = 'pro_sales/pro_sales_public/meeting_slots/$1';
+$route['meet/(:any)']       = 'pro_sales/pro_sales_public/meeting/$1';
+$route['book/slots/(:any)'] = 'pro_sales/pro_sales_public/page_slots/$1';
+$route['book/(:any)']       = 'pro_sales/pro_sales_public/book/$1';
+
+// Public ebook funnel (pro_ebook module) — order matters, the slug is the catch-all
+// /ebook/thanks/{token} = delivery page, /ebook/dl/{token} = PDF stream,
+// /ebook/wa/{token}     = community redirect, /ebook/{slug} = landing page
+$route['ebook/thanks/(:any)'] = 'pro_ebook/pro_ebook_public/success/$1';
+$route['ebook/dl/(:any)']     = 'pro_ebook/pro_ebook_public/download/$1';
+$route['ebook/wa/(:any)']     = 'pro_ebook/pro_ebook_public/wa/$1';
+$route['ebook/(:any)']        = 'pro_ebook/pro_ebook_public/page/$1';
+
+// Public subscription portal (pro_services module)
+// /services/{token} = the customer's own subscription page — plan, billing
+// history and a Pay button that hands off to the CRM invoice payment page.
+$route['services/(:any)'] = 'pro_services/pro_services_public/portal/$1';
+
+/**
+ * PWA Manifest route
+ * Serves the Web App Manifest dynamically with company name
+ */
+$route['pwa/manifest'] = 'pwa_manifest/index';
+
+/**
+ * Include custom routes BEFORE custom admin catch-all
+ * This ensures specific module routes (SaaS, etc.) take precedence over the catch-all
+ */
 if (file_exists(APPPATH . 'config/my_routes.php')) {
     include_once(APPPATH . 'config/my_routes.php');
+}
+
+/**
+ * Custom Admin URL Support for Master Account Security
+ * When CUSTOM_ADMIN_URL is defined, duplicate all admin/* routes under the custom path.
+ * This only affects the master account; tenants continue using /admin/.
+ * IMPORTANT: This must come AFTER my_routes.php so specific routes take precedence.
+ */
+if (defined('CUSTOM_ADMIN_URL') && CUSTOM_ADMIN_URL !== 'admin') {
+    $customAdmin = CUSTOM_ADMIN_URL;
+
+    // Core admin routes under custom URL
+    $route[$customAdmin]                        = 'admin/dashboard';
+    $route[$customAdmin . '/access_denied']     = 'admin/misc/access_denied';
+    $route[$customAdmin . '/not_found']         = 'admin/misc/not_found';
+    $route[$customAdmin . '/profile']           = 'admin/staff/profile';
+    $route[$customAdmin . '/profile/(:num)']    = 'admin/staff/profile/$1';
+    $route[$customAdmin . '/tasks/view/(:any)'] = 'admin/tasks/index/$1';
+    $route[$customAdmin . '/items/search']      = 'admin/invoice_items/search';
+    $route[$customAdmin . '/modules']               = 'admin/mods';
+    $route[$customAdmin . '/modules/(:any)']        = 'admin/mods/$1';
+    $route[$customAdmin . '/modules/(:any)/(:any)'] = 'admin/mods/$1/$2';
+
+    // Catch-all for any other admin sub-routes under the custom URL
+    $route[$customAdmin . '/(:any)']                          = 'admin/$1';
+    $route[$customAdmin . '/(:any)/(:any)']                   = 'admin/$1/$2';
+    $route[$customAdmin . '/(:any)/(:any)/(:any)']            = 'admin/$1/$2/$3';
+    $route[$customAdmin . '/(:any)/(:any)/(:any)/(:any)']     = 'admin/$1/$2/$3/$4';
+    $route[$customAdmin . '/(:any)/(:any)/(:any)/(:any)/(:any)'] = 'admin/$1/$2/$3/$4/$5';
 }

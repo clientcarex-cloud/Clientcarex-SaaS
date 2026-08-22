@@ -265,11 +265,8 @@ echo render_input('settings[smtp_password]', 'settings_email_password', $ps, 'pa
         $queueEmails = $this->email->get_queue_emails();
 ?>
         <hr />
-        <h4 class="mbot15 tw-flex tw-justify-between tw-items-center">
+        <h4 class="mbot15">
             <?= _l('email_queue'); ?>
-            <a href="<?= admin_url('emails/clear_queued_emails'); ?>" class="btn btn-danger btn-sm">
-                <?= _l('clear_queue'); ?>
-            </a>
         </h4>
 
         <table class="table dt-table">

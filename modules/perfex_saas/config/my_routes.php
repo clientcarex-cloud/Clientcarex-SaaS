@@ -8,7 +8,26 @@ if (perfex_saas_is_tenant()) {
 
     $tenant = perfex_saas_tenant();
 
+    /**
+     * Redirect tenant root URL to admin dashboard.
+     * When users visit surya.healtho.pro, they should land on surya.healtho.pro/admin
+     * instead of the default clients portal (healtho.pro website).
+     */
+    $route['default_controller'] = 'admin/dashboard';
+    $route['/'] = 'admin/dashboard';
+
     $route['admin/billing/my_account'] = 'perfex_saas/admin/companies/client_portal_bridge';
+
+    // Polled by the tenant admin to keep the Support unread badge live
+    $route['admin/billing/support_unread'] = 'perfex_saas/admin/companies/tenant_support_unread';
+    // Smart Ticket capture (tenant admin → provider helpdesk, cross-DB)
+    $route['admin/billing/smart_ticket_submit'] = 'perfex_saas/admin/companies/tenant_smart_ticket_submit';
+    // Pro AI Chat floating assistant (tenant admin → master knowledge base, cross-DB)
+    $route['admin/billing/ai_chat'] = 'perfex_saas/admin/companies/tenant_ai_chat';
+    // Support PIN (tenant admin → master pro_support pins, cross-DB)
+    $route['admin/billing/support_pin'] = 'perfex_saas/admin/companies/tenant_support_pin';
+    // TEMPORARY: Support badge diagnostics page (remove once verified)
+    $route['admin/billing/support_debug'] = 'perfex_saas/admin/companies/tenant_support_debug';
 
     $route['billing/my_account/magic_auth'] = 'perfex_saas/authentication/tenant_admin_magic_auth';
 
@@ -36,6 +55,23 @@ if (perfex_saas_is_tenant()) {
 
 if (!perfex_saas_is_tenant()) {
 
+    /**
+     * Block /admin/ URL for master account when custom admin URL is configured.
+     * This prevents attackers from finding the admin panel at the default /admin/ path.
+     * Tenants are not affected (they don't enter this block).
+     */
+    if (defined('CUSTOM_ADMIN_URL') && CUSTOM_ADMIN_URL !== 'admin') {
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $request_path = parse_url($request_uri, PHP_URL_PATH);
+        // Check if the request starts with /admin/ or is exactly /admin
+        if (preg_match('#^/admin(/|$)#i', $request_path)) {
+            header('HTTP/1.0 404 Not Found');
+            echo '<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>Not Found</h1><p>The requested URL was not found on this server.</p></body></html>';
+            exit;
+        }
+    }
+
+
     /** Landing page handling */
     $landing_options = perfex_saas_get_options(['perfex_saas_landing_page_url']);
     $landing_page_url = $landing_options['perfex_saas_landing_page_url'] ?? '';
@@ -54,6 +90,21 @@ if (!perfex_saas_is_tenant()) {
                 ]);
             }
         });
+    } else {
+        /**
+         * Custom Homepage for Master Account
+         * Serve homepage/index.html directly at the root URL (healtho.pro/)
+         */
+        if (isset($_SERVER['REQUEST_URI'])) {
+            $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            if ($request_path === '/' || $request_path === '') {
+                $homepage_file = FCPATH . 'homepage/index.html';
+                if (file_exists($homepage_file)) {
+                    readfile($homepage_file);
+                    exit;
+                }
+            }
+        }
     }
     /** Ends Landing page handling */
 
@@ -72,6 +123,23 @@ if (!perfex_saas_is_tenant()) {
     $route['admin/' . PERFEX_SAAS_ROUTE_NAME . '/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2';
     $route['admin/' . PERFEX_SAAS_ROUTE_NAME . '/(:any)/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2/$3';
     $route['admin/' . PERFEX_SAAS_ROUTE_NAME . '/(:any)/(:any)/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2/$3/$4';
+
+    // Custom Admin URL support — duplicate SaaS routes under the custom admin path
+    if (defined('CUSTOM_ADMIN_URL') && CUSTOM_ADMIN_URL !== 'admin') {
+        $ca = CUSTOM_ADMIN_URL;
+
+        $route[$ca . '/perfex_saas/pricing'] = 'perfex_saas/admin/packages/pricing';
+        $route[$ca . '/perfex_saas/(:any)'] = 'perfex_saas/admin/$1';
+        $route[$ca . '/perfex_saas/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2';
+        $route[$ca . '/perfex_saas/(:any)/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2/$3';
+        $route[$ca . '/perfex_saas/(:any)/(:any)/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2/$3/$4';
+
+        $route[$ca . '/' . PERFEX_SAAS_ROUTE_NAME . '/pricing'] = 'perfex_saas/admin/packages/pricing';
+        $route[$ca . '/' . PERFEX_SAAS_ROUTE_NAME . '/(:any)'] = 'perfex_saas/admin/$1';
+        $route[$ca . '/' . PERFEX_SAAS_ROUTE_NAME . '/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2';
+        $route[$ca . '/' . PERFEX_SAAS_ROUTE_NAME . '/(:any)/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2/$3';
+        $route[$ca . '/' . PERFEX_SAAS_ROUTE_NAME . '/(:any)/(:any)/(:any)/(:any)'] = 'perfex_saas/admin/$1/$2/$3/$4';
+    }
 
     // API route
     $route[PERFEX_SAAS_ROUTE_NAME . '/api/(:any)'] = 'perfex_saas/api/api/$1';

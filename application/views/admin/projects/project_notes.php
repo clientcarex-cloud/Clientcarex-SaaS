@@ -33,7 +33,7 @@
                             <td>
                                 <strong><?= e($note['title']); ?></strong>
                             </td>
-                            <td width="40%" class="tc-content">
+                            <td width="40%">
                                 <?= html_purify($note['content']); ?>
                             </td>
                             <td

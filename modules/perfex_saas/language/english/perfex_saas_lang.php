@@ -111,6 +111,30 @@ $lang['perfex_saas_last_updated'] = 'Last updated';
 $lang['perfex_saas_options'] = 'Options';
 $lang['perfex_saas_dashboard_statistic'] = 'Saas overview';
 $lang['perfex_saas_dashboard_package_invoice_stats'] = 'Package by Total Invoice';
+$lang['perfex_saas_dashboard_analytics'] = 'SaaS Analytics';
+$lang['perfex_saas_chart_tenant_growth'] = 'Tenant Growth (Last 12 Months)';
+$lang['perfex_saas_chart_new_tenants'] = 'New Tenants';
+$lang['perfex_saas_chart_total_tenants'] = 'Total Tenants';
+$lang['perfex_saas_chart_revenue'] = 'SaaS Revenue Collected (Last 12 Months)';
+$lang['perfex_saas_chart_revenue_label'] = 'Payments Received';
+$lang['perfex_saas_chart_company_status'] = 'Tenants by Status';
+$lang['perfex_saas_chart_package_distribution'] = 'Tenants per Package';
+$lang['perfex_saas_chart_tenants'] = 'Tenants';
+$lang['perfex_saas_executive_analytics'] = 'Executive Overview';
+$lang['perfex_saas_kpi_mrr'] = 'MRR (est.)';
+$lang['perfex_saas_kpi_arr'] = 'ARR (est.)';
+$lang['perfex_saas_kpi_arpu'] = 'ARPU';
+$lang['perfex_saas_kpi_active_tenants'] = 'Active Tenants';
+$lang['perfex_saas_kpi_outstanding'] = 'Outstanding A/R';
+$lang['perfex_saas_kpi_overdue'] = 'Overdue A/R';
+$lang['perfex_saas_chart_revenue_by_package'] = 'Revenue by Package (Last 12 Months)';
+$lang['perfex_saas_chart_mrr_by_package'] = 'MRR by Package';
+$lang['perfex_saas_chart_receivables_aging'] = 'Receivables Aging';
+$lang['perfex_saas_chart_payment_methods'] = 'Revenue by Payment Method (Last 12 Months)';
+$lang['perfex_saas_chart_top_tenants'] = 'Top 10 Tenants by Revenue (Last 12 Months)';
+$lang['perfex_saas_chart_db_schemes'] = 'Tenants per Database Scheme';
+$lang['perfex_saas_aging_not_due'] = 'Not Due Yet';
+$lang['perfex_saas_aging_days'] = 'Days';
 $lang['perfex_saas_recurring_invoices'] = 'Recurring invoices';
 $lang['perfex_saas_new_package'] = 'New Package';
 $lang['perfex_saas_invoice_add_edit_recurring'] = 'Invoice recurring period';
@@ -379,6 +403,16 @@ $lang["perfex_saas_disabled_modules_hint"] = 'Select modules that should be deac
 // v0.1.1
 $lang["perfex_saas_allow_package_customization"] = "Allow package customization";
 $lang["perfex_saas_my_account"] = "My account";
+$lang["perfex_saas_customer_success"] = "Customer Success";
+$lang["perfex_saas_support_badge_title"] = "Support";
+$lang["perfex_saas_support_new_reply_single"] = "You have a new reply on your support ticket";
+$lang["perfex_saas_support_new_reply_multi"] = "You have %s new support ticket updates";
+$lang["perfex_saas_support_new_reply_title"] = "New support reply";
+$lang["perfex_saas_support_view_ticket"] = "View ticket";
+$lang["perfex_saas_support_more_replies"] = "%s more new replies";
+$lang["perfex_saas_support_closed_title"] = "Your ticket was closed by our support team";
+$lang["perfex_saas_support_closed_text"] = "How did we do? Tap to rate your support experience.";
+$lang["perfex_saas_support_rate_now"] = "Rate now";
 $lang["perfex_saas_auth_code_parse_error"] = "Auth code parse error";
 $lang["perfex_saas_invalid_auth_code"] = "Invalid auth code";
 $lang["perfex_saas_auth_code_cannot_be_identified"] = "Auth code can not be identified";
@@ -701,7 +735,319 @@ $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Choose which Stripe checkout e
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Setup Mode (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Subscription Mode (Recommended)';
 
-$lang['perfex_saas_sync_all_packages'] = 'Sync All';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Please subscribe to unlock package customization.';
+// Pagination
+$lang['perfex_saas_showing_page'] = 'Showing page %s of %s';
+$lang['perfex_saas_prev'] = 'Prev';
+$lang['perfex_saas_next'] = 'Next';
+$lang['perfex_saas_search'] = 'Search';
+$lang['perfex_saas_search_placeholder'] = 'Search by name, client, status...';
+$lang['perfex_saas_clear_search'] = 'Clear';
 
-$lang['perfex_saas_demo_reset_banner_message'] = 'This demo will reset in %s. Please note that all added data will be cleared and the system may slow for a moment.';
+// Pricing Plans (smart/bulk manager)
+$lang['perfex_saas_pricing_plans'] = 'Pricing Plans';
+$lang['perfex_saas_plan'] = 'Plan';
+$lang['perfex_saas_status'] = 'Status';
+$lang['perfex_saas_private'] = 'Private';
+$lang['perfex_saas_default'] = 'Default';
+
+$lang['perfex_saas_pricing_plans_group'] = 'Plan Group';
+$lang['perfex_saas_pricing_plans_groups_sync_hint'] = 'Plan groups are shared with your Customer Groups, so anything you add or rename here also updates Clients &raquo; Groups.';
+$lang['perfex_saas_pricing_plans_manage_groups'] = 'Manage Groups';
+$lang['perfex_saas_pricing_plans_group_name'] = 'Group name';
+$lang['perfex_saas_pricing_plans_group_name_required'] = 'Group name is required';
+$lang['perfex_saas_pricing_plans_group_new'] = 'New';
+$lang['perfex_saas_pricing_plans_no_groups'] = 'No plan groups yet. Add your first group above.';
+$lang['perfex_saas_pricing_plans_ungrouped'] = 'Ungrouped';
+$lang['perfex_saas_pricing_plans_no_period'] = 'No period';
+
+$lang['perfex_saas_pricing_plans_empty'] = 'No plans yet. Create a package to get started, then organise it here by group and billing period.';
+$lang['perfex_saas_pricing_plans_no_plans_period'] = 'No plans for this billing period.';
+$lang['perfex_saas_pricing_plans_selected'] = 'selected';
+$lang['perfex_saas_pricing_plans_save_changes'] = 'Save changes';
+$lang['perfex_saas_pricing_plans_activate'] = 'Activate';
+$lang['perfex_saas_pricing_plans_deactivate'] = 'Deactivate';
+$lang['perfex_saas_pricing_plans_bulk_edit'] = 'Bulk edit';
+$lang['perfex_saas_pricing_plans_clone_selected'] = 'Clone selected';
+$lang['perfex_saas_pricing_plans_no_selection'] = 'Please select at least one plan first.';
+$lang['perfex_saas_pricing_plans_confirm_bulk'] = 'Apply this action to the selected plans?';
+$lang['perfex_saas_pricing_plans_confirm_delete_group'] = 'Delete this group? Plans in it will become ungrouped.';
+$lang['perfex_saas_pricing_plans_bulk_done'] = '%s plan(s) updated.';
+
+// Generate variants
+$lang['perfex_saas_pricing_plans_generate_variants'] = 'Generate Variants';
+$lang['perfex_saas_pricing_plans_generate_hint'] = 'Pick a base plan and the billing periods to create. Each period is created as a new plan, copying the base plan&apos;s modules and limits.';
+$lang['perfex_saas_pricing_plans_base_plan'] = 'Base plan';
+$lang['perfex_saas_pricing_plans_assign_group'] = 'Assign to group';
+$lang['perfex_saas_pricing_plans_keep_base_group'] = 'Keep base plan group';
+$lang['perfex_saas_pricing_plans_periods'] = 'Billing periods';
+$lang['perfex_saas_pricing_plans_period'] = 'Period';
+$lang['perfex_saas_pricing_plans_fixed_price'] = 'Fixed price';
+$lang['perfex_saas_pricing_plans_multiplier'] = 'Multiplier';
+$lang['perfex_saas_pricing_plans_optional'] = 'Optional';
+$lang['perfex_saas_pricing_plans_eg_multiplier'] = 'e.g. 10';
+$lang['perfex_saas_pricing_plans_price_resolution_hint'] = 'Price priority: fixed price &rarr; multiplier &times; base price &rarr; base price.';
+$lang['perfex_saas_pricing_plans_generate'] = 'Generate';
+$lang['perfex_saas_pricing_plans_base_required'] = 'Please select a valid base plan.';
+$lang['perfex_saas_pricing_plans_variants_created'] = '%s plan variant(s) created.';
+
+// Clone group
+$lang['perfex_saas_pricing_plans_clone_group'] = 'Clone Group';
+$lang['perfex_saas_pricing_plans_clone_group_hint'] = 'Duplicate every plan in a source group into a target group, optionally switching the billing period.';
+$lang['perfex_saas_pricing_plans_source_group'] = 'Source group';
+$lang['perfex_saas_pricing_plans_target_group'] = 'Target group';
+$lang['perfex_saas_pricing_plans_target_period'] = 'Target period';
+$lang['perfex_saas_pricing_plans_keep_period'] = 'Keep original period';
+$lang['perfex_saas_pricing_plans_target_group_required'] = 'Please select a target group.';
+$lang['perfex_saas_pricing_plans_group_cloned'] = '%s plan(s) cloned into the target group.';
+
+// Bulk edit
+$lang['perfex_saas_pricing_plans_bulk_edit_intro'] = 'These changes will apply to the %s selected plan(s).';
+$lang['perfex_saas_pricing_plans_update_price'] = 'Update price';
+$lang['perfex_saas_pricing_plans_update_limits'] = 'Update limits (users/seats &amp; resources)';
+$lang['perfex_saas_pricing_plans_limits_hint'] = 'Leave a field blank to keep its current value. Use -1 for unlimited.';
+$lang['perfex_saas_pricing_plans_leave_blank'] = 'Leave blank';
+$lang['perfex_saas_pricing_plans_replace_modules'] = 'Replace enabled modules';
+$lang['perfex_saas_pricing_plans_set_disabled_modules'] = 'Set disabled default modules';
+
+// Group filter + bulk group + overview/export
+$lang['perfex_saas_pricing_plans_filter_by_group'] = 'Filter by group';
+$lang['perfex_saas_pricing_plans_all_groups'] = 'All Groups';
+$lang['perfex_saas_pricing_plans_active'] = 'Active';
+$lang['perfex_saas_pricing_plans_inactive'] = 'Inactive';
+$lang['perfex_saas_pricing_plans_unlimited'] = 'Unlimited';
+$lang['perfex_saas_pricing_plans_users'] = 'Users';
+$lang['perfex_saas_pricing_plans_modules'] = 'Modules';
+$lang['perfex_saas_pricing_plans_trial'] = 'Trial (days)';
+
+$lang['perfex_saas_pricing_plans_overview'] = 'Plans Overview';
+$lang['perfex_saas_pricing_plans_back_to_manager'] = 'Back to manager';
+$lang['perfex_saas_pricing_plans_export_excel'] = 'Export Excel';
+$lang['perfex_saas_pricing_plans_export_pdf'] = 'Download PDF';
+$lang['perfex_saas_pricing_plans_print'] = 'Print';
+$lang['perfex_saas_pricing_plans_generated_on'] = 'Generated on';
+$lang['perfex_saas_pricing_plans_total_plans'] = 'Total plans';
+$lang['perfex_saas_pricing_plans_active_plans'] = 'Active plans';
+$lang['perfex_saas_pricing_plans_total_groups'] = 'Plan groups';
+$lang['perfex_saas_pricing_plans_no_data'] = 'No plans to display yet.';
+
+// Pricing brochure
+$lang['perfex_saas_pricing_plans_brochure_title'] = 'Pricing Plans';
+$lang['perfex_saas_pricing_plans_brochure_subtitle'] = 'Choose the plan that fits your needs';
+$lang['perfex_saas_pricing_plans_recommended'] = 'Recommended';
+$lang['perfex_saas_pricing_plans_free'] = 'Free';
+$lang['perfex_saas_pricing_plans_all_periods'] = 'All periods';
+$lang['perfex_saas_pricing_plans_only_active'] = 'Only active plans';
+$lang['perfex_saas_pricing_plans_feat_users'] = '%s users';
+$lang['perfex_saas_pricing_plans_feat_users_unlimited'] = 'Unlimited users';
+$lang['perfex_saas_pricing_plans_feat_modules'] = '%s modules included';
+$lang['perfex_saas_pricing_plans_feat_trial'] = '%s-day free trial';
+$lang['perfex_saas_pricing_plans_feat_subdomain'] = 'Custom subdomain included';
+
+// =====================================================================
+// Smart Plans (Excel / CSV export & import)
+// =====================================================================
+$lang['perfex_saas_smart_plans'] = 'Smart Plans';
+$lang['perfex_saas_smart_plans_subtitle'] = 'Export every plan to Excel, edit it offline, then import the file to update them in bulk.';
+$lang['perfex_saas_smart_plans_sheet_name'] = 'Plans';
+
+// Column headers
+$lang['perfex_saas_smart_plans_col_id'] = 'Plan ID';
+$lang['perfex_saas_smart_plans_col_name'] = 'Plan Name';
+$lang['perfex_saas_smart_plans_col_group'] = 'Plan Group';
+$lang['perfex_saas_smart_plans_col_period'] = 'Billing Period';
+$lang['perfex_saas_smart_plans_col_price'] = 'Price (%s)';
+$lang['perfex_saas_smart_plans_col_trial'] = 'Trial period (in days)';
+$lang['perfex_saas_smart_plans_col_status'] = 'Status';
+$lang['perfex_saas_smart_plans_col_private'] = 'Mark as private?';
+$lang['perfex_saas_smart_plans_col_default'] = 'Default';
+$lang['perfex_saas_smart_plans_col_limit'] = 'Limit';
+$lang['perfex_saas_smart_plans_col_modules'] = 'Enabled Modules';
+$lang['perfex_saas_smart_plans_col_description'] = 'Description';
+
+// Yes / No
+$lang['perfex_saas_smart_plans_yes'] = 'Yes';
+$lang['perfex_saas_smart_plans_no'] = 'No';
+
+// Column help (field guide)
+$lang['perfex_saas_smart_plans_help_id'] = 'Read-only. Identifies which plan to update — never change or remove this.';
+$lang['perfex_saas_smart_plans_help_name'] = 'The plan name shown to customers.';
+$lang['perfex_saas_smart_plans_help_group'] = 'The plan group (e.g. HIMS, LIMS, CIMS). Use an existing group name, or Ungrouped to clear it.';
+$lang['perfex_saas_smart_plans_help_period'] = 'Billing cycle: Monthly, Quarterly, Half-Yearly, Yearly or Biennially.';
+$lang['perfex_saas_smart_plans_help_price'] = 'The recurring price per billing cycle. Numbers only.';
+$lang['perfex_saas_smart_plans_help_trial'] = 'Free trial length in days. Use 0 for no trial.';
+$lang['perfex_saas_smart_plans_help_status'] = 'Active or Inactive. Inactive plans are hidden from customers.';
+$lang['perfex_saas_smart_plans_help_private'] = 'Yes hides the plan from public listings (assignable only by admins).';
+$lang['perfex_saas_smart_plans_help_default'] = 'Set Yes to make this the default plan. Only one plan can be the default.';
+$lang['perfex_saas_smart_plans_help_limit'] = 'Maximum allowed for this resource. Use Unlimited (or -1) for no limit.';
+$lang['perfex_saas_smart_plans_help_modules'] = 'Comma-separated module system names enabled for the plan. Leave blank to keep the current modules.';
+$lang['perfex_saas_smart_plans_help_modules_rows'] = 'Modules are listed one per row near the bottom of the sheet. To include a module in a plan, copy its name (or type Yes) into that plan column; leave the cell blank to exclude it.';
+$lang['perfex_saas_smart_plans_help_module_row'] = 'Copy the module name (or type Yes) into a plan to include it; leave blank to exclude.';
+$lang['perfex_saas_smart_plans_modules_divider'] = '— MODULES: set Feature Name / Show / Order (website), then copy the name into each plan that includes it —';
+$lang['perfex_saas_smart_plans_modules_divider_note'] = 'One module per row. Feature Name / Show in plans / Feature Order are global (website plans API). A blank plan cell means the module is not in that plan.';
+
+// Module presentation columns inside the Smart Plans sheet (drive the plans API)
+$lang['perfex_saas_smart_plans_col_feature_name'] = 'Feature Name (website)';
+$lang['perfex_saas_smart_plans_col_show'] = 'Show in plans';
+$lang['perfex_saas_smart_plans_col_order'] = 'Feature Order';
+$lang['perfex_saas_smart_plans_help_feature_name'] = 'Global. The public feature name shown on the website plans API for this module. Applies to every plan.';
+$lang['perfex_saas_smart_plans_help_show'] = 'Global. Show or Hide this module in the website plan feature lists (plans API). Applies to every plan.';
+$lang['perfex_saas_smart_plans_help_order'] = 'Global. Sort position of this feature in the website plan feature lists (lower shows first). Applies to every plan.';
+$lang['perfex_saas_smart_plans_module_settings'] = 'Module display settings (website)';
+$lang['perfex_saas_smart_plans_module_settings_done'] = '%s module display setting(s) updated.';
+
+// Modules & website features — on-page instructions
+$lang['perfex_saas_smart_plans_modules_help_title'] = 'Modules &amp; website plan features — how to use';
+$lang['perfex_saas_smart_plans_modules_help_intro'] = 'Modules are listed one per row in the MODULES block near the bottom of the exported sheet. There are two separate things you control there: which plans include each module, and how each module is presented on your website (plans API).';
+$lang['perfex_saas_smart_plans_modules_help_enable_title'] = 'Include modules in a plan (Enabled Modules)';
+$lang['perfex_saas_smart_plans_modules_help_enable_1'] = 'Each module is its own row; each plan is a column.';
+$lang['perfex_saas_smart_plans_modules_help_enable_2'] = 'To include a module in a plan, copy the module name (or type Yes) into that plan&apos;s column.';
+$lang['perfex_saas_smart_plans_modules_help_enable_3'] = 'Leave the cell blank (or type No) to exclude the module from that plan.';
+$lang['perfex_saas_smart_plans_modules_help_api_title'] = 'How modules appear on your website (plans API)';
+$lang['perfex_saas_smart_plans_modules_help_name'] = 'show a friendly name on the website instead of the technical module name.';
+$lang['perfex_saas_smart_plans_modules_help_show'] = 'choose Show or Hide. Hidden modules are removed from the website plans API entirely.';
+$lang['perfex_saas_smart_plans_modules_help_order'] = 'set the order modules appear on the website (lower numbers show first).';
+$lang['perfex_saas_smart_plans_modules_help_global_note'] = 'Feature Name, Show in plans and Feature Order are global — they apply to every plan across the website. The per-plan columns only control whether each plan includes the module. You can also set these under SaaS &raquo; Settings &raquo; Modules.';
+$lang['perfex_saas_smart_plans_help_description'] = 'Short plan description (plain text).';
+
+// Custom (free text) website features, per plan
+$lang['perfex_saas_smart_plans_col_custom_features'] = 'Custom Features (website)';
+$lang['perfex_saas_smart_plans_help_custom_features'] = 'Extra feature lines for this plan\'s website pricing card, separated by commas (e.g. 24x7 Support, Free Data Migration, Dedicated Manager). Wrap a line in asterisks — *Free Data Migration* — to highlight it on the card. They are shown after the module features. Leave blank to keep the current list, or type none to clear it.';
+$lang['perfex_saas_smart_plans_col_show_module_features'] = 'Show Module Features (website)';
+$lang['perfex_saas_smart_plans_help_show_module_features'] = 'Yes (default) lists the plan\'s modules on the website card. Set No to hide the module list completely, so only the Custom Features above are shown. Does not change which modules the plan actually includes.';
+$lang['perfex_saas_smart_plans_custom_features_help_title'] = 'Custom website features (per plan)';
+$lang['perfex_saas_smart_plans_custom_features_help_1'] = 'Use the <strong>Custom Features (website)</strong> row to add your own selling points that are not modules — type them in that plan\'s column, separated by commas.';
+$lang['perfex_saas_smart_plans_custom_features_help_2'] = 'Example: <em>24x7 Support, Free Data Migration, Onboarding Training, Dedicated Account Manager</em>.';
+$lang['perfex_saas_smart_plans_custom_features_help_3'] = 'Unlike Feature Name / Show / Order (which are global for a module), this list belongs to that one plan and appears at the end of its website feature list. Type <strong>none</strong> to clear it.';
+$lang['perfex_saas_smart_plans_custom_features_help_4'] = 'The website pricing page takes the feature list from the yearly package of each tier, so set it on the yearly plan column (setting it on every cycle is safe too).';
+$lang['perfex_saas_smart_plans_custom_features_help_highlight'] = 'Wrap a line in asterisks to <strong>highlight</strong> it on the pricing card — e.g. <em>24x7 Support, Free Data Migration, *Dedicated Account Manager*</em> makes the last one stand out. The asterisks are only a marker and are never shown.';
+$lang['perfex_saas_smart_plans_custom_features_help_5'] ='To show <strong>only</strong> your custom lines and hide the module list on that plan\'s website card, set <strong>Show Module Features (website)</strong> to <strong>No</strong>. The plan still includes the same modules — they are just not listed.';
+
+// Steps
+$lang['perfex_saas_smart_plans_step_export'] = 'Export plans';
+$lang['perfex_saas_smart_plans_step_export_hint'] = 'Download all plans in one organised spreadsheet — each field is a row and each plan is a column, ordered by plan group and billing period.';
+$lang['perfex_saas_smart_plans_plans_available'] = '%s plan(s) available';
+$lang['perfex_saas_smart_plans_download_excel'] = 'Download Excel';
+$lang['perfex_saas_smart_plans_download_csv'] = 'Download CSV';
+$lang['perfex_saas_smart_plans_step_edit'] = 'Edit in Excel';
+$lang['perfex_saas_smart_plans_step_edit_hint'] = 'Open the file, change prices, periods, taxes, limits, modules and more, then save it.';
+$lang['perfex_saas_smart_plans_rule_layout'] = 'Fields are rows; each plan is a column. The Field / Editable? / Notes columns are guidance only and are ignored on import.';
+$lang['perfex_saas_smart_plans_rule_blank'] = 'A blank cell keeps the current value.';
+$lang['perfex_saas_smart_plans_rule_id'] = 'Never change the Plan ID column.';
+$lang['perfex_saas_smart_plans_rule_unlimited'] = 'Use Unlimited (or -1) for no limit.';
+$lang['perfex_saas_smart_plans_step_import'] = 'Import &amp; update';
+$lang['perfex_saas_smart_plans_step_import_hint'] = 'Upload your edited .xlsx or .csv file to apply the changes to your plans.';
+$lang['perfex_saas_smart_plans_import_update'] = 'Import &amp; Update Plans';
+$lang['perfex_saas_smart_plans_no_edit_permission'] = 'You do not have permission to update plans.';
+$lang['perfex_saas_smart_plans_importing'] = 'Importing...';
+$lang['perfex_saas_smart_plans_confirm_import'] = 'Apply the changes from this file to your plans?';
+
+// Field guide
+$lang['perfex_saas_smart_plans_guide_title'] = 'Field Guide';
+$lang['perfex_saas_smart_plans_guide_hint'] = 'The spreadsheet is vertical: each field below is a row, and every plan is a column. Here is what each field means.';
+$lang['perfex_saas_smart_plans_guide_column'] = 'Column';
+$lang['perfex_saas_smart_plans_guide_editable'] = 'Editable?';
+$lang['perfex_saas_smart_plans_guide_meaning'] = 'What it does';
+$lang['perfex_saas_smart_plans_readonly'] = 'Read-only';
+$lang['perfex_saas_smart_plans_editable'] = 'Editable';
+
+// Import result
+$lang['perfex_saas_smart_plans_result_title'] = 'Import Summary';
+$lang['perfex_saas_smart_plans_res_updated'] = 'Updated';
+$lang['perfex_saas_smart_plans_res_unchanged'] = 'Unchanged';
+$lang['perfex_saas_smart_plans_res_skipped'] = 'Skipped';
+$lang['perfex_saas_smart_plans_res_error'] = 'Errors';
+$lang['perfex_saas_smart_plans_res_column'] = 'Column';
+$lang['perfex_saas_smart_plans_res_status'] = 'Result';
+$lang['perfex_saas_smart_plans_res_note'] = 'Notes';
+$lang['perfex_saas_smart_plans_res_changes'] = 'What changed';
+$lang['perfex_saas_smart_plans_import_done'] = 'Import complete: %s updated, %s unchanged, %s skipped, %s error(s).';
+
+// Real-time import
+$lang['perfex_saas_smart_plans_live_title'] = 'Live import progress';
+$lang['perfex_saas_smart_plans_phase_reading'] = 'Reading the file...';
+$lang['perfex_saas_smart_plans_phase_applying'] = 'Applying changes...';
+$lang['perfex_saas_smart_plans_no_changes'] = 'No changes';
+$lang['perfex_saas_smart_plans_change_updated'] = 'updated';
+$lang['perfex_saas_smart_plans_stream_failed'] = 'The import connection failed. Please try again.';
+
+// Import notes
+$lang['perfex_saas_smart_plans_note_missing'] = 'No plan found for this Plan ID.';
+$lang['perfex_saas_smart_plans_note_bad_price'] = 'Price not understood; left unchanged.';
+$lang['perfex_saas_smart_plans_note_group_unknown'] = 'Group %s not found; group left unchanged.';
+$lang['perfex_saas_smart_plans_note_bad_limit'] = '%s limit not understood; left unchanged.';
+$lang['perfex_saas_smart_plans_note_modules_unknown'] = 'Unknown modules ignored: %s';
+$lang['perfex_saas_smart_plans_note_save_failed'] = 'Could not save changes.';
+
+// Errors
+$lang['perfex_saas_smart_plans_err_no_id_row'] = 'The file has no Plan ID row. Please export a fresh file and edit that.';
+$lang['perfex_saas_smart_plans_err_no_plan_cols'] = 'No plan columns were found. Make sure each plan column has a Plan ID.';
+$lang['perfex_saas_smart_plans_err_no_file'] = 'Please choose a file to import.';
+$lang['perfex_saas_smart_plans_err_upload'] = 'The file could not be uploaded. Please try again.';
+$lang['perfex_saas_smart_plans_err_bad_type'] = 'Unsupported file type. Upload the exported .xlsx or .csv file.';
+$lang['perfex_saas_smart_plans_err_empty'] = 'No data rows were found in the uploaded file.';
+
+// Vertical grid headers
+$lang['perfex_saas_smart_plans_grid_field'] = 'Field';
+$lang['perfex_saas_smart_plans_grid_editable'] = 'Editable?';
+$lang['perfex_saas_smart_plans_grid_notes'] = 'Notes';
+
+// New advanced field columns
+$lang['perfex_saas_smart_plans_col_db_scheme'] = 'DB scheme';
+$lang['perfex_saas_smart_plans_col_tax'] = 'Tax';
+$lang['perfex_saas_smart_plans_col_payment_modes'] = 'Allowed payment modes for this package';
+$lang['perfex_saas_smart_plans_col_user_extra'] = 'User Extra Amount (%s)';
+$lang['perfex_saas_smart_plans_col_max_instances'] = 'Max. number of instance';
+$lang['perfex_saas_smart_plans_col_extra_instance'] = 'Extra instance unit price (%s)';
+
+// New advanced field help
+$lang['perfex_saas_smart_plans_help_db_scheme'] = 'Database scheme key: multitenancy, single, single_pool or shard. Pool credentials are managed in the package form.';
+$lang['perfex_saas_smart_plans_help_tax'] = 'Tax name(s), comma-separated (e.g. GST). Use none to remove tax. Leave blank to keep current.';
+$lang['perfex_saas_smart_plans_help_payment_modes'] = 'Payment mode name(s), comma-separated. Use none to clear. Leave blank to keep current.';
+$lang['perfex_saas_smart_plans_help_user_extra'] = 'Extra charge per additional user/staff, per billing cycle.';
+$lang['perfex_saas_smart_plans_help_max_instances'] = 'Maximum number of instances a customer can create on this plan.';
+$lang['perfex_saas_smart_plans_help_extra_instance'] = 'Extra charge per additional instance, per billing cycle.';
+
+// Billing period labels
+$lang['perfex_saas_smart_plans_period_monthly'] = 'Monthly';
+$lang['perfex_saas_smart_plans_period_quarterly'] = 'Quarterly';
+$lang['perfex_saas_smart_plans_period_half_yearly'] = 'Half-Yearly';
+$lang['perfex_saas_smart_plans_period_yearly'] = 'Yearly';
+$lang['perfex_saas_smart_plans_period_biennially'] = 'Biennially';
+$lang['perfex_saas_smart_plans_period_every'] = 'Every %s %s';
+
+// Additional import notes
+$lang['perfex_saas_smart_plans_note_bad_amount'] = 'Amount not understood; left unchanged.';
+$lang['perfex_saas_smart_plans_note_db_scheme_unknown'] = 'DB scheme %s not recognised; left unchanged.';
+$lang['perfex_saas_smart_plans_note_period_unknown'] = 'Billing period %s not recognised; left unchanged.';
+$lang['perfex_saas_smart_plans_note_tax_unknown'] = 'Unknown tax ignored: %s';
+$lang['perfex_saas_smart_plans_note_modes_unknown'] = 'Unknown payment modes ignored: %s';
+
+// Module presentation controls (plan feature list / plans API)
+$lang['perfex_saas_module_feature_visibility'] = 'Plan feature';
+$lang['perfex_saas_module_feature_visibility_hint'] = 'Show or hide this module as a feature in the public plan feature lists delivered by the plans API.';
+$lang['perfex_saas_module_feature_show'] = 'Show';
+$lang['perfex_saas_module_feature_hide'] = 'Hide';
+$lang['perfex_saas_module_feature_order'] = 'Order';
+$lang['perfex_saas_module_feature_order_hint'] = 'Sort position of this feature in plan feature lists (lower numbers show first). Leave blank for default order.';
+$lang['perfex_saas_modules_presentation_hint'] = 'The custom name, Plan feature (Show/Hide) and Order below control how each module appears in your website plan feature lists (the /saas/api/plans API): the custom name replaces the technical module name, Hide removes the module from the API, and Order sets the display sequence. You can also manage these from SaaS &raquo; Smart Plans (Excel).';
+$lang['perfex_saas_pricing_plans_feat_custom_domain'] = 'Custom domain included';
+// Admin subscription change (company edit page)
+$lang['perfex_saas_subscription'] = 'Subscription';
+$lang['perfex_saas_subscription_current_package'] = 'Current package';
+$lang['perfex_saas_subscription_none'] = 'No active subscription found for this customer.';
+$lang['perfex_saas_change_subscription'] = 'Change Subscription';
+$lang['perfex_saas_subscription_new_package'] = 'New package';
+$lang['perfex_saas_subscription_change_note'] = 'Reason / note (saved in the change log)';
+$lang['perfex_saas_subscription_change_warning'] = 'Changing the package will validate the tenant\'s current usage against the new package limits (instances, resources, storage), cancel the current subscription invoice and generate a new invoice for the selected package. For Stripe-billed packages the customer must complete checkout before the new plan activates.';
+$lang['perfex_saas_subscription_change_confirm'] = 'Are you sure you want to change this tenant\'s subscription? The current subscription invoice will be cancelled and a new one generated.';
+$lang['perfex_saas_subscription_change_no_client'] = 'This instance is not linked to a customer, so its subscription cannot be changed.';
+$lang['perfex_saas_subscription_change_no_package'] = 'The selected package was not found or is not active.';
+$lang['perfex_saas_subscription_changed_successfully'] = 'Subscription changed to %s successfully.';
+$lang['perfex_saas_subscription_change_pending_payment'] = 'Subscription change initiated — the new package activates once the customer completes the payment/checkout from their client portal.';
+$lang['perfex_saas_subscription_change_log'] = 'Subscription change log';
+$lang['perfex_saas_subscription_change_none'] = 'None';
+$lang['perfex_saas_subscription_on_trial'] = 'On trial';
+$lang['perfex_saas_subscription_changed_by'] = 'Changed by';
+$lang['perfex_saas_subscription_from'] = 'From';
+$lang['perfex_saas_subscription_to'] = 'To';
+$lang['perfex_saas_subscription_pending_payment_label'] = 'Pending payment';

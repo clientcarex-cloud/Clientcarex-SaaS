@@ -23,8 +23,24 @@ class ClientsController extends App_Controller
         /**
          * If database upgrade is required, redirect the user to the admin uri because there the upgrade is performed
          * This code can prevent confusions when there are errors thrown on the client side because the database is not updated yet.
+         *
+         * Exception: the SaaS magic-auth client-portal bridge. A master staff member who
+         * logs into a tenant "for support" keeps their master-side staff session in the same
+         * browser. When they open the SaaS client portal (billing/my_account?redirect=...),
+         * that staff session makes is_staff_logged_in() true on the master; if the master
+         * has a pending migration this redirect would hijack the framed client portal to the
+         * master admin dashboard. Skip the bounce for bridge requests so support access works:
+         *   - entry request carries ?auth_code=... (client not signed in yet)
+         *   - post-login request is a real client session (magic_auth userdata set)
+         * A genuine staff hit on the client area with NO client session still upgrades.
          */
+        $in_saas_bridge = (bool) $this->input->get('auth_code')
+            || $this->session->has_userdata('magic_auth')
+            || $this->session->has_userdata('magic_code');
+
         if (is_staff_logged_in()
+            && !is_client_logged_in()
+            && !$in_saas_bridge
             && $this->app->is_db_upgrade_required($this->current_db_version)) {
             redirect(admin_url());
         }

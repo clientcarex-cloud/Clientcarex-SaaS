@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Pokladní tok Stripe';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Zvolte, které pokladní prostředí Stripe chcete použít pro předplatné. Režim nastavení nejprve shromažďuje platební metody a poté vytváří předplatné. Režim předplatného zobrazuje podrobnosti o předplatném během pokladny a automaticky zpracovává výběr plateb.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Režim nastavení (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Režim předplatného (doporučený)';
-$lang['perfex_saas_sync_all_packages'] = 'Synchronizovat vše';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Pro odemknutí přizpůsobení balíčku se prosím přihlaste k odběru.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Tato ukázka bude resetována v %s. Upozorňujeme, že všechna přidaná data budou vymazána a systém se může na chvíli zpomalit.';

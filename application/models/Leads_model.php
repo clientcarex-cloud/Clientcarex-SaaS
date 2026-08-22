@@ -1,7 +1,6 @@
 <?php
 
 use app\services\AbstractKanban;
-use app\services\leads\LeadsKanban;
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
@@ -1184,121 +1183,5 @@ class Leads_model extends App_Model
         }
 
         return $kanBan->get();
-    }
-
-    /**
-     * Automatically convert a lead to customer (used when estimate/proposal is accepted)
-     * Follows the same process as manual conversion in Leads::convert_to_customer()
-     * 
-     * @param int $lead_id The lead ID to convert
-     * @return int|false Returns the new customer ID or false on failure
-     */
-    public function auto_convert_lead_to_customer(int $lead_id, $currency =  null): bool|int
-    {
-        $lead = $this->get($lead_id);
-        
-        if (!$lead) {
-            return false;
-        }
-
-        // Check if already converted
-        if ($lead->date_converted || $lead->client_id !== null) {
-            // Lead already converted, try to find the customer
-            $this->db->where('leadid', $lead_id);
-            $existing = $this->db->get(db_prefix() . 'clients')->row();
-            if ($existing) {
-                return $existing->userid;
-            }
-        }
-
-        $this->load->model('clients_model');
-        $default_country = get_option('customer_default_country');
-
-        $base_currency = get_base_currency()->id;
-        $currency = !$currency || $base_currency == $currency ? 0 : $currency;
-        
-        // Prepare customer data from lead (similar to manual conversion)
-        $data = [
-            'company'         => $lead->company,
-            'phonenumber'     => $lead->phonenumber,
-            'country'         => $lead->country ?: $default_country,
-            'city'            => $lead->city,
-            'zip'             => $lead->zip,
-            'state'           => $lead->state,
-            'address'         => $lead->address,
-            'website'         => $lead->website,
-            'billing_street'  => $lead->address,
-            'billing_city'    => $lead->city,
-            'billing_state'   => $lead->state,
-            'billing_zip'     => $lead->zip,
-            'billing_country' => $lead->country ?: $default_country,
-            'firstname'       => $lead->name,
-            'lastname'        => '',
-            'email'           => $lead->email,
-            'title'           => $lead->title,
-            'is_primary'      => 1,
-            'leadid'          => $lead_id,
-            'default_currency' => $currency,
-            'send_set_password_email' => true  // This triggers welcome email
-        ];
-
-        // Add customer (clients_model->add handles password email when is_primary=1)
-        $customer_id = $this->clients_model->add($data, true);
-        
-        if ($customer_id) {
-            $primary_contact_id = get_primary_contact_user_id($customer_id);
-            
-            // Transfer notes from lead to customer
-            $this->load->model('misc_model');
-            $notes = $this->misc_model->get_notes($lead_id, 'lead');
-            if ($notes) {
-                foreach ($notes as $note) {
-                    $this->db->insert(db_prefix() . 'notes', [
-                        'rel_id'         => $customer_id,
-                        'rel_type'       => 'customer',
-                        'dateadded'      => $note['dateadded'],
-                        'addedfrom'      => $note['addedfrom'],
-                        'description'    => $note['description'],
-                        'date_contacted' => $note['date_contacted'] ?? null,
-                    ]);
-                }
-            }
-            
-            // Transfer GDPR consents if enabled
-            if (is_gdpr() && get_option('gdpr_enable_consent_for_contacts') == '1') {
-                $this->load->model('gdpr_model');
-                $consents = $this->gdpr_model->get_consents(['lead_id' => $lead_id]);
-                
-                if ($consents) {
-                    foreach ($consents as $consent) {
-                        unset($consent['id']);
-                        unset($consent['purpose_name']);
-                        $consent['lead_id']    = 0;
-                        $consent['contact_id'] = $primary_contact_id;
-                        $this->gdpr_model->add_consent($consent);
-                    }
-                }
-            }
-            
-            // Mark lead as converted
-            $default_status = $this->get_status('', ['isdefault' => 1]);
-            
-            $this->db->where('id', $lead_id);
-            $this->db->update(db_prefix() . 'leads', [
-                'date_converted' => date('Y-m-d H:i:s'),
-                'status'         => $default_status[0]['id'],
-                'junk'           => 0,
-                'lost'           => 0,
-            ]);
-
-            // Log activity
-            $this->log_lead_activity($lead_id, 'not_lead_activity_converted', false, serialize([
-                'Auto-converted via estimate/proposal acceptance',
-            ]));
-
-            return $customer_id;
-        }
-
-        return false;
     }
 }

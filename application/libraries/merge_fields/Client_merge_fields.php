@@ -131,6 +131,15 @@ class Client_merge_fields extends App_merge_fields
                     ],
                 ],
                 [
+                    'name'      => 'Email Verification Key (OTP Code)',
+                    'key'       => '{email_verification_key}',
+                    'available' => [
+                    ],
+                    'templates' => [
+                        'contact-verification-email',
+                    ],
+                ],
+                [
                     'name'      => 'Reset Password URL',
                     'key'       => '{reset_password_url}',
                     'available' => [
@@ -437,6 +446,7 @@ class Client_merge_fields extends App_merge_fields
         $fields['{client_vat_number}']                 = '';
         $fields['{contact_public_consent_url}']        = '';
         $fields['{email_verification_url}']            = '';
+        $fields['{email_verification_key}']            = '';
         $fields['{customer_profile_files_admin_link}'] = '';
 
         if ($client_id == '') {
@@ -461,6 +471,7 @@ class Client_merge_fields extends App_merge_fields
             $fields['{contact_title}']              = e($contact->title, false);
             $fields['{contact_public_consent_url}'] = contact_consent_url($contact->id);
             $fields['{email_verification_url}']     = site_url('verification/verify/' . $contact->id . '/' . $contact->email_verification_key);
+            $fields['{email_verification_key}']     = $contact->email_verification_key;
         }
 
         if (!empty($client->vat)) {

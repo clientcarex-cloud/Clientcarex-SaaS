@@ -57,7 +57,6 @@ return App_table::find('proposals')
             $where[] = 'AND project_id=' . $this->ci->db->escape_str($project_id);
         }
 
-        $join = hooks()->apply_filters('proposals_table_sql_join', $join);
         $aColumns = hooks()->apply_filters('proposals_table_sql_columns', $aColumns);
 
         // Fix for big queries. Some hosting have max_join_limit

@@ -103,7 +103,7 @@ $html .= '<b>' . _l('outstanding_invoices') . ' </b>' . app_format_money($invoic
 // Due invoices total
 $html .= '<b>' . _l('past_due_invoices') . ' </b>' . app_format_money($invoices_total_data['overdue'], $project->currency_data) . '<br />';
 // Paid invoices
-$html .= '<b>' . _l('paid_invoices') . ' </b>' . app_format_money($invoices_total_data['paid'], $project->currency_data) . '<br />';
+$html .= '<b>' . _l('paid_invoices') . ' </b>' . app_format_money($invoices_total_data['paid'], $project->currency_data) . '';
 
 // Finance Overview
 if ($project->billing_type == 2 || $project->billing_type == 3) {

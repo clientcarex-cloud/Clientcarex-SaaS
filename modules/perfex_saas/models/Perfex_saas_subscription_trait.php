@@ -787,7 +787,7 @@ class Perfex_saas_custom_limit
         return $this;
     }
 
-    public static function create(object $package, $data_source, $modules, $services, ?object $old_package = null)
+    public static function create(object $package, $data_source, $modules, $services, object $old_package = null)
     {
         $taxes = $package->metadata->invoice->taxname ?? [];
 

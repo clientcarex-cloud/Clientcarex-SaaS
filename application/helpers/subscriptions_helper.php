@@ -2,7 +2,7 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
-function create_subscription_invoice_data($subscription, $invoice)
+function _create_subscription_invoice_data($subscription, $invoice)
 {
     $CI     = &get_instance();
     $client = $CI->clients_model->get($subscription->clientid);

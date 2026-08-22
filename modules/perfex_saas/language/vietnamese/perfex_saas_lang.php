@@ -700,8 +700,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Checkout Flow';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Choose which Stripe checkout experience to use for subscriptions. Setup mode collects payment methods first then creates subscriptions. Subscription mode shows subscription details during checkout and handles payment collection automatically.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Setup Mode (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Subscription Mode (Recommended)';
-
-$lang['perfex_saas_sync_all_packages'] = 'Sync All';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Please subscribe to unlock package customization.';
-
-$lang['perfex_saas_demo_reset_banner_message'] = 'This demo will reset in %s. Please note that all added data will be cleared and the system may slow for a moment.';

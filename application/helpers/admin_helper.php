@@ -84,7 +84,7 @@ function admin_url($url = '')
  */
 function staff_cant($capability, $feature = null, $staff_id = '')
 {
-    return ! staff_can($capability, $feature, $staff_id);
+    return !staff_can($capability, $feature, $staff_id);
 }
 
 /**
@@ -141,23 +141,25 @@ function staff_can($capability, $feature = null, $staff_id = '')
      * Get permissions for this staff
      * Permissions will be cached in object cache upon first request
      */
-    if (! $permissions) {
-        if (! class_exists('staff_model', false)) {
+    if (!$permissions) {
+        if (!class_exists('staff_model', false)) {
             $CI->load->model('staff_model');
         }
 
         $permissions = $CI->staff_model->get_staff_permissions($staff_id);
     }
 
-    if (! $feature) {
+    if (!$feature) {
         $retVal = in_array_multidimensional($permissions, 'capability', $capability);
 
         return hooks()->apply_filters('staff_can', $retVal, $capability, $feature, $staff_id);
     }
 
     foreach ($permissions as $permission) {
-        if ($feature == $permission['feature']
-            && $capability == $permission['capability']) {
+        if (
+            $feature == $permission['feature']
+            && $capability == $permission['capability']
+        ) {
             return hooks()->apply_filters('staff_can', true, $capability, $feature, $staff_id);
         }
     }
@@ -177,7 +179,7 @@ function staff_can($capability, $feature = null, $staff_id = '')
  */
 function has_role_permission($role_id, $capability, $feature)
 {
-    $CI          = &get_instance();
+    $CI = &get_instance();
     $permissions = $CI->roles_model->get($role_id)->permissions;
 
     foreach ($permissions as $appliedFeature => $capabilities) {
@@ -219,13 +221,18 @@ function load_admin_language($staff_id = '')
     $CI = &get_instance();
 
     $CI->lang->is_loaded = [];
-    $CI->lang->language  = [];
+    $CI->lang->language = [];
 
     $language = get_option('active_language');
-    if ((is_staff_logged_in() || $staff_id != '') && ! is_language_disabled()) {
+    if (empty($language) || !file_exists(APPPATH . 'language/' . $language)) {
+        $language = 'english';
+    }
+    if ((is_staff_logged_in() || $staff_id != '') && !is_language_disabled()) {
         $staff_language = get_staff_default_language($staff_id);
-        if (! empty($staff_language)
-            && file_exists(APPPATH . 'language/' . $staff_language)) {
+        if (
+            !empty($staff_language)
+            && file_exists(APPPATH . 'language/' . $staff_language)
+        ) {
             $language = $staff_language;
         }
     }
@@ -233,7 +240,7 @@ function load_admin_language($staff_id = '')
     $CI->lang->load($language . '_lang', $language);
     load_custom_lang_file($language);
     $GLOBALS['language'] = $language;
-    $GLOBALS['locale']   = get_locale_key($language);
+    $GLOBALS['locale'] = get_locale_key($language);
 
     hooks()->do_action('after_load_admin_language', $language);
 
@@ -242,12 +249,20 @@ function load_admin_language($staff_id = '')
 
 /**
  * Return admin URI
- * CUSTOM_ADMIN_URL is not yet tested well, don't define it
+ * Supports CUSTOM_ADMIN_URL for master account security.
+ * Runtime check is needed because constants.php loads before my_saas_config.php
+ * in CI3 bootstrap order, so ADMIN_URI constant is not reliable for custom URLs.
  *
  * @return string
  */
 function get_admin_uri()
 {
+    // Apply custom admin URL only for master account (not tenants)
+    if (defined('CUSTOM_ADMIN_URL') && CUSTOM_ADMIN_URL !== 'admin') {
+        if (function_exists('perfex_saas_is_tenant') && !perfex_saas_is_tenant()) {
+            return CUSTOM_ADMIN_URL;
+        }
+    }
     return ADMIN_URI;
 }
 
@@ -264,7 +279,7 @@ function is_admin($staffid = '')
     /**
      * Checking for current user?
      */
-    if (! is_numeric($staffid)) {
+    if (!is_numeric($staffid)) {
         if (isset($GLOBALS['current_user'])) {
             return $GLOBALS['current_user']->admin === '1';
         }
@@ -295,7 +310,7 @@ function admin_body_class($class = '')
 
 function get_admin_body_class($class = '')
 {
-    $classes   = [];
+    $classes = [];
     $classes[] = 'app';
     $classes[] = 'admin';
     $classes[] = 'h-full';
@@ -303,19 +318,19 @@ function get_admin_body_class($class = '')
 
     $ci = &get_instance();
 
-    $first_segment  = $ci->uri->segment(1);
+    $first_segment = $ci->uri->segment(1);
     $second_segment = $ci->uri->segment(2);
-    $third_segment  = $ci->uri->segment(3);
+    $third_segment = $ci->uri->segment(3);
 
     $classes[] = $first_segment;
 
     // Not valid eq users/1 - ID
-    if ($second_segment != '' && ! is_numeric($second_segment)) {
+    if ($second_segment != '' && !is_numeric($second_segment)) {
         $classes[] = $second_segment;
     }
 
     // Not valid eq users/edit/1 - ID
-    if ($third_segment != '' && ! is_numeric($third_segment)) {
+    if ($third_segment != '' && !is_numeric($third_segment)) {
         $classes[] = $third_segment;
     }
 
@@ -346,144 +361,144 @@ function get_admin_body_class($class = '')
  */
 function render_admin_js_variables()
 {
-    $date_format   = get_option('dateformat');
-    $date_format   = explode('|', $date_format);
+    $date_format = get_option('dateformat');
+    $date_format = explode('|', $date_format);
     $maxUploadSize = file_upload_max_size();
-    $date_format   = $date_format[0];
-    $CI            = &get_instance();
+    $date_format = $date_format[0];
+    $CI = &get_instance();
 
     $options = [
-        'date_format'                                 => $date_format,
-        'decimal_places'                              => get_decimal_places(),
-        'company_is_required'                         => get_option('company_is_required'),
-        'default_view_calendar'                       => get_option('default_view_calendar'),
-        'calendar_events_limit'                       => get_option('calendar_events_limit'),
-        'tables_pagination_limit'                     => get_option('tables_pagination_limit'),
-        'time_format'                                 => get_option('time_format'),
-        'decimal_separator'                           => get_option('decimal_separator'),
-        'thousand_separator'                          => get_option('thousand_separator'),
-        'timezone'                                    => get_option('default_timezone'),
-        'calendar_first_day'                          => get_option('calendar_first_day'),
-        'allowed_files'                               => get_option('allowed_files'),
-        'desktop_notifications'                       => get_option('desktop_notifications'),
-        'show_table_export_button'                    => get_option('show_table_export_button'),
+        'date_format' => $date_format,
+        'decimal_places' => get_decimal_places(),
+        'company_is_required' => get_option('company_is_required'),
+        'default_view_calendar' => get_option('default_view_calendar'),
+        'calendar_events_limit' => get_option('calendar_events_limit'),
+        'tables_pagination_limit' => get_option('tables_pagination_limit'),
+        'time_format' => get_option('time_format'),
+        'decimal_separator' => get_option('decimal_separator'),
+        'thousand_separator' => get_option('thousand_separator'),
+        'timezone' => get_option('default_timezone'),
+        'calendar_first_day' => get_option('calendar_first_day'),
+        'allowed_files' => get_option('allowed_files'),
+        'desktop_notifications' => get_option('desktop_notifications'),
+        'show_table_export_button' => get_option('show_table_export_button'),
         'has_permission_tasks_checklist_items_delete' => staff_can('delete', 'checklist_templates'),
-        'show_setup_menu_item_only_on_hover'          => get_option('show_setup_menu_item_only_on_hover'),
-        'newsfeed_maximum_files_upload'               => get_option('newsfeed_maximum_files_upload'),
-        'dismiss_desktop_not_after'                   => get_option('auto_dismiss_desktop_notifications_after'),
-        'enable_google_picker'                        => get_option('enable_google_picker'),
-        'google_client_id'                            => get_option('google_client_id'),
-        'google_api'                                  => get_option('google_api_key'),
-        'has_permission_create_task'                  => staff_can('create', 'tasks'),
-        'is_ai_provider_enabled'                      => is_ai_provider_enabled(),
+        'show_setup_menu_item_only_on_hover' => get_option('show_setup_menu_item_only_on_hover'),
+        'newsfeed_maximum_files_upload' => get_option('newsfeed_maximum_files_upload'),
+        'dismiss_desktop_not_after' => get_option('auto_dismiss_desktop_notifications_after'),
+        'enable_google_picker' => get_option('enable_google_picker'),
+        'google_client_id' => get_option('google_client_id'),
+        'google_api' => get_option('google_api_key'),
+        'has_permission_create_task' => staff_can('create', 'tasks'),
+        'is_ai_provider_enabled' => is_ai_provider_enabled(),
     ];
 
     // by remove it means do not prefix it
 
     $lang = [
-        'invoice_task_billable_timers_found'                      => _l('invoice_task_billable_timers_found'),
-        'validation_extension_not_allowed'                        => _l('validation_extension_not_allowed'),
-        'tag'                                                     => _l('tag'),
-        'options'                                                 => _l('options'),
-        'no_items_warning'                                        => _l('no_items_warning'),
-        'item_forgotten_in_preview'                               => _l('item_forgotten_in_preview'),
-        'new_notification'                                        => _l('new_notification'),
-        'estimate_number_exists'                                  => _l('estimate_number_exists'),
-        'invoice_number_exists'                                   => _l('invoice_number_exists'),
-        'confirm_action_prompt'                                   => _l('confirm_action_prompt'),
-        'calendar_expand'                                         => _l('calendar_expand'),
-        'media_files'                                             => _l('media_files'),
-        'credit_note_number_exists'                               => _l('credit_note_number_exists'),
-        'item_field_not_formatted'                                => _l('numbers_not_formatted_while_editing'),
-        'email_exists'                                            => _l('email_exists'),
-        'phonenumber_exists'                                      => _l('phonenumber_exists'),
-        'website_exists'                                          => _l('website_exists'),
-        'company_exists'                                          => _l('company_exists'),
-        'filter_by'                                               => _l('filter_by'),
-        'you_can_not_upload_any_more_files'                       => _l('you_can_not_upload_any_more_files'),
-        'cancel_upload'                                           => _l('cancel_upload'),
-        'browser_not_support_drag_and_drop'                       => _l('browser_not_support_drag_and_drop'),
-        'drop_files_here_to_upload'                               => _l('drop_files_here_to_upload'),
-        'file_exceeds_max_filesize'                               => _l('file_exceeds_max_filesize') . ' (' . bytesToSize('', $maxUploadSize) . ')',
-        'file_exceeds_maxfile_size_in_form'                       => _l('file_exceeds_maxfile_size_in_form') . ' (' . bytesToSize('', $maxUploadSize) . ')',
-        'unit'                                                    => _l('unit'),
-        'dt_length_menu_all'                                      => _l('dt_length_menu_all'),
-        'dt_button_reload'                                        => _l('dt_button_reload'),
-        'dt_button_excel'                                         => _l('dt_button_excel'),
-        'dt_button_csv'                                           => _l('dt_button_csv'),
-        'dt_button_pdf'                                           => _l('dt_button_pdf'),
-        'dt_button_print'                                         => _l('dt_button_print'),
-        'dt_button_export'                                        => _l('dt_button_export'),
-        'search_ajax_empty'                                       => _l('search_ajax_empty'),
-        'search_ajax_initialized'                                 => _l('search_ajax_initialized'),
-        'search_ajax_searching'                                   => _l('search_ajax_searching'),
-        'not_results_found'                                       => _l('not_results_found'),
-        'search_ajax_placeholder'                                 => _l('search_ajax_placeholder'),
-        'currently_selected'                                      => _l('currently_selected'),
-        'task_stop_timer'                                         => _l('task_stop_timer'),
-        'dt_button_column_visibility'                             => _l('dt_button_column_visibility'),
-        'note'                                                    => _l('note'),
-        'search_tasks'                                            => _l('search_tasks'),
-        'confirm'                                                 => _l('confirm'),
-        'showing_billable_tasks_from_project'                     => _l('showing_billable_tasks_from_project'),
-        'invoice_task_item_project_tasks_not_included'            => _l('invoice_task_item_project_tasks_not_included'),
-        'credit_amount_bigger_then_invoice_balance'               => _l('credit_amount_bigger_then_invoice_balance'),
+        'invoice_task_billable_timers_found' => _l('invoice_task_billable_timers_found'),
+        'validation_extension_not_allowed' => _l('validation_extension_not_allowed'),
+        'tag' => _l('tag'),
+        'options' => _l('options'),
+        'no_items_warning' => _l('no_items_warning'),
+        'item_forgotten_in_preview' => _l('item_forgotten_in_preview'),
+        'new_notification' => _l('new_notification'),
+        'estimate_number_exists' => _l('estimate_number_exists'),
+        'invoice_number_exists' => _l('invoice_number_exists'),
+        'confirm_action_prompt' => _l('confirm_action_prompt'),
+        'calendar_expand' => _l('calendar_expand'),
+        'media_files' => _l('media_files'),
+        'credit_note_number_exists' => _l('credit_note_number_exists'),
+        'item_field_not_formatted' => _l('numbers_not_formatted_while_editing'),
+        'email_exists' => _l('email_exists'),
+        'phonenumber_exists' => _l('phonenumber_exists'),
+        'website_exists' => _l('website_exists'),
+        'company_exists' => _l('company_exists'),
+        'filter_by' => _l('filter_by'),
+        'you_can_not_upload_any_more_files' => _l('you_can_not_upload_any_more_files'),
+        'cancel_upload' => _l('cancel_upload'),
+        'browser_not_support_drag_and_drop' => _l('browser_not_support_drag_and_drop'),
+        'drop_files_here_to_upload' => _l('drop_files_here_to_upload'),
+        'file_exceeds_max_filesize' => _l('file_exceeds_max_filesize') . ' (' . bytesToSize('', $maxUploadSize) . ')',
+        'file_exceeds_maxfile_size_in_form' => _l('file_exceeds_maxfile_size_in_form') . ' (' . bytesToSize('', $maxUploadSize) . ')',
+        'unit' => _l('unit'),
+        'dt_length_menu_all' => _l('dt_length_menu_all'),
+        'dt_button_reload' => _l('dt_button_reload'),
+        'dt_button_excel' => _l('dt_button_excel'),
+        'dt_button_csv' => _l('dt_button_csv'),
+        'dt_button_pdf' => _l('dt_button_pdf'),
+        'dt_button_print' => _l('dt_button_print'),
+        'dt_button_export' => _l('dt_button_export'),
+        'search_ajax_empty' => _l('search_ajax_empty'),
+        'search_ajax_initialized' => _l('search_ajax_initialized'),
+        'search_ajax_searching' => _l('search_ajax_searching'),
+        'not_results_found' => _l('not_results_found'),
+        'search_ajax_placeholder' => _l('search_ajax_placeholder'),
+        'currently_selected' => _l('currently_selected'),
+        'task_stop_timer' => _l('task_stop_timer'),
+        'dt_button_column_visibility' => _l('dt_button_column_visibility'),
+        'note' => _l('note'),
+        'search_tasks' => _l('search_tasks'),
+        'confirm' => _l('confirm'),
+        'showing_billable_tasks_from_project' => _l('showing_billable_tasks_from_project'),
+        'invoice_task_item_project_tasks_not_included' => _l('invoice_task_item_project_tasks_not_included'),
+        'credit_amount_bigger_then_invoice_balance' => _l('credit_amount_bigger_then_invoice_balance'),
         'credit_amount_bigger_then_credit_note_remaining_credits' => _l('credit_amount_bigger_then_credit_note_remaining_credits'),
-        'save'                                                    => _l('save'),
-        'expense'                                                 => _l('expense'),
-        'ticket'                                                  => _l('ticket'),
-        'lead'                                                    => _l('lead'),
-        'create_reminder'                                         => _l('create_reminder'),
-        'something_went_wrong'                                    => _l('something_went_wrong'),
+        'save' => _l('save'),
+        'expense' => _l('expense'),
+        'ticket' => _l('ticket'),
+        'lead' => _l('lead'),
+        'create_reminder' => _l('create_reminder'),
+        'something_went_wrong' => _l('something_went_wrong'),
 
-        'filters'                          => _l('filters'),
-        'filter_boolean_yes'               => _l('filter_boolean_yes'),
-        'filter_boolean_no'                => _l('filter_boolean_no'),
-        'filter_matchtype_and'             => _l('filter_matchtype_and'),
-        'filter_matchtype_or'              => _l('filter_matchtype_or'),
-        'filter_share'                     => _l('filter_share'),
-        'filter_mark_as_default'           => _l('filter_mark_as_default'),
-        'filter_unmark_as_default'         => _l('filter_unmark_as_default'),
-        'default_filter_info'              => _l('default_filter_info'),
-        'filter_save'                      => _l('filter_save'),
-        'filter_name'                      => _l('filter_name'),
-        'filter_apply'                     => _l('filter_apply'),
-        'filter_apply_and_save'            => _l('filter_apply_and_save'),
-        'filter_new'                       => _l('filter_new'),
-        'filter_clear_active'              => _l('filter_clear_active'),
-        'filter_edit'                      => _l('filter_edit'),
-        'filter_create'                    => _l('filter_create'),
-        'filter_update'                    => _l('filter_update'),
-        'filter_delete'                    => _l('filter_delete'),
-        'filter_cannot_be_shared'          => _l('filter_cannot_be_shared'),
-        'filter_add_rule'                  => _l('filter_add_rule'),
-        'filter_operator_is_empty'         => _l('filter_operator_is_empty'),
-        'filter_operator_is_not_empty'     => _l('filter_operator_is_not_empty'),
-        'filter_operator_equal'            => _l('filter_operator_equal'),
-        'filter_operator_not_equal'        => _l('filter_operator_not_equal'),
-        'filter_operator_begins_with'      => _l('filter_operator_begins_with'),
-        'filter_operator_not_begins_with'  => _l('filter_operator_not_begins_with'),
-        'filter_operator_contains'         => _l('filter_operator_contains'),
-        'filter_operator_not_contains'     => _l('filter_operator_not_contains'),
-        'filter_operator_ends_with'        => _l('filter_operator_ends_with'),
-        'filter_operator_not_ends_with'    => _l('filter_operator_not_ends_with'),
-        'filter_operator_in'               => _l('filter_operator_in'),
-        'filter_operator_not_in'           => _l('filter_operator_not_in'),
-        'filter_operator_between'          => _l('filter_operator_between'),
-        'filter_operator_not_between'      => _l('filter_operator_not_between'),
-        'filter_operator_dynamic'          => _l('filter_operator_dynamic'),
-        'filter_operator_greater'          => _l('filter_operator_greater'),
+        'filters' => _l('filters'),
+        'filter_boolean_yes' => _l('filter_boolean_yes'),
+        'filter_boolean_no' => _l('filter_boolean_no'),
+        'filter_matchtype_and' => _l('filter_matchtype_and'),
+        'filter_matchtype_or' => _l('filter_matchtype_or'),
+        'filter_share' => _l('filter_share'),
+        'filter_mark_as_default' => _l('filter_mark_as_default'),
+        'filter_unmark_as_default' => _l('filter_unmark_as_default'),
+        'default_filter_info' => _l('default_filter_info'),
+        'filter_save' => _l('filter_save'),
+        'filter_name' => _l('filter_name'),
+        'filter_apply' => _l('filter_apply'),
+        'filter_apply_and_save' => _l('filter_apply_and_save'),
+        'filter_new' => _l('filter_new'),
+        'filter_clear_active' => _l('filter_clear_active'),
+        'filter_edit' => _l('filter_edit'),
+        'filter_create' => _l('filter_create'),
+        'filter_update' => _l('filter_update'),
+        'filter_delete' => _l('filter_delete'),
+        'filter_cannot_be_shared' => _l('filter_cannot_be_shared'),
+        'filter_add_rule' => _l('filter_add_rule'),
+        'filter_operator_is_empty' => _l('filter_operator_is_empty'),
+        'filter_operator_is_not_empty' => _l('filter_operator_is_not_empty'),
+        'filter_operator_equal' => _l('filter_operator_equal'),
+        'filter_operator_not_equal' => _l('filter_operator_not_equal'),
+        'filter_operator_begins_with' => _l('filter_operator_begins_with'),
+        'filter_operator_not_begins_with' => _l('filter_operator_not_begins_with'),
+        'filter_operator_contains' => _l('filter_operator_contains'),
+        'filter_operator_not_contains' => _l('filter_operator_not_contains'),
+        'filter_operator_ends_with' => _l('filter_operator_ends_with'),
+        'filter_operator_not_ends_with' => _l('filter_operator_not_ends_with'),
+        'filter_operator_in' => _l('filter_operator_in'),
+        'filter_operator_not_in' => _l('filter_operator_not_in'),
+        'filter_operator_between' => _l('filter_operator_between'),
+        'filter_operator_not_between' => _l('filter_operator_not_between'),
+        'filter_operator_dynamic' => _l('filter_operator_dynamic'),
+        'filter_operator_greater' => _l('filter_operator_greater'),
         'filter_operator_greater_or_equal' => _l('filter_operator_greater_or_equal'),
-        'filter_operator_less'             => _l('filter_operator_less'),
-        'filter_operator_less_or_equal'    => _l('filter_operator_less_or_equal'),
-        'filter_use_dynamic_dates'         => _l('filter_use_dynamic_dates'),
-        'no_filters_found'                 => _l('no_filters_found'),
-        'warn_ticket_thread_too_long'      => _l('warn_ticket_thread_too_long'),
-        'text_enhancement_make_friendly'   => _l('text_enhancement_make_friendly'),
-        'text_enhancement_make_polite'     => _l('text_enhancement_make_polite'),
-        'text_enhancement_make_formal'     => _l('text_enhancement_make_formal'),
-        'item_is_optional'                 => _l('item_is_optional'),
-        'item_is_selected'                 => _l('item_is_selected'),
+        'filter_operator_less' => _l('filter_operator_less'),
+        'filter_operator_less_or_equal' => _l('filter_operator_less_or_equal'),
+        'filter_use_dynamic_dates' => _l('filter_use_dynamic_dates'),
+        'no_filters_found' => _l('no_filters_found'),
+        'warn_ticket_thread_too_long' => _l('warn_ticket_thread_too_long'),
+        'text_enhancement_make_friendly' => _l('text_enhancement_make_friendly'),
+        'text_enhancement_make_polite' => _l('text_enhancement_make_polite'),
+        'text_enhancement_make_formal' => _l('text_enhancement_make_formal'),
+        'item_is_optional' => _l('item_is_optional'),
+        'item_is_selected' => _l('item_is_selected'),
     ];
 
     echo '<script>';
@@ -493,7 +508,7 @@ function render_admin_js_variables()
 
     echo 'var app = {};';
 
-    echo 'app.version = ' . config_item('migration_version') . ';';
+    echo 'app.version = "' . config_item('migration_version') . '_bust4";';
     echo 'app.available_tags = ' . json_encode(get_tags_clean()) . ';';
     echo 'app.available_tags_ids = ' . json_encode(get_tags_ids()) . ';';
     echo 'app.user_recent_searches = ' . json_encode(get_staff_recent_search_history()) . ';';
@@ -527,34 +542,34 @@ function render_admin_js_variables()
      * @deprecated 2.3.2
      */
     $deprecated = [
-        'app_language'                                => get_staff_default_language(), // done, prefix it
-        'app_is_mobile'                               => is_mobile(), // done, prefix it
-        'app_user_browser'                            => strtolower($CI->agent->browser()), // done, prefix it
-        'app_date_format'                             => $date_format, // done, prefix it
-        'app_decimal_places'                          => get_decimal_places(), // done, prefix it
-        'app_company_is_required'                     => get_option('company_is_required'), // done, prefix it
-        'app_default_view_calendar'                   => get_option('default_view_calendar'), // done, prefix it
-        'app_calendar_events_limit'                   => get_option('calendar_events_limit'), // done, prefix it
-        'app_tables_pagination_limit'                 => get_option('tables_pagination_limit'), // done, prefix it
-        'app_time_format'                             => get_option('time_format'), // done, prefix it
-        'app_decimal_separator'                       => get_option('decimal_separator'), // done, prefix it
-        'app_thousand_separator'                      => get_option('thousand_separator'), // done, prefix it
-        'app_timezone'                                => get_option('default_timezone'), // done, prefix it
-        'app_calendar_first_day'                      => get_option('calendar_first_day'), // done, prefix it
-        'app_allowed_files'                           => get_option('allowed_files'), // done, prefix it
-        'app_desktop_notifications'                   => get_option('desktop_notifications'), // done, prefix it
-        'max_php_ini_upload_size_bytes'               => $maxUploadSize, // done, dont do nothing
-        'app_show_table_export_button'                => get_option('show_table_export_button'), // done, dont to nothing
-        'calendarIDs'                                 => '', // done, dont do nothing
-        'is_admin'                                    => is_admin(), // done, dont do nothing
-        'is_staff_member'                             => is_staff_member(), // done, dont do nothing
+        'app_language' => get_staff_default_language(), // done, prefix it
+        'app_is_mobile' => is_mobile(), // done, prefix it
+        'app_user_browser' => strtolower($CI->agent->browser()), // done, prefix it
+        'app_date_format' => $date_format, // done, prefix it
+        'app_decimal_places' => get_decimal_places(), // done, prefix it
+        'app_company_is_required' => get_option('company_is_required'), // done, prefix it
+        'app_default_view_calendar' => get_option('default_view_calendar'), // done, prefix it
+        'app_calendar_events_limit' => get_option('calendar_events_limit'), // done, prefix it
+        'app_tables_pagination_limit' => get_option('tables_pagination_limit'), // done, prefix it
+        'app_time_format' => get_option('time_format'), // done, prefix it
+        'app_decimal_separator' => get_option('decimal_separator'), // done, prefix it
+        'app_thousand_separator' => get_option('thousand_separator'), // done, prefix it
+        'app_timezone' => get_option('default_timezone'), // done, prefix it
+        'app_calendar_first_day' => get_option('calendar_first_day'), // done, prefix it
+        'app_allowed_files' => get_option('allowed_files'), // done, prefix it
+        'app_desktop_notifications' => get_option('desktop_notifications'), // done, prefix it
+        'max_php_ini_upload_size_bytes' => $maxUploadSize, // done, dont do nothing
+        'app_show_table_export_button' => get_option('show_table_export_button'), // done, dont to nothing
+        'calendarIDs' => '', // done, dont do nothing
+        'is_admin' => is_admin(), // done, dont do nothing
+        'is_staff_member' => is_staff_member(), // done, dont do nothing
         'has_permission_tasks_checklist_items_delete' => staff_can('delete', 'checklist_templates'), // done, dont do nothing
-        'app_show_setup_menu_item_only_on_hover'      => get_option('show_setup_menu_item_only_on_hover'), // done, dont to nothing
-        'app_newsfeed_maximum_files_upload'           => get_option('newsfeed_maximum_files_upload'), // done, dont to nothing
-        'app_dismiss_desktop_not_after'               => get_option('auto_dismiss_desktop_notifications_after'), // done, dont to nothing
-        'app_enable_google_picker'                    => get_option('enable_google_picker'), // done, dont to nothing
-        'app_google_client_id'                        => get_option('google_client_id'), // done, dont to nothing
-        'google_api'                                  => get_option('google_api_key'), // done, dont do nothing
+        'app_show_setup_menu_item_only_on_hover' => get_option('show_setup_menu_item_only_on_hover'), // done, dont to nothing
+        'app_newsfeed_maximum_files_upload' => get_option('newsfeed_maximum_files_upload'), // done, dont to nothing
+        'app_dismiss_desktop_not_after' => get_option('auto_dismiss_desktop_notifications_after'), // done, dont to nothing
+        'app_enable_google_picker' => get_option('enable_google_picker'), // done, dont to nothing
+        'app_google_client_id' => get_option('google_client_id'), // done, dont to nothing
+        'google_api' => get_option('google_api_key'), // done, dont do nothing
     ];
 
     $firstKey = key($deprecated);
@@ -580,7 +595,7 @@ function render_admin_js_variables()
 
 function _maybe_system_setup_warnings()
 {
-    if (! defined('DISABLE_APP_SYSTEM_HELP_MESSAGES') || (defined('DISABLE_APP_SYSTEM_HELP_MESSAGES') && DISABLE_APP_SYSTEM_HELP_MESSAGES)) {
+    if (!defined('DISABLE_APP_SYSTEM_HELP_MESSAGES') || (defined('DISABLE_APP_SYSTEM_HELP_MESSAGES') && DISABLE_APP_SYSTEM_HELP_MESSAGES)) {
         hooks()->add_action('ticket_created', [new PopupMessage('app\services\messages\FirstTicketCreated'), 'check']);
         hooks()->add_action('lead_created', [new PopupMessage('app\services\messages\FirstLeadCreated'), 'check']);
         hooks()->add_action('new_tag_created', [new PopupMessage('app\services\messages\FirstTagCreated'), 'check']);
@@ -604,7 +619,7 @@ function _maybe_system_setup_warnings()
     // Check if timezone is set
     hooks()->add_action('before_start_render_dashboard_content', [new Message('app\services\messages\Timezone'), 'check']);
     // Notice for cloudflare rocket loader
-    hooks()->add_action('before_start_render_dashboard_content', [new Message('app\services\messages\CloudFlare'), 'check']);
+
     // Notice for iconv extension
     hooks()->add_action('before_start_render_dashboard_content', [new Message('app\services\messages\Iconv'), 'check']);
     // Check if there is dot in database name, causing problem on upgrade

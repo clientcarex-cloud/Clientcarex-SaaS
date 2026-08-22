@@ -19,11 +19,13 @@ class Api extends \ClientsController
 
     public function docs($method = '')
     {
-        // Ensure we have admin login
+        // Security gate: Block public access unless explicitly allowed in settings
         if (!is_admin()) {
-            if (get_option('perfex_saas_api_allow_public_access_to_doc') != '1') {
+            $allow_public = get_option('perfex_saas_api_allow_public_access_to_doc');
+            if ($allow_public !== '1' && $allow_public !== 1) {
                 redirect_after_login_to_current_url();
-                return redirect(admin_url('authentication'));
+                redirect(admin_url('authentication'));
+                die(); // Defense-in-depth: ensure execution stops
             }
         }
 

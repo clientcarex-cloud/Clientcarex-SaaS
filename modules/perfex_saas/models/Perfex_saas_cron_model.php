@@ -236,8 +236,16 @@ class Perfex_saas_cron_model extends App_model
                         $company->package_invoice = $package_invoice;
                         $metadata = $company->metadata;
 
-                        // Calculate total storage and update if neccessary
-                        perfex_saas_update_tenant_storage_size($company);
+                        // Calculate total storage and update if neccessary.
+                        // Throttled: a full recursive walk of the tenant's
+                        // uploads + media folders on every pass is what made
+                        // background load scale with tenant count. Quotas are
+                        // still enforced exactly at upload time, which
+                        // recalculates live.
+                        perfex_saas_update_tenant_storage_size(
+                            $company,
+                            (int) hooks()->apply_filters('perfex_saas_storage_recalc_seconds', 6 * 3600)
+                        );
 
                         // Auto removal of inactive tenant
                         $auto_remove_inactive_instance = $package_invoice->metadata->auto_remove_inactive_instance ?? 'no';

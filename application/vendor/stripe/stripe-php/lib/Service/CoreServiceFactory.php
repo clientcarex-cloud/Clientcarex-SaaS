@@ -14,7 +14,6 @@ namespace Stripe\Service;
  * @property ApplicationFeeService $applicationFees
  * @property Apps\AppsServiceFactory $apps
  * @property BalanceService $balance
- * @property BalanceSettingsService $balanceSettings
  * @property BalanceTransactionService $balanceTransactions
  * @property Billing\BillingServiceFactory $billing
  * @property BillingPortal\BillingPortalServiceFactory $billingPortal
@@ -95,7 +94,6 @@ class CoreServiceFactory extends AbstractServiceFactory
         'applicationFees' => ApplicationFeeService::class,
         'apps' => Apps\AppsServiceFactory::class,
         'balance' => BalanceService::class,
-        'balanceSettings' => BalanceSettingsService::class,
         'balanceTransactions' => BalanceTransactionService::class,
         'billing' => Billing\BillingServiceFactory::class,
         'billingPortal' => BillingPortal\BillingPortalServiceFactory::class,

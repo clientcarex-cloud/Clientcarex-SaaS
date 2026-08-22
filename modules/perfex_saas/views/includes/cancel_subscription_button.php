@@ -16,7 +16,7 @@ if (
 <div class="btn-group">
     <a href="#" class="btn btn-danger mtop10 dropdown-toggle tw-w-full" data-toggle="dropdown" aria-haspopup="true"
         aria-expanded="false">
-        <?php echo _l('perfex_saas_cancel'); ?> <span class="caret"></span></a>
+        <?php echo _l('cancel'); ?> <span class="caret"></span></a>
     <ul class="dropdown-menu dropdown-menu-right">
         <li><a onclick="return confirm('<?= perfex_saas_ecape_js_attr(_l('perfex_saas_pricing_cancel_confirmation')); ?>')"
                 href="<?php echo base_url('clients/my_account/cancel_subscription?type=immediately'); ?>">

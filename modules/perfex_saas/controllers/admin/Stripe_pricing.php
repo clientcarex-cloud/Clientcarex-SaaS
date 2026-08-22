@@ -11,7 +11,7 @@ class Stripe_pricing extends AdminController
         $this->load->model('taxes_model');
     }
 
-    public function index()
+    function index()
     {
         // Check for permission
         if (!staff_can('view', 'perfex_saas_packages')) {
@@ -58,33 +58,6 @@ class Stripe_pricing extends AdminController
         $data['currencies'] = $this->currencies_model->get();
         $data['title'] = _l('perfex_saas_saas_pricing');
         $this->load->view('stripe/pricing', $data);
-    }
-
-    public function sync()
-    {
-        @ini_set('max_execution_time', 360);
-
-        // Synchronize all packages
-        $packages = $this->perfex_saas_model->packages();
-        $packages = hooks()->apply_filters('perfex_saas_packages_view_list', $packages);
-
-        foreach ($packages as $package) {
-
-            // Skip when not stripe enabled or sync enabled.
-            if (($package->metadata->stripe->enabled ?? '') != '1' ||
-                ($package->metadata->stripe->sync ?? '') != '1'
-            ) {
-                continue;
-            }
-
-            $this->perfex_saas_stripe_model->setup_package_on_stripe($package);
-        }
-
-        perfex_saas_trigger_cron_process(PERFEX_SAAS_CRON_PROCESS_PACKAGE);
-
-        set_alert('success', _l('updated_successfully', _l('perfex_saas_package')));
-
-        return redirect(admin_url(PERFEX_SAAS_ROUTE_NAME . '/stripe_pricing'));
     }
 
     private function savePackageStripePricing()

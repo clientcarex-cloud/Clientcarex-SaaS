@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Checkout Flow';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Wählen Sie aus, welche Stripe-Kassenfunktion Sie für Abonnements verwenden möchten. Im Einrichtungsmodus werden zuerst die Zahlungsarten erfasst und dann die Abonnements erstellt. Im Abonnementmodus werden die Abonnementdetails während der Kaufabwicklung angezeigt und der Zahlungseinzug erfolgt automatisch.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Einrichtungsmodus (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Abo-Modus (empfohlen)';
-$lang['perfex_saas_sync_all_packages'] = 'Alle synchronisieren';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Bitte abonnieren Sie, um die Paketanpassung freizuschalten.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Diese Demo wird in %s zurückgesetzt. Bitte beachten Sie, dass alle hinzugefügten Daten gelöscht werden und das System für einen Moment langsamer werden kann.';

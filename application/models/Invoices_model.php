@@ -1676,12 +1676,6 @@ class Invoices_model extends App_Model
                         ]);
                     }
 
-                    hooks()->do_action('before_invoice_sent_to_client', [
-                        'invoice' => $invoice,
-                        'contact' => $contact,
-                        'template' => $template,
-                    ]);
-
                     if ($template->send()) {
                         $sent = true;
                         array_push($emails_sent, $contact->email);

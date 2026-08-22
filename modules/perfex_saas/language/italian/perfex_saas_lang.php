@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Flusso di cassa di Stripe';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Scegliere quale esperienza di checkout Stripe utilizzare per gli abbonamenti. La modalità Setup raccoglie prima i metodi di pagamento e poi crea gli abbonamenti. La modalità Abbonamento mostra i dettagli dell\'abbonamento durante il checkout e gestisce automaticamente la raccolta dei pagamenti.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Modalità di impostazione (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Modalità di abbonamento (consigliata)';
-$lang['perfex_saas_sync_all_packages'] = 'Sincronizzazione di tutti';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Abbonarsi per sbloccare la personalizzazione del pacchetto.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Questa demo verrà ripristinata tra %s. Tutti i dati aggiunti saranno cancellati e il sistema potrebbe rallentare per qualche istante.';

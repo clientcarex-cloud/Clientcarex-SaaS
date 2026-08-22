@@ -68,7 +68,7 @@ class App_Email extends App_mailer
             || $emailQueue == '0'
             || ($emailQueue == '1' && $queueSkipAttachment == '1' && count($attachments) > 0)
             || (defined('CRON') && !is_staff_logged_in())) {
-            return parent::send();
+            return $this->ccx_dispatch();
         }
 
         if ($this->mailer_engine == 'codeigniter') {
@@ -135,6 +135,93 @@ class App_Email extends App_mailer
         ];
 
         return $this->CI->db->insert($this->email_queue_table, $dbdata);
+    }
+
+    /**
+     * The one place a CRM e-mail is actually put on the wire — everything
+     * else (mail templates, the queue drain, direct $this->email->send()
+     * calls) funnels through here.
+     *
+     * While the Omni Messaging module is active it owns this moment: the
+     * send is gated on the tenant's e-mail credits, delivered over the
+     * Email channel's own sender and written to the module's send log.
+     * With the module inactive, or routing switched off inside it, the
+     * closure below is all that runs — core behaviour, untouched.
+     *
+     * @return bool
+     */
+    protected function ccx_dispatch()
+    {
+        $deliver = function () {
+            return parent::send();
+        };
+
+        if (function_exists('sms_wa_email_crm_email_dispatch')) {
+            return (bool) sms_wa_email_crm_email_dispatch($this, $deliver);
+        }
+
+        return $deliver();
+    }
+
+    /**
+     * Read-only view of the message that is about to go out, in the shape
+     * the Omni Messaging router needs for billing and logging. Both mailer
+     * engines keep the envelope in a different place.
+     *
+     * @return array{to:array,cc:array,bcc:array,subject:string,body:string,from:string,from_name:string,reply_to:bool}
+     */
+    public function ccx_envelope()
+    {
+        $envelope = [
+            'to'        => [],
+            'cc'        => [],
+            'bcc'       => [],
+            'subject'   => '',
+            'body'      => '',
+            'from'      => '',
+            'from_name' => '',
+            'reply_to'  => false,
+        ];
+
+        if ($this->mailer_engine == 'phpmailer' && is_object($this->phpmailer)) {
+            foreach (['to' => 'getToAddresses', 'cc' => 'getCcAddresses', 'bcc' => 'getBccAddresses'] as $key => $method) {
+                foreach ($this->phpmailer->{$method}() as $address) {
+                    if (!empty($address[0])) {
+                        $envelope[$key][] = $address[0];
+                    }
+                }
+            }
+
+            $envelope['subject']   = (string) $this->phpmailer->Subject;
+            $envelope['body']      = (string) $this->phpmailer->Body;
+            $envelope['from']      = (string) $this->phpmailer->From;
+            $envelope['from_name'] = (string) $this->phpmailer->FromName;
+            $envelope['reply_to']  = count($this->phpmailer->getReplyToAddresses()) > 0;
+
+            return $envelope;
+        }
+
+        $envelope['to']  = array_values(array_filter((array) $this->_recipients));
+        $envelope['cc']  = array_values(array_filter((array) $this->_cc_array));
+        $envelope['bcc'] = array_values(array_filter((array) $this->_bcc_array));
+
+        // Codeigniter engine stores the subject Q-encoded — decode it so the
+        // send log shows the line the recipient sees.
+        $envelope['subject'] = isset($this->_headers['Subject']) ? (string) $this->_headers['Subject'] : '';
+        if ($envelope['subject'] !== '' && function_exists('mb_decode_mimeheader')) {
+            $envelope['subject'] = mb_decode_mimeheader($envelope['subject']);
+        }
+        $envelope['body']     = (string) $this->_body;
+        $envelope['from']     = isset($this->_headers['From']) ? (string) $this->_headers['From'] : '';
+        $envelope['reply_to'] = !empty($this->_replyto_flag);
+
+        // Codeigniter engine stores the From header as `Name <mail@host>`
+        if (preg_match('/^(.*)<(.+)>\s*$/', $envelope['from'], $match)) {
+            $envelope['from_name'] = trim(trim($match[1]), '"');
+            $envelope['from']      = trim($match[2]);
+        }
+
+        return $envelope;
     }
 
     /**
@@ -263,16 +350,5 @@ class App_Email extends App_mailer
     public function delete_queued_email($id)
     {
         $this->CI->db->query('DELETE FROM ' . $this->email_queue_table . ' WHERE id=' . $id);
-    }
-
-    /**
-     * Deletes all queued email
-     *
-     * @return void
-     */
-    public function clear_queued_emails(): void
-    {
-        $this->CI->db->query('DELETE FROM ' . $this->email_queue_table);
-
     }
 }

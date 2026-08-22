@@ -135,7 +135,7 @@ class Utilities extends AdminController
     {
         $this->load->helper('url');
         $data['title']     = _l('media_files');
-        $data['connector'] = admin_url() . '/utilities/media_connector';
+        $data['connector'] = admin_url('utilities/media_connector');
 
         $mediaLocale = get_media_locale();
 
@@ -270,6 +270,12 @@ class Utilities extends AdminController
         ];
 
         $opts      = hooks()->apply_filters('before_init_media', $opts);
+
+        // Clean any output buffers to ensure pure JSON response
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
         $connector = new elFinderConnector(new elFinder($opts));
         $connector->run();
     }

@@ -5,12 +5,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: Perfex SAAS
 Description: Simple comprehensive module to convert Perfex CRM to SAAS, multi-tenancy or multi-company
-Version: 0.3.9
+Version: 0.3.7
 Requires at least: 3.1.*
 Author: ulutfa
 Author URI: https://codecanyon.net/user/ulutfa
 */
-defined('PERFEX_SAAS_VERSION_NUMBER') or define('PERFEX_SAAS_VERSION_NUMBER', '0.3.9');
+defined('PERFEX_SAAS_VERSION_NUMBER') or define('PERFEX_SAAS_VERSION_NUMBER', '0.3.7');
 
 // Global common module constants
 require_once('config/constants.php');
@@ -162,6 +162,26 @@ function perfex_saas_module_init_menu_items()
             ]);
         }
 
+        if (staff_can('view', 'perfex_saas_packages')) {
+            $CI->app_menu->add_sidebar_children_item(PERFEX_SAAS_MODULE_WHITELABEL_NAME, [
+                'slug' => PERFEX_SAAS_MODULE_WHITELABEL_NAME . '_pricing_plans',
+                'name' => _l('perfex_saas_pricing_plans'),
+                'icon' => 'fa fa-table',
+                'href' => admin_url(PERFEX_SAAS_ROUTE_NAME . '/pricing_plans'),
+                'position' => 7,
+            ]);
+        }
+
+        if (staff_can('view', 'perfex_saas_packages')) {
+            $CI->app_menu->add_sidebar_children_item(PERFEX_SAAS_MODULE_WHITELABEL_NAME, [
+                'slug' => PERFEX_SAAS_MODULE_WHITELABEL_NAME . '_smart_plans',
+                'name' => _l('perfex_saas_smart_plans'),
+                'icon' => 'fa fa-file-excel-o',
+                'href' => admin_url(PERFEX_SAAS_ROUTE_NAME . '/smart_plans'),
+                'position' => 8,
+            ]);
+        }
+
         if (staff_can('view', 'perfex_saas_company')) {
             $CI->app_menu->add_sidebar_children_item(PERFEX_SAAS_MODULE_WHITELABEL_NAME, [
                 'slug' => PERFEX_SAAS_MODULE_WHITELABEL_NAME . '_company',
@@ -286,6 +306,21 @@ if (!$is_tenant) {
     if (!empty($package_slug = $CI->input->post_get($plan_identifier, true))) {
         $CI->session->set_userdata([$plan_identifier => $package_slug]);
     }
+
+    // Override allow_registration when a package plan link is used.
+    // Without this, the core Authentication::register() method redirects away
+    // before the SaaS module can process the ps_plan parameter, because
+    // general customer registration may be disabled in Perfex settings.
+    hooks()->add_filter('get_option', function ($val, $name) use ($CI, $plan_identifier) {
+        if ($name === 'allow_registration') {
+            $has_plan = !empty($CI->input->get($plan_identifier, true))
+                     || !empty($CI->session->{$plan_identifier});
+            if ($has_plan) {
+                return 1;
+            }
+        }
+        return $val;
+    }, 10, 2);
 
     $slug_identifier = perfex_saas_route_id_prefix('slug');
     $custom_domain_identifier = perfex_saas_route_id_prefix('custom_domain');
@@ -416,19 +451,39 @@ if (!$is_tenant) {
                     'edit' => _l('perfex_saas_permission_edit'),
                 ];
                 register_staff_capabilities('perfex_saas_settings', $capabilities, _l('perfex_saas') . ' ' . _l('perfex_saas_settings'));
+
+                /**
+                 * "Login as client" on the companies list and in the Pro Support
+                 * console is gated by admin/Clients::login_as_client on the
+                 * ccx_support capabilities. They were checked everywhere but
+                 * registered nowhere, so they never appeared in Roles/Staff and
+                 * could not be granted — only super admins could ever use the
+                 * buttons. Registering them here makes the gate usable.
+                 */
+                register_staff_capabilities('ccx_support', [
+                    'capabilities' => [
+                        'ccx_login_as_client' => 'Login as client (view only)',
+                        'ccx_edit_as_client'  => 'Login as client (full edit access)',
+                    ],
+                    'help' => [
+                        'ccx_edit_as_client' => 'Allows changing data inside the client account while logged in as the client.',
+                    ],
+                ], 'Client Impersonation');
             }
         }
 
         //dashboard
         if (staff_can('view', 'perfex_saas_dashboard')) {
-            hooks()->add_filter('get_dashboard_widgets', function ($widgets) {
-
-                return array_merge([['path' => PERFEX_SAAS_MODULE_NAME . '/dashboard/overview_widget', 'container' => 'top-12']], $widgets);
-            });
-
+            // The core dashboard no longer renders widget containers (render_dashboard_widgets was removed),
+            // so the overview widget/chart is rendered directly through this hook instead.
             hooks()->add_action('before_start_render_dashboard_content', 'perfex_saas_dashboard_hook');
             function perfex_saas_dashboard_hook()
             {
+                echo '<div class="col-md-12 mtop15">';
+                get_instance()->load->view(PERFEX_SAAS_MODULE_NAME . '/dashboard/overview_widget', []);
+                echo '</div>';
+                get_instance()->load->view(PERFEX_SAAS_MODULE_NAME . '/dashboard/executive_charts', []);
+                get_instance()->load->view(PERFEX_SAAS_MODULE_NAME . '/dashboard/charts', []);
                 get_instance()->load->view(PERFEX_SAAS_MODULE_NAME . '/dashboard/index', []);
             }
         }

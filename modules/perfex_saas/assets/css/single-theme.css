@@ -37,11 +37,57 @@
 }
 
 .single-theme .top_stats_wrapper {
-	padding: 12px 22px 20px 22px;
+	padding: 10px 16px 14px 16px;
 	background: #fff;
-	border-radius: 7px;
-	box-shadow: 0 1px 7px 1px rgb(90 90 90 / 5%);
-	border: 1px solid #dce1ef;
+	border-radius: 12px;
+	box-shadow: 0 1px 4px rgba(15, 27, 51, 0.05);
+	border: 1px solid #e3e9f3;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.single-theme .top_stats_wrapper:hover {
+	border-color: #a9cfe5;
+	box-shadow: 0 5px 14px rgba(0, 150, 183, 0.16);
+}
+
+.single-theme #widget-saas_top_stats h4 {
+	font-size: 15px;
+	font-weight: 700;
+	color: #14213d;
+}
+
+.single-theme #widget-saas_top_stats .package-customization-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border: 1px solid #d3e5f2;
+	background: #eaf4fb;
+	color: #1e3d7b;
+	border-radius: 999px;
+	padding: 5px 14px;
+	font-size: 12px;
+	font-weight: 600;
+	text-decoration: none;
+	transition: all 0.15s ease;
+}
+
+.single-theme #widget-saas_top_stats .package-customization-link:hover {
+	background: #1e3d7b;
+	border-color: #1e3d7b;
+	color: #fff;
+	box-shadow: 0 3px 8px rgba(18, 43, 92, 0.3);
+}
+
+.single-theme .top_stats_wrapper .progress {
+	height: 6px;
+	border-radius: 99px;
+	background: #edf2f8;
+	box-shadow: none;
+}
+
+.single-theme .top_stats_wrapper .progress .progress-bar {
+	border-radius: 99px;
+	box-shadow: none;
 }
 
 .single-theme .company-info .form-control-static {
@@ -62,9 +108,6 @@
 	flex: 2;
 }
 
-.single-theme .company-info .form-group label::after {
-	content: ":";
-}
 
 .single-theme .company-info h4.company-view-heading {
 	display: none;

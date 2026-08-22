@@ -3908,8 +3908,8 @@ $lang['default_filter_info'] = 'Filtre yalnızca sizin hesabınız için varsay�
 $lang['required_register_fields'] = 'Kayıt için gerekli alanlar (müşteri alanı)';
 
 # Version 3.1.6
-$lang['allow_non_admin_members_to_edit_ticket_messages'] = 'Allow non-admin staff members to edit ticket messages';
-$lang['proposal_auto_convert_to_invoice_on_client_accept'] = 'Müşteri kabul ettikten sonra öneriyi otomatik olarak faturaya çevir';
+$lang['allow_non_admin_members_to_edit_ticket_messages'] = 'Yönetici olmayan personel üyelerinin biletleri ve yanıtları silmesine izin ver';
+$lang['proposal_auto_convert_to_invoice_on_client_accept'] = 'Müşteri kabul ettikten sonra öneriyi otomatik olarak faturaya çevir (yalnızca müşteri ile ilgili öneriler)';
 $lang['invoice_activity_auto_converted_from_proposal']      = '%s numaralı öneriden otomatik olarak oluşturulan fatura';
 $lang['clients_proposal_invoiced_successfully'] = 'Öneriyi kabul ettiğiniz için teşekkür ederiz. Öneri için oluşturulan faturayı inceleyin.';
 
@@ -4040,8 +4040,3 @@ $lang['csv_export_twelve_months'] = 'Last 12 Months';
 $lang['csv_export_from_date'] = 'From Date';
 $lang['csv_export_to_date'] = 'To Date';
 $lang['csv_export_button'] = 'Export';
-
-# 3.4.1
-$lang['clear_queue'] = 'Clear Queue';
-$lang['email_queue_cleared'] = 'Email queue cleared successfully';
-$lang['proposal_auto_convert_leads_to_client_on_client_accept'] = 'Auto convert leads to clients when proposal is accepted';

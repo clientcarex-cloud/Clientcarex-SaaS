@@ -114,7 +114,10 @@ class MX_Router extends CI_Router
         }
 
         // CUSTOM CODE START
-        if (count($segments) >= 2 && $segments[0] == ADMIN_URI && is_dir(APP_MODULES_PATH . $segments[1])) {
+        // Check if first segment is admin URI (supports custom admin URL)
+        // After route rewriting, segments may start with 'admin' even when ADMIN_URI is the custom path
+        $admin_check = ($segments[0] == ADMIN_URI || $segments[0] == 'admin');
+        if (count($segments) >= 2 && $admin_check && is_dir(APP_MODULES_PATH . $segments[1])) {
             unset($segments[0]);
             $segments = array_values($segments);
         }

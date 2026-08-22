@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Checkout Flow';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Valitse, mitä Stripe-kassakokemusta haluat käyttää tilauksissa. Setup-tila kerää ensin maksutavat ja luo sitten tilaukset. Tilaustila näyttää tilauksen tiedot kassalla ja hoitaa maksujen keräämisen automaattisesti.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Asetustila (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Tilaustila (suositeltava)';
-$lang['perfex_saas_sync_all_packages'] = 'Synkronoi kaikki';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Tilaa paketin räätälöinnin avaamiseksi.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Tämä demo nollautuu %s. Huomaa, että kaikki lisätyt tiedot tyhjennetään ja järjestelmä saattaa hidastua hetkeksi.';

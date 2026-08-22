@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Fluxo de checkout do Stripe';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Escolha a experiência de checkout do Stripe a ser usada para assinaturas. O modo de configuração coleta os métodos de pagamento primeiro e depois cria as assinaturas. O modo de assinatura mostra os detalhes da assinatura durante o checkout e lida com a cobrança do pagamento automaticamente.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Modo de configuração (legado)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Modo de assinatura (recomendado)';
-$lang['perfex_saas_sync_all_packages'] = 'Sincronizar tudo';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Inscreva-se para desbloquear a personalização do pacote.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Esta demonstração será reiniciada em %s. Observe que todos os dados adicionados serão apagados e o sistema poderá ficar lento por um momento.';

@@ -222,7 +222,7 @@ function staff_profile_image_url($staff_id, $type = 'small')
 
     if ($staff) {
         if (!empty($staff->profile_image)) {
-            $profileImagePath = 'uploads/staff_profile_images/' . $staff_id . '/' . $type . '_' . $staff->profile_image;
+            $profileImagePath = perfex_saas_get_upload_path_by_type('staff',false) . $staff_id . '/' . $type . '_' . $staff->profile_image;
             if (file_exists($profileImagePath)) {
                 $url = base_url($profileImagePath);
             }
@@ -272,7 +272,7 @@ function staff_profile_image($id, $classes = ['staff-profile-image'], $type = 's
     }
 
     if ($result && $result->profile_image !== null) {
-        $profileImagePath = 'uploads/staff_profile_images/' . $id . '/' . $type . '_' . $result->profile_image;
+        $profileImagePath = perfex_saas_get_upload_path_by_type('staff',false) . $id . '/' . $type . '_' . $result->profile_image;
         if (file_exists($profileImagePath)) {
             $profile_image = '<img ' . $_attributes . ' src="' . base_url($profileImagePath) . '" class="' . implode(' ', $classes) . '" />';
         } else {

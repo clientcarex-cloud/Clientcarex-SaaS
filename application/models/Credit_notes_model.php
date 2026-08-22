@@ -110,13 +110,6 @@ class Credit_notes_model extends App_Model
                             'type'       => 'application/pdf',
                         ]);
                     }
-
-                    hooks()->do_action('before_credit_note_sent_to_client', [
-                        'credit_note' => $credit_note,
-                        'contact' => $contact,
-                        'template' => $template,
-                    ]);
-
                     if ($template->send()) {
                         $sent = true;
                     }

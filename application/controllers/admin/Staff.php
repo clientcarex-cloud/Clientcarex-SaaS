@@ -226,15 +226,10 @@ class Staff extends AdminController
                 set_alert('success', _l('staff_profile_updated'));
             }
 
-            redirect(admin_url('staff/edit_profile/' . get_staff_user_id()));
+            redirect(admin_url('profile'));
         }
-        $member = $this->staff_model->get(get_staff_user_id());
-        $this->load->model('departments_model');
-        $data['member']            = $member;
-        $data['departments']       = $this->departments_model->get();
-        $data['staff_departments'] = $this->departments_model->get_staff_departments($member->staffid);
-        $data['title']             = $member->firstname . ' ' . $member->lastname;
-        $this->load->view('admin/staff/profile', $data);
+        // Edit profile is merged into the My Profile page
+        redirect(admin_url('profile'));
     }
 
     /* Remove staff profile image / ajax */
@@ -255,7 +250,7 @@ class Staff extends AdminController
         ]);
 
         if (!is_numeric($id)) {
-            redirect(admin_url('staff/edit_profile/' . $staff_id));
+            redirect(admin_url('profile'));
         } else {
             redirect(admin_url('staff/member/' . $staff_id));
         }
@@ -275,7 +270,7 @@ class Staff extends AdminController
                     set_alert('warning', _l('staff_problem_changing_password'));
                 }
             }
-            redirect(admin_url('staff/edit_profile'));
+            redirect(admin_url('profile'));
         }
     }
 
@@ -299,11 +294,12 @@ class Staff extends AdminController
         $data['staff_departments'] = $this->departments_model->get_staff_departments($data['staff_p']->staffid);
         $data['departments']       = $this->departments_model->get();
         $data['title']             = _l('staff_profile_string') . ' - ' . $data['staff_p']->firstname . ' ' . $data['staff_p']->lastname;
-        // notifications
-        $total_notifications = total_rows(db_prefix() . 'notifications', [
-            'touserid' => get_staff_user_id(),
-        ]);
-        $data['total_pages'] = ceil($total_notifications / $this->misc_model->get_notifications_limit());
+
+        // Own profile also renders the edit profile / password / 2FA forms (merged from edit_profile)
+        if ($id == get_staff_user_id()) {
+            $data['member'] = $data['staff_p'];
+        }
+
         $this->load->view('admin/staff/myprofile', $data);
     }
 
@@ -400,12 +396,12 @@ class Staff extends AdminController
                 }
                 if ($success) {
                     set_alert('success', _l('set_two_factor_authentication_successful'));
-                    redirect(admin_url('staff/edit_profile/' . get_staff_user_id()));
+                    redirect(admin_url('profile'));
                 }
             }
         }
         set_alert('danger', $fail_reason);
-        redirect(admin_url('staff/edit_profile/' . get_staff_user_id()));
+        redirect(admin_url('profile'));
     }
 
     public function verify_google_two_factor()

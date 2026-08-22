@@ -52,7 +52,6 @@ return App_table::find('projects')
             array_push($join, 'LEFT JOIN ' . db_prefix() . 'customfieldsvalues as ctable_' . $key . ' ON ' . db_prefix() . 'projects.id = ctable_' . $key . '.relid AND ctable_' . $key . '.fieldto="' . $field['fieldto'] . '" AND ctable_' . $key . '.fieldid=' . $field['id']);
         }
 
-        $join = hooks()->apply_filters('projects_table_sql_join', $join);
         $aColumns = hooks()->apply_filters('projects_table_sql_columns', $aColumns);
 
         // Fix for big queries. Some hosting have max_join_limit

@@ -155,7 +155,7 @@ $stripe_pricing_select = function ($name) use ($stripe_plans, $package_stripe_se
                         </div>
 
                         <?php $value = ($package_stripe_settings->terms ?? ''); ?>
-                        <?php echo render_textarea('metadata[stripe][terms]', 'terms_and_conditions', $value, ['placeholder' => _l('subscriptions_terms_info'), 'id' => 'terms_' . $package->slug, 'maxlength' => '1200'], [], '', 'ays-ignore'); ?>
+                        <?php echo render_textarea('metadata[stripe][terms]', 'terms_and_conditions', $value, ['placeholder' => _l('subscriptions_terms_info'), 'id' => 'terms_' . $package->slug], [], '', 'ays-ignore'); ?>
                     </div>
                 </div>
 

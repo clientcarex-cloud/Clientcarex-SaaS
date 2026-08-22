@@ -89,9 +89,9 @@ if ($is_tenant) {
             );
         }
     }
-    hooks()->add_filter('get_dashboard_widgets', function ($widgets) {
-        return array_merge([['path' => PERFEX_SAAS_MODULE_NAME . '/includes/quota_stats', 'container' => 'top-12']], $widgets);
-    });
+    // hooks()->add_filter('get_dashboard_widgets', function ($widgets) {
+    //     return array_merge([['path' => PERFEX_SAAS_MODULE_NAME . '/includes/quota_stats', 'container' => 'top-12']], $widgets);
+    // });
 
     // Load custom css
     hooks()->add_action('app_admin_assets_added', function () use ($CI) {

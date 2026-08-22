@@ -57,7 +57,6 @@ return App_table::find('expenses')
         $sIndexColumn = 'id';
         $sTable       = db_prefix() . 'expenses';
 
-        $join = hooks()->apply_filters('expenses_table_sql_join', $join);
         $aColumns = hooks()->apply_filters('expenses_table_sql_columns', $aColumns);
 
         // Fix for big queries. Some hosting have max_join_limit

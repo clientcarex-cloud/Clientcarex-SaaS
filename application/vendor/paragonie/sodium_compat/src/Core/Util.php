@@ -135,8 +135,6 @@ abstract class ParagonIE_Sodium_Core_Util
             $len = max($leftLen, $rightLen);
             $left = str_pad($left, $len, "\x00");
             $right = str_pad($right, $len, "\x00");
-        } elseif ($leftLen !== $rightLen) {
-            throw new SodiumException("Argument #1 and argument #2 must have the same length");
         }
 
         $gt = 0;
@@ -178,7 +176,7 @@ abstract class ParagonIE_Sodium_Core_Util
      * @param string $ignore
      * @param bool $strictPadding
      * @return string (raw binary)
-     * @throws SodiumException
+     * @throws RangeException
      * @throws TypeError
      */
     public static function hex2bin(
@@ -192,6 +190,17 @@ abstract class ParagonIE_Sodium_Core_Util
         $c_acc = 0;
         $hex_len = self::strlen($hexString);
         $state = 0;
+        if (($hex_len & 1) !== 0) {
+            if ($strictPadding) {
+                throw new RangeException(
+                    'Expected an even number of hexadecimal characters'
+                );
+            } else {
+                $hexString = '0' . $hexString;
+                ++$hex_len;
+            }
+        }
+
         $chunk = unpack('C*', $hexString);
         while ($hex_pos < $hex_len) {
             ++$hex_pos;
@@ -205,7 +214,7 @@ abstract class ParagonIE_Sodium_Core_Util
                 if ($ignore && $state === 0 && str_contains($ignore, self::intToChr($c))) {
                     continue;
                 }
-                throw new SodiumException(
+                throw new RangeException(
                     'hex2bin() only expects hexadecimal characters'
                 );
             }
@@ -216,11 +225,6 @@ abstract class ParagonIE_Sodium_Core_Util
                 $bin .= pack('C', $c_acc | $c_val);
             }
             $state ^= 1;
-        }
-        if ($strictPadding && $state !== 0) {
-            throw new SodiumException(
-                'Expected an even number of hexadecimal characters'
-            );
         }
         return $bin;
     }
@@ -349,8 +353,10 @@ abstract class ParagonIE_Sodium_Core_Util
         #[SensitiveParameter]
         string $right
     ): int {
-        $e = (int) !self::hashEquals($left, $right);
-        return 0 - $e;
+        if (self::hashEquals($left, $right)) {
+            return 0;
+        }
+        return -1;
     }
 
     /**
@@ -501,6 +507,8 @@ abstract class ParagonIE_Sodium_Core_Util
      *
      * @internal You should not use this directly from another application
      *
+     * @ref mbstring.func_overload
+     *
      * @param string $str
      * @return int
      * @throws TypeError
@@ -509,7 +517,11 @@ abstract class ParagonIE_Sodium_Core_Util
         #[SensitiveParameter]
         string $str
     ): int {
-        return strlen($str);
+        return (
+        self::isMbStringOverride()
+            ? mb_strlen($str, '8bit')
+            : strlen($str)
+        );
     }
 
     /**
@@ -533,6 +545,8 @@ abstract class ParagonIE_Sodium_Core_Util
      *
      * @internal You should not use this directly from another application
      *
+     * @ref mbstring.func_overload
+     *
      * @param string $str
      * @param int $start
      * @param ?int $length
@@ -549,7 +563,20 @@ abstract class ParagonIE_Sodium_Core_Util
             return '';
         }
 
-        return substr($str, $start, $length);
+        if (self::isMbStringOverride()) {
+            if (PHP_VERSION_ID < 50400 && $length === null) {
+                $length = self::strlen($str);
+            }
+            $sub = mb_substr($str, $start, $length, '8bit');
+        } elseif ($length === null) {
+            $sub = substr($str, $start);
+        } else {
+            $sub = substr($str, $start, $length);
+        }
+        if ($sub !== '') {
+            return $sub;
+        }
+        return '';
     }
 
     /**
@@ -617,4 +644,33 @@ abstract class ParagonIE_Sodium_Core_Util
         return $a ^ $b;
     }
 
+    /**
+     * Returns whether or not mbstring.func_overload is in effect.
+     *
+     * @internal You should not use this directly from another application
+     *
+     * Note: MB_OVERLOAD_STRING === 2, but we don't reference the constant
+     * (for nuisance-free PHP 8 support)
+     *
+     * @return bool
+     */
+    protected static function isMbStringOverride(): bool
+    {
+        static $mbstring = null;
+
+        if ($mbstring === null) {
+            if (!defined('MB_OVERLOAD_STRING')) {
+                $mbstring = false;
+                return $mbstring;
+            }
+            $mbstring = extension_loaded('mbstring')
+                && defined('MB_OVERLOAD_STRING')
+                &&
+            ((int) (ini_get('mbstring.func_overload')) & 2);
+            // MB_OVERLOAD_STRING === 2
+        }
+        /** @var bool $mbstring */
+
+        return $mbstring;
+    }
 }

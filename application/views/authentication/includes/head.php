@@ -6,6 +6,13 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
+    <?php if (get_option('ccx_wpa_enabled') == '1') { ?>
+    <meta name="theme-color" content="<?= e(get_option('ccx_wpa_theme_color') ?: '#1B74E4'); ?>" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="<?= site_url('pwa/manifest'); ?>" />
+    <link rel="apple-touch-icon" href="<?= base_url('assets/images/pwa/icon-192x192.png'); ?>" />
+    <?php } ?>
     <title>
         <?php echo e(get_option('companyname')); ?> - <?php echo _l('admin_auth_login_heading'); ?>
     </title>
@@ -56,4 +63,8 @@
     <link href="<?php echo base_url('assets/css/custom.css'); ?>" rel="stylesheet" id="custom-css">
     <?php } ?>
     <?php hooks()->do_action('app_admin_authentication_head'); ?>
+    <?php if (get_option('ccx_wpa_enabled') == '1') { ?>
+    <!-- PWA Service Worker Registration -->
+    <script src="<?= base_url('assets/js/pwa-register.js'); ?>" defer></script>
+    <?php } ?>
 </head>

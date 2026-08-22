@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Fluxul de checkout Stripe';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Alegeți ce experiență de checkout Stripe să utilizați pentru abonamente. Modul Setup colectează mai întâi metodele de plată, apoi creează abonamentele. Modul Abonament afișează detaliile abonamentului în timpul procesului de checkout și gestionează automat colectarea plăților.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Mod configurare (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Modul abonament (recomandat)';
-$lang['perfex_saas_sync_all_packages'] = 'Sync All';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Vă rugăm să vă abonați pentru a debloca personalizarea pachetului.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Această demonstrație va fi resetată în %s. Vă rugăm să rețineți că toate datele adăugate vor fi șterse, iar sistemul poate încetini pentru un moment.';

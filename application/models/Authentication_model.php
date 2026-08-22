@@ -19,18 +19,13 @@ class Authentication_model extends App_Model
     /**
      * @param  string Email address for login
      * @param  string User Password
-     * @param  bool Set cookies for user if remember me is checked
-     * @param  bool Is Staff Or Client
-     * @param mixed $email
-     * @param mixed $password
-     * @param mixed $remember
-     * @param mixed $staff
-     *
-     * @return bool if not redirect url found, if found redirect to the url
+     * @param  boolean Set cookies for user if remember me is checked
+     * @param  boolean Is Staff Or Client
+     * @return boolean if not redirect url found, if found redirect to the url
      */
     public function login($email, $password, $remember, $staff)
     {
-        if ((! empty($email)) and (! empty($password))) {
+        if ((!empty($email)) and (!empty($password))) {
             $table = db_prefix() . 'contacts';
             $_id   = 'id';
             if ($staff == true) {
@@ -41,7 +36,7 @@ class Authentication_model extends App_Model
             $user = $this->db->get($table)->row();
             if ($user) {
                 // Email is okey lets check the password now
-                if (! $user->password || ! app_hasher()->CheckPassword($password, $user->password)) {
+                if (!$user->password || !app_hasher()->CheckPassword($password, $user->password)) {
                     hooks()->do_action('failed_login_attempt', [
                         'user'            => $user,
                         'is_staff_member' => $staff,
@@ -79,14 +74,14 @@ class Authentication_model extends App_Model
             if ($staff == true) {
                 $twoFactorAuth = $user->two_factor_auth_enabled == 0 ? false : true;
 
-                if (! $twoFactorAuth) {
+                if (!$twoFactorAuth) {
                     hooks()->do_action('before_staff_login', [
                         'email'  => $email,
-                        'userid' => $user->{$_id},
+                        'userid' => $user->$_id,
                     ]);
 
                     $user_data = [
-                        'staff_user_id'   => $user->{$_id},
+                        'staff_user_id'   => $user->$_id,
                         'staff_logged_in' => true,
                     ];
                 } else {
@@ -100,23 +95,23 @@ class Authentication_model extends App_Model
                 hooks()->do_action('before_client_login', [
                     'email'           => $email,
                     'userid'          => $user->userid,
-                    'contact_user_id' => $user->{$_id},
+                    'contact_user_id' => $user->$_id,
                 ]);
 
                 $user_data = [
                     'client_user_id'   => $user->userid,
-                    'contact_user_id'  => $user->{$_id},
+                    'contact_user_id'  => $user->$_id,
                     'client_logged_in' => true,
                 ];
             }
             $this->session->set_userdata($user_data);
 
-            if (! $twoFactorAuth) {
+            if (!$twoFactorAuth) {
                 if ($remember) {
-                    $this->create_autologin($user->{$_id}, $staff);
+                    $this->create_autologin($user->$_id, $staff);
                 }
 
-                $this->update_login_info($user->{$_id}, $staff);
+                $this->update_login_info($user->$_id, $staff);
             } else {
                 return ['two_factor_auth' => true, 'user' => $user];
             }
@@ -128,9 +123,7 @@ class Authentication_model extends App_Model
     }
 
     /**
-     * @param  bool If Client or Staff
-     * @param mixed $staff
-     *
+     * @param  boolean If Client or Staff
      * @return none
      */
     public function logout($staff = true)
@@ -153,23 +146,19 @@ class Authentication_model extends App_Model
     }
 
     /**
-     * @param  int ID to create autologin
-     * @param  bool Is Client or Staff
-     * @param mixed $user_id
-     * @param mixed $staff
-     *
-     * @return bool
+     * @param  integer ID to create autologin
+     * @param  boolean Is Client or Staff
+     * @return boolean
      */
     private function create_autologin($user_id, $staff)
     {
         $this->load->helper('cookie');
-        $key = bin2hex(random_bytes(32));
+        $key = substr(md5(uniqid(rand() . get_cookie($this->config->item('sess_cookie_name')))), 0, 16);
         $this->user_autologin->delete($user_id, $key, $staff);
-
-        if ($this->user_autologin->set($user_id, hash('sha256', $key), $staff)) {
+        if ($this->user_autologin->set($user_id, md5($key), $staff)) {
             set_cookie([
                 'name'  => 'autologin',
-                'value' => json_encode([
+                'value' => serialize([
                     'user_id' => $user_id,
                     'key'     => $key,
                 ]),
@@ -183,63 +172,31 @@ class Authentication_model extends App_Model
     }
 
     /**
-     * @param  bool Is Client or Staff
-     * @param mixed $staff
-     *
+     * @param  boolean Is Client or Staff
      * @return none
      */
     private function delete_autologin($staff)
     {
         $this->load->helper('cookie');
         if ($cookie = get_cookie('autologin', true)) {
-            $data = json_decode($cookie, true);
-
-            // Validate decoded data
-            if (! is_array($data) || ! isset($data['user_id']) || ! isset($data['key'])) {
-                delete_cookie('autologin', 'aal');
-
-                return;
-            }
-
-            // Validate data types
-            if (! is_numeric($data['user_id']) || ! is_string($data['key'])) {
-                delete_cookie('autologin', 'aal');
-
-                return;
-            }
-
-            $this->user_autologin->delete($data['user_id'], hash('sha256', $data['key']), $staff);
+            $data = unserialize($cookie);
+            $this->user_autologin->delete($data['user_id'], md5($data['key']), $staff);
             delete_cookie('autologin', 'aal');
         }
     }
 
     /**
-     * @return bool
-     *              Check if autologin found
+     * @return boolean
+     * Check if autologin found
      */
     public function autologin()
     {
-        if (! is_logged_in()) {
+        if (!is_logged_in()) {
             $this->load->helper('cookie');
             if ($cookie = get_cookie('autologin', true)) {
-                $data = json_decode($cookie, true);
-
-                // Validate decoded data is an array and has required keys
-                if (! is_array($data)) {
-                    delete_cookie('autologin', 'aal');
-
-                    return false;
-                }
-
+                $data = unserialize($cookie);
                 if (isset($data['key']) and isset($data['user_id'])) {
-                    // Validate data types
-                    if (! is_numeric($data['user_id']) || ! is_string($data['key'])) {
-                        delete_cookie('autologin', 'aal');
-
-                        return false;
-                    }
-
-                    if (! is_null($user = $this->user_autologin->get($data['user_id'], hash('sha256', $data['key'])))) {
+                    if (!is_null($user = $this->user_autologin->get($data['user_id'], md5($data['key'])))) {
                         // Login user
                         if ($user->staff == 1) {
                             $user_data = [
@@ -277,13 +234,10 @@ class Authentication_model extends App_Model
     }
 
     /**
-     * @param  int ID
-     * @param  bool Is Client or Staff
-     * @param mixed $user_id
-     * @param mixed $staff
-     *
+     * @param  integer ID
+     * @param  boolean Is Client or Staff
      * @return none
-     *              Update login info on autologin
+     * Update login info on autologin
      */
     private function update_login_info($user_id, $staff)
     {
@@ -303,7 +257,6 @@ class Authentication_model extends App_Model
 
     /**
      * Send set password email for contacts
-     *
      * @param string $email
      */
     public function set_password_email($email)
@@ -349,11 +302,8 @@ class Authentication_model extends App_Model
     /**
      * @param  string Email from the user
      * @param  Is Client or Staff
-     * @param mixed $email
-     * @param mixed $staff
-     *
-     * @return bool
-     *              Generate new password key for the user to reset the password.
+     * @return boolean
+     * Generate new password key for the user to reset the password.
      */
     public function forgot_password($email, $staff = false)
     {
@@ -376,7 +326,7 @@ class Authentication_model extends App_Model
             }
 
             $new_pass_key = app_generate_hash();
-            $this->db->where($_id, $user->{$_id});
+            $this->db->where($_id, $user->$_id);
             $this->db->update($table, [
                 'new_pass_key'           => $new_pass_key,
                 'new_pass_key_requested' => date('Y-m-d H:i:s'),
@@ -385,13 +335,13 @@ class Authentication_model extends App_Model
             if ($this->db->affected_rows() > 0) {
                 $data['new_pass_key'] = $new_pass_key;
                 $data['staff']        = $staff;
-                $data['userid']       = $user->{$_id};
+                $data['userid']       = $user->$_id;
                 $merge_fields         = [];
 
                 if ($staff == false) {
-                    $sent = send_mail_template('customer_contact_forgot_password', $user->email, $user->userid, $user->{$_id}, $data);
+                    $sent = send_mail_template('customer_contact_forgot_password', $user->email, $user->userid, $user->$_id, $data);
                 } else {
-                    $sent = send_mail_template('staff_forgot_password', $user->email, $user->{$_id}, $data);
+                    $sent = send_mail_template('staff_forgot_password', $user->email, $user->$_id, $data);
                 }
 
                 if ($sent) {
@@ -414,15 +364,14 @@ class Authentication_model extends App_Model
 
     /**
      * Update user password from forgot password feature or set password
-     *
-     * @param bool   $staff        is staff or contact
-     * @param mixed  $userid
+     * @param boolean $staff        is staff or contact
+     * @param mixed $userid
      * @param string $new_pass_key the password generate key
      * @param string $password     new password
      */
     public function set_password($staff, $userid, $new_pass_key, $password)
     {
-        if (! $this->can_set_password($staff, $userid, $new_pass_key)) {
+        if (!$this->can_set_password($staff, $userid, $new_pass_key)) {
             return [
                 'expired' => true,
             ];
@@ -442,7 +391,7 @@ class Authentication_model extends App_Model
         $this->db->update($table, [
             'password' => $password,
         ]);
-
+        
         if ($this->db->affected_rows() > 0) {
             log_activity('User Set Password [User ID: ' . $userid . ', Is Staff Member: ' . ($staff == true ? 'Yes' : 'No') . ', IP: ' . $this->input->ip_address() . ']');
             $this->db->set('new_pass_key', null);
@@ -459,21 +408,16 @@ class Authentication_model extends App_Model
     }
 
     /**
-     * @param  bool Is Client or Staff
-     * @param  int ID
+     * @param  boolean Is Client or Staff
+     * @param  integer ID
      * @param  string
      * @param  string
-     * @param mixed $staff
-     * @param mixed $userid
-     * @param mixed $new_pass_key
-     * @param mixed $password
-     *
-     * @return bool
-     *              User reset password after successful validation of the key
+     * @return boolean
+     * User reset password after successful validation of the key
      */
     public function reset_password($staff, $userid, $new_pass_key, $password)
     {
-        if (! $this->can_reset_password($staff, $userid, $new_pass_key)) {
+        if (!$this->can_reset_password($staff, $userid, $new_pass_key)) {
             return [
                 'expired' => true,
             ];
@@ -503,11 +447,11 @@ class Authentication_model extends App_Model
             $user = $this->db->get($table)->row();
 
             if ($staff == false) {
-                $sent = send_mail_template('customer_contact_password_resetted', $user->email, $user->userid, $user->{$_id});
+                $sent = send_mail_template('customer_contact_password_resetted', $user->email, $user->userid, $user->$_id);
             } else {
-                $sent = send_mail_template('staff_password_resetted', $user->email, $user->{$_id});
+                $sent = send_mail_template('staff_password_resetted', $user->email, $user->$_id);
             }
-
+            
             if ($sent) {
                 return true;
             }
@@ -517,15 +461,11 @@ class Authentication_model extends App_Model
     }
 
     /**
-     * @param  int Is Client or Staff
-     * @param  int ID
+     * @param  integer Is Client or Staff
+     * @param  integer ID
      * @param  string Password reset key
-     * @param mixed $staff
-     * @param mixed $userid
-     * @param mixed $new_pass_key
-     *
-     * @return bool
-     *              Check if the key is not expired or not exists in database
+     * @return boolean
+     * Check if the key is not expired or not exists in database
      */
     public function can_reset_password($staff, $userid, $new_pass_key)
     {
@@ -543,23 +483,22 @@ class Authentication_model extends App_Model
         if ($user) {
             $timestamp_now_minus_1_hour = time() - (60 * 60);
             $new_pass_key_requested     = strtotime($user->new_pass_key_requested);
+            if ($timestamp_now_minus_1_hour > $new_pass_key_requested) {
+                return false;
+            }
 
-            return ! ($timestamp_now_minus_1_hour > $new_pass_key_requested);
+            return true;
         }
 
         return false;
     }
 
     /**
-     * @param  int Is Client or Staff
-     * @param  int ID
+     * @param  integer Is Client or Staff
+     * @param  integer ID
      * @param  string Password reset key
-     * @param mixed $staff
-     * @param mixed $userid
-     * @param mixed $new_pass_key
-     *
-     * @return bool
-     *              Check if the key is not expired or not exists in database
+     * @return boolean
+     * Check if the key is not expired or not exists in database
      */
     public function can_set_password($staff, $userid, $new_pass_key)
     {
@@ -575,8 +514,11 @@ class Authentication_model extends App_Model
         if ($user) {
             $timestamp_now_minus_48_hour = time() - (3600 * 48);
             $new_pass_key_requested      = strtotime($user->new_pass_key_requested);
+            if ($timestamp_now_minus_48_hour > $new_pass_key_requested) {
+                return false;
+            }
 
-            return ! ($timestamp_now_minus_48_hour > $new_pass_key_requested);
+            return true;
         }
 
         return false;
@@ -584,9 +526,7 @@ class Authentication_model extends App_Model
 
     /**
      * Get user from database by 2 factor authentication code
-     *
-     * @param string $code authentication code to search for
-     *
+     * @param  string $code authentication code to search for
      * @return object
      */
     public function get_user_by_two_factor_auth_code($code)
@@ -598,10 +538,8 @@ class Authentication_model extends App_Model
 
     /**
      * Login user via two factor authentication
-     *
-     * @param object $user user object
-     *
-     * @return bool
+     * @param  object $user user object
+     * @return boolean
      */
     public function two_factor_auth_login($user)
     {
@@ -634,11 +572,9 @@ class Authentication_model extends App_Model
 
     /**
      * Check if 2 factor authentication code sent to email is valid for usage
-     *
-     * @param string $code  auth code
-     * @param string $email email of staff login in
-     *
-     * @return bool
+     * @param  string  $code auth code
+     * @param  string  $email email of staff login in
+     * @return boolean
      */
     public function is_two_factor_code_valid($code, $email)
     {
@@ -648,24 +584,24 @@ class Authentication_model extends App_Model
         $user = $this->db->get(db_prefix() . 'staff')->row();
 
         // Code not exists because no user is found
-        if (! $user) {
+        if (!$user) {
             return false;
         }
 
         $timestamp_minus_1_hour = time() - (60 * 60);
         $new_code_key_requested = strtotime($user->two_factor_auth_code_requested);
-
         // The code is older then 1 hour and its not valid
-        return ! ($timestamp_minus_1_hour > $new_code_key_requested);
+        if ($timestamp_minus_1_hour > $new_code_key_requested) {
+            return false;
+        }
         // Code is valid
+        return true;
     }
 
     /**
      * Clears 2 factor authentication code in database
-     *
-     * @param mixed $id
-     *
-     * @return bool
+     * @param  mixed $id
+     * @return boolean
      */
     public function clear_two_factor_auth_code($id)
     {
@@ -679,7 +615,6 @@ class Authentication_model extends App_Model
 
     /**
      * Set 2 factor authentication code for staff member
-     *
      * @param mixed $id staff id
      */
     public function set_two_factor_auth_code($id)
@@ -698,17 +633,16 @@ class Authentication_model extends App_Model
 
     public function get_qr($System_name)
     {
-        $staff     = get_staff(get_staff_user_id());
+        $staff    = get_staff(get_staff_user_id());
         $google2fa = new PragmaRX\Google2FA\Google2FA();
-        $secret    = $google2fa->generateSecretKey();
-        $g2faUrl   = $google2fa->getQRCodeUrl($System_name, $staff->email, $secret);
-        $writer    = new Writer(
+        $secret   = $google2fa->generateSecretKey();
+        $g2faUrl      = $google2fa->getQRCodeUrl($System_name, $staff->email, $secret);
+        $writer = new Writer(
             new ImageRenderer(
                 new RendererStyle(200),
                 new ImagickImageBackEnd()
             )
         );
-
         return ['qrURL' => base64_encode($writer->writeString($g2faUrl)), 'secret' => $secret];
     }
 
@@ -723,14 +657,18 @@ class Authentication_model extends App_Model
             'google_auth_secret'      => $secret,
         ]);
 
-        return (bool) ($success);
+        if ($success) {
+            return true;
+        }
+
+        return false;
     }
 
     public function is_google_two_factor_code_valid($code, $secret = null)
     {
         $g = new PragmaRX\Google2FA\Google2FA();
 
-        if (! is_null($secret)) {
+        if (!is_null($secret)) {
             return $g->verifyKey($secret, $code, 0);
         }
 

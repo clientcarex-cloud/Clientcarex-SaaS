@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripeチェックアウトフロ�
 $lang['perfex_saas_stripe_checkout_flow_hint'] = '購読に使用するStripeチェックアウトエクスペリエンスを選択します。セットアップモードでは、まず支払い方法を収集し、その後購読を作成します。サブスクリプションモードでは、チェックアウト時にサブスクリプションの詳細が表示され、支払いの収集が自動的に処理されます。';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'セットアップ・モード（レガシー）';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'サブスクリプション・モード（推奨）';
-$lang['perfex_saas_sync_all_packages'] = 'すべて同期';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'パッケージのカスタマイズを解除するには購読してください。';
-$lang['perfex_saas_demo_reset_banner_message'] = 'このデモは %s でリセットされます。追加されたデータはすべてクリアされ、システムはしばらくの間遅くなるかもしれないことに注意してください。';

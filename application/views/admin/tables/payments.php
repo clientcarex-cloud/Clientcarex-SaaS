@@ -10,6 +10,7 @@ $aColumns = [
     'paymentmode',
     'transactionid',
     get_sql_select_client_company(),
+    'CONCAT(' . db_prefix() . 'staff.firstname, " ", ' . db_prefix() . 'staff.lastname) as staff_name',
     'amount',
     db_prefix() . 'invoicepaymentrecords.date as date',
 ];
@@ -19,6 +20,7 @@ $join = [
     'LEFT JOIN ' . db_prefix() . 'clients ON ' . db_prefix() . 'clients.userid = ' . db_prefix() . 'invoices.clientid',
     'LEFT JOIN ' . db_prefix() . 'currencies ON ' . db_prefix() . 'currencies.id = ' . db_prefix() . 'invoices.currency',
     'LEFT JOIN ' . db_prefix() . 'payment_modes ON ' . db_prefix() . 'payment_modes.id = ' . db_prefix() . 'invoicepaymentrecords.paymentmode',
+    'LEFT JOIN ' . db_prefix() . 'staff ON ' . db_prefix() . 'staff.staffid = ' . db_prefix() . 'invoicepaymentrecords.staff_id',
 ];
 
 $where = [];
@@ -37,7 +39,7 @@ if (staff_cant('view', 'payments')) {
 }
 
 $sIndexColumn = 'id';
-$sTable       = db_prefix() . 'invoicepaymentrecords';
+$sTable = db_prefix() . 'invoicepaymentrecords';
 
 $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, [
     'clientid',
@@ -47,7 +49,7 @@ $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, [
     'paymentmethod',
 ]);
 
-$output  = $result['output'];
+$output = $result['output'];
 $rResult = $result['rResult'];
 
 $this->ci->load->model('payment_modes_model');
@@ -88,7 +90,7 @@ foreach ($rResult as $aRow) {
         }
     }
 
-    if (! empty($aRow['paymentmethod'])) {
+    if (!empty($aRow['paymentmethod'])) {
         $outputPaymentMode .= ' - ' . e($aRow['paymentmethod']);
     }
     $row[] = $outputPaymentMode;
@@ -96,6 +98,20 @@ foreach ($rResult as $aRow) {
     $row[] = e($aRow['transactionid']);
 
     $row[] = '<a href="' . admin_url('clients/client/' . $aRow['clientid']) . '">' . e($aRow['company']) . '</a>';
+
+    $staff_name_output = $aRow['staff_name'];
+    if (empty($staff_name_output)) {
+        $this->ci->db->select('CONCAT(' . db_prefix() . 'staff.firstname, " ", ' . db_prefix() . 'staff.lastname) as staff_name');
+        $this->ci->db->from(db_prefix() . 'activity_log');
+        $this->ci->db->join(db_prefix() . 'staff', db_prefix() . 'staff.staffid = ' . db_prefix() . 'activity_log.staffid', 'left');
+        $this->ci->db->like('description', 'Payment Recorded [ID:' . $aRow['id'] . ',');
+        $this->ci->db->order_by('date', 'ASC');
+        $this->ci->db->limit(1);
+        $activity = $this->ci->db->get()->row();
+
+        $staff_name_output = ($activity && $activity->staff_name) ? $activity->staff_name : 'System/Online';
+    }
+    $row[] = e((string) $staff_name_output);
 
     $row[] = '<span class="tw-font-medium">' . e(app_format_money($aRow['amount'], $aRow['currency_name'])) . '</span>';
 

@@ -29,9 +29,10 @@ if ($mediaLocale != 'en' && file_exists(FCPATH . 'assets/plugins/elFinder/js/i18
         var FileBrowserDialogue = {
             init: function() {},
             mySubmit: function(URL) {
-                parent.tinymce.activeEditor.windowManager.elfinderCallback(URL.url)
-
-                parent.tinymce.activeEditor.windowManager.close();
+                window.parent.postMessage({
+                    mceAction: 'elFinderFile',
+                    url: URL.url
+                }, '*');
             }
         }
     </script>

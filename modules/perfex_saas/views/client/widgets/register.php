@@ -51,11 +51,22 @@ $can_use_customdomain = (int)$package->metadata->enable_custom_domain && (int)pe
  * @return void
  */
 function bindDomainInputToRegisterationForm() {
-    $(".register-country-group, .register-zip-group").addClass('col-md-6 tw-pl-0');
-    $(".register-city-group, .register-state-group").addClass('col-md-6 tw-pl-0 tw-pr-0');
-    $(".register-saas-info-group").insertAfter($(".register-company-group"));
-    $(".register-saas-info-group").show();
-    bindAndListenToSlugInput(".register-saas-info-group", "input[name=company]");
+    // New form layout: move widget into the placeholder container
+    var $placeholder = $(".ho-subdomain-placeholder");
+    if ($placeholder.length) {
+        $(".register-saas-info-group").appendTo($placeholder).show();
+        $placeholder.show();
+    } else {
+        // Fallback for old layout
+        $(".register-saas-info-group").insertAfter($(".register-company-group"));
+        $(".register-saas-info-group").show();
+    }
+    // Bind slug auto-fill to company name input (handles honeypot field names)
+    var companySelector = "input[name=company]";
+    if (!$(companySelector).length) {
+        companySelector = "input[name=companymjxw]";
+    }
+    bindAndListenToSlugInput(".register-saas-info-group", companySelector);
 }
 
 // Bind
@@ -68,3 +79,31 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <?php endif; ?>
+
+<!-- Always inject the package plan hidden field into the registration form via JS.
+     This ensures ps_plan is included in the POST data even when subdomain/custom domain
+     inputs are disabled (which skips the conditional block above). -->
+<script>
+(function() {
+    var planName = "<?= perfex_saas_route_id_prefix('plan'); ?>";
+    var planValue = "<?= e($package->slug); ?>";
+    function injectPlanField() {
+        var form = document.getElementById('register-form');
+        if (form && !form.querySelector('input[name="' + planName + '"]')) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = planName;
+            input.value = planValue;
+            form.appendChild(input);
+        }
+    }
+    // Try immediately, retry on DOMContentLoaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', injectPlanField);
+    } else {
+        injectPlanField();
+    }
+    // Backup with setTimeout in case form renders late
+    setTimeout(injectPlanField, 300);
+})();
+</script>

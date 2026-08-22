@@ -77,9 +77,25 @@ class Authentication extends ClientsController
 
     public function register()
     {
-        if (get_option('allow_registration') != 1 || is_client_logged_in()) {
+        // Allow registration when a SaaS package plan link is used (ps_plan parameter).
+        // Check POST (hidden form field), GET (URL param), and session (saved from initial visit).
+        $ps_plan_key = function_exists('perfex_saas_route_id_prefix')
+            ? perfex_saas_route_id_prefix('plan')
+            : 'ps_plan';
+        $has_saas_plan = !empty($this->input->post_get($ps_plan_key, true))
+                      || !empty($this->session->{$ps_plan_key});
+
+        // Allow access for OTP verification (user is logged in but needs to verify email)
+        $otp_pending = $this->session->userdata('otp_verification_pending');
+
+        if (!$has_saas_plan && !$otp_pending && (get_option('allow_registration') != 1 || is_client_logged_in())) {
             redirect(site_url());
         }
+
+        // Hide default Perfex header/footer for clean registration page
+        $this->disableNavigation();
+        $this->disableSubMenu();
+        $this->disableFooter();
 
         $requiredFields = get_required_fields_for_registration();
        
@@ -163,88 +179,229 @@ class Authentication extends ClientsController
         }
 
         if ($this->input->post()) {
+            // ══════ CANARY TEST — REMOVE AFTER DEBUGGING ══════
+            // This writes DIRECTLY to a file with ZERO dependencies on any module.
+            // If this file does NOT appear after signup → code is NOT deployed to the server.
+            $canary_file = APPPATH . 'logs/ccx_canary_test.log';
+            $canary_data = '[' . date('Y-m-d H:i:s') . '] CANARY: Form POST received!' . PHP_EOL;
+            $canary_data .= '  IP: ' . $this->input->ip_address() . PHP_EOL;
+            $canary_data .= '  POST keys: ' . implode(', ', array_keys($this->input->post())) . PHP_EOL;
+            $canary_data .= '  honeypot=' . ($honeypot ? 'YES' : 'NO') . PHP_EOL;
+            // Log field values (first 50 chars each) for diagnosis
+            foreach ($this->input->post() as $k => $v) {
+                if (is_string($v)) {
+                    $canary_data .= '  POST[' . $k . '] = ' . mb_substr($v, 0, 50) . PHP_EOL;
+                }
+            }
+            $canary_data .= '  ---' . PHP_EOL;
+            @file_put_contents($canary_file, $canary_data, FILE_APPEND | LOCK_EX);
+            // ══════ END CANARY TEST ══════
+
             if ($honeypot &&
                 count(array_filter($this->input->post(['email', 'firstname', 'lastname', 'company']))) > 0) {
                 show_404();
             }
 
-            if ($this->form_validation->run() !== false) {
-                $data      = $this->input->post();
-                $countryId = is_numeric($data['country']) ? $data['country'] : 0;
+            // CCX SignUp: Track registration attempt initiated
+            hooks()->do_action('ccx_signup_attempt_initiated', $this->input->post());
 
-                if (is_automatic_calling_codes_enabled()) {
-                    $customerCountry = get_country($countryId);
+            // Pre-validation debug logger
+            $debugLogFile = APPPATH . 'logs/register_debug.log';
+            $regDebugLog = function($msg) use ($debugLogFile) {
+                $timestamp = date('Y-m-d H:i:s');
+                $line = "[{$timestamp}] REGISTER_DEBUG: {$msg}" . PHP_EOL;
+                @file_put_contents($debugLogFile, $line, FILE_APPEND | LOCK_EX);
+            };
 
-                    if ($customerCountry) {
-                        $callingCode = '+' . ltrim($customerCountry->calling_code, '+');
+            $validationResult = $this->form_validation->run();
+            $regDebugLog('Validation result: ' . var_export($validationResult, true));
 
-                        if (startsWith($data['contact_phonenumber'], $customerCountry->calling_code)) { // with calling code but without the + prefix
-                            $data['contact_phonenumber'] = '+' . $data['contact_phonenumber'];
-                        } elseif (!startsWith($data['contact_phonenumber'], $callingCode)) {
-                            $data['contact_phonenumber'] = $callingCode . $data['contact_phonenumber'];
+            if ($validationResult === false) {
+                $regDebugLog('VALIDATION FAILED! Errors: ' . validation_errors(' | ', ' | '));
+                // CCX SignUp: Track failed registration attempt
+                hooks()->do_action('ccx_signup_attempt_failed', $this->input->post());
+            }
+
+            if ($validationResult !== false) {
+
+                try {
+                    $data      = $this->input->post();
+                    $countryId = is_numeric($data['country']) ? $data['country'] : 0;
+
+                    $regDebugLog('POST data received. Email: ' . ($data[$fields['email']] ?? 'N/A') . ', Country: ' . $countryId);
+
+                    if (is_automatic_calling_codes_enabled()) {
+                        $customerCountry = get_country($countryId);
+
+                        if ($customerCountry) {
+                            $callingCode = '+' . ltrim($customerCountry->calling_code, '+');
+
+                            if (startsWith($data['contact_phonenumber'], $customerCountry->calling_code)) { // with calling code but without the + prefix
+                                $data['contact_phonenumber'] = '+' . $data['contact_phonenumber'];
+                            } elseif (!startsWith($data['contact_phonenumber'], $callingCode)) {
+                                $data['contact_phonenumber'] = $callingCode . $data['contact_phonenumber'];
+                            }
                         }
                     }
-                }
 
-                define('CONTACT_REGISTERING', true);
+                    define('CONTACT_REGISTERING', true);
+                    $regDebugLog('CONTACT_REGISTERING defined. Calling clients_model->add()...');
 
-                $clientid = $this->clients_model->add([
-                      'billing_street'      => $data['address'],
-                      'billing_city'        => $data['city'],
-                      'billing_state'       => $data['state'],
-                      'billing_zip'         => $data['zip'],
-                      'billing_country'     => $countryId,
-                      'firstname'           => $data[$fields['firstname']],
-                      'lastname'            => $data[$fields['lastname']],
-                      'email'               => $data[$fields['email']],
-                      'contact_phonenumber' => $data['contact_phonenumber'] ,
-                      'website'             => $data['website'],
-                      'title'               => $data['title'],
-                      'password'            => $data['passwordr'],
-                      'company'             => $data[$fields['company']],
-                      'vat'                 => isset($data['vat']) ? $data['vat'] : '',
-                      'phonenumber'         => $data['phonenumber'],
-                      'country'             => $data['country'],
-                      'city'                => $data['city'],
-                      'address'             => $data['address'],
-                      'zip'                 => $data['zip'],
-                      'state'               => $data['state'],
-                      'custom_fields'       => isset($data['custom_fields']) && is_array($data['custom_fields']) ? $data['custom_fields'] : [],
-                      'default_language'    => (get_contact_language() != '') ? get_contact_language() : get_option('active_language'),
-                ], true);
+                    $clientid = $this->clients_model->add([
+                          'billing_street'      => $data['address'],
+                          'billing_city'        => $data['city'],
+                          'billing_state'       => $data['state'],
+                          'billing_zip'         => $data['zip'],
+                          'billing_country'     => $countryId,
+                          'firstname'           => $data[$fields['firstname']],
+                          'lastname'            => $data[$fields['lastname']],
+                          'email'               => $data[$fields['email']],
+                          'contact_phonenumber' => $data['contact_phonenumber'] ,
+                          'website'             => $data['website'],
+                          'title'               => $data['title'],
+                          'password'            => $data['passwordr'],
+                          'company'             => $data[$fields['company']],
+                          'vat'                 => isset($data['vat']) ? $data['vat'] : '',
+                          'phonenumber'         => $data['phonenumber'],
+                          'country'             => $data['country'],
+                          'city'                => $data['city'],
+                          'address'             => $data['address'],
+                          'zip'                 => $data['zip'],
+                          'state'               => $data['state'],
+                          'custom_fields'       => isset($data['custom_fields']) && is_array($data['custom_fields']) ? $data['custom_fields'] : [],
+                          'default_language'    => (get_contact_language() != '') ? get_contact_language() : get_option('active_language'),
+                    ], true);
 
-                if ($clientid) {
-                    hooks()->do_action('after_client_register', $clientid);
+                    $regDebugLog('clients_model->add() returned: ' . var_export($clientid, true));
 
-                    if (get_option('customers_register_require_confirmation') == '1') {
-                        send_customer_registered_email_to_administrators($clientid);
+                    if ($clientid) {
+                        // Step 1: after_client_register hook
+                        $regDebugLog('Step 1: Firing after_client_register hook...');
+                        try {
+                            hooks()->do_action('after_client_register', $clientid);
+                            $regDebugLog('Step 1: Hook completed OK');
+                        } catch (\Throwable $e) {
+                            $regDebugLog('Step 1: Hook FAILED - ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                            log_activity('Registration hook error: ' . $e->getMessage());
+                        }
 
-                        $this->clients_model->require_confirmation($clientid);
-                        set_alert('success', _l('customer_register_account_confirmation_approval_notice'));
-                        redirect(site_url('authentication/login'));
-                    }
+                        // Step 2: Check if confirmation is required
+                        $requireConfirmation = get_option('customers_register_require_confirmation');
+                        $regDebugLog('Step 2: Require confirmation = ' . var_export($requireConfirmation, true));
 
-                    $this->load->model('authentication_model');
+                        if ($requireConfirmation == '1') {
+                            $regDebugLog('Step 2a: Sending admin notification emails (confirmation path)...');
+                            try {
+                                send_customer_registered_email_to_administrators($clientid);
+                                $regDebugLog('Step 2a: Admin emails sent OK');
+                            } catch (\Throwable $e) {
+                                $regDebugLog('Step 2a: Admin emails FAILED - ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                                log_activity('Failed to send admin notification email on registration: ' . $e->getMessage());
+                            }
 
-                    $logged_in = $this->authentication_model->login(
-                        $data[$fields['email']],
-                        $this->input->post('password', false),
-                        false,
-                        false
-                    );
+                            $regDebugLog('Step 2b: Calling require_confirmation()...');
+                            try {
+                                $this->clients_model->require_confirmation($clientid);
+                                $regDebugLog('Step 2b: require_confirmation() OK');
+                            } catch (\Throwable $e) {
+                                $regDebugLog('Step 2b: require_confirmation FAILED - ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                            }
 
-                    $redUrl = site_url();
+                            $regDebugLog('Step 2c: Redirecting to login (confirmation required)...');
+                            set_alert('success', _l('customer_register_account_confirmation_approval_notice'));
+                            redirect(site_url('authentication/login'));
+                        }
 
-                    if ($logged_in) {
-                        hooks()->do_action('after_client_register_logged_in', $clientid);
+                        // Step 3: Auto-login
+                        $regDebugLog('Step 3: Loading authentication_model for auto-login...');
+                        $this->load->model('authentication_model');
+
+                        $redUrl = site_url('verification');
+                        $logged_in = false;
+
+                        try {
+                            $regDebugLog('Step 3a: Attempting auto-login for: ' . $data[$fields['email']]);
+                            $logged_in = $this->authentication_model->login(
+                                $data[$fields['email']],
+                                $this->input->post('password', false),
+                                false,
+                                false
+                            );
+                            $regDebugLog('Step 3a: Auto-login result: ' . var_export($logged_in, true));
+                        } catch (\Throwable $e) {
+                            $logged_in = false;
+                            $regDebugLog('Step 3a: Auto-login FAILED - ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                            log_activity('Auto-login after registration failed: ' . $e->getMessage());
+                        }
+
+                        if ($logged_in) {
+                            $regDebugLog('Step 4: Login successful, firing after_client_register_logged_in hook...');
+                            try {
+                                hooks()->do_action('after_client_register_logged_in', $clientid);
+                            } catch (\Throwable $e) {
+                                $regDebugLog('Step 4: after_client_register_logged_in hook FAILED - ' . get_class($e) . ': ' . $e->getMessage());
+                            }
+                        } else {
+                            $regDebugLog('Step 4: Auto-login failed or returned inactive status');
+                        }
+
                         set_alert('success', _l('clients_successfully_registered'));
-                    } else {
-                        set_alert('warning', _l('clients_account_created_but_not_logged_in'));
-                        $redUrl = site_url('authentication/login');
-                    }
 
-                    send_customer_registered_email_to_administrators($clientid);
-                    redirect($redUrl);
+                        // OTP verification: render Step 3 directly (no redirect)
+                        // Note: OTP email is already sent by Clients_model during contact creation
+                        $primary_contact_id = get_primary_contact_user_id($clientid);
+                        $regDebugLog('Step 4a: OTP flow - primary_contact_id = ' . var_export($primary_contact_id, true));
+
+                        $otp_email = $data[$fields['email']];
+                        $otp_phone = isset($data['contact_phonenumber']) ? $data['contact_phonenumber'] : '';
+
+                        // Store in session as backup
+                        $this->session->set_userdata('otp_verification_pending', true);
+                        $this->session->set_userdata('otp_user_email', $otp_email);
+                        $this->session->set_userdata('otp_user_phone', $otp_phone);
+
+                        // Step 5: Send admin notification
+                        $regDebugLog('Step 5: Sending admin notification emails...');
+                        try {
+                            send_customer_registered_email_to_administrators($clientid);
+                            $regDebugLog('Step 5: Admin emails sent OK');
+                        } catch (\Throwable $e) {
+                            $regDebugLog('Step 5: Admin emails FAILED - ' . $e->getMessage());
+                            log_activity('Failed to send admin notification email on registration: ' . $e->getMessage());
+                        }
+
+                        // RENDER DIRECTLY — do NOT redirect (avoids session loss from constructor logout)
+                        $regDebugLog('Step 6: Rendering OTP step directly (no redirect)');
+                        $regDebugLog('=== REGISTRATION COMPLETE ===');
+
+                        $data2 = [];
+                        $data2['title']     = _l('clients_register_heading');
+                        $data2['bodyclass'] = 'register';
+                        $data2['honeypot']  = $honeypot;
+                        $data2['fields']    = $fields;
+                        $data2['otp_verification_pending'] = true;
+                        $data2['otp_user_email']           = $otp_email;
+                        $data2['otp_user_phone']           = $otp_phone;
+                        $data2['otp_contact_id']           = $primary_contact_id;
+
+                        $this->data($data2);
+                        $this->view('register');
+                        $this->layout();
+                        return; // Stop execution — page is rendered
+                    } else {
+                        $regDebugLog('ERROR: clients_model->add() returned falsy. DB insert failed.');
+                        $regDebugLog('Last DB error: ' . json_encode($this->db->error()));
+                        set_alert('danger', _l('clients_register_account_failed', 'Registration failed. Please try again.'));
+                        redirect(site_url('authentication/register'));
+                    }
+                } catch (\Throwable $e) {
+                    // LAST RESORT: catch absolutely everything
+                    $regDebugLog('FATAL ERROR: ' . get_class($e) . ': ' . $e->getMessage());
+                    $regDebugLog('File: ' . $e->getFile() . ':' . $e->getLine());
+                    $regDebugLog('Trace: ' . $e->getTraceAsString());
+                    log_activity('FATAL registration error: ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                    set_alert('danger', 'An error occurred during registration. Please try again or contact support.');
+                    redirect(site_url('authentication/register'));
                 }
             }
         }
@@ -254,9 +411,62 @@ class Authentication extends ClientsController
         $data['bodyclass'] = 'register';
         $data['honeypot']  = $honeypot;
         $data['fields']    = $fields;
+
+        // OTP verification data
+        $data['otp_verification_pending'] = $this->session->userdata('otp_verification_pending') ? true : false;
+        $data['otp_user_email']           = $this->session->userdata('otp_user_email') ?: '';
+        $data['otp_user_phone']           = $this->session->userdata('otp_user_phone') ?: '';
+
         $this->data($data);
         $this->view('register');
         $this->layout();
+    }
+
+    /**
+     * AJAX: Track signup form step completion (per-step saving)
+     * Called from register.php JS when user transitions between steps.
+     */
+    public function track_signup_step()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        $step = (int) $this->input->post('step');
+
+        if ($step === 1) {
+            // Step 1 completed — save partial data
+            $honeypot = get_option('enable_honeypot_spam_validation') == 1;
+            $company_field = $honeypot ? 'companymjxw' : 'company';
+
+            $ps_plan_key = function_exists('perfex_saas_route_id_prefix')
+                ? perfex_saas_route_id_prefix('plan')
+                : 'ps_plan';
+
+            $step_data = [
+                'company_name' => $this->input->post($company_field, true) ?: '',
+                'plan_slug'    => $this->input->post($ps_plan_key, true)
+                                  ?: ($this->input->get($ps_plan_key, true) ?: ''),
+            ];
+
+            // Fire the hook so the ccx_signup module saves it
+            hooks()->do_action('ccx_signup_step1_completed', $step_data);
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'    => true,
+                'csrf_token' => $this->security->get_csrf_hash(),
+            ]);
+            exit;
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success'    => false,
+            'message'    => 'Unknown step.',
+            'csrf_token' => $this->security->get_csrf_hash(),
+        ]);
+        exit;
     }
 
     public function forgot_password()

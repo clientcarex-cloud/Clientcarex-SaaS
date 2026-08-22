@@ -115,7 +115,7 @@ if ($is_tenant) {
     hooks()->add_action('app_admin_footer', function () use ($disabled_features, $CI) {
         if (in_array($CI->router->fetch_class(), ['dashboard', 'staff', 'profile'])) {
             echo '<script>
-                    const DISABLED_FEATURES = ' . json_encode(array_values($disabled_features)) . ';
+                    const DISABLED_FEATURES = ' . json_encode($disabled_features) . ';
                     const DISABLED_FEATURE_ACTIVE_CONTROLLER ="' . $CI->router->fetch_class() . '";
                 </script>';
             echo '<script src=' . perfex_saas_asset_url('js/disabled_features.js') . '></script>';

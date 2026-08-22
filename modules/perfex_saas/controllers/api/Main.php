@@ -109,9 +109,22 @@ require_once __DIR__ . '/../Tenant_trait.php';
  *     @OA\Property(
  *         property="modules",
  *         type="array",
- *         description="List of modules included in the pricing plan",
+ *         description="List of module system names included in the pricing plan",
  *         @OA\Items(type="string"),
  *         example={"module1", "module2", "module3"}
+ *     ),
+ *     @OA\Property(
+ *         property="features",
+ *         type="array",
+ *         description="Display-ready feature list for the plan. Each of the plan's modules is shown with a public (namesake) name instead of its technical name, plus description and image, sorted by a manual order (lower first; unset keep natural module order). Modules marked Hide in SaaS settings → Modules are excluded entirely, so their technical names never appear. Use this to render the website plan feature checklist.",
+ *         @OA\Items(
+ *             type="object",
+ *             @OA\Property(property="system_name", type="string", description="Internal id (for reference; do not display)", example="estimate_request"),
+ *             @OA\Property(property="name", type="string", description="Public/namesake feature name to display instead of the technical name", example="Quote Requests"),
+ *             @OA\Property(property="description", type="string"),
+ *             @OA\Property(property="image", type="string"),
+ *             @OA\Property(property="order", type="integer", nullable=true, description="Manual sort position (lower first); null when unset")
+ *         )
  *     ),
  *     @OA\Property(
  *         property="metadata",
@@ -722,7 +735,10 @@ trait Main
                 'system_name' => $system_name,
                 'custom_name' => $custom_name,
                 'price' => $price,
-                'image' => $img
+                'image' => $img,
+                // Presentation controls for the public plan feature list
+                'visible' => $module['visible'] ?? true,
+                'order'   => $module['order'] ?? null,
             ];
         }
         return $this->response_json($result);
@@ -1405,6 +1421,102 @@ trait Main
 
     private function package_transformer($package)
     {
+        // Resolve the pricing plan group (e.g. HIMS/LIMS/CIMS) for the package. Plan groups are
+        // stored as customer groups and referenced from the package metadata. Memoize the
+        // id => name map so a list response does not issue one query per package.
+        static $groupMap = null;
+        if ($groupMap === null) {
+            $groupMap = [];
+            foreach ((array) $this->perfex_saas_model->pricing_plan_groups() as $g) {
+                $groupMap[(int) $g['id']] = $g['name'];
+            }
+        }
+
+        $plan_group_id = isset($package->metadata->plan_group_id) && $package->metadata->plan_group_id !== ''
+            ? (int) $package->metadata->plan_group_id : '';
+        $plan_group_name = ($plan_group_id !== '' && isset($groupMap[$plan_group_id])) ? $groupMap[$plan_group_id] : '';
+
+        // Build the display-ready feature list: the plan's enabled modules enriched
+        // with their public (namesake) name, description, image, show/hide flag and
+        // manual order, then sorted by order (unset orders keep natural module order).
+        // Module presentation config is global and edited under SaaS settings → Modules.
+        static $allModules = null;
+        if ($allModules === null) {
+            $allModules = $this->perfex_saas_model->modules();
+        }
+
+        // A plan may opt out of module features entirely (Smart Plans → "Show Module
+        // Features (website)" = No), leaving only its custom lines on the card.
+        $show_module_features = !in_array(
+            strtolower(trim((string) ($package->metadata->show_module_features ?? ''))),
+            ['0', 'no', 'false', 'off'],
+            true
+        );
+
+        $features        = [];
+        $enabled_modules = ($show_module_features && is_array($package->modules ?? null)) ? $package->modules : [];
+        $seq             = 0;
+        foreach ($enabled_modules as $system_name) {
+            if (!isset($allModules[$system_name])) {
+                continue; // module not installed anymore
+            }
+            $m = $allModules[$system_name];
+
+            // Honour the "hide" control: a module set to Hide is dropped from the
+            // public plan feature list entirely (its technical name never leaks).
+            if (!($m['visible'] ?? true)) {
+                continue;
+            }
+
+            $features[] = [
+                'system_name' => $system_name,
+                'name'        => $m['custom_name'] ?? $system_name, // public (namesake) name shown instead of the technical name
+                'description' => $m['description'] ?? '',
+                'image'       => $m['image'] ?? '',
+                'order'       => $m['order'] ?? null,
+                '_seq'        => $seq++,
+            ];
+        }
+        usort($features, function ($a, $b) {
+            $ao = $a['order'] ?? PHP_INT_MAX;
+            $bo = $b['order'] ?? PHP_INT_MAX;
+            return $ao === $bo ? ($a['_seq'] <=> $b['_seq']) : ($ao <=> $bo);
+        });
+        foreach ($features as &$feature) {
+            unset($feature['_seq']);
+        }
+        unset($feature);
+
+        // Custom, free-text feature lines written per plan (SaaS admin → Smart Plans,
+        // "Custom Features (website)" row, comma separated). They are appended after
+        // the module features so the website shows them at the bottom of the card.
+        // An entry is either a plain string (written before highlighting existed) or
+        // {name, highlight}; a highlighted line is emphasised on the pricing card.
+        foreach ((array) ($package->metadata->custom_features ?? []) as $item) {
+            if (is_string($item) || is_numeric($item)) {
+                $line      = trim((string) $item);
+                $highlight = false;
+            } else {
+                $item      = (array) $item;
+                $line      = trim((string) ($item['name'] ?? ''));
+                $highlight = !empty($item['highlight']);
+            }
+
+            if ($line === '') {
+                continue;
+            }
+
+            $features[] = [
+                'system_name' => '',
+                'name'        => $line,
+                'description' => '',
+                'image'       => '',
+                'order'       => null,
+                'custom'      => true,
+                'highlight'   => $highlight,
+            ];
+        }
+
         return [
             "id" => $package->id,
             "name" => $package->name,
@@ -1417,10 +1529,21 @@ trait Main
             "db_scheme" => $package->db_scheme,
             "status" => $package->status,
             "modules" => $package->modules,
+            // Display-ready, ordered feature list (namesake names + show/hide) for the website
+            "features" => $features,
+            // False when this plan deliberately lists only its custom features (no modules)
+            "show_module_features" => $show_module_features,
+            // Pricing plan group and the public signup deep link for the package
+            "plan_group_id" => $plan_group_id,
+            "plan_group_name" => $plan_group_name,
+            "signup_url" => site_url('authentication/register') . '?' . perfex_saas_route_id_prefix('plan') . '=' . $package->slug,
             "metadata" => [
                 "invoice" => $package->metadata->invoice,
                 "max_instance_limit" => $package->metadata->max_instance_limit,
                 "limitations" => $package->metadata->limitations,
+                // Per-unit price for resources beyond the included limitations (e.g. price per user/seat)
+                "limitations_unit_price" => $package->metadata->limitations_unit_price ?? null,
+                "priority" => $package->metadata->priority ?? null,
                 "enable_subdomain" => $package->metadata->enable_subdomain,
                 "enable_custom_domain" => $package->metadata->enable_custom_domain,
                 "shared_settings" => $package->metadata->shared_settings ?? []

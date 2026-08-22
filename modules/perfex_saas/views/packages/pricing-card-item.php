@@ -64,42 +64,77 @@ $subscribe_link_target = 'target="_top"';
         <div class="tw-mt-2 tw-mb-4"><?= @html_purify($package->description); ?></div>
 
         <!-- modules and limiation list -->
-        <?php $module_display_option = ($package->metadata->show_modules_list ?? 'yes'); ?>
+        <?php
+            $module_display_option = ($package->metadata->show_modules_list ?? 'yes');
 
+            // Free-text feature lines for this plan (SaaS » Smart Plans » "Custom Features"),
+            // plus the per-plan switch that can drop the module list and keep only those.
+            // Entries are {name, highlight}, or a plain string from before highlighting existed.
+            $custom_features = [];
+            foreach ((array)($package->metadata->custom_features ?? []) as $custom_item) {
+                if (is_string($custom_item) || is_numeric($custom_item)) {
+                    $custom_name = trim((string)$custom_item);
+                    $custom_high = false;
+                } else {
+                    $custom_item = (array)$custom_item;
+                    $custom_name = trim((string)($custom_item['name'] ?? ''));
+                    $custom_high = !empty($custom_item['highlight']);
+                }
+                if ($custom_name !== '') {
+                    $custom_features[] = ['name' => $custom_name, 'highlight' => $custom_high];
+                }
+            }
+            $show_module_features  = !in_array(strtolower(trim((string)($package->metadata->show_module_features ?? ''))), ['0', 'no', 'false', 'off'], true);
+        ?>
+        <?php if ($module_display_option !== 'no' || !empty($custom_features)) : ?>
         <div class="tw-flex tw-justify-center tw-w-full">
             <ul class="tw-grid tw-grid-cols-2 tw-gap-2">
                 <?php
-                $key = 0;
-                $limit_display_option = $package->metadata->show_limits_on_package ?? 'yes_3';
-                if ($limit_display_option !== 'no' && !empty($limitations)) :
-                    foreach ($limitations as $feature => $limit) :
-                        if (in_array($feature, $disabled_default_modules)) continue;
-                ?>
+                    $key = 0;
+                    $limit_display_option = $package->metadata->show_limits_on_package ?? 'yes_3';
+                    if ($module_display_option !== 'no' && $limit_display_option !== 'no' && !empty($limitations)) :
+                        foreach ($limitations as $feature => $limit) :
+                            if (in_array($feature, $disabled_default_modules)) continue;
+                    ?>
                 <li class="text-left text-capitalize <?= ($key + 1) % 2 ? 'tw-mr-2' : 'tw-ml-2'; ?>">
                     <?= $limit_display_option === "yes_2" ||  $limit_display_option === "yes_4" ? '<span><i class="fa fa-check"></i></span>' : ''; ?>
                     <?= $limit_display_option === "yes_2" ||  $limit_display_option === "yes_3" ? ((int)$limit === -1 ? _l('perfex_saas_unlimited') : $limit) : ''; ?>
                     <?= _l($feature, '', false); ?>
                 </li>
                 <?php $key++;
-                    endforeach;
-                endif;
-                ?>
+                        endforeach;
+                    endif;
+                    ?>
 
                 <?php
-                if ($module_display_option !== 'no' && !empty($package->modules)) :
-                    $key = isset($key) ? ((int)$key + 1) : 0;
-                    foreach ($package->modules as $key => $value) :
-                        if (empty($value)) continue;
-                ?>
+                    if ($module_display_option !== 'no' && $show_module_features && !empty($package->modules)) :
+                        $key = isset($key) ? ((int)$key + 1) : 0;
+                        foreach ($package->modules as $key => $value) :
+                            if (empty($value)) continue;
+                    ?>
                 <li class="text-left text-capitalize <?= ((int)$key + 1) % 2 ? 'tw-mr-2' : 'tw-ml-2'; ?>">
                     <?= $module_display_option === "yes_4" ? '<span><i class="fa fa-check"></i></span>' : ''; ?>
                     <?= $modules[$value]['custom_name'] ?? $value; ?>
                 </li>
                 <?php
-                    endforeach;
-                endif; ?>
+                        endforeach;
+                    endif; ?>
+
+                <?php
+                    // Custom feature lines are free text, so they are shown as typed
+                    // (no text-capitalize) and always render, even with modules hidden.
+                    $ck = 0;
+                    foreach ($custom_features as $custom_feature) :
+                    ?>
+                <li class="text-left <?= ($ck + 1) % 2 ? 'tw-mr-2' : 'tw-ml-2'; ?> <?= !empty($custom_feature['highlight']) ? 'tw-font-semibold tw-text-primary-600' : ''; ?>">
+                    <?= $module_display_option === "yes_4" ? '<span><i class="fa fa-check"></i></span>' : ''; ?>
+                    <?= e($custom_feature['name']); ?>
+                </li>
+                <?php $ck++;
+                    endforeach; ?>
             </ul>
         </div>
+        <?php endif ?>
     </div>
 
     <!-- Package action -->

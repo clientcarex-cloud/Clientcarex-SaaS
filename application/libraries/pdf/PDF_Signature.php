@@ -94,7 +94,7 @@ trait PDF_Signature
         || ($this->type() == 'credit_note') && get_option('show_pdf_signature_credit_note') == 1) {
             $signatureImage = get_option('signature_image');
 
-            $signaturePath   = FCPATH . 'uploads/company/' . $signatureImage;
+            $signaturePath   = perfex_saas_get_upload_path_by_type('company') . $signatureImage;
             $signatureExists = file_exists($signaturePath);
 
             $blankSignatureLine = hooks()->apply_filters('blank_signature_line', '_________________________');

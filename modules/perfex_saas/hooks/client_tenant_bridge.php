@@ -6,30 +6,18 @@ $client_bridge = $is_tenant ? perfex_saas_tenant_is_enabled('client_bridge') : (
 if ($client_bridge) {
 
     if ($is_tenant) {
-        // Add account menu for saas management. This is a bridge to the client portal from tenant.
+        // Add account menu items for saas management — merged into profile dropdown.
         hooks()->add_action('admin_init', function () use ($CI) {
             if (is_admin()) {
 
                 $tenant = perfex_saas_tenant();
-
-                $method = 'add_setup_menu_item';
-                $child_method = 'add_setup_children_item';
-
-                if (($tenant->saas_options['perfex_saas_client_bridge_account_menu_position'] ?? '') === 'sidebar') {
-                    $method = 'add_sidebar_menu_item';
-                    $child_method = 'add_sidebar_children_item';
-
-                    // Add script to ensure the menu is the last menu item
-                    hooks()->add_action('before_js_scripts_render', function () {
-                        echo '<script>window.addEventListener("DOMContentLoaded",function(){$("#setup-menu-item").insertBefore($(".menu-item-my_account"));});</script>';
-                    });
-                }
 
                 $child_menu_items = [
                     [
                         'slug'     => 'saas_client_overview',
                         'name'     => _l('perfex_saas_client_menu_overview'),
                         'href'     => admin_url('billing/my_account?redirect=clients/?companies'),
+                        'icon'     => 'fa fa-tachometer-alt',
                         'position' => 1,
                         'badge'    => [],
                     ],
@@ -37,19 +25,22 @@ if ($client_bridge) {
                         'slug'     => 'saas_client_subscription',
                         'name'     => _l('perfex_saas_client_menu_subscription'),
                         'href'     => admin_url('billing/my_account?redirect=clients/?subscription'),
+                        'icon'     => 'fa fa-credit-card',
                         'position' => 2,
                         'badge'    => [],
                     ], [
                         'slug'     => 'saas_client_invoices',
                         'name'     => _l('perfex_saas_client_menu_invoices'),
                         'href'     => admin_url('billing/my_account?redirect=clients/invoices'),
+                        'icon'     => 'fa fa-file-invoice',
                         'position' => 3,
                         'badge'    => [],
                     ],
                     [
                         'slug'     => 'saas_client_tickets',
-                        'name'     => _l('clients_nav_support'),
-                        'href'     => admin_url('billing/my_account?redirect=clients/tickets'),
+                        'name'     => _l('perfex_saas_customer_success'),
+                        'href'     => admin_url('billing/my_account?redirect=clients/pro_tickets'),
+                        'icon'     => 'fa-solid fa-hand-holding-heart',
                         'position' => 10,
                         'badge'    => [],
                     ]
@@ -60,6 +51,7 @@ if ($client_bridge) {
                         'slug'     => 'saas_client_invoices',
                         'name'     => _l('subscriptions'),
                         'href'     => admin_url('billing/my_account?redirect=clients/subscriptions'),
+                        'icon'     => 'fa fa-sync-alt',
                         'position' => 2.5,
                         'badge'    => [],
                     ];
@@ -69,6 +61,7 @@ if ($client_bridge) {
                     'slug'     => 'saas_client_company_info',
                     'name'     => _l('client_company_info'),
                     'href'     => admin_url('billing/my_account?redirect=clients/company'),
+                    'icon'     => 'fa fa-building',
                     'position' => 2.5,
                     'badge'    => [],
                 ];
@@ -76,52 +69,39 @@ if ($client_bridge) {
                 $child_menu_items = hooks()->apply_filters('perfex_saas_tenant_account_menu', $child_menu_items);
 
                 if (!empty($child_menu_items)) {
-                    $CI->app_menu->$method('my_account', [
-                        'collapse' => true,
-                        'name'     => _l('perfex_saas_my_account'),
-                        'position' => PHP_INT_MAX,
-                        'badge'    => [],
-                    ]);
 
                     usort($child_menu_items, function ($a, $b) {
                         $posA = $a['position'] ?? PHP_INT_MAX;
                         $posB = $b['position'] ?? PHP_INT_MAX;
 
-                        return $posA <=> $posB; // Sort by 'position' key or use default values
+                        return $posA <=> $posB;
                     });
 
-
-                    foreach ($child_menu_items as $item) {
-                        $CI->app_menu->$child_method('my_account', $item);
-                    }
+                    // Store in global for profile dropdown rendering in aside.php
+                    $GLOBALS['perfex_saas_profile_account_items'] = $child_menu_items;
                 }
             }
         });
 
 
-        hooks()->add_action('app_admin_footer', function () {
-            $support_custom_domain_magic_login = perfex_saas_tenant_is_enabled('cross_domain_bridge');
-            if (perfex_saas_tenant()->http_identification_type === PERFEX_SAAS_TENANT_MODE_DOMAIN && !$support_custom_domain_magic_login) {
-                echo '
-                        <script>
-                            // Loop through each link and add the target="_blank" attribute
-                            const links = document.querySelectorAll(".menu-item-my_account .collapse a");
-                            if(links)
-                            links.forEach(link => {
-                                link.setAttribute("target", "_blank");
-                            });
-                        </script>
-                        ';
-            }
-        });
+
+
+
     }
 
 
     if (!$is_tenant && $is_client) {
 
-        $invoice = $CI->perfex_saas_model->get_company_invoice(get_client_user_id());
-        $on_trial_and_ended = isset($invoice->on_trial) && $invoice->on_trial && perfex_saas_get_days_until($invoice->duedate) <= 0;
-        $invoice_overdue = $invoice && !$invoice->is_private && perfex_saas_is_invoice_overdue_for_payment($invoice);
+        $invoice = null;
+        $on_trial_and_ended = false;
+        $invoice_overdue = false;
+        try {
+            $invoice = $CI->perfex_saas_model->get_company_invoice(get_client_user_id());
+            $on_trial_and_ended = isset($invoice->on_trial) && $invoice->on_trial && perfex_saas_get_days_until($invoice->duedate) <= 0;
+            $invoice_overdue = $invoice && !$invoice->is_private && perfex_saas_is_invoice_overdue_for_payment($invoice);
+        } catch (\Throwable $e) {
+            log_message('error', 'SaaS client bridge invoice lookup failed: ' . $e->getMessage());
+        }
         $has_outstanding = !$invoice || $on_trial_and_ended || $invoice_overdue;
 
         $GLOBALS['has_outstanding'] = $has_outstanding;
@@ -171,7 +151,7 @@ if ($client_bridge) {
                 $query = uri_string();
                 if (!empty($query) && $query !== '/') {
                     $query = $query . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '');
-                    $query = '?redirect=billing/my_account?redirect=' . $query;
+                    $query = '?redirect=' . urlencode('billing/my_account?redirect=' . $query);
                 }
 
                 redirect(site_url('clients/ps_magic/' . $primary_active_instance->slug . '/' . $urlmode) . $query);
@@ -245,3 +225,50 @@ if ($client_bridge) {
         });
     }
 }
+
+/**
+ * Sync primary contact password to the tenant admin
+ */
+function perfex_saas_sync_contact_password_to_tenant($contact_id)
+{
+    if (is_array($contact_id) && isset($contact_id['userid'])) {
+        // Handle after_user_reset_password hook
+        if (!isset($contact_id['staff']) || $contact_id['staff'] == true) return;
+        $contact_id = $contact_id['userid'];
+    }
+
+    $CI = &get_instance();
+    $contact = $CI->db->where('id', $contact_id)->get(db_prefix() . 'contacts')->row();
+    
+    // Only sync if the contact exists and is a primary contact
+    if (!$contact || $contact->is_primary != 1) return;
+
+    $CI->load->model('perfex_saas/perfex_saas_model');
+    // Get all tenants for this client
+    $companies = $CI->perfex_saas_model->companies($contact->userid);
+    if (empty($companies)) return;
+
+    foreach ($companies as $company) {
+        // Only sync to active instances
+        if ($company->status !== 'active') continue;
+        
+        $dsn = perfex_saas_get_company_dsn($company);
+        if (!$dsn) continue;
+
+        $tenant_dbprefix = perfex_saas_tenant_db_prefix($company->slug);
+        $table = $tenant_dbprefix . "staff";
+        
+        $password = $contact->password;
+        
+        // Update the primary admin's password in the tenant database
+        $query = "UPDATE `$table` SET `password` = " . $CI->db->escape($password) . " WHERE `admin` = '1' AND `active` = '1' ORDER BY `staffid` ASC LIMIT 1";
+        try {
+            perfex_saas_raw_query($query, $dsn, false, true);
+        } catch (\Throwable $th) {
+            log_message('error', 'Error syncing contact password to tenant: ' . $th->getMessage());
+        }
+    }
+}
+
+hooks()->add_action('contact_updated', 'perfex_saas_sync_contact_password_to_tenant');
+hooks()->add_action('after_user_reset_password', 'perfex_saas_sync_contact_password_to_tenant');

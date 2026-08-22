@@ -1,8 +1,6 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <script>
-var weekly_payments_statistics;
-var monthly_payments_statistics;
-var user_dashboard_visibility = <?php echo $user_dashboard_visibility; ?>  || [];
+var user_dashboard_visibility = <?php echo $user_dashboard_visibility; ?>;
 $(function() {
     $("[data-container]").sortable({
         connectWith: "[data-container]",
@@ -123,87 +121,10 @@ $(function() {
         });
     });
 
-    var tickets_chart_departments = $('#tickets-awaiting-reply-by-department');
-    var tickets_chart_status = $('#tickets-awaiting-reply-by-status');
-    var leads_chart = $('#leads_status_stats');
-    var projects_chart = $('#projects_status_stats');
-
-    if (tickets_chart_departments.length > 0) {
-        // Tickets awaiting reply by department chart
-        var tickets_dep_chart = new Chart(tickets_chart_departments, {
-            type: 'doughnut',
-            data: <?php echo $tickets_awaiting_reply_by_department; ?>,
-        });
-    }
-    if (tickets_chart_status.length > 0) {
-        // Tickets awaiting reply by department chart
-        new Chart(tickets_chart_status, {
-            type: 'doughnut',
-            data: <?php echo $tickets_reply_by_status; ?>,
-            options: {
-                onClick: function(evt) {
-                    onChartClickRedirect(evt, this);
-                }
-            },
-        });
-    }
-    if (leads_chart.length > 0) {
-        // Leads overview status
-        new Chart(leads_chart, {
-            type: 'doughnut',
-            data: <?php echo $leads_status_stats; ?>,
-            options: {
-                maintainAspectRatio: false,
-                onClick: function(evt) {
-                    onChartClickRedirect(evt, this);
-                }
-            }
-        });
-    }
-    if (projects_chart.length > 0) {
-        // Projects statuses
-        new Chart(projects_chart, {
-            type: 'doughnut',
-            data: <?php echo $projects_status_stats; ?>,
-            options: {
-                maintainAspectRatio: false,
-                onClick: function(evt) {
-                    onChartClickRedirect(evt, this);
-                }
-            }
-        });
-    }
-
-    if ($(window).width() < 500) {
-        // Fix for small devices weekly payment statistics
-        $('#payment-statistics').attr('height', '250');
-    }
-
     fix_user_data_widget_tabs();
     $(window).on('resize', function() {
         $('.horizontal-scrollable-tabs ul.nav-tabs-horizontal').removeAttr('style');
         fix_user_data_widget_tabs();
-    });
-    // Payments statistics
-    init_weekly_payment_statistics(<?php echo $weekly_payment_stats; ?>);
-
-    $('select[name="currency"]').on('change', function() {
-        let $activeChart = $('#Payment-chart-name').data('active-chart');
-
-        if (typeof(weekly_payments_statistics) !== 'undefined') {
-            weekly_payments_statistics.destroy();
-        }
-
-        if (typeof(monthly_payments_statistics) !== 'undefined') {
-            monthly_payments_statistics.destroy();
-        }
-
-        if ($activeChart == 'weekly') {
-            init_weekly_payment_statistics();
-        } else if ($activeChart == 'monthly') {
-            init_monthly_payment_statistics();
-        }
-
     });
 });
 
@@ -213,101 +134,6 @@ function fix_user_data_widget_tabs() {
             isRTL == 'false' && is_mobile())) {
         $('.horizontal-scrollable-tabs ul.nav-tabs-horizontal').css('margin-bottom', '26px');
     }
-}
-
-function init_weekly_payment_statistics(data) {
-    if ($('#payment-statistics').length > 0) {
-
-        if (typeof(weekly_payments_statistics) !== 'undefined') {
-            weekly_payments_statistics.destroy();
-        }
-        if (typeof(data) == 'undefined') {
-            var currency = $('select[name="currency"]').val();
-            $.get(admin_url + 'dashboard/weekly_payments_statistics/' + currency, function(response) {
-                weekly_payments_statistics = new Chart($('#payment-statistics'), {
-                    type: 'bar',
-                    data: response,
-                    options: {
-                        responsive: true,
-                        scales: {
-                            yAxes: [{
-                                ticks: {
-                                    beginAtZero: true,
-                                }
-                            }]
-                        },
-                    },
-                });
-            }, 'json');
-        } else {
-            weekly_payments_statistics = new Chart($('#payment-statistics'), {
-                type: 'bar',
-                data: data,
-                options: {
-                    responsive: true,
-                    scales: {
-                        yAxes: [{
-                            ticks: {
-                                beginAtZero: true,
-                            }
-                        }]
-                    },
-                },
-            });
-        }
-
-    }
-}
-
-function init_monthly_payment_statistics() {
-    if ($('#payment-statistics').length > 0) {
-
-        if (typeof(monthly_payments_statistics) !== 'undefined') {
-            monthly_payments_statistics.destroy();
-        }
-
-        var currency = $('select[name="currency"]').val();
-        $.get(admin_url + 'dashboard/monthly_payments_statistics/' + currency, function(response) {
-            monthly_payments_statistics = new Chart($('#payment-statistics'), {
-                type: 'bar',
-                data: response,
-                options: {
-                    responsive: true,
-                    scales: {
-                        yAxes: [{
-                            ticks: {
-                                beginAtZero: true,
-                            }
-                        }]
-                    },
-                },
-            });
-        }, 'json');
-    }
-}
-
-function update_payment_statistics(el) {
-    let type = $(el).data('type');
-    let $chartNameWrapper = $('#Payment-chart-name');
-    $chartNameWrapper.data('active-chart', type);
-    $chartNameWrapper.text($(el).text());
-
-    if (typeof(weekly_payments_statistics) !== 'undefined') {
-        weekly_payments_statistics.destroy();
-    }
-
-    if (typeof(monthly_payments_statistics) !== 'undefined') {
-        monthly_payments_statistics.destroy();
-    }
-
-    console.log(type);
-
-    if (type == 'weekly') {
-        init_weekly_payment_statistics();
-    } else if (type == 'monthly') {
-        init_monthly_payment_statistics();
-    }
-
 }
 
 function update_tickets_report_table(el) {

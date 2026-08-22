@@ -36,7 +36,7 @@ function _app_init()
          * Get all registered and active modules
          * @var array
          */
-        $modules = $ci->app_modules->get_activated();
+        $modules = hooks()->apply_filters('modules_to_load', $ci->app_modules->get_activated());
     }
 
     foreach ($modules as $module) {

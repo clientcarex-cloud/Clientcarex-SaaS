@@ -11,19 +11,6 @@ hooks()->add_filter('perfex_saas_settings_tab', function ($tabs) {
     return $tabs;
 });
 
-if (defined('SAAS_DEMO_SITE')) {
-
-    hooks()->add_action('perfex_saas_after_settings_tab', function ($tab) {
-
-
-        if (!is_admin() || $tab['id'] !== 'custom_codes') return;
-
-        echo '<div class="alert alert-danger">⚠️ Disabled in Demo</div>';
-    });
-
-    return;
-}
-
 /**
  * Render custom codes UI
  */
@@ -66,45 +53,45 @@ hooks()->add_action('perfex_saas_after_settings_tab', function ($tab) {
     echo '<br/><br/><div class="alert alert-warning">⚠️ ' . _l('perfex_saas_custom_code_save_warning') . '</div>';
     echo render_input('perfex_saas_ps_global_custom_codes_admin_password');
 ?>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            function updateStorage() {
-                let data = {};
-                $('#custom-codes-repeater tbody tr').each(function() {
-                    let context = $(this).find('.context').val();
-                    let type = $(this).find('.type').val();
-                    let code = $(this).find('.snippet').val();
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    function updateStorage() {
+        let data = {};
+        $('#custom-codes-repeater tbody tr').each(function() {
+            let context = $(this).find('.context').val();
+            let type = $(this).find('.type').val();
+            let code = $(this).find('.snippet').val();
 
-                    if (!context || !type || !code) return;
+            if (!context || !type || !code) return;
 
-                    if (!data[context]) data[context] = {};
-                    if (!data[context][type]) data[context][type] = [];
-                    data[context][type].push(code);
-                });
-                $('#perfex_saas_ps_global_custom_codes_storage').val(btoa(JSON.stringify(data)));
-            }
-
-            // Bind update
-            $(document).on('change keyup',
-                '#custom-codes-repeater input, #custom-codes-repeater select, #custom-codes-repeater textarea',
-                updateStorage);
-
-            // Add row
-            $('#add-code-row').on('click', function() {
-                let row = <?php echo json_encode(perfex_saas_render_repeater_row('', '', '', true)); ?>;
-                $('#custom-codes-repeater tbody').append(row);
-            });
-
-            // Remove row
-            $(document).on('click', '.remove-row', function() {
-                $(this).closest('tr').remove();
-                updateStorage();
-            });
-
-            // Init
-            updateStorage();
+            if (!data[context]) data[context] = {};
+            if (!data[context][type]) data[context][type] = [];
+            data[context][type].push(code);
         });
-    </script>
+        $('#perfex_saas_ps_global_custom_codes_storage').val(btoa(JSON.stringify(data)));
+    }
+
+    // Bind update
+    $(document).on('change keyup',
+        '#custom-codes-repeater input, #custom-codes-repeater select, #custom-codes-repeater textarea',
+        updateStorage);
+
+    // Add row
+    $('#add-code-row').on('click', function() {
+        let row = <?php echo json_encode(perfex_saas_render_repeater_row('', '', '', true)); ?>;
+        $('#custom-codes-repeater tbody').append(row);
+    });
+
+    // Remove row
+    $(document).on('click', '.remove-row', function() {
+        $(this).closest('tr').remove();
+        updateStorage();
+    });
+
+    // Init
+    updateStorage();
+});
+</script>
 <?php
 });
 
@@ -123,30 +110,30 @@ function perfex_saas_render_repeater_row($context = '', $type = '', $snippet = '
     $types = ['css' => 'CSS', 'js' => 'JS'];
 
     ob_start(); ?>
-    <tr>
-        <td>
-            <select class="form-control context">
-                <?php foreach ($contexts as $key => $label) : ?>
-                    <option value="<?php echo $key; ?>" <?php echo $context === $key ? 'selected' : ''; ?>>
-                        <?php echo $label; ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </td>
-        <td>
-            <select class="form-control type">
-                <?php foreach ($types as $key => $label) : ?>
-                    <option value="<?php echo $key; ?>" <?php echo $type === $key ? 'selected' : ''; ?>>
-                        <?php echo $label; ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </td>
-        <td>
-            <textarea class="form-control snippet" rows="3"><?php echo htmlspecialchars($snippet); ?></textarea>
-        </td>
-        <td><button type="button" class="btn btn-danger remove-row">&times;</button></td>
-    </tr>
+<tr>
+    <td>
+        <select class="form-control context">
+            <?php foreach ($contexts as $key => $label) : ?>
+            <option value="<?php echo $key; ?>" <?php echo $context === $key ? 'selected' : ''; ?>>
+                <?php echo $label; ?>
+            </option>
+            <?php endforeach; ?>
+        </select>
+    </td>
+    <td>
+        <select class="form-control type">
+            <?php foreach ($types as $key => $label) : ?>
+            <option value="<?php echo $key; ?>" <?php echo $type === $key ? 'selected' : ''; ?>>
+                <?php echo $label; ?>
+            </option>
+            <?php endforeach; ?>
+        </select>
+    </td>
+    <td>
+        <textarea class="form-control snippet" rows="3"><?php echo htmlspecialchars($snippet); ?></textarea>
+    </td>
+    <td><button type="button" class="btn btn-danger remove-row">&times;</button></td>
+</tr>
 <?php
     $html = ob_get_clean();
     return $raw ? $html : $html;

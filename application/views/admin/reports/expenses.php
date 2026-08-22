@@ -228,25 +228,7 @@ if (isset($netMonthlyTotal)) {
                                 </tbody>
                             </table>
                         </div>
-                        <hr />
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p class="text-muted tw-font-semibold mbot30">
-                                    <?= _l('not_billable_expenses_by_categories'); ?>
-                                </p>
-                            </div>
-                            <div class="col-md-6">
-                                <p class="text-muted tw-font-semibold mbot30">
-                                    <?= _l('billable_expenses_by_categories'); ?>
-                                </p>
-                            </div>
-                            <div class="col-md-6">
-                                <canvas id="expenses_chart_not_billable" height="390"></canvas>
-                            </div>
-                            <div class="col-md-6">
-                                <canvas id="expenses_chart_billable" height="390"></canvas>
-                            </div>
-                        </div>
+
                     </div>
                 </div>
             </div>
@@ -258,42 +240,6 @@ if (isset($netMonthlyTotal)) {
     src="<?= base_url('assets/plugins/excellentexport/excellentexport.min.js'); ?>">
 </script>
 <script>
-    new Chart($('#expenses_chart_not_billable'), {
-        type: 'bar',
-        data: <?= $chart_not_billable; ?> ,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            legend: {
-                display: false,
-            },
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true,
-                    }
-                }]
-            }
-        },
-    });
-    new Chart($('#expenses_chart_billable'), {
-        type: 'bar',
-        data: <?= $chart_billable; ?> ,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            legend: {
-                display: false,
-            },
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true,
-                    }
-                }]
-            }
-        },
-    });
 
     function filter_expenses() {
         var parameters = new Array();

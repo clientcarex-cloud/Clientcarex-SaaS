@@ -789,7 +789,7 @@ abstract class CI_DB_driver {
 			}
 		}
 
-		return $this->_execute($sql);
+		return $this->_execute(perfex_saas_db_query($sql));
 	}
 
 	// --------------------------------------------------------------------

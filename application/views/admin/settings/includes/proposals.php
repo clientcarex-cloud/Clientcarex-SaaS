@@ -56,8 +56,6 @@
 <hr />
 <?php render_yes_no_option('exclude_proposal_from_client_area_with_draft_status', 'exclude_proposal_from_client_area_with_draft_status'); ?>
 <hr />
-<?php render_yes_no_option('proposal_auto_convert_leads_to_client_on_client_accept', 'proposal_auto_convert_leads_to_client_on_client_accept'); ?>
-<hr />
 <?php render_yes_no_option('proposal_auto_convert_to_invoice_on_client_accept', 'proposal_auto_convert_to_invoice_on_client_accept'); ?>
 <hr />
 <?php render_yes_no_option('allow_staff_view_proposals_assigned', 'allow_staff_view_proposals_assigned'); ?>

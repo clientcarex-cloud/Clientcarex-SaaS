@@ -760,11 +760,7 @@ class Perfex_saas_stripe_model extends App_Model
             $res_name = str_starts_with($res_name, 'perfex_saas') ? ($limitations_name->{$resources} ?? $resources) : $res_name;
 
             $unit_amount = $this->convert_amount_to_lowest_unit($value_unit_price, $currency);
-
-            // We include the unit amount in the lookup key to ensure maximal uniqueness 
-            // as stripe does not allow change a price amount after creation as of 20 Nov 20215
             $lookup_key = 'pcrm_saas_package_' . $package->id . '_' . $resources . '_' . $unit_amount;
-
             $prices[] = [
                 'id' => $this->get_resources_price_id_from_settings($package_stripe_settings, $resources),
                 'nickname' => $package->name . ' ' . $res_name,

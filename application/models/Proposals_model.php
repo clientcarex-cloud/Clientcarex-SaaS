@@ -727,12 +727,6 @@ class Proposals_model extends App_Model
         ]);
 
         if ($this->db->affected_rows() > 0) {
-            hooks()->do_action('after_proposal_staff_status_changed', [
-                'proposal_id' => $id,
-                'old_status'      => $original_proposal->status,
-                'new_status'      => $status,
-            ]);
-
             // Client take action
             if ($client == true) {
                 $revert = false;
@@ -741,27 +735,6 @@ class Proposals_model extends App_Model
                     $message = 'not_proposal_proposal_declined';
                 } elseif ($status == 3) {
                     // Accepted
-                    if (get_option('proposal_auto_convert_leads_to_client_on_client_accept') == '1'
-                        || get_option('proposal_auto_convert_to_invoice_on_client_accept') == '1') {
-                        // Check if proposal is associated with a lead and auto-convert to customer
-                        if ($original_proposal->rel_type == 'lead' && $original_proposal->rel_id) {
-                            $this->load->model('leads_model');
-                            $customer_id = $this->leads_model->auto_convert_lead_to_customer($original_proposal->rel_id, $original_proposal->currency);
-
-                            if ($customer_id) {
-                                // Update proposal to point to the new customer
-                                $this->db->where('id', $id);
-                                $this->db->update(db_prefix() . 'proposals', [
-                                    'rel_type' => 'customer',
-                                    'rel_id' => $customer_id,
-                                ]);
-
-                                // Reload proposal with updated data
-                                $original_proposal = $this->get($id);
-                            }
-                        }
-                    }
-                    
                     if (get_option('proposal_auto_convert_to_invoice_on_client_accept') == '1') {
                         $this->convert_to_invoice($id);
                     }

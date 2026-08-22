@@ -1,8 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <script>
- var salesChart;
- var groupsChart;
- var paymentMethodsChart;
  var customersTable;
  var report_from = $('input[name="report-from"]');
  var report_to = $('input[name="report-to"]');
@@ -207,110 +204,6 @@
     }
 
 
-   // Generate total income bar
-   function total_income_bar_report() {
-     if (typeof(salesChart) !== 'undefined') {
-       salesChart.destroy();
-     }
-     var data = {};
-     data.year = $('select[name="payments_years"]').val();
-     var currency = $('#currency');
-     if (currency.length > 0) {
-       data.report_currency = $('select[name="currency"]').val();
-     }
-     $.post(admin_url + 'reports/total_income_report', data).done(function(response) {
-       response = JSON.parse(response);
-       salesChart = new Chart($('#chart-income'), {
-         type: 'bar',
-         data: response,
-         options: {
-           responsive: true,
-           maintainAspectRatio:false,
-           legend: {
-            display: false,
-          },
-          scales: {
-            yAxes: [{
-              ticks: {
-                beginAtZero: true,
-              }
-            }]
-          },
-        }
-      })
-     });
-   }
-
-   function report_by_payment_modes() {
-     if (typeof(paymentMethodsChart) !== 'undefined') {
-       paymentMethodsChart.destroy();
-     }
-     var data = {};
-     data.year = $('select[name="payments_years"]').val();
-     var currency = $('#currency');
-     if (currency.length > 0) {
-       data.report_currency = $('select[name="currency"]').val();
-     }
-     $.post(admin_url + 'reports/report_by_payment_modes', data).done(function(response) {
-       response = JSON.parse(response);
-       paymentMethodsChart = new Chart($('#chart-payment-modes'), {
-         type: 'bar',
-         data: response,
-         options: {
-           responsive: true,
-           maintainAspectRatio:false,
-           scales: {
-            yAxes: [{
-              ticks: {
-                beginAtZero: true,
-              }
-            }]
-          },
-        }
-      })
-     });
-   }
-   // Generate customers report
-   function customers_report() {
-     if ($.fn.DataTable.isDataTable('.table-customers-report')) {
-       $('.table-customers-report').DataTable().destroy();
-     }
-     initDataTable('.table-customers-report', admin_url + 'reports/customers_report', false, false, fnServerParams, [0, 'asc']);
-   }
-
-   function report_by_customer_groups() {
-     if (typeof(groupsChart) !== 'undefined') {
-       groupsChart.destroy();
-     }
-     var data = {};
-     data.months_report = $('select[name="months-report"]').val();
-     data.report_from = report_from.val();
-     data.report_to = report_to.val();
-
-     var currency = $('#currency');
-     if (currency.length > 0) {
-       data.report_currency = $('select[name="currency"]').val();
-     }
-     $.post(admin_url + 'reports/report_by_customer_groups', data).done(function(response) {
-       response = JSON.parse(response);
-       groupsChart = new Chart($('#customers-group-gen'), {
-         type: 'line',
-         data: response,
-         options:{
-          maintainAspectRatio:false,
-          legend: {
-            display: false,
-          },
-          scales: {
-            yAxes: [{
-              ticks: {
-                beginAtZero: true,
-              }
-            }]
-          }}
-        });
-     });
-   }
    function invoices_report() {
      if ($.fn.DataTable.isDataTable('.table-invoices-report')) {
        $('.table-invoices-report').DataTable().destroy();

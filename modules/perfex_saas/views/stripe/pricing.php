@@ -18,19 +18,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
         <?php } ?>
 
         <?php if (!empty($packages)) : ?>
-        <div class="row">
-            <div class="col-md-12">
-                <?php if (staff_can('create', 'perfex_saas_packages')) { ?>
-                <div class="tw-mb-2 sm:tw-mb-4 pull-right sync-all-btn" style="display: none;">
-                    <a href="<?php echo admin_url(PERFEX_SAAS_ROUTE_NAME . '/stripe_pricing/sync'); ?>" target="_blank"
-                        class="btn btn-secondary _delete">
-                        <i class="fa fa-refresh tw-mr-1"></i>
-                        <?php echo _l('perfex_saas_sync_all_packages'); ?>
-                    </a>
-                </div>
-                <?php } ?>
-            </div>
-        </div>
         <div class="horizontal-scrollable-tabs panel-full-width-tabs">
             <div class="scroller arrow-left tw-mt-px"><i class="fa fa-angle-left"></i></div>
             <div class="scroller arrow-right tw-mt-px"><i class="fa fa-angle-right"></i></div>
@@ -106,13 +93,6 @@ $(document).ready(function() {
         queryParams.set("tab", $(this).attr('aria-controls'));
         history.replaceState(null, null, "?" + queryParams.toString());
     });
-
-    var syncEnabledPackages = $('.enable-deps').filter(function() {
-        return $(this).css('display') !== 'none';
-    }).find('input.sync:checked');
-    if (syncEnabledPackages.length > 0) {
-        $('.sync-all-btn').show();
-    }
 
 })
 </script>

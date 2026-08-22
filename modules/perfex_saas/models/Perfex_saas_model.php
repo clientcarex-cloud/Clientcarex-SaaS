@@ -317,6 +317,271 @@ class Perfex_saas_model extends App_Model
         return $chart;
     }
 
+    /**
+     * Advanced dashboard charts dataset for the super admin dashboard.
+     * Returns tenant growth, revenue, status distribution and package distribution data.
+     *
+     * @return array
+     */
+    public function dashboard_advanced_charts()
+    {
+        $dbprefix        = perfex_saas_master_db_prefix();
+        $companies_table = perfex_saas_table('companies');
+        $packages_table  = perfex_saas_table('packages');
+        $packageid_col   = perfex_saas_column('packageid');
+
+        // Build the last 12 months window
+        $months = [];
+        $labels = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $m          = date('Y-m', strtotime("first day of -$i months"));
+            $months[$m] = 0;
+            $labels[]   = date('M y', strtotime($m . '-01'));
+        }
+        $window_start = array_key_first($months) . '-01 00:00:00';
+
+        // 1. Tenant growth - new signups per month + cumulative total
+        $signups = $months;
+        $rows    = $this->db->query("SELECT DATE_FORMAT(created_at, '%Y-%m') as m, COUNT(*) as total FROM `{$companies_table}` WHERE created_at >= ? GROUP BY m", [$window_start])->result();
+        foreach ($rows as $row) {
+            if (isset($signups[$row->m])) {
+                $signups[$row->m] = (int)$row->total;
+            }
+        }
+        $baseline   = (int)($this->db->query("SELECT COUNT(*) as total FROM `{$companies_table}` WHERE created_at < ? OR created_at IS NULL", [$window_start])->row()->total ?? 0);
+        $cumulative = [];
+        $running    = $baseline;
+        foreach ($signups as $total) {
+            $running     += $total;
+            $cumulative[] = $running;
+        }
+
+        // 2. Revenue collected per month on SaaS package invoices
+        $revenue = $months;
+        $rows    = $this->db->query("SELECT DATE_FORMAT(pr.date, '%Y-%m') as m, SUM(pr.amount) as total
+            FROM `{$dbprefix}invoicepaymentrecords` pr
+            INNER JOIN `{$dbprefix}invoices` i ON i.id = pr.invoiceid
+            WHERE i.`{$packageid_col}` > 0 AND pr.date >= ?
+            GROUP BY m", [$window_start])->result();
+        foreach ($rows as $row) {
+            if (isset($revenue[$row->m])) {
+                $revenue[$row->m] = round((float)$row->total, 2);
+            }
+        }
+
+        // 3. Tenants by status
+        $statuses = $this->db->query("SELECT status, COUNT(*) as total FROM `{$companies_table}` GROUP BY status ORDER BY total DESC")->result();
+
+        // 4. Tenants per package (current package resolved from the latest relevant invoice)
+        $packages = $this->db->query("SELECT p.name, COUNT(*) as total
+            FROM `{$companies_table}` c
+            INNER JOIN `{$dbprefix}invoices` i ON i.id = (
+                SELECT i2.id FROM `{$dbprefix}invoices` i2
+                WHERE i2.clientid = c.clientid AND i2.`{$packageid_col}` > 0 AND i2.status != " . Invoices_model::STATUS_CANCELLED . "
+                ORDER BY i2.recurring DESC, i2.datecreated DESC LIMIT 1
+            )
+            INNER JOIN `{$packages_table}` p ON p.id = i.`{$packageid_col}`
+            GROUP BY p.id, p.name
+            ORDER BY total DESC")->result();
+
+        return [
+            'labels'     => $labels,
+            'signups'    => array_values($signups),
+            'cumulative' => $cumulative,
+            'revenue'    => array_values($revenue),
+            'statuses'   => $statuses,
+            'packages'   => $packages,
+        ];
+    }
+
+    /**
+     * Executive (C-level) dashboard dataset: MRR/ARR/ARPU KPIs, revenue by package,
+     * receivables aging, payment method mix, top tenants and DB scheme distribution.
+     *
+     * @return array
+     */
+    public function dashboard_executive_charts()
+    {
+        $dbprefix        = perfex_saas_master_db_prefix();
+        $companies_table = perfex_saas_table('companies');
+        $packages_table  = perfex_saas_table('packages');
+        $packageid_col   = perfex_saas_column('packageid');
+        $cancelled       = Invoices_model::STATUS_CANCELLED;
+
+        // Last 12 months window
+        $months = [];
+        $labels = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $m          = date('Y-m', strtotime("first day of -$i months"));
+            $months[$m] = 0;
+            $labels[]   = date('M y', strtotime($m . '-01'));
+        }
+        $window_start = array_key_first($months) . '-01 00:00:00';
+
+        // Normalize an invoice billing cycle to months (recurring invoices bill every N months,
+        // custom recurring may be day/week/month/year based)
+        $months_expr = "CASE WHEN i.custom_recurring = 1 THEN
+                CASE i.recurring_type
+                    WHEN 'day' THEN i.recurring / 30.44
+                    WHEN 'week' THEN (i.recurring * 7) / 30.44
+                    WHEN 'year' THEN i.recurring * 12
+                    ELSE i.recurring
+                END
+            ELSE i.recurring END";
+
+        // Latest relevant package invoice per company (same resolution the module uses for the active plan)
+        $current_invoice_join = "INNER JOIN `{$dbprefix}invoices` i ON i.id = (
+                SELECT i2.id FROM `{$dbprefix}invoices` i2
+                WHERE i2.clientid = c.clientid AND i2.`{$packageid_col}` > 0 AND i2.status != {$cancelled}
+                ORDER BY i2.recurring DESC, i2.datecreated DESC LIMIT 1
+            )";
+
+        // 1. MRR by package over ACTIVE companies. Recurring invoices are normalized to a monthly
+        // value; subscription (gateway) billed invoices are treated as monthly.
+        $mrr_rows = $this->db->query("SELECT p.name, SUM(
+                CASE WHEN i.recurring > 0 THEN i.total / ({$months_expr})
+                     WHEN i.subscription_id > 0 THEN i.total
+                     ELSE 0 END
+            ) as mrr, COUNT(*) as tenants
+            FROM `{$companies_table}` c
+            {$current_invoice_join}
+            INNER JOIN `{$packages_table}` p ON p.id = i.`{$packageid_col}`
+            WHERE c.status = 'active'
+            GROUP BY p.id, p.name
+            ORDER BY mrr DESC")->result();
+
+        $mrr_total      = 0;
+        $paying_tenants = 0;
+        foreach ($mrr_rows as $row) {
+            $row->mrr = round((float)$row->mrr, 2);
+            $mrr_total += $row->mrr;
+            $paying_tenants += (int)$row->tenants;
+        }
+        $mrr_total      = round($mrr_total, 2);
+        $active_tenants = (int)($this->db->query("SELECT COUNT(*) as total FROM `{$companies_table}` WHERE status = 'active'")->row()->total ?? 0);
+        $arpu           = $paying_tenants > 0 ? round($mrr_total / $paying_tenants, 2) : 0;
+
+        // 2. Collected revenue per month per package (stacked)
+        $revenue_by_package = [];
+        $rows               = $this->db->query("SELECT DATE_FORMAT(pr.date, '%Y-%m') as m, p.id as pid, p.name, SUM(pr.amount) as total
+            FROM `{$dbprefix}invoicepaymentrecords` pr
+            INNER JOIN `{$dbprefix}invoices` i ON i.id = pr.invoiceid
+            INNER JOIN `{$packages_table}` p ON p.id = i.`{$packageid_col}`
+            WHERE i.`{$packageid_col}` > 0 AND pr.date >= ?
+            GROUP BY m, p.id, p.name", [$window_start])->result();
+        foreach ($rows as $row) {
+            if (!isset($revenue_by_package[$row->pid])) {
+                $revenue_by_package[$row->pid] = ['name' => $row->name, 'data' => $months];
+            }
+            if (isset($revenue_by_package[$row->pid]['data'][$row->m])) {
+                $revenue_by_package[$row->pid]['data'][$row->m] = round((float)$row->total, 2);
+            }
+        }
+        foreach ($revenue_by_package as $pid => $set) {
+            $revenue_by_package[$pid]['data'] = array_values($set['data']);
+        }
+
+        // 3. Receivables aging on unpaid/partial/overdue package invoices
+        $aging = [
+            'not_due' => 0.0,
+            'b0_30'   => 0.0,
+            'b31_60'  => 0.0,
+            'b61_90'  => 0.0,
+            'b90'     => 0.0,
+        ];
+        $outstanding_total = 0.0;
+        $overdue_total     = 0.0;
+        $rows              = $this->db->query("SELECT i.duedate, DATEDIFF(CURDATE(), i.duedate) as age, (i.total
+                - (SELECT COALESCE(SUM(amount),0) FROM `{$dbprefix}invoicepaymentrecords` WHERE invoiceid = i.id)
+                - (SELECT COALESCE(SUM(amount),0) FROM `{$dbprefix}credits` WHERE invoice_id = i.id)) as outstanding
+            FROM `{$dbprefix}invoices` i
+            WHERE i.`{$packageid_col}` > 0
+            AND i.status IN (" . Invoices_model::STATUS_UNPAID . ',' . Invoices_model::STATUS_PARTIALLY . ',' . Invoices_model::STATUS_OVERDUE . ')')->result();
+        foreach ($rows as $row) {
+            $outstanding = max(0, (float)$row->outstanding);
+            if ($outstanding <= 0) {
+                continue;
+            }
+            $outstanding_total += $outstanding;
+            $age = $row->duedate === null ? 0 : (int)$row->age;
+            if ($age <= 0) {
+                $aging['not_due'] += $outstanding;
+            } elseif ($age <= 30) {
+                $aging['b0_30'] += $outstanding;
+                $overdue_total  += $outstanding;
+            } elseif ($age <= 60) {
+                $aging['b31_60'] += $outstanding;
+                $overdue_total   += $outstanding;
+            } elseif ($age <= 90) {
+                $aging['b61_90'] += $outstanding;
+                $overdue_total   += $outstanding;
+            } else {
+                $aging['b90']  += $outstanding;
+                $overdue_total += $outstanding;
+            }
+        }
+        $aging             = array_map(function ($v) {
+            return round($v, 2);
+        }, $aging);
+        $outstanding_total = round($outstanding_total, 2);
+        $overdue_total     = round($overdue_total, 2);
+
+        // 4. Collected revenue by payment method (last 12 months)
+        $payment_modes = [];
+        $mode_names    = [];
+        foreach ($this->db->query("SELECT id, name FROM `{$dbprefix}payment_modes`")->result() as $mode) {
+            $mode_names[(string)$mode->id] = $mode->name;
+        }
+        $rows = $this->db->query("SELECT pr.paymentmode, SUM(pr.amount) as total
+            FROM `{$dbprefix}invoicepaymentrecords` pr
+            INNER JOIN `{$dbprefix}invoices` i ON i.id = pr.invoiceid
+            WHERE i.`{$packageid_col}` > 0 AND pr.date >= ?
+            GROUP BY pr.paymentmode
+            ORDER BY total DESC", [$window_start])->result();
+        foreach ($rows as $row) {
+            $key             = (string)$row->paymentmode;
+            $label           = $mode_names[$key] ?? ucwords(str_replace('_', ' ', $key));
+            $payment_modes[] = (object)['name' => $label, 'total' => round((float)$row->total, 2)];
+        }
+
+        // 5. Top 10 tenants by collected revenue (last 12 months)
+        $top_tenants = $this->db->query("SELECT COALESCE(NULLIF(cl.company, ''), CONCAT('Client #', i.clientid)) as name, SUM(pr.amount) as total
+            FROM `{$dbprefix}invoicepaymentrecords` pr
+            INNER JOIN `{$dbprefix}invoices` i ON i.id = pr.invoiceid
+            INNER JOIN `{$dbprefix}clients` cl ON cl.userid = i.clientid
+            WHERE i.`{$packageid_col}` > 0 AND pr.date >= ?
+            GROUP BY i.clientid, cl.company
+            ORDER BY total DESC
+            LIMIT 10", [$window_start])->result();
+
+        // 6. Tenants per database scheme (infrastructure distribution)
+        $db_schemes = $this->db->query("SELECT COALESCE(NULLIF(p.db_scheme, ''), 'multitenancy') as scheme, COUNT(*) as total
+            FROM `{$companies_table}` c
+            {$current_invoice_join}
+            INNER JOIN `{$packages_table}` p ON p.id = i.`{$packageid_col}`
+            GROUP BY scheme
+            ORDER BY total DESC")->result();
+
+        return [
+            'labels'             => $labels,
+            'kpis'               => [
+                'mrr'            => $mrr_total,
+                'arr'            => round($mrr_total * 12, 2),
+                'arpu'           => $arpu,
+                'active_tenants' => $active_tenants,
+                'paying_tenants' => $paying_tenants,
+                'outstanding'    => $outstanding_total,
+                'overdue'        => $overdue_total,
+            ],
+            'mrr_by_package'     => $mrr_rows,
+            'revenue_by_package' => array_values($revenue_by_package),
+            'aging'              => $aging,
+            'payment_modes'      => $payment_modes,
+            'top_tenants'        => $top_tenants,
+            'db_schemes'         => $db_schemes,
+        ];
+    }
+
 
     /**
      * Get the list of database schemes for tenant management.
@@ -490,6 +755,13 @@ class Perfex_saas_model extends App_Model
             $modules[$module_id]['price'] = $modules_market_settings[$module_id]['price'] ?? '';
             $modules[$module_id]['billing_mode'] = $modules_market_settings[$module_id]['billing_mode'] ?? '';
             $modules[$module_id]['image'] = $modules_market_settings[$module_id]['image'] ?? '';
+
+            // Presentation controls for the public plans/feature list: visibility
+            // (show/hide a module as a plan feature) and a manual sort order.
+            $visible = $modules_market_settings[$module_id]['visible'] ?? '1';
+            $modules[$module_id]['visible'] = ($visible === '' ? true : (bool)(int)$visible);
+            $order = $modules_market_settings[$module_id]['order'] ?? '';
+            $modules[$module_id]['order'] = ($order === '' ? null : (int)$order);
         }
 
         $modules  = hooks()->apply_filters('perfex_saas_module_list_filter', $modules);
@@ -605,6 +877,100 @@ class Perfex_saas_model extends App_Model
         $this->db->where('is_default', 1);
         $default_package = $this->packages();
         return $default_package[0] ?? null;
+    }
+
+    /**
+     * Get the list of pricing plan groups.
+     *
+     * Plan groups are stored as core customer groups (tblcustomers_groups) so the SaaS
+     * "Pricing Plans" screen and /admin/clients/groups stay in sync by construction.
+     *
+     * @param mixed $id Optional group id to fetch a single group.
+     * @return array|object
+     */
+    public function pricing_plan_groups($id = '')
+    {
+        $this->load->model('client_groups_model');
+        return $this->client_groups_model->get_groups($id);
+    }
+
+    /**
+     * Assign a package to a pricing plan group by writing plan_group_id into the
+     * package metadata. No schema change is required and existing metadata is preserved.
+     *
+     * @param int        $package_id
+     * @param int|string $group_id  Group id, or empty/0 to clear the group
+     * @return int|bool
+     */
+    public function set_package_plan_group($package_id, $group_id)
+    {
+        $package = $this->packages((int)$package_id);
+        if (empty($package)) return false;
+
+        $metadata = (array)($package->metadata ?? []);
+        $metadata['plan_group_id'] = !empty($group_id) ? (int)$group_id : '';
+
+        return $this->add_or_update('packages', [
+            'id'       => (int)$package_id,
+            'metadata' => json_encode($metadata),
+        ]);
+    }
+
+    /**
+     * Build the data structure backing the Pricing Plans matrix:
+     * grouped first by plan group, then by recurring interval alias (period tab).
+     *
+     * Returns an array shaped like:
+     * [
+     *   'groups'  => [group_id => group_name, ..., 0 => 'Ungrouped'],
+     *   'periods' => [alias => label, ...],                 // recurring period tabs
+     *   'matrix'  => [group_id => [period_alias => [package, ...]]],
+     * ]
+     *
+     * @param array|null $packages Optional preloaded packages
+     * @return array
+     */
+    public function packages_grouped_for_matrix($packages = null)
+    {
+        $packages = $packages === null ? $this->packages() : $packages;
+
+        // Plan groups (id => name) sourced from customer groups
+        $groups = [];
+        foreach ($this->pricing_plan_groups() as $g) {
+            $groups[(int)$g['id']] = $g['name'];
+        }
+        // Always provide an "ungrouped" bucket
+        $groups[0] = _l('perfex_saas_pricing_plans_ungrouped');
+
+        // Reuse the existing interval grouping to discover the period tabs
+        $by_interval = perfex_saas_group_pricing_by_interval_alias($packages);
+
+        $periods = [];
+        $matrix  = [];
+
+        foreach ($by_interval as $alias => $period_packages) {
+            // Normalise the private_ prefixed buckets produced by the public grouping
+            $clean_alias = str_starts_with($alias, 'private_') ? substr($alias, strlen('private_')) : $alias;
+            if ($clean_alias === '') $clean_alias = _l('perfex_saas_pricing_plans_no_period');
+
+            if (!isset($periods[$clean_alias])) $periods[$clean_alias] = $clean_alias;
+
+            foreach ($period_packages as $package) {
+                $gid = isset($package->metadata->plan_group_id) && $package->metadata->plan_group_id !== ''
+                    ? (int)$package->metadata->plan_group_id : 0;
+
+                // Drop orphaned group ids (e.g. deleted group) into the ungrouped bucket
+                if (!isset($groups[$gid])) $gid = 0;
+
+                $matrix[$gid][$clean_alias][] = $package;
+            }
+        }
+
+        return [
+            'groups'  => $groups,
+            'periods' => $periods,
+            'matrix'  => $matrix,
+        ];
     }
 
     /**

@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Ödeme Akışı';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Abonelikler için hangi Stripe ödeme deneyiminin kullanılacağını seçin. Kurulum modu önce ödeme yöntemlerini toplar, ardından abonelikleri oluşturur. Abonelik modu, ödeme sırasında abonelik ayrıntılarını gösterir ve ödeme tahsilatını otomatik olarak gerçekleştirir.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Kurulum Modu (Eski)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Abonelik Modu (Önerilen)';
-$lang['perfex_saas_sync_all_packages'] = 'Tümünü Senkronize Et';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Paket özelleştirmesinin kilidini açmak için lütfen abone olun.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Bu demo %s içinde sıfırlanacaktır. Lütfen eklenen tüm verilerin silineceğini ve sistemin bir an için yavaşlayabileceğini unutmayın.';

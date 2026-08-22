@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Checkout ροή';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Επιλέξτε ποια εμπειρία πληρωμής Stripe θα χρησιμοποιήσετε για τις συνδρομές. Η λειτουργία εγκατάστασης συλλέγει πρώτα τις μεθόδους πληρωμής και στη συνέχεια δημιουργεί τις συνδρομές. Η λειτουργία συνδρομής εμφανίζει τα στοιχεία της συνδρομής κατά τη διάρκεια της πληρωμής και χειρίζεται τη συλλογή πληρωμών αυτόματα.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Λειτουργία ρύθμισης (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Λειτουργία συνδρομής (Συνιστάται)';
-$lang['perfex_saas_sync_all_packages'] = 'Συγχρονισμός όλων';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Παρακαλούμε εγγραφείτε για να ξεκλειδώσετε την προσαρμογή του πακέτου.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Αυτό το demo θα επανέλθει σε %s. Λάβετε υπόψη ότι όλα τα δεδομένα που έχουν προστεθεί θα διαγραφούν και το σύστημα μπορεί να επιβραδυνθεί για λίγο.';

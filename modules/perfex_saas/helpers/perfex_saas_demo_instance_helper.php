@@ -59,13 +59,24 @@ function perfex_saas_reset_demo_instances()
 {
     if (perfex_saas_is_tenant()) return;
 
-    $history_key = 'perfex_saas_demo_instance_last_reset_time';
-    $remaining_seconds = perfex_saas_demo_seconds_until_reset();
-    if ($remaining_seconds > 0) { // If remaining seconds is greater than zero, exit (not time yet)
-        return;
+    $CI = &get_instance();
+
+    $key = 'perfex_saas_demo_instance';
+    $reset_key = $key . '_reset_hour';
+    $history_key = $key . '_last_reset_time';
+
+    $hours_interval = get_option($reset_key);
+    $last_reset_stamp = (int)get_option($history_key);
+    if (!empty($last_reset_stamp)) {
+        // Check if hours interval has elapsed otherwise return
+        $diff = time() - $last_reset_stamp;
+        $hours_elapsed = $diff / 3600; // Convert the difference to hours
+
+        if ($hours_elapsed < $hours_interval) {
+            return; // Interval has not elapsed, exit the function
+        }
     }
 
-    $CI = &get_instance();
     $instances = perfex_saas_demo_instances();
 
     foreach ($instances as $slug) {
@@ -100,7 +111,7 @@ function perfex_saas_reset_demo_instances()
  * @param object|null $tenant
  * @return bool
  */
-function perfex_saas_tenant_is_demo_instance(?object $tenant = null)
+function perfex_saas_tenant_is_demo_instance(object $tenant = null)
 {
     if (perfex_saas_is_tenant()) {
         $tenant = $tenant ?? perfex_saas_tenant();
@@ -173,52 +184,4 @@ function perfex_saas_filter_demo_instance_seed_tables($payload)
     $payload['seed_tables'] = $seed_tables;
 
     return $payload;
-}
-
-/**
- * Get seconds remaining until the next demo reset.
- *
- * @return int Seconds left, or 0 if expired.
- */
-function perfex_saas_demo_seconds_until_reset()
-{
-    $key = 'perfex_saas_demo_instance';
-    $reset_key = $key . '_reset_hour';
-    $history_key = $key . '_last_reset_time';
-
-    if (perfex_saas_is_tenant()) {
-        // If called from tenant context, read from super admin
-        $options = perfex_saas_get_options([$reset_key, $history_key], true);
-        $hours_interval    = (int) ($options[$reset_key] ?? 0);
-        $last_reset_stamp  = (int) ($options[$history_key] ?? 0);
-    } else {
-        $hours_interval    = (int) get_option($reset_key);
-        $last_reset_stamp  = (int) get_option($history_key);
-    }
-
-    if (empty($hours_interval) || empty($last_reset_stamp)) {
-        return 0; // No schedule set
-    }
-
-    $next_reset = $last_reset_stamp + ($hours_interval * 3600);
-    $remaining  = $next_reset - time();
-
-    return $remaining > 0 ? $remaining : 0;
-}
-
-/**
- * Get seconds remaining until the next full hour.
- *
- * @return int
- */
-function perfex_saas_seconds_until_next_hour()
-{
-    // Current timestamp
-    $now = time();
-
-    // Convert to the next hour o'clock timestamp
-    $next_hour = strtotime(date('Y-m-d H:00:00', $now)) + 3600;
-
-    // Seconds remaining
-    return $next_hour - $now;
 }

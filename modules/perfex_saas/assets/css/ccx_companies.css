@@ -1,0 +1,549 @@
+/* ═══════════════════════════════════════════════════════════════
+   CCX Support — Companies Page (Light Theme)
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --co-bg: #f4f6fb;
+    --co-surface: #ffffff;
+    --co-surface-2: #f8f9fc;
+    --co-surface-3: #eef0f6;
+    --co-border: #e4e7ef;
+    --co-border-hover: #c7cce0;
+    --co-text: #1e2334;
+    --co-text-muted: #6b7394;
+    --co-text-dim: #9ba3bf;
+    --co-accent: #6c5ce7;
+    --co-accent-light: #8577f0;
+    --co-accent-glow: rgba(108,92,231,.12);
+    --co-accent-gradient: linear-gradient(135deg, #6c5ce7 0%, #5b8cff 100%);
+    --co-danger: #ef4444;
+    --co-success: #10b981;
+    --co-info: #3b82f6;
+    --co-radius: 12px;
+    --co-radius-sm: 8px;
+    --co-transition: .2s cubic-bezier(.4,0,.2,1);
+}
+
+/* ─── Search Bar ─── */
+.ccx-co-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.ccx-co-search-form {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    max-width: 520px;
+}
+
+.ccx-co-search-wrap {
+    position: relative;
+    flex: 1;
+}
+
+.ccx-co-search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--co-text-dim);
+    font-size: 13px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.ccx-co-search-input {
+    width: 100%;
+    background: var(--co-surface) !important;
+    border: 1px solid var(--co-border) !important;
+    border-radius: var(--co-radius-sm) !important;
+    color: var(--co-text) !important;
+    padding: 9px 14px 9px 38px !important;
+    font-size: 13px !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: all var(--co-transition) !important;
+    box-shadow: none !important;
+}
+
+.ccx-co-search-input:focus {
+    border-color: var(--co-accent) !important;
+    box-shadow: 0 0 0 3px var(--co-accent-glow) !important;
+    outline: none !important;
+}
+
+.ccx-co-search-input::placeholder {
+    color: var(--co-text-dim) !important;
+}
+
+.ccx-co-count {
+    font-size: 12px;
+    color: var(--co-text-dim);
+    font-family: 'Inter', sans-serif;
+    margin-left: auto;
+}
+
+.ccx-co-count span {
+    color: var(--co-accent);
+    font-weight: 600;
+}
+
+/* ─── Buttons ─── */
+.ccx-co-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: none;
+    border-radius: var(--co-radius-sm);
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all var(--co-transition);
+    text-decoration: none !important;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.ccx-co-btn-primary {
+    background: var(--co-accent-gradient);
+    color: #fff !important;
+}
+
+.ccx-co-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--co-accent-glow);
+    color: #fff !important;
+}
+
+.ccx-co-btn-accent {
+    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    color: #fff !important;
+}
+
+.ccx-co-btn-accent:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(139,92,246,.2);
+    color: #fff !important;
+}
+
+.ccx-co-btn-ghost {
+    background: var(--co-surface);
+    border: 1px solid var(--co-border);
+    color: var(--co-text-muted) !important;
+}
+
+.ccx-co-btn-ghost:hover {
+    border-color: var(--co-border-hover);
+    color: var(--co-text) !important;
+    background: var(--co-surface-2);
+}
+
+.ccx-co-btn-sm {
+    padding: 6px 12px;
+    font-size: 11px;
+    border-radius: 6px;
+}
+
+.ccx-co-btn-view {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff !important;
+}
+
+.ccx-co-btn-view:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(245, 158, 11, .25);
+    color: #fff !important;
+}
+
+.ccx-co-btn-edit {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff !important;
+}
+
+.ccx-co-btn-edit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, .25);
+    color: #fff !important;
+}
+
+/* ─── Table Card ─── */
+.ccx-co-table-card {
+    background: var(--co-surface);
+    border: 1px solid var(--co-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,.05);
+}
+
+/* ─── Table ─── */
+.ccx-co-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+}
+
+.ccx-co-table thead tr {
+    background: var(--co-surface-2);
+    border-bottom: 1px solid var(--co-border);
+}
+
+.ccx-co-table thead th {
+    padding: 12px 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--co-text-dim);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    white-space: nowrap;
+    border: none !important;
+}
+
+.ccx-co-th-right {
+    text-align: right;
+}
+
+.ccx-co-table tbody tr {
+    border-bottom: 1px solid var(--co-border);
+    transition: background var(--co-transition);
+}
+
+.ccx-co-row:hover {
+    background: var(--co-surface-2) !important;
+}
+
+.ccx-co-table tbody td {
+    padding: 14px 20px;
+    color: var(--co-text);
+    vertical-align: middle;
+    border: none !important;
+}
+
+/* ─── Company Link ─── */
+.ccx-co-company-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--co-text) !important;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: color var(--co-transition);
+}
+
+.ccx-co-company-link:hover {
+    color: var(--co-accent) !important;
+}
+
+.ccx-co-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--co-accent-gradient);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 11px;
+    flex-shrink: 0;
+    letter-spacing: .5px;
+}
+
+.ccx-co-ext-icon {
+    font-size: 9px;
+    opacity: .25;
+    transition: opacity var(--co-transition);
+}
+
+.ccx-co-company-link:hover .ccx-co-ext-icon {
+    opacity: .6;
+}
+
+/* ─── Client Link ─── */
+.ccx-co-client-link {
+    color: var(--co-text-muted) !important;
+    text-decoration: none !important;
+    transition: color var(--co-transition);
+}
+
+.ccx-co-client-link:hover {
+    color: var(--co-accent) !important;
+}
+
+/* ─── Contact Card ─── */
+.ccx-co-contact {
+    line-height: 1.5;
+}
+
+.ccx-co-contact-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--co-text);
+}
+
+.ccx-co-contact-name i {
+    color: var(--co-text-dim);
+    margin-right: 4px;
+    font-size: 12px;
+}
+
+.ccx-co-contact-detail {
+    font-size: 11px;
+    color: var(--co-text-dim);
+    margin-top: 2px;
+}
+
+.ccx-co-contact-detail i {
+    margin-right: 4px;
+    font-size: 10px;
+    opacity: .5;
+}
+
+.ccx-co-contact-detail a {
+    color: var(--co-text-dim) !important;
+    text-decoration: none !important;
+    transition: color var(--co-transition);
+}
+
+.ccx-co-contact-detail a:hover {
+    color: var(--co-accent) !important;
+}
+
+.ccx-co-no-data {
+    font-size: 12px;
+    color: var(--co-text-dim);
+    font-style: italic;
+}
+
+/* ─── Data Masking / Reveal Toggle ─── */
+.ccx-co-reveal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 1px solid var(--co-border);
+    background: var(--co-surface-2);
+    color: var(--co-text-dim);
+    font-size: 10px;
+    cursor: pointer;
+    margin-left: 6px;
+    padding: 0;
+    vertical-align: middle;
+    transition: all var(--co-transition);
+    line-height: 1;
+}
+
+.ccx-co-reveal-btn:hover {
+    background: var(--co-accent-glow);
+    border-color: var(--co-accent);
+    color: var(--co-accent);
+    transform: scale(1.1);
+}
+
+.ccx-co-reveal-btn.ccx-co-revealed {
+    background: var(--co-accent);
+    border-color: var(--co-accent);
+    color: #fff;
+    box-shadow: 0 2px 8px var(--co-accent-glow);
+}
+
+.ccx-co-reveal-btn.ccx-co-revealed:hover {
+    background: var(--co-accent-light);
+}
+
+.ccx-co-masked {
+    letter-spacing: .3px;
+    transition: opacity var(--co-transition);
+    font-variant-numeric: tabular-nums;
+}
+
+.ccx-co-reveal-link {
+    color: var(--co-accent) !important;
+    text-decoration: none !important;
+    font-weight: 500;
+    transition: color var(--co-transition);
+}
+
+.ccx-co-reveal-link:hover {
+    color: var(--co-accent-light) !important;
+    text-decoration: underline !important;
+}
+
+/* ─── Badges ─── */
+.ccx-co-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .2px;
+}
+
+.ccx-co-badge-success {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.ccx-co-badge-danger {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.ccx-co-badge-info {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.ccx-co-badge-plan {
+    background: #f0edff;
+    color: var(--co-accent);
+}
+
+.ccx-co-badge-plan i {
+    font-size: 9px;
+    opacity: .7;
+}
+
+/* ─── Date Column ─── */
+.ccx-co-date {
+    font-size: 12px;
+    color: var(--co-text-dim);
+    white-space: nowrap;
+}
+
+/* ─── Actions Column ─── */
+.ccx-co-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.ccx-co-actions .ccx-co-btn + .ccx-co-btn {
+    margin-left: 6px;
+}
+
+/* ─── Empty State ─── */
+.ccx-co-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--co-text-dim);
+}
+
+.ccx-co-empty i {
+    font-size: 48px;
+    opacity: .15;
+    display: block;
+    margin-bottom: 12px;
+    color: var(--co-accent);
+}
+
+.ccx-co-empty p {
+    font-size: 14px;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+/* ─── Pagination ─── */
+.ccx-co-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid var(--co-border);
+}
+
+.ccx-co-page-info {
+    font-size: 12px;
+    color: var(--co-text-dim);
+    font-family: 'Inter', sans-serif;
+}
+
+.ccx-co-page-info strong {
+    color: var(--co-text);
+}
+
+.ccx-co-page-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ccx-co-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--co-border);
+    background: var(--co-surface);
+    color: var(--co-text-muted) !important;
+    text-decoration: none !important;
+    font-size: 12px;
+    transition: all var(--co-transition);
+}
+
+.ccx-co-page-btn:hover {
+    background: var(--co-surface-2);
+    border-color: var(--co-accent);
+    color: var(--co-accent) !important;
+}
+
+.ccx-co-page-current {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--co-accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+}
+
+/* ─── FAB ─── */
+.ccx-co-fab {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--co-accent-gradient);
+    color: #fff !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 24px var(--co-accent-glow);
+    text-decoration: none !important;
+    transition: all var(--co-transition);
+}
+
+.ccx-co-fab:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 32px rgba(108,92,231,.25);
+    color: #fff !important;
+}
+
+/* ─── Scrollbar ─── */
+.ccx-co-table-card .table-responsive::-webkit-scrollbar {
+    height: 5px;
+}
+
+.ccx-co-table-card .table-responsive::-webkit-scrollbar-thumb {
+    background: #d5d9e5;
+    border-radius: 3px;
+}

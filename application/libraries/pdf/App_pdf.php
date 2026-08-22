@@ -35,25 +35,8 @@ abstract class App_pdf extends TCPDF
     {
         $this->formatArray = $this->get_format_array();
 
-        $constructorParams = hooks()->apply_filters('app_pdf_constructor_params', [
-            'orientation' => $this->formatArray['orientation'],
-            'unit' => 'mm',
-            'format' => $this->formatArray['format'],
-            'unicode' => true,
-            'encoding' => 'UTF-8',
-            'diskcache' => false,
-            'pdfa' => false
-        ]);
+        parent::__construct($this->formatArray['orientation'], 'mm', $this->formatArray['format'], true, 'UTF-8', false, false);
 
-        parent::__construct(
-            $constructorParams['orientation'],
-            $constructorParams['unit'],
-            $constructorParams['format'],
-            $constructorParams['unicode'],
-            $constructorParams['encoding'],
-            $constructorParams['diskcache'],
-            $constructorParams['pdfa']
-        );
         /**
          * If true print TCPDF meta link.
          *
@@ -323,11 +306,11 @@ abstract class App_pdf extends TCPDF
             mb_internal_encoding($this->internal_encoding);
         }
 
-        if ($this->file_id && isset(self::$cleaned_ids[$this->file_id])) {
+        if (isset(self::$cleaned_ids[$this->file_id])) {
             $destroyall = false;
         }
 
-        if ($destroyall and ! $preserve_objcopy && isset($this->file_id)) {
+        if ($destroyall and ! $preserve_objcopy) {
             self::$cleaned_ids[$this->file_id] = true;
             // remove all temporary files
             if ($handle = @opendir(K_PATH_CACHE)) {

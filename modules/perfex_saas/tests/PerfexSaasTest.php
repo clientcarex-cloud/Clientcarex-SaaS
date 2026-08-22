@@ -12,6 +12,7 @@ class PerfexSaasTest
         $this->CI->load->helper(PERFEX_SAAS_MODULE_NAME . '/' . PERFEX_SAAS_MODULE_NAME);
         $this->CI->load->helper(PERFEX_SAAS_MODULE_NAME . '/' . PERFEX_SAAS_MODULE_NAME . '_core');
         $this->CI->load->helper(PERFEX_SAAS_MODULE_NAME . '/' . PERFEX_SAAS_MODULE_NAME . '_setup');
+        $this->CI->load->helper(PERFEX_SAAS_MODULE_NAME . '/' . PERFEX_SAAS_MODULE_NAME . '_import');
 
         $this->CI->load->library('unit_test');
         $this->CI->unit->use_strict(TRUE);

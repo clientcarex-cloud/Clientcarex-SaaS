@@ -1,7 +1,7 @@
 /*!
  * Internal Google Drive Picker Plugin.
  *
- * https://perfexcrm.com/
+ * https://healtho.pro/
  *
  * Copyright (c) 2023 Marjan Stojanov
  *

@@ -2,10 +2,6 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
-/**
- * @property-read Emails_model $emails_model
- * @property-read App_Email $email
- */
 class Emails extends AdminController
 {
     public function __construct()
@@ -289,15 +285,6 @@ class Emails extends AdminController
              set_alert('success', _l('deleted', _l('email_queue')));
         }
 
-        redirect(admin_url('settings?group=email&tab=email_queue'));
-    }
-
-    public function clear_queued_emails()
-    {
-        if (staff_can('edit', 'settings')) {
-            $this->email->clear_queued_emails();
-            set_alert('success', _l('email_queue_cleared'));
-        }
         redirect(admin_url('settings?group=email&tab=email_queue'));
     }
 }

@@ -21,7 +21,13 @@ function perfex_saas_tenant_base_url($tenant, $endpoint = '', $method = 'auto')
 {
     $slug = perfex_saas_clean_slug($tenant->slug, 'url');
 
-    $default_url = perfex_saas_default_base_url(perfex_saas_tenant_url_signature($slug) . '/' . $endpoint);
+    // Prefer the dynamically-resolved APP_BASE_URL (matches the current server host)
+    // over the static APP_BASE_URL_DEFAULT from .env — safety net for env mismatches.
+    $base_url = (defined('APP_BASE_URL') && APP_BASE_URL !== APP_BASE_URL_DEFAULT)
+        ? APP_BASE_URL
+        : APP_BASE_URL_DEFAULT;
+    $default_url = $base_url . perfex_saas_tenant_url_signature($slug) . '/' . $endpoint;
+
     $subdomain = "";
     $custom_domain = "";
 
@@ -36,16 +42,17 @@ function perfex_saas_tenant_base_url($tenant, $endpoint = '', $method = 'auto')
         $package = $CI->perfex_saas_model->get_company_invoice($tenant->clientid);
     }
 
-    $can_use_custom_domain = (int)($package->metadata->enable_custom_domain ?? 0);
+    $can_use_custom_domain = $package ? (int) ($package->metadata->enable_custom_domain ?? 0) : 0;
 
     // If has custom domain, and available for use
     if (!empty($tenant->custom_domain) && $can_use_custom_domain) {
-        $custom_domain =  perfex_saas_prep_url($tenant->custom_domain . '/' . $endpoint);
-        if ($method === 'auto') return $custom_domain;
+        $custom_domain = perfex_saas_prep_url($tenant->custom_domain . '/' . $endpoint);
+        if ($method === 'auto')
+            return $custom_domain;
     }
 
     // If subdomain is enabled on package, use subdomain
-    $can_use_subdomain = $package->metadata->enable_subdomain ?? false;
+    $can_use_subdomain = $package ? ($package->metadata->enable_subdomain ?? false) : false;
     if ($can_use_subdomain) {
 
         $app_host = perfex_saas_get_saas_default_host();
@@ -54,14 +61,16 @@ function perfex_saas_tenant_base_url($tenant, $endpoint = '', $method = 'auto')
             $app_host = $alt_app_host;
 
         $subdomain = perfex_saas_prep_url($slug . '.' . $app_host . '/' . $endpoint);
-        if ($method === 'auto') return $subdomain;
+        if ($method === 'auto')
+            return $subdomain;
     }
 
-    if ($method === 'all') return [
-        'path' => $default_url,
-        'subdomain' => $subdomain,
-        'custom_domain' => $custom_domain,
-    ];
+    if ($method === 'all')
+        return [
+            'path' => $default_url,
+            'subdomain' => $subdomain,
+            'custom_domain' => $custom_domain,
+        ];
 
     return $default_url;
 }
@@ -157,7 +166,7 @@ function perfex_saas_generate_unique_slug(string $str, string $table, string $id
         $str = random_string('alpha', 4) . $delimiter . $str;
     }
 
-    $max_length = isset($options['max_length']) ? (int)$options['max_length'] : PERFEX_SAAS_MAX_SLUG_LENGTH;
+    $max_length = isset($options['max_length']) ? (int) $options['max_length'] : PERFEX_SAAS_MAX_SLUG_LENGTH;
 
     if ($max_length > 0)
         $str = substr($str, 0, $max_length);
@@ -196,19 +205,22 @@ function perfex_saas_generate_unique_slug(string $str, string $table, string $id
  */
 function perfex_saas_slug_is_valid($slug, $options = [])
 {
-    $max_length = isset($options['max_length']) ? (int)$options['max_length'] : PERFEX_SAAS_MAX_SLUG_LENGTH;
-    $min_length = isset($options['min_length']) ? (int)$options['min_length'] : 3;
+    $max_length = isset($options['max_length']) ? (int) $options['max_length'] : PERFEX_SAAS_MAX_SLUG_LENGTH;
+    $min_length = isset($options['min_length']) ? (int) $options['min_length'] : 3;
     $delimiter = isset($options['delimiter']) ? $options['delimiter'] : '_';
 
     // Remove dash if not being used as delimiter
     if ($delimiter !== '-')
         $slug = strtolower(str_ireplace('-', '', $slug));
 
-    if (empty($slug) || is_numeric($slug)) return false;
+    if (empty($slug) || is_numeric($slug))
+        return false;
 
-    if (in_array($slug, perfex_saas_reserved_slugs())) return false;
+    if (in_array($slug, perfex_saas_reserved_slugs()))
+        return false;
 
-    if (strlen($slug) > $max_length || strlen($slug) < $min_length) return false;
+    if (strlen($slug) > $max_length || strlen($slug) < $min_length)
+        return false;
 
     // Must start with alphabet
     return perfex_saas_str_starts_with_alpha($slug);
@@ -233,7 +245,8 @@ function perfex_saas_column_is_unique($value, string $table, $id = '', $col = 's
     // Ensure uniqueness
     if (
         $CI->db->where($col, $value)->get(perfex_saas_table($table), 1)->num_rows() > 0
-    ) return false;
+    )
+        return false;
 
     return true;
 }
@@ -295,8 +308,9 @@ function perfex_saas_get_primary_contact($userid)
 function perfex_saas_send_customdomain_request_notice($company, $custom_domain, $package, $status = 'request', $extra_email_data = [])
 {
     // Notify supper admin on domain update
-    $autoapprove = (int)($package->metadata->autoapprove_custom_domain ?? 0);
-    if ($autoapprove) return;
+    $autoapprove = (int) ($package->metadata->autoapprove_custom_domain ?? 0);
+    if ($autoapprove)
+        return;
 
     $contact = perfex_saas_get_primary_contact($company->clientid);
     $company->custom_domain = $custom_domain;
@@ -306,19 +320,22 @@ function perfex_saas_send_customdomain_request_notice($company, $custom_domain, 
 
         // Prevent abuse of excessive email request
         $count = (int) get_contact_meta($contact->id, $meta_key);
-        if ($count > 5) return;
+        if ($count > 5)
+            return;
 
         // Notify supper admin
         try {
             $notifiedUsers = [];
             $admin = perfex_saas_get_super_admin();
             $staffid = $admin->staffid;
-            if (add_notification([
-                'touserid' => $staffid,
-                'description' => _l('perfex_saas_not_domain_request', $custom_domain),
-                'link' => PERFEX_SAAS_ROUTE_NAME . '/companies/edit/' . $company->id,
-                'additional_data' => serialize([$company->name])
-            ])) {
+            if (
+                add_notification([
+                    'touserid' => $staffid,
+                    'description' => _l('perfex_saas_not_domain_request', $custom_domain),
+                    'link' => PERFEX_SAAS_ROUTE_NAME . '/companies/edit/' . $company->id,
+                    'additional_data' => serialize([$company->name])
+                ])
+            ) {
                 array_push($notifiedUsers, $staffid);
             }
             pusher_trigger_notification($notifiedUsers);
@@ -353,7 +370,8 @@ function perfex_saas_init_shared_options()
         $CI = &get_instance();
 
         $tenant = perfex_saas_tenant();
-        if (empty($tenant->package_invoice)) return; // wont share any settings
+        if (empty($tenant->package_invoice))
+            return; // wont share any settings
 
         $sharing_smtp_email = false;
 
@@ -365,7 +383,7 @@ function perfex_saas_init_shared_options()
         //return if no shared fields
         if (!empty($tenant->package_invoice->metadata->shared_settings->shared)) {
 
-            $package_shared_fields = (array)$tenant->package_invoice->metadata->shared_settings->shared;
+            $package_shared_fields = (array) $tenant->package_invoice->metadata->shared_settings->shared;
         }
 
         $shared_fields = array_unique(array_merge($package_shared_fields, $enforced_shared_fields));
@@ -437,21 +455,8 @@ function perfex_saas_init_shared_options()
 
             hooks()->add_filter('after_parse_email_template_message', function ($template) {
                 $tenant_contact_email = perfex_saas_tenant()->package_invoice->email ?? '';
-
-                $reply_to_email = $tenant_contact_email;
-                // Use logged in staff email in place of tenant contact email if available
-                if (is_staff_logged_in()) {
-                    $staff = get_staff(get_staff_user_id());
-                    if ($staff && !empty($staff->email)) {
-                        $reply_to_email = $staff->email;
-                    }
-                }
-
-                if (!empty($reply_to_email)) {
-                    $template->reply_to = empty($template->reply_to) ? $reply_to_email : $template->reply_to;
-                }
-
                 if (!empty($tenant_contact_email)) {
+                    $template->reply_to = empty($template->reply_to) ? $tenant_contact_email : $template->reply_to;
                     $template->fromemail = empty($template->fromemail) ? $tenant_contact_email : $template->fromemail;
                 }
                 return $template;
@@ -687,7 +692,8 @@ function perfex_saas_cron()
  */
 function perfex_saas_cron_before()
 {
-    if (perfex_saas_is_tenant()) return;
+    if (perfex_saas_is_tenant())
+        return;
 
     // Update status for the deferred draft invoices
     $CI = &get_instance();
@@ -702,7 +708,7 @@ function perfex_saas_cron_before()
         ]
     );
     foreach ($drafts as $draft) {
-        $draft = (object)$draft;
+        $draft = (object) $draft;
         if (date('Y-m-d') >= $draft->duedate) {
             update_invoice_status($draft->id, true);
         }
@@ -715,14 +721,17 @@ function perfex_saas_cron_before()
  */
 function perfex_saas_autosubscribe()
 {
-    if (!is_client_logged_in()) return;
+    if (!is_client_logged_in())
+        return;
 
-    if (!is_contact_email_verified()) return;
+    if (!is_contact_email_verified())
+        return;
 
     $CI = &get_instance();
 
     // Disable if the request is api
-    if ($CI->router->fetch_class() == 'api') return;
+    if ($CI->router->fetch_class() == 'api')
+        return;
 
     // Check if disabled for the active user
     if (($CI->session->userdata('perfex_saas_enable_auto_trial') ?? '1') == '0')
@@ -742,7 +751,8 @@ function perfex_saas_autosubscribe()
                 if (!empty($package_slug)) {
                     // Confirm the package still exist
                     $package = $CI->perfex_saas_model->get_entity_by_slug('packages', $package_slug);
-                    if (empty($package)) $package_slug = '';
+                    if (empty($package))
+                        $package_slug = '';
                 }
 
                 // Check if we have selected plan in session
@@ -751,7 +761,8 @@ function perfex_saas_autosubscribe()
                     $CI->db->where('is_default', 1);
                     $default_package = $CI->perfex_saas_model->packages();
                     $package_slug = empty($default_package) ? '' : $default_package[0]->slug;
-                };
+                }
+                ;
 
                 // Subscribe
                 if (!empty($package_slug)) {
@@ -781,7 +792,7 @@ function perfex_saas_client_can_trial_package($client_id)
         return false;
     }
 
-    $client_metadata = (object)perfex_saas_get_or_save_client_metadata($client_id);
+    $client_metadata = (object) perfex_saas_get_or_save_client_metadata($client_id);
     return empty($client_metadata->trial_package_id) && empty($client_metadata->last_cancelled_invoice);
 }
 
@@ -793,7 +804,7 @@ function perfex_saas_client_can_trial_package($client_id)
  */
 function perfex_saas_get_recurring_invoice_next_date($invoice)
 {
-    $recurring_invoice           = $invoice;
+    $recurring_invoice = $invoice;
 
     if ($invoice->is_recurring_from != null) {
         $recurring_invoice = get_instance()->invoices_model->get($invoice->is_recurring_from);
@@ -811,7 +822,8 @@ function perfex_saas_get_recurring_invoice_next_date($invoice)
     if ($recurring_invoice->custom_recurring == 0) {
         $recurring_invoice->recurring_type = 'MONTH';
     }
-    if (!isset($next_recurring_date_compare)) return false;
+    if (!isset($next_recurring_date_compare))
+        return false;
 
     $next_date = date('Y-m-d', strtotime('+' . $recurring_invoice->recurring . ' ' . strtoupper($recurring_invoice->recurring_type), strtotime($next_recurring_date_compare)));
     return $next_date;
@@ -879,19 +891,21 @@ function perfex_saas_load_ci_db_from_dsn($dsn, $extra = [])
 {
 
     $base_config = [
-        'dbdriver'     => APP_DB_DRIVER,
-        'char_set'     => defined('APP_DB_CHARSET') ? APP_DB_CHARSET : 'utf8',
-        'dbcollat'     => defined('APP_DB_COLLATION') ? APP_DB_COLLATION : 'utf8_general_ci',
+        'dbdriver' => APP_DB_DRIVER,
+        'char_set' => defined('APP_DB_CHARSET') ? APP_DB_CHARSET : 'utf8',
+        'dbcollat' => defined('APP_DB_COLLATION') ? APP_DB_COLLATION : 'utf8_general_ci',
     ];
 
     $config = array_merge($base_config, [
-        'hostname'     => $dsn['host'],
-        'username'     => $dsn['user'],
-        'password'     => $dsn['password'],
-        'database'     => $dsn['dbname'],
+        'hostname' => $dsn['host'],
+        'username' => $dsn['user'],
+        'password' => $dsn['password'],
+        'database' => $dsn['dbname'],
+        'swap_pre' => perfex_saas_master_db_prefix(),
     ], $extra);
 
-    if (!isset($config['dbprefix'])) throw new \Exception("DB Prefix required for this configuration", 1);
+    if (!isset($config['dbprefix']))
+        throw new \Exception("DB Prefix required for this configuration", 1);
 
     $CI = &get_instance();
     return $CI->load->database($config, TRUE);
@@ -923,14 +937,14 @@ function perfex_saas_is_single_package_mode()
  */
 function perfex_saas_asset_url($asset, $clear_cache = false)
 {
-    $base_path =  'assets/' . PERFEX_SAAS_MODULE_WHITELABEL_NAME;
+    $base_path = 'assets/' . PERFEX_SAAS_MODULE_WHITELABEL_NAME;
 
     if ($clear_cache) {
         perfex_saas_remove_dir(FCPATH . $base_path);
     }
 
     $path = $base_path . '/' . $asset;
-    if (!file_exists(FCPATH .  $path)) {
+    if (!file_exists(FCPATH . $path)) {
         xcopy(
             module_dir_path(PERFEX_SAAS_MODULE_NAME, 'assets/'),
             FCPATH . 'assets/' . PERFEX_SAAS_MODULE_WHITELABEL_NAME . '/'
@@ -952,7 +966,8 @@ function perfex_saas_asset_url($asset, $clear_cache = false)
  */
 function perfex_saas_generate_magic_auth_code($clientid)
 {
-    if (empty($clientid)) return null;
+    if (empty($clientid))
+        return null;
 
     // Generate a random authentication code
     $auth_code = implode('|~|', [random_int(1111, 99999), time(), $clientid]);
@@ -976,7 +991,7 @@ function perfex_saas_generate_magic_auth_code($clientid)
 function perfex_saas_validate_and_authorize_magic_auth_code($_code = '')
 {
     $CI = &get_instance();
-    $_code = empty($_code) ?  $CI->input->get('auth_code', true) : $_code;
+    $_code = empty($_code) ? $CI->input->get('auth_code', true) : $_code;
     $code = $CI->encryption->decrypt($_code);
     if (!$code) {
         throw new \Exception(_l('perfex_saas_auth_code_parse_error'), 1);
@@ -988,7 +1003,7 @@ function perfex_saas_validate_and_authorize_magic_auth_code($_code = '')
     }
 
     $hash = $code[0];
-    $time = (int)$code[1];
+    $time = (int) $code[1];
     $clientid = $code[2];
 
     $metadata = perfex_saas_get_or_save_client_metadata($clientid);
@@ -1003,7 +1018,102 @@ function perfex_saas_validate_and_authorize_magic_auth_code($_code = '')
         throw new \Exception(_l('perfex_saas_auth_code_expired'), 1);
     }
 
-    return (int)$clientid;
+    return (int) $clientid;
+}
+
+/**
+ * Identity of the tenant staff member currently signed in on this instance.
+ *
+ * The SaaS bridge signs EVERY tenant staff member into the provider's client
+ * portal as the client's primary contact (typically the account owner), so
+ * anything raised from there — support tickets above all — would otherwise be
+ * stamped with the owner's details no matter who actually raised it. This is
+ * the real person behind the request.
+ *
+ * @return array{staff_id:int,name:string,email:string}|null
+ */
+function perfex_saas_current_staff_actor()
+{
+    if (!function_exists('is_staff_logged_in') || !is_staff_logged_in()) {
+        return null;
+    }
+
+    $CI    = &get_instance();
+    $staff = $CI->db->select('staffid, firstname, lastname, email')
+        ->where('staffid', get_staff_user_id())
+        ->get(db_prefix() . 'staff')->row();
+
+    if (!$staff) {
+        return null;
+    }
+
+    return [
+        'staff_id' => (int) $staff->staffid,
+        'name'     => trim($staff->firstname . ' ' . $staff->lastname),
+        'email'    => trim((string) $staff->email),
+    ];
+}
+
+/**
+ * Encrypt the current tenant staff identity for the client-portal bridge hop.
+ *
+ * Rides along with the magic auth code and is read back by
+ * Authentication::client_magic_auth() on the provider install. Encrypted with
+ * the shared application key (same mechanism as the magic auth code itself) and
+ * timestamped so a captured token cannot be replayed later.
+ *
+ * @return string Empty string when there is no usable identity.
+ */
+function perfex_saas_portal_actor_token()
+{
+    $actor = perfex_saas_current_staff_actor();
+    if (!$actor || $actor['email'] === '') {
+        return '';
+    }
+
+    $actor['time'] = time();
+
+    return (string) get_instance()->encryption->encrypt(json_encode($actor));
+}
+
+/**
+ * Decode a token produced by perfex_saas_portal_actor_token().
+ *
+ * @param string $token
+ * @return array{staff_id:int,name:string,email:string}|null
+ */
+function perfex_saas_parse_portal_actor_token($token)
+{
+    if (empty($token)) {
+        return null;
+    }
+
+    try {
+        $payload = get_instance()->encryption->decrypt($token);
+    } catch (\Throwable $th) {
+        return null;
+    }
+
+    if (!$payload) {
+        return null;
+    }
+
+    $actor = json_decode($payload, true);
+    if (!is_array($actor) || empty($actor['email']) || empty($actor['time'])) {
+        return null;
+    }
+
+    // Same one-shot window as the magic auth code it travels with, with enough
+    // slack for a slow bridge hop.
+    if ((time() - (int) $actor['time']) > 120) {
+        return null;
+    }
+
+    return [
+        'staff_id' => (int) ($actor['staff_id'] ?? 0),
+        'name'     => trim((string) ($actor['name'] ?? '')),
+        'email'    => trim((string) $actor['email']),
+    ];
 }
 
 /**
@@ -1013,15 +1123,16 @@ function perfex_saas_validate_and_authorize_magic_auth_code($_code = '')
  * @param integer|null $staff_id Optional staff id to use for login
  * @return bool
  */
-function perfex_saas_tenant_admin_autologin(?int $staff_id = null)
+function perfex_saas_tenant_admin_autologin(int $staff_id = null)
 {
-    if (!perfex_saas_is_tenant()) throw new \Exception("This function can only be used from an instance context", 1);
+    if (!perfex_saas_is_tenant())
+        throw new \Exception("This function can only be used from an instance context", 1);
 
     $CI = &get_instance();
     $CI->load->helper('cookie');
 
-    if ((int)$staff_id)
-        $CI->db->where('staffid', (int)$staff_id);
+    if ((int) $staff_id)
+        $CI->db->where('staffid', (int) $staff_id);
     else
         $CI->db->where('admin', 1);
 
@@ -1037,14 +1148,14 @@ function perfex_saas_tenant_admin_autologin(?int $staff_id = null)
     // Harness the perfex inbuilt auto login
     // @Ref: models/Authentication_model.php
     $staff = true;
-    $key = bin2hex(random_bytes(32));
+    $key = substr(md5(uniqid(rand() . get_cookie($CI->config->item('sess_cookie_name')))), 0, 16);
     $CI->user_autologin->delete($user_id, $key, $staff);
-    if ($CI->user_autologin->set($user_id, hash('sha256', $key), $staff)) {
+    if ($CI->user_autologin->set($user_id, md5($key), $staff)) {
         set_cookie([
-            'name'  => 'autologin',
-            'value' => json_encode([
+            'name' => 'autologin',
+            'value' => serialize([
                 'user_id' => $user_id,
-                'key'     => $key,
+                'key' => $key,
             ]),
             'expire' => 5000, // 5secs
             'path' => $cookie_path,
@@ -1077,7 +1188,7 @@ function perfex_saas_get_days_until($time, $strict = false)
 
     // Calculate the difference in days
     $interval = $targetDate->diff($now);
-    $daysLeft = (int)$interval->days;
+    $daysLeft = (int) $interval->days;
 
     // Ensure the lower limit for strict mode
     if (!$strict && $daysLeft === 0 && $interval->h > 0) {
@@ -1156,7 +1267,8 @@ function perfex_saas_app_settings_tabs()
  */
 function perfex_saas_trigger_module_install($module = '*', $tenant_slug = '')
 {
-    if (perfex_saas_is_tenant()) return;
+    if (perfex_saas_is_tenant())
+        return;
     // set module install requirement trigger
     $key = PERFEX_SAAS_CRON_PROCESS_MODULE;
     $value = is_array($module) ? $module['system_name'] : $module;
@@ -1178,14 +1290,15 @@ function perfex_saas_trigger_module_install($module = '*', $tenant_slug = '')
  */
 function perfex_saas_trigger_cron_process($process_name, $unique_id = '*')
 {
-    if (perfex_saas_is_tenant()) return;
+    if (perfex_saas_is_tenant())
+        return;
     $model = get_instance()->perfex_saas_cron_model;
 
     $settings = $model->get_settings();
-    $settings = (array)($settings->{$process_name} ?? []);
+    $settings = (array) ($settings->{$process_name} ?? []);
     if (empty($settings) || !is_array($settings))
         $settings = [];
-    $settings[] = (string)$unique_id;
+    $settings[] = (string) $unique_id;
 
     return $model->save_settings(["$process_name" => array_unique($settings)]);
 }
@@ -1202,14 +1315,15 @@ function perfex_saas_should_run_cron_triggers_for_tenant($tenant)
 
     $settings = $model->get_settings();
 
-    $module_trigger = (array)($settings->{PERFEX_SAAS_CRON_PROCESS_MODULE} ?? []);
-    if (!empty($module_trigger)) return true;
+    $module_trigger = (array) ($settings->{PERFEX_SAAS_CRON_PROCESS_MODULE} ?? []);
+    if (!empty($module_trigger))
+        return true;
 
-    $single_tenant_module_trigger = (array)($settings->{PERFEX_SAAS_CRON_PROCESS_SINGLE_TENANT_MODULE} ?? []);
+    $single_tenant_module_trigger = (array) ($settings->{PERFEX_SAAS_CRON_PROCESS_SINGLE_TENANT_MODULE} ?? []);
     if (in_array($tenant->slug, $single_tenant_module_trigger))
         return true;
 
-    $package_update_trigger = (array)($settings->{PERFEX_SAAS_CRON_PROCESS_PACKAGE} ?? []);
+    $package_update_trigger = (array) ($settings->{PERFEX_SAAS_CRON_PROCESS_PACKAGE} ?? []);
     if (isset($tenant->package_invoice) && in_array($tenant->package_invoice->{perfex_saas_column('packageid')}, $package_update_trigger))
         return true;
 
@@ -1225,20 +1339,22 @@ function perfex_saas_should_run_cron_triggers_for_tenant($tenant)
 function perfex_saas_client_can_use_saas($client_id = '')
 {
 
-    if (perfex_saas_is_tenant() || !is_client_logged_in()) return true;
+    if (perfex_saas_is_tenant() || !is_client_logged_in())
+        return true;
 
     $has_permission = perfex_saas_contact_can_manage_instances() ||
         perfex_saas_contact_can_manage_subscription();
 
     $mode = get_option('perfex_saas_client_restriction_mode');
-    if (empty($mode)) return $has_permission;
+    if (empty($mode))
+        return $has_permission;
 
     // Check client
     if (empty($client_id))
         $client_id = get_client_user_id();
 
     $clients = get_option('perfex_saas_restricted_clients_id');
-    $clients = empty($clients) ? [] : (array)json_decode($clients);
+    $clients = empty($clients) ? [] : (array) json_decode($clients);
 
     if ($mode == 'exclusive') { // All client allowed except preselected one
         return !in_array($client_id, $clients) && $has_permission;
@@ -1264,10 +1380,11 @@ function perfex_saas_client_can_use_saas($client_id = '')
  */
 function perfex_saas_register_global_extension(string $module_name)
 {
-    if (empty($module_name) || perfex_saas_is_tenant()) return false;
+    if (empty($module_name) || perfex_saas_is_tenant())
+        return false;
 
     $perfex_saas_global_active_modules = get_option(PERFEX_SAAS_GLOBAL_ACTIVE_MODULES_OPTION_KEY);
-    $perfex_saas_global_active_modules = empty($perfex_saas_global_active_modules) ? [] : (array)json_decode($perfex_saas_global_active_modules);
+    $perfex_saas_global_active_modules = empty($perfex_saas_global_active_modules) ? [] : (array) json_decode($perfex_saas_global_active_modules);
     $perfex_saas_global_active_modules[] = $module_name;
     return update_option(PERFEX_SAAS_GLOBAL_ACTIVE_MODULES_OPTION_KEY, json_encode(array_unique($perfex_saas_global_active_modules)), 1);
 }
@@ -1280,10 +1397,11 @@ function perfex_saas_register_global_extension(string $module_name)
  */
 function perfex_saas_unregister_global_extension(string $module_name)
 {
-    if (empty($module_name) || perfex_saas_is_tenant()) return false;
+    if (empty($module_name) || perfex_saas_is_tenant())
+        return false;
 
     $perfex_saas_global_active_modules = get_option(PERFEX_SAAS_GLOBAL_ACTIVE_MODULES_OPTION_KEY);
-    $perfex_saas_global_active_modules = empty($perfex_saas_global_active_modules) ? [] : (array)json_decode($perfex_saas_global_active_modules);
+    $perfex_saas_global_active_modules = empty($perfex_saas_global_active_modules) ? [] : (array) json_decode($perfex_saas_global_active_modules);
     if (in_array($module_name, $perfex_saas_global_active_modules)) {
         $perfex_saas_global_active_modules = array_diff($perfex_saas_global_active_modules, [$module_name]);
     }
@@ -1296,13 +1414,13 @@ function perfex_saas_contact_permissions()
 {
     $permissions = [];
     $permissions[] = [
-        'id'         => 311301, // Do not update. the ID could have been assigned already
-        'name'       => _l('perfex_saas_customer_permission_instance'),
+        'id' => 311301, // Do not update. the ID could have been assigned already
+        'name' => _l('perfex_saas_customer_permission_instance'),
         'short_name' => PERFEX_SAAS_MODULE_NAME . '_companies',
     ];
     $permissions[] = [
-        'id'         => 311302, // Do not update. the ID could have been assigned already
-        'name'       => _l('perfex_saas_customer_permission_subscription'),
+        'id' => 311302, // Do not update. the ID could have been assigned already
+        'name' => _l('perfex_saas_customer_permission_subscription'),
         'short_name' => PERFEX_SAAS_MODULE_NAME . '_subscription',
     ];
     return $permissions;
@@ -1316,7 +1434,8 @@ function perfex_saas_contact_permissions()
 function perfex_saas_contact_can_manage_instances()
 {
     $contact_id = get_contact_user_id();
-    if (is_primary_contact($contact_id)) return true;
+    if (is_primary_contact($contact_id))
+        return true;
 
     return has_contact_permission(PERFEX_SAAS_MODULE_NAME . '_companies', $contact_id);
 }
@@ -1329,7 +1448,8 @@ function perfex_saas_contact_can_manage_instances()
 function perfex_saas_contact_can_manage_subscription()
 {
     $contact_id = get_contact_user_id();
-    if (is_primary_contact($contact_id)) return true;
+    if (is_primary_contact($contact_id))
+        return true;
 
     return has_contact_permission(PERFEX_SAAS_MODULE_NAME . '_subscription', $contact_id);
 }
@@ -1343,7 +1463,8 @@ function perfex_saas_contact_can_manage_subscription()
 function perfex_saas_contact_can_magic_auth($tenant)
 {
     $clientid = get_client_user_id();
-    if (!$clientid || $tenant->clientid !== $clientid) return false;
+    if (!$clientid || $tenant->clientid !== $clientid)
+        return false;
 
     return perfex_saas_contact_can_manage_instances();
 }
@@ -1396,7 +1517,7 @@ function perfex_saas_render_select($name, $options, $option_attrs = [], $label =
     if (isset($select_attrs['multiple']) && isset($select_attrs['allow_blank']))
         $blank_placeholder = '<input name="' . $name . '" value="" type="hidden" />';
 
-    return  $blank_placeholder . render_select($name, $options, $option_attrs, $label, $selected, $select_attrs, $form_group_attr, $form_group_class, $select_class, $include_blank);
+    return $blank_placeholder . render_select($name, $options, $option_attrs, $label, $selected, $select_attrs, $form_group_attr, $form_group_class, $select_class, $include_blank);
 }
 
 /**

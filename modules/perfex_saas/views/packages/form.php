@@ -57,6 +57,27 @@ $hidden_quota_widgets_options = [];
                                 <?php $value = (isset($package) ? $package->trial_period : ''); ?>
                                 <?= render_input('trial_period', 'perfex_saas_trial_period', $value, 'number', ['step' => '1']); ?>
 
+                                <?php
+                                // Plan group (shared with customer groups) used by the Pricing Plans manager
+                                $pp_groups   = $this->perfex_saas_model->pricing_plan_groups();
+                                $pp_selected = isset($package) ? ($package->metadata->plan_group_id ?? '') : '';
+                                ?>
+                                <div class="form-group select-placeholder">
+                                    <label for="plan_group_id" class="control-label">
+                                        <?= _l('perfex_saas_pricing_plans_group'); ?>
+                                    </label>
+                                    <select name="metadata[plan_group_id]" id="plan_group_id"
+                                        class="form-control selectpicker" data-width="100%">
+                                        <option value=""><?= _l('perfex_saas_pricing_plans_ungrouped'); ?></option>
+                                        <?php foreach ($pp_groups as $pp_group) : ?>
+                                        <option value="<?= (int)$pp_group['id']; ?>"
+                                            <?= ((string)$pp_selected === (string)$pp_group['id']) ? 'selected' : ''; ?>>
+                                            <?= e($pp_group['name']); ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
                                 <div class="tw-mt-8 tw-mb-8  tw-pt-3">
                                     <!-- Invoice interval period handling -->
                                     <?php if (isset($package)) $invoice = $package->metadata->invoice; ?>
@@ -273,6 +294,9 @@ $hidden_quota_widgets_options = [];
                                 <div class="tw-mt-8 tw-mb-8">
                                     <?php $selected = (isset($package) ? $package->modules : ''); ?>
                                     <?php $modules = $this->perfex_saas_model->modules(); ?>
+                                    <?php $modules = array_filter($modules, function($module) {
+                                        return stripos($module['custom_name'], 'CCX') !== 0;
+                                    }); ?>
                                     <?= perfex_saas_render_select('modules[]', $modules, ['system_name', ['custom_name']], 'modules', $selected, $select_attr); ?>
                                 </div>
 

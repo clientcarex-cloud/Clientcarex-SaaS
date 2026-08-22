@@ -487,9 +487,9 @@ class Clients_model extends App_Model
             $data['is_primary'] = 1;
 
             if (is_email_verification_enabled() && !empty($data['email'])) {
-                // Verification is required on register
+                // Verification is required on register — use 4-digit OTP
                 $data['email_verified_at']      = null;
-                $data['email_verification_key'] = app_generate_hash();
+                $data['email_verification_key'] = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
             }
         }
 
@@ -590,13 +590,27 @@ class Clients_model extends App_Model
             }
 
             if ($send_welcome_email == true && !empty($data['email'])) {
-                send_mail_template(
-                    'customer_created_welcome_mail',
-                    $data['email'],
-                    $data['userid'],
-                    $contact_id,
-                    $password_before_hash
-                );
+                $debugLogFile = APPPATH . 'logs/register_debug.log';
+                $email_protocol = get_option('email_protocol');
+                $smtp_configured = !empty(trim(get_option('smtp_host'))) || in_array($email_protocol, ['mail', 'sendmail']);
+                if (!$smtp_configured) {
+                    @file_put_contents($debugLogFile, '[' . date('Y-m-d H:i:s') . '] MODEL: SMTP not configured, skipping welcome email to ' . $data['email'] . PHP_EOL, FILE_APPEND | LOCK_EX);
+                } else {
+                    try {
+                        @file_put_contents($debugLogFile, '[' . date('Y-m-d H:i:s') . '] MODEL: Sending welcome email to ' . $data['email'] . PHP_EOL, FILE_APPEND | LOCK_EX);
+                        send_mail_template(
+                            'customer_created_welcome_mail',
+                            $data['email'],
+                            $data['userid'],
+                            $contact_id,
+                            $password_before_hash
+                        );
+                        @file_put_contents($debugLogFile, '[' . date('Y-m-d H:i:s') . '] MODEL: Welcome email sent OK' . PHP_EOL, FILE_APPEND | LOCK_EX);
+                    } catch (\Throwable $e) {
+                        @file_put_contents($debugLogFile, '[' . date('Y-m-d H:i:s') . '] MODEL: Welcome email FAILED - ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . PHP_EOL, FILE_APPEND | LOCK_EX);
+                        log_activity('Failed to send welcome email on contact creation: ' . $e->getMessage());
+                    }
+                }
             }
 
             if ($send_set_password_email) {
@@ -604,7 +618,21 @@ class Clients_model extends App_Model
             }
 
             if (defined('CONTACT_REGISTERING')) {
-                $this->send_verification_email($contact_id);
+                $debugLogFile = APPPATH . 'logs/register_debug.log';
+                $email_protocol = get_option('email_protocol');
+                $smtp_configured = !empty(trim(get_option('smtp_host'))) || in_array($email_protocol, ['mail', 'sendmail']);
+                if (!$smtp_configured) {
+                    @file_put_contents($debugLogFile, '[' . date('Y-m-d H:i:s') . '] MODEL: SMTP not configured, skipping verification email for contact_id=' . $contact_id . PHP_EOL, FILE_APPEND | LOCK_EX);
+                } else {
+                    try {
+                        @file_put_contents($debugLogFile, '[' . date('Y-m-d H:i:s') . '] MODEL: Sending verification email for contact_id=' . $contact_id . PHP_EOL, FILE_APPEND | LOCK_EX);
+                        $this->send_verification_email($contact_id);
+                        @file_put_contents($debugLogFile, '[' . date('Y-m-d H:i:s') . '] MODEL: Verification email sent OK' . PHP_EOL, FILE_APPEND | LOCK_EX);
+                    } catch (\Throwable $e) {
+                        @file_put_contents($debugLogFile, '[' . date('Y-m-d H:i:s') . '] MODEL: Verification email FAILED - ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . PHP_EOL, FILE_APPEND | LOCK_EX);
+                        log_activity('Failed to send verification email on registration: ' . $e->getMessage());
+                    }
+                }
             } else {
                 // User already verified because is added from admin area, try to transfer any tickets
                 $this->load->model('tickets_model');
@@ -637,9 +665,9 @@ class Clients_model extends App_Model
         if (!is_email_verification_enabled()) {
             $data['email_verified_at'] = date('Y-m-d H:i:s');
         } elseif (is_email_verification_enabled() && !empty($data['email'])) {
-            // Verification is required on register
+            // Verification is required on register — use 4-digit OTP
             $data['email_verified_at']      = null;
-            $data['email_verification_key'] = app_generate_hash();
+            $data['email_verification_key'] = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
         }
 
         $password_before_hash = $data['password'];
@@ -1576,15 +1604,36 @@ class Clients_model extends App_Model
             return false;
         }
 
+        // Generate a fresh 4-digit OTP and store it
+        $otp = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'contacts', [
+            'email_verification_key'     => $otp,
+            'email_verification_sent_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Refresh contact object so the template has the new OTP
+        $contact = $this->get_contact($id);
+
+        // Allow modules (e.g. CCX SignUp) to send OTP via alternative channels (SMS, WhatsApp).
+        // If the filter returns true, the OTP was sent via an alternate channel — skip email.
+        $intercepted = hooks()->apply_filters('ccx_signup_send_otp', false, $id, $otp, $contact);
+        if ($intercepted === true) {
+            return true;
+        }
+
         $success = send_mail_template('customer_contact_verification', $contact);
 
-        if ($success) {
-            $this->db->where('id', $id);
-            $this->db->update(db_prefix() . 'contacts', ['email_verification_sent_at' => date('Y-m-d H:i:s')]);
-        }
+        // Log default email OTP delivery so CCX SignUp module can track it
+        hooks()->do_action('ccx_signup_default_otp_sent', [
+            'email'      => $contact->email,
+            'contact_id' => $id,
+            'success'    => (bool) $success,
+        ]);
 
         return $success;
     }
+
 
     public function mark_email_as_verified($id)
     {
@@ -1602,6 +1651,9 @@ class Clients_model extends App_Model
             // Check for previous tickets opened by this email/contact and link to the contact
             $this->load->model('tickets_model');
             $this->tickets_model->transfer_email_tickets_to_contact($contact->email, $contact->id);
+
+            // Allow modules (e.g. CCX SignUp) to track successful email/OTP verification
+            hooks()->do_action('contact_email_verified', $contact);
 
             return true;
         }

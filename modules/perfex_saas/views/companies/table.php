@@ -12,7 +12,7 @@ $aColumns = [
     'created_at',
 ];
 
-$sTable       = perfex_saas_table('companies');
+$sTable = perfex_saas_table('companies');
 $sIndexColumn = 'id';
 
 $clientTable = db_prefix() . 'clients';
@@ -20,7 +20,7 @@ $join = ['LEFT JOIN ' . $clientTable . ' ON ' . $clientTable . '.userid = ' . $s
 
 $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, [], [$sTable . '.id', 'userid', 'slug', 'status_note']);
 
-$output  = $result['output'];
+$output = $result['output'];
 $rResult = $result['rResult'];
 $CI = &get_instance();
 
@@ -37,7 +37,7 @@ $clientInvoices = [];
 foreach ($rResult as $aRow) {
 
     $row = [];
-    $aRow = (array) $CI->perfex_saas_model->parse_company((object)$aRow);
+    $aRow = (array) $CI->perfex_saas_model->parse_company((object) $aRow);
 
     if (isset($clientInvoices[$aRow['clientid']])) {
         $invoice = $clientInvoices[$aRow['clientid']];
@@ -46,11 +46,11 @@ foreach ($rResult as $aRow) {
         $clientInvoices[$aRow['clientid']] = $invoice;
     }
 
-    $invoiceLink = !empty($invoice->id)  && !isset($invoice->is_mock) ? admin_url('invoices/list_invoices/' . $invoice->id) : '';
+    $invoiceLink = !empty($invoice) && !empty($invoice->id) && !isset($invoice->is_mock) ? admin_url('invoices/list_invoices/' . $invoice->id) : '';
     $packageLink = '';
-    if (!empty($invoice->{$package_id_col}))
+    if (!empty($invoice) && !empty($invoice->{$package_id_col}))
         $packageLink = $is_single_package ? admin_url(PERFEX_SAAS_ROUTE_NAME . '/pricing') : admin_url(PERFEX_SAAS_ROUTE_NAME . '/packages/edit/' . $invoice->{$package_id_col});
-    $viewLink = perfex_saas_tenant_admin_url((object)$aRow);
+    $viewLink = perfex_saas_tenant_admin_url((object) $aRow);
     $editLink = admin_url(PERFEX_SAAS_ROUTE_NAME . '/companies/edit/' . $aRow['id']);
     $notice = '';
 
@@ -62,7 +62,7 @@ foreach ($rResult as $aRow) {
         } elseif ($customFields[$i] == 'company') {
             $_data = '<a href="' . admin_url('clients/client/' . $aRow['userid']) . '">' . e($_data) . '</a>';
             $_data .= '<div class="row-options tw-ml-9">';
-            if (!empty($aRow['userid']))
+            if (!empty($aRow['userid']) && (is_admin() || staff_can('ccx_login_as_client', 'ccx_support')))
                 $_data .= '<a href="' . admin_url('clients/login_as_client/' . $aRow['userid']) . '" target="_blank"><i class="fa-regular fa-share-from-square"></i> ' . _l('login_as_client') . '</a>';
             $_data .= '</div>';
         } elseif ($customFields[$i] == 'created_at' || $customFields[$i] == 'updated_at') {
@@ -75,8 +75,8 @@ foreach ($rResult as $aRow) {
             $_data = '<span class="badge tw-bg-' . $className . '-200">' . _l($_data, '', false) . '</span>' . $statusNote;
         } elseif ($customFields[$i] == 'clientid') {
             $_data = '-';
-            if (!empty($invoice->name)) {
-                $_data =  '<a href="' . $packageLink . '" target="_blank">' . _l($invoice->name, '', false) . '</a>';
+            if (!empty($invoice) && !empty($invoice->name)) {
+                $_data = '<a href="' . $packageLink . '" target="_blank">' . _l($invoice->name, '', false) . '</a>';
                 $_data .= '<div class="row-options tw-ml-9">';
                 if (!empty($invoiceLink))
                     $_data .= '<a href="' . $invoiceLink . '" target="_blank">' . _l('invoice') . ' <i class="fa fa-external-link"></i></a>';
@@ -91,8 +91,9 @@ foreach ($rResult as $aRow) {
             }
         } elseif ($customFields[$i] == 'metadata') {
 
-            $disabled_modules = trim(implode(', ', array_merge($_data->disabled_modules ?? [], $_data->admin_disabled_modules ?? [])), ', ');
-            $admin_approved_modules = trim(implode(', ', $_data->admin_approved_modules ?? []), ', ');
+            $metadataObj = is_object($_data) ? $_data : new stdClass();
+            $disabled_modules = trim(implode(', ', array_merge($metadataObj->disabled_modules ?? [], $metadataObj->admin_disabled_modules ?? [])), ', ');
+            $admin_approved_modules = trim(implode(', ', $metadataObj->admin_approved_modules ?? []), ', ');
             $_data = [];
 
             if (!empty($disabled_modules))
@@ -108,7 +109,7 @@ foreach ($rResult as $aRow) {
 
     $options = '<div class="tw-flex tw-items-center tw-space-x-3">';
 
-    $notice = empty($aRow['metadata']->pending_custom_domain) ? "" : "<span data-toggle='tooltip' data-title='" . strip_tags(_l("perfex_saas_pending_domain_request", [$aRow['name'], $aRow['metadata']->pending_custom_domain])) . "'><i class='fa fa-warning text-danger'></i></span>";
+    $notice = (empty($aRow['metadata']) || !is_object($aRow['metadata']) || empty($aRow['metadata']->pending_custom_domain)) ? "" : "<span data-toggle='tooltip' data-title='" . strip_tags(_l("perfex_saas_pending_domain_request", [$aRow['name'], $aRow['metadata']->pending_custom_domain])) . "'><i class='fa fa-warning text-danger'></i></span>";
     $options .= '<a href="' . $editLink . '" target="_blank" class="tw-text-neutral-500 hover:tw-text-neutral-700 focus:tw-text-neutral-700">' . $notice . '
         <i class="fa fa-eye fa-lg"></i>
     </a>';
@@ -122,7 +123,7 @@ foreach ($rResult as $aRow) {
     if (staff_can('delete', 'perfex_saas_companies') && $aRow['status'] !== PERFEX_SAAS_STATUS_PENDING_DELETE) {
         $options .= form_open(admin_url(PERFEX_SAAS_ROUTE_NAME . '/companies/delete/' . $aRow['id'])) .
             form_hidden('id', $aRow['id']) .
-            '<button class="tw-bg-transparent tw-border-0 tw-text-neutral-500 hover:tw-text-neutral-700 focus:tw-text-neutral-700 _delete">
+            '<button class="tw-bg-transparent tw-border-0 tw-text-neutral-500 hover:tw-text-neutral-700 focus:tw-text-neutral-700 saas_company_delete">
             <i class="fa-regular fa-trash-can fa-lg"></i>
         </button>' . form_close();
     }

@@ -60,7 +60,6 @@ return App_table::find('invoices')
             array_push($where, $userWhere);
         }
 
-        $join = hooks()->apply_filters('invoices_table_sql_join', $join);
         $aColumns = hooks()->apply_filters('invoices_table_sql_columns', $aColumns);
 
         // Fix for big queries. Some hosting have max_join_limit

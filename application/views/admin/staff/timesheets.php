@@ -17,8 +17,7 @@
                         </a>
                         <hr />
                         <?php } ?>
-                        <canvas id="timesheetsChart" style="max-height:400px;" width="350" height="350"></canvas>
-                        <hr />
+
                         <div class="clearfix"></div>
                         <div class="row">
                             <div class="col-md-5ths">
@@ -172,44 +171,6 @@
     $(function() {
 
         init_ajax_projects_search();
-        var ctx = document.getElementById("timesheetsChart");
-        var chartOptions = {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: '',
-                    data: [],
-                    backgroundColor: [],
-                    borderColor: [],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                tooltips: {
-                    enabled: true,
-                    mode: 'single',
-                    callbacks: {
-                        label: function(tooltipItems, data) {
-                            return decimalToHM(tooltipItems.yLabel);
-                        }
-                    }
-                },
-                scales: {
-                    yAxes: [{
-                        ticks: {
-                            beginAtZero: true,
-                            min: 0,
-                            userCallback: function(label, index, labels) {
-                                return decimalToHM(label);
-                            },
-                        }
-                    }]
-                },
-            }
-        };
 
         var timesheetsTable = $('.table-timesheets-report');
         $('#apply_filters_timesheets').on('click', function(e) {
@@ -238,7 +199,6 @@
             <?php } ?>
         });
 
-        var timesheetsChart;
         var Timesheets_ServerParams = {};
         Timesheets_ServerParams['range'] = '[name="range"]';
         Timesheets_ServerParams['period-from'] = '[name="period-from"]';
@@ -284,8 +244,6 @@
         timesheetsTable.on('draw.dt', function() {
             var TimesheetsTable = $(this).DataTable();
             var logged_time = TimesheetsTable.ajax.json().logged_time;
-            var chartResponse = TimesheetsTable.ajax.json().chart;
-            var chartType = TimesheetsTable.ajax.json().chart_type;
             $(this).find('tfoot').addClass('bold');
             $(this).find('tfoot td.total_logged_time_timesheets_staff_h').html(
                 "<?= _l('total_logged_hours_by_staff'); ?>: " +
@@ -293,39 +251,6 @@
             $(this).find('tfoot td.total_logged_time_timesheets_staff_d').html(
                 "<?= _l('total_logged_hours_by_staff'); ?>: " +
                 logged_time.total_logged_time_d);
-            if (typeof(timesheetsChart) !== 'undefined') {
-                timesheetsChart.destroy();
-            }
-            if (chartType != 'month') {
-                chartOptions.data.labels = chartResponse.labels;
-            } else {
-                chartOptions.data.labels = [];
-                for (var i in chartResponse.labels) {
-                    chartOptions.data.labels.push(moment(chartResponse.labels[i]).format("MMM Do YY"));
-                }
-            }
-            chartOptions.data.datasets[0].data = [];
-            chartOptions.data.datasets[0].backgroundColor = [];
-            chartOptions.data.datasets[0].borderColor = [];
-            for (var i in chartResponse.data) {
-                chartOptions.data.datasets[0].data.push(chartResponse.data[i]);
-                if (chartResponse.data[i] == 0) {
-                    chartOptions.data.datasets[0].backgroundColor.push('rgba(167, 167, 167, 0.6)');
-                    chartOptions.data.datasets[0].borderColor.push('rgba(167, 167, 167, 1)');
-                } else {
-                    chartOptions.data.datasets[0].backgroundColor.push('rgba(132, 197, 41, 0.6)');
-                    chartOptions.data.datasets[0].borderColor.push('rgba(132, 197, 41, 1)');
-                }
-            }
-
-            var selected_staff_member = staff_member_select.val();
-            var selected_staff_member_name = staff_member_select.find('option:selected').text();
-            chartOptions.data.datasets[0].label = $('select[name="range"] option:selected').text() + (
-                selected_staff_member != '' && selected_staff_member != undefined ? ' - ' +
-                selected_staff_member_name : '');
-            setTimeout(function() {
-                timesheetsChart = new Chart(ctx, chartOptions);
-            }, 30);
             do_timesheets_title();
         });
     });

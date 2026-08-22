@@ -70,7 +70,7 @@ class App_assets
      */
     public function core_version()
     {
-        return ENVIRONMENT == 'development' ? time() : get_app_version();
+        return ENVIRONMENT == 'development' ? time() : get_app_version() . '_bust10';
     }
 
     public function core_file($path, $fileName)
@@ -121,7 +121,7 @@ class App_assets
 
             if ($version) {
                 // parse_url returns a string if the URL has parameters or NULL if not
-                $url .= (parse_url($url, PHP_URL_QUERY) ? '&' : '?') . 'v=' . get_app_version();
+                $url .= (parse_url($url, PHP_URL_QUERY) ? '&' : '?') . 'v=' . get_app_version() . '_bust7';
             }
         }
 

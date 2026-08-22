@@ -5,7 +5,6 @@ $CI = &get_instance();
 $currency = get_base_currency();
 $showing_subscribed_card = true;
 
-$is_stripe_package = (int) ($package->metadata->stripe->enabled ?? 0) == 1;
 $custom_repeat = $package->metadata->invoice->recurring == 'custom';
 $interval = $custom_repeat ? $package->metadata->invoice->repeat_every_custom : $package->metadata->invoice->recurring;
 $interval_type = $custom_repeat ? $package->metadata->invoice->repeat_type_custom . 's' : 'months';
@@ -90,23 +89,28 @@ if ($can_customize && $invoice && $invoice->subscription_id && ($invoice->subscr
 
 <div class="panel ps">
     <div class="panel-body min-h-50-vh">
-        <div class="tw-flex tw-flex-col tw-justify-center tw-items-center tw-mb-3">
-            <h1 class="tw-mt-0">
+        <div class="tw-flex tw-flex-col tw-justify-center tw-items-center tw-mb-5" style="padding:28px 0 16px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
                 <?php if ($subscribed) : ?>
-                <i
-                    class="fa fa-check-circle text-success <?= perfex_saas_is_single_package_mode() ? 'fa-2x' : ''; ?>"></i>
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#34d399);">
+                        <i class="fa fa-check" style="color:#fff;font-size:14px;"></i>
+                    </span>
                 <?php endif; ?>
-                <?php if (!perfex_saas_is_single_package_mode()) echo $package->name; ?>
-            </h1>
-            <div>
-                <span class="tw-bg-neutral-700 tw-text-lg tw-text-white badge badge-primary tw-font-bold">
+                <h1 style="margin:0;font-size:22px;font-weight:700;color:#1f2937;">
+                    <?php if (!perfex_saas_is_single_package_mode()) echo $package->name; ?>
+                </h1>
+            </div>
+            <div style="margin-top:6px;">
+                <span class="badge badge-primary" style="background:linear-gradient(135deg,#6366f1,#818cf8);padding:10px 22px;font-size:15px;border-radius:10px;font-weight:700;letter-spacing:0.3px;">
                     <?= app_format_money($package->price, $currency); ?>
                     <span data-subtotal></span>
-                    <small class="text-lowercase">/ <?= $billing_cycle; ?></small>
+                    <small class="text-lowercase" style="opacity:0.85;font-weight:500;">/ <?= $billing_cycle; ?></small>
                 </span>
             </div>
             <?php if (!$on_trial) : ?>
-            <?php require(__DIR__ . '/../packages/next_invoice_date.php'); ?>
+                <div style="margin-top:10px;">
+                    <?php require(__DIR__ . '/../packages/next_invoice_date.php'); ?>
+                </div>
             <?php endif; ?>
             <?php include(__DIR__ . '/includes/invoice_notification.php'); ?>
         </div>
@@ -151,48 +155,41 @@ if ($can_customize && $invoice && $invoice->subscription_id && ($invoice->subscr
 
                                 $unit_price = (float)$unit_price;
                             ?>
-                            <tr>
-                                <td><?= _l('perfex_saas_limit_' . $resources); ?></td>
-                                <td><?= $limit; ?></td>
-                                <td>
-                                    <?php if (!$is_unlimited && !$is_unlimited_storage) : ?>
+                                <tr>
+                                    <td><?= _l('perfex_saas_limit_' . $resources); ?></td>
+                                    <td><?= $limit; ?></td>
+                                    <td>
+                                        <?php if (!$is_unlimited && !$is_unlimited_storage) : ?>
 
-                                    <div class="<?= $is_storage ? 'input-group' : ''; ?>">
-                                        <input type="number" min="0" step="1" class="form-control feature-limit tw-p-1"
-                                            name="custom_limits[<?= $resources; ?>]"
-                                            value="<?= $current_extra_limit; ?>" data-unit-price="<?= $unit_price; ?>"
-                                            data-id="<?= $resources; ?>">
-                                        <?php if ($is_storage) : ?>
-                                        <span
-                                            class="input-group-addon tw-px-1 tw-border-l-0"><?= $package->metadata->storage_limit->unit; ?></span>
+                                            <div class="<?= $is_storage ? 'input-group' : ''; ?>">
+                                                <input type="number" min="0" step="1" class="form-control feature-limit tw-p-1" name="custom_limits[<?= $resources; ?>]" value="<?= $current_extra_limit; ?>" data-unit-price="<?= $unit_price; ?>" data-id="<?= $resources; ?>">
+                                                <?php if ($is_storage) : ?>
+                                                    <span class="input-group-addon tw-px-1 tw-border-l-0"><?= $package->metadata->storage_limit->unit; ?></span>
+                                                <?php endif; ?>
+                                            </div>
                                         <?php endif; ?>
-                                    </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <span class="base-price"><?= app_format_money($unit_price, $currency); ?></span>
+                                    </td>
+                                    <td>
+                                        <span class="base-price"><?= app_format_money($unit_price, $currency); ?></span>
 
-                                    <!-- Display discount -->
-                                    <?php if (!empty($discounts->{$resources})) : ?>
-                                    <div
-                                        class="tw-mt-1 tw-flex tw-flex-col text-info discount text-lowercase <?= $resources; ?>">
-                                        <?php
+                                        <!-- Display discount -->
+                                        <?php if (!empty($discounts->{$resources})) : ?>
+                                            <div class="tw-mt-1 tw-flex tw-flex-col text-info discount text-lowercase <?= $resources; ?>">
+                                                <?php
                                                 asort($discounts->{$resources});
                                                 foreach ($discounts->{$resources} as $key => $value) : ?>
-                                        <span class="tw-text-xs <?= $resources . $key; ?>">
-                                            <?= $value['unit']; ?>+
-                                            <span
-                                                class="tw-ml-1"><?= app_format_money($unit_price - (($unit_price * ((float)$value['percent']) / 100)), $currency); ?>
-                                                <sup>(<?= $value['percent']; ?>% off)</sup></span>
-                                        </span>
-                                        <?php endforeach ?>
-                                    </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td><span class="price-addition"
-                                        data-price="0"><?= app_format_money(0, $currency); ?></span>
-                                </td>
-                            </tr>
+                                                    <span class="tw-text-xs <?= $resources . $key; ?>">
+                                                        <?= $value['unit']; ?>+
+                                                        <span class="tw-ml-1"><?= app_format_money($unit_price - (($unit_price * ((float)$value['percent']) / 100)), $currency); ?>
+                                                            <sup>(<?= $value['percent']; ?>% off)</sup></span>
+                                                    </span>
+                                                <?php endforeach ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><span class="price-addition" data-price="0"><?= app_format_money(0, $currency); ?></span>
+                                    </td>
+                                </tr>
                             <?php endforeach ?>
 
                             <!-- unlimited  resources -->
@@ -217,49 +214,45 @@ if ($can_customize && $invoice && $invoice->subscription_id && ($invoice->subscr
 
                             <!-- Add more rows for other free base modules -->
                             <?php if (!empty((array)$purchased_modules) || $allow_module_marketplace) : ?>
-                            <tr>
-                                <td colspan="5" class="text-center">
-                                    <div class="tw-flex tw-gap-3 tw-items-center tw-justify-between">
-                                        <strong
-                                            class="tw-mb-0 tw-text-base"><?= _l('perfex_saas_premium_modules'); ?></strong>
-                                        <?php if ($allow_module_marketplace) : ?>
-                                        <button type="button" class="btn btn-primary" data-toggle="modal"
-                                            data-target="#moduleModal">
-                                            <?= _l('perfex_saas_select_modules'); ?>
-                                        </button>
-                                        <?php endif ?>
-                                    </div>
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="tw-flex tw-gap-3 tw-items-center tw-justify-between">
+                                            <strong class="tw-mb-0 tw-text-base"><?= _l('perfex_saas_premium_modules'); ?></strong>
+                                            <?php if ($allow_module_marketplace) : ?>
+                                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#moduleModal">
+                                                    <?= _l('perfex_saas_select_modules'); ?>
+                                                </button>
+                                            <?php endif ?>
+                                        </div>
+                                    </td>
+                                </tr>
 
-                            <tr id="paid-modules">
-                                <td colspan="5" class="text-center tw-border-0 !tw-p-0">
-                                </td>
-                            </tr>
+                                <tr id="paid-modules">
+                                    <td colspan="5" class="text-center tw-border-0 !tw-p-0">
+                                    </td>
+                                </tr>
                             <?php endif ?>
                             <!-- end paid modules -->
 
                             <!-- paid services -->
                             <?php if (!empty((array)$purchased_services) || $allow_service_marketplace) : ?>
-                            <tr>
-                                <td colspan="5" class="text-center">
-                                    <div class="tw-flex tw-gap-3 tw-items-center tw-justify-between">
-                                        <strong
-                                            class="tw-mb-0 tw-text-base"><?= _l('perfex_saas_premium_services'); ?></strong>
-                                        <?php if ($allow_service_marketplace) : ?>
-                                        <button type="button" class="btn btn-primary" data-toggle="modal"
-                                            data-target="#serviceModal">
-                                            <?= _l('perfex_saas_select_services'); ?>
-                                        </button>
-                                        <?php endif ?>
-                                    </div>
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="tw-flex tw-gap-3 tw-items-center tw-justify-between">
+                                            <strong class="tw-mb-0 tw-text-base"><?= _l('perfex_saas_premium_services'); ?></strong>
+                                            <?php if ($allow_service_marketplace) : ?>
+                                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#serviceModal">
+                                                    <?= _l('perfex_saas_select_services'); ?>
+                                                </button>
+                                            <?php endif ?>
+                                        </div>
+                                    </td>
+                                </tr>
 
-                            <tr id="paid-services">
-                                <td colspan="5" class="text-center tw-border-0 !tw-p-0">
-                                </td>
-                            </tr>
+                                <tr id="paid-services">
+                                    <td colspan="5" class="text-center tw-border-0 !tw-p-0">
+                                    </td>
+                                </tr>
                             <?php endif ?>
                             <!-- end paid services -->
 
@@ -268,18 +261,18 @@ if ($can_customize && $invoice && $invoice->subscription_id && ($invoice->subscr
                     </table>
                 </div>
                 <?php if (!empty((array)$purchased_services) || $allow_service_marketplace) : ?>
-                <p><?= _l('perfex_saas_package_custom_table_notice'); ?></p>
+                    <p><?= _l('perfex_saas_package_custom_table_notice'); ?></p>
                 <?php endif ?>
             </div>
             <div class="col-md-3">
                 <div class="summary-card">
-                    <div class="tw-bg-neutral-200 tw-p-1 tw-mb-4">
-                        <table class="table table-condensed">
+                    <div style="background:#f8f9fc;border:1px solid #f0f0f5;border-radius:12px;padding:16px;margin-bottom:16px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ca3af;margin-bottom:12px;">Order Summary</div>
+                        <table class="table table-condensed" style="margin-bottom:0;">
                             <tfoot>
                                 <tr>
                                     <th colspan="4"><?= _l('perfex_saas_base_price'); ?></th>
-                                    <td><span
-                                            class="baseprice"><?= app_format_money($package->price, $currency); ?></span>
+                                    <td><span class="baseprice"><?= app_format_money($package->price, $currency); ?></span>
                                     </td>
                                 </tr>
                                 <tr>
@@ -288,29 +281,26 @@ if ($can_customize && $invoice && $invoice->subscription_id && ($invoice->subscr
                                 </tr>
                                 <tr>
                                     <th colspan="4"><?= _l('perfex_saas_module_subtotal'); ?></th>
-                                    <td><span
-                                            class="modules-subtotal"><?= app_format_money('0.00', $currency); ?></span>
+                                    <td><span class="modules-subtotal"><?= app_format_money('0.00', $currency); ?></span>
                                     </td>
                                 </tr>
                                 <tr>
                                     <th colspan="4"><?= _l('perfex_saas_service_subtotal'); ?></th>
-                                    <td><span
-                                            class="services-subtotal"><?= app_format_money('0.00', $currency); ?></span>
+                                    <td><span class="services-subtotal"><?= app_format_money('0.00', $currency); ?></span>
                                     </td>
                                 </tr>
                                 <?php if (!empty($taxes)) : ?>
-                                <?php
+                                    <?php
                                     foreach ($taxes as $key => $tax) :
                                         $tax = explode('|', $tax);
                                         $tax_amount = (float)end($tax);
                                     ?>
-                                <tr>
-                                    <th colspan="4"><?= $tax[0]; ?> (<?= $tax_amount; ?>%)</th>
-                                    <td><span class="tax-subtotal"
-                                            data-percent="<?= $tax_amount; ?>"><?= app_format_money('0.00', $currency); ?></span>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
+                                        <tr>
+                                            <th colspan="4"><?= $tax[0]; ?> (<?= $tax_amount; ?>%)</th>
+                                            <td><span class="tax-subtotal" data-percent="<?= $tax_amount; ?>"><?= app_format_money('0.00', $currency); ?></span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
                                 <?php endif; ?>
 
                                 <tr>
@@ -324,15 +314,13 @@ if ($can_customize && $invoice && $invoice->subscription_id && ($invoice->subscr
                     </div>
                     <div class="tw-flex tw-flex-col tw-gap-2 tw-justify-end tw-w-full">
                         <?php if ($can_customize) : ?>
-                        <button class="btn btn-success tw-w-full"
-                            onclick="return confirm('<?= perfex_saas_ecape_js_attr(_l('perfex_saas_confirm_customize_package')); ?>');"><?= _l($on_trial ? 'perfex_saas_subscribe' : 'perfex_saas_update_subscription'); ?></button>
+                            <button class="btn btn-success tw-w-full" onclick="return confirm('<?= perfex_saas_ecape_js_attr(_l('perfex_saas_confirm_customize_package')); ?>');"><?= _l($on_trial ? 'perfex_saas_subscribe' : 'perfex_saas_update_subscription'); ?></button>
                         <?php endif; ?>
                         <?php if ((int)get_option('perfex_saas_allow_customer_cancel_subscription') && !$on_trial) : ?>
-                        <?php require(__DIR__ . '/../includes/cancel_subscription_button.php'); ?>
+                            <?php require(__DIR__ . '/../includes/cancel_subscription_button.php'); ?>
                         <?php endif ?>
                     </div>
-                    <?php require(__DIR__ . '/includes/stripe_upgrade_from_trial_to_customize.php'); ?>
-                </div><!-- end summary-card-->
+                </div>
             </div>
         </div>
         <?= form_close(); ?>
@@ -340,123 +328,123 @@ if ($can_customize && $invoice && $invoice->subscription_id && ($invoice->subscr
 </div>
 
 <?php if (!$can_customize) : ?>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    $(".panel.ps input, .panel.ps button").attr('disabled', 'disabled');
-    $(".panel.ps form").on('submit', function(e) {
-        e.preventDefault();
-        return false;
-    })
-});
-</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            $(".panel.ps input, .panel.ps button").attr('disabled', 'disabled');
+            $(".panel.ps form").on('submit', function(e) {
+                e.preventDefault();
+                return false;
+            })
+        });
+    </script>
 <?php endif; ?>
 
 <script>
-const billingCycle = "<?= $billing_cycle; ?>";
-const basePrice = parseFloat(<?= $package->price; ?>);
-const discounts = <?= json_encode($discounts); ?>;
+    const billingCycle = "<?= $billing_cycle; ?>";
+    const basePrice = parseFloat(<?= $package->price; ?>);
+    const discounts = <?= json_encode($discounts); ?>;
 
-const getDiscountedUnitPrice = (resources, unitPrice, newLimit) => {
+    const getDiscountedUnitPrice = (resources, unitPrice, newLimit) => {
 
-    if (discounts?. [resources]) {
-        let units = Object.keys(discounts[resources]).sort((a, b) => {
-            return b - a
-        });
-        for (let index = 0; index < units.length; index++) {
-            const level = parseInt(units[index]);
+        if (discounts?.[resources]) {
+            let units = Object.keys(discounts[resources]).sort((a, b) => {
+                return b - a
+            });
+            for (let index = 0; index < units.length; index++) {
+                const level = parseInt(units[index]);
 
-            document.querySelectorAll(`.discount.${resources} span`).forEach((v) => v.classList.remove('strike'));
+                document.querySelectorAll(`.discount.${resources} span`).forEach((v) => v.classList.remove('strike'));
 
-            if (newLimit >= level) {
-                const discount = discounts[resources][units[index]];
-                const percent = parseFloat(discount.percent) / 100;
-                unitPrice = unitPrice - (percent * unitPrice);
-                document.querySelector(`.${resources+''+level}`).classList.add('strike');
-                break;
+                if (newLimit >= level) {
+                    const discount = discounts[resources][units[index]];
+                    const percent = parseFloat(discount.percent) / 100;
+                    unitPrice = unitPrice - (percent * unitPrice);
+                    document.querySelector(`.${resources+''+level}`).classList.add('strike');
+                    break;
+                }
             }
         }
+        return unitPrice;
     }
-    return unitPrice;
-}
 
-// JavaScript logic for calculating totals and managing modules
-const featureLimitInputs = document.querySelectorAll('.feature-limit');
-const unitPriceElements = document.querySelectorAll('td:nth-child(4)');
-const priceAdditionElements = document.querySelectorAll('.price-addition');
-const featureSubtotalElement = document.querySelector('.subtotal');
-const totalAmountElement = document.getElementById('total-amount');
-const taxElements = document.querySelectorAll('.tax-subtotal');
+    // JavaScript logic for calculating totals and managing modules
+    const featureLimitInputs = document.querySelectorAll('.feature-limit');
+    const unitPriceElements = document.querySelectorAll('td:nth-child(4)');
+    const priceAdditionElements = document.querySelectorAll('.price-addition');
+    const featureSubtotalElement = document.querySelector('.subtotal');
+    const totalAmountElement = document.getElementById('total-amount');
+    const taxElements = document.querySelectorAll('.tax-subtotal');
 
 
-// Totals
-let featureSubtotal = 0;
-let taxSubtotal = 0;
+    // Totals
+    let featureSubtotal = 0;
+    let taxSubtotal = 0;
 
-const getTotalAmount = () => {
-    let total = featureSubtotal;
+    const getTotalAmount = () => {
+        let total = featureSubtotal;
 
-    let totalElements = document.querySelectorAll('[data-market-group-total]');
-    totalElements.forEach(element => {
-        let subtotal = parseFloat(element.dataset.marketGroupTotal);
-        total += subtotal;
-    });
-    return total;
-}
+        let totalElements = document.querySelectorAll('[data-market-group-total]');
+        totalElements.forEach(element => {
+            let subtotal = parseFloat(element.dataset.marketGroupTotal);
+            total += subtotal;
+        });
+        return total;
+    }
 
-const setTotalAmount = () => {
-    let total = getTotalAmount() + basePrice;
-    // Apply taxes
-    taxSubtotal = 0;
-    taxElements.forEach((tax) => {
-        let taxAmount = (parseFloat(tax.dataset.percent) / 100) * total;
-        taxSubtotal += taxAmount;
-        tax.textContent = `${appFormatMoney.format(taxAmount)}`;
-    });
+    const setTotalAmount = () => {
+        let total = getTotalAmount() + basePrice;
+        // Apply taxes
+        taxSubtotal = 0;
+        taxElements.forEach((tax) => {
+            let taxAmount = (parseFloat(tax.dataset.percent) / 100) * total;
+            taxSubtotal += taxAmount;
+            tax.textContent = `${appFormatMoney.format(taxAmount)}`;
+        });
 
-    totalAmountElement.textContent =
-        `${appFormatMoney.format(total+taxSubtotal)} / ${billingCycle}`;
-};
+        totalAmountElement.textContent =
+            `${appFormatMoney.format(total+taxSubtotal)} / ${billingCycle}`;
+    };
 </script>
 
 <?php require(__DIR__ . '/includes/modules.php'); ?>
 <?php require(__DIR__ . '/includes/services.php'); ?>
 
 <script>
-featureLimitInputs.forEach((input, index) => {
-    input.addEventListener('input', () => {
-        const resources = input.dataset.id;
-        const newLimit = parseInt(input.dataset.quantity ?? (input.value.length ? input.value : "0"));
-        let unitPrice = parseFloat(input.dataset.unitPrice);
-        // get discounted price
-        unitPrice = getDiscountedUnitPrice(resources, unitPrice, newLimit);
+    featureLimitInputs.forEach((input, index) => {
+        input.addEventListener('input', () => {
+            const resources = input.dataset.id;
+            const newLimit = parseInt(input.dataset.quantity ?? (input.value.length ? input.value : "0"));
+            let unitPrice = parseFloat(input.dataset.unitPrice);
+            // get discounted price
+            unitPrice = getDiscountedUnitPrice(resources, unitPrice, newLimit);
 
-        const priceAddition = unitPrice * newLimit;
-        priceAdditionElements[index].textContent = `${appFormatMoney.format(priceAddition)}`;
-        priceAdditionElements[index].dataset.price = priceAddition;
+            const priceAddition = unitPrice * newLimit;
+            priceAdditionElements[index].textContent = `${appFormatMoney.format(priceAddition)}`;
+            priceAdditionElements[index].dataset.price = priceAddition;
 
-        // Calculate feature subtotal
-        featureSubtotal = 0;
-        priceAdditionElements.forEach(element => {
-            featureSubtotal += parseFloat(element.dataset.price);
+            // Calculate feature subtotal
+            featureSubtotal = 0;
+            priceAdditionElements.forEach(element => {
+                featureSubtotal += parseFloat(element.dataset.price);
+            });
+
+            featureSubtotalElement.textContent = `${appFormatMoney.format(featureSubtotal)}`;
+
+            // Calculate total amount
+            setTotalAmount();
         });
-
-        featureSubtotalElement.textContent = `${appFormatMoney.format(featureSubtotal)}`;
-
-        // Calculate total amount
-        setTotalAmount();
     });
-});
 
-// Initiate total amount
-setTotalAmount();
+    // Initiate total amount
+    setTotalAmount();
 
-// Trigger summation of features using js
-document.querySelectorAll(".feature-limit").forEach((input) => input.dispatchEvent(new Event('input', {
-    bubbles: true
-})));
+    // Trigger summation of features using js
+    document.querySelectorAll(".feature-limit").forEach((input) => input.dispatchEvent(new Event('input', {
+        bubbles: true
+    })));
 
-setTimeout(() => {
-    document.querySelectorAll("[data-subtotal]").forEach((input) => input.textContent =
-        ` + ${appFormatMoney.format(getTotalAmount())}`);
-}, 100);
+    setTimeout(() => {
+        document.querySelectorAll("[data-subtotal]").forEach((input) => input.textContent =
+            ` + ${appFormatMoney.format(getTotalAmount())}`);
+    }, 100);
 </script>

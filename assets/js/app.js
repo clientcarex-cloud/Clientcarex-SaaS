@@ -1427,10 +1427,39 @@ function init_tinymce_inline_editor(options = {}, selector) {
     valid_elements: "+*[*]",
     valid_children: "+body[style], +style[type]",
     file_picker_callback: elFinderBrowser,
+    paste_data_images: true,
+    images_upload_handler: function (blobInfo, progress) {
+      return new Promise(function (resolve, reject) {
+        var formData = new FormData();
+        formData.append('file', blobInfo.blob(), blobInfo.filename());
+        if (typeof csrfData !== 'undefined') {
+          formData.append(csrfData['token_name'], csrfData['hash']);
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', admin_url + 'misc/tinymce_paste_image_upload');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onload = function () {
+          if (xhr.status !== 200) {
+            reject('HTTP Error: ' + xhr.status);
+            return;
+          }
+          var json = JSON.parse(xhr.responseText);
+          if (json && typeof json.location === 'string') {
+            resolve(json.location);
+          } else {
+            reject('Invalid response: ' + xhr.responseText);
+          }
+        };
+        xhr.onerror = function () {
+          reject('Upload failed due to a network error.');
+        };
+        xhr.send(formData);
+      });
+    },
     table_default_styles: {
       width: "100%",
     },
-    font_size_formats: "8pt 10pt 12pt 14pt 18pt 24pt 36pt",
+    font_size_formats: "1px 2px 3px 4px 5px 6px 7px 8px 9px 10px 11px 12px 13px 14px 15px 16px 17px 18px 19px 20px",
     pagebreak_separator: '<p pagebreak="true"></p>',
     pagebreak_split_block: true,
     plugins: [

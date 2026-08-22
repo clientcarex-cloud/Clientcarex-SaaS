@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe 结账流程';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = '选择订阅使用哪种 Stripe 结账体验。设置模式先收集付款方式，然后创建订阅。订阅模式在结账时显示订阅详情，并自动处理付款收款。';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = '设置模式（传统）';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = '订阅模式（推荐）';
-$lang['perfex_saas_sync_all_packages'] = '全部同步';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = '请订阅以解锁套餐定制。';
-$lang['perfex_saas_demo_reset_banner_message'] = '此演示将在 %s 后重置。请注意，所有已添加的数据都将被清除，系统可能会暂时变慢。';

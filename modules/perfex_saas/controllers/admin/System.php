@@ -122,8 +122,6 @@ class System extends AdminController
         @ini_set('memory_limit', '512M');
         @ini_set('max_execution_time', 360);
 
-        $this->validate_demo();
-
         $response = ['success' => false, 'error' => ''];
 
         try {
@@ -237,8 +235,6 @@ class System extends AdminController
 
     public function after_get_module($module)
     {
-        $this->validate_demo();
-
         $status = $this->input->get('status', true);
         $message = $this->input->get('message', true);
 
@@ -261,7 +257,6 @@ class System extends AdminController
 
     public function activate($module_name)
     {
-        $this->validate_demo();
         $this->app_modules->activate($module_name);
         $this->app_modules->upgrade_database($module_name);
         return redirect($this->returnUrl);
@@ -269,17 +264,7 @@ class System extends AdminController
 
     public function deactivate($module_name)
     {
-        $this->validate_demo();
         $this->app_modules->deactivate($module_name);
         return redirect($this->returnUrl);
-    }
-
-    public function validate_demo()
-    {
-        if (defined('SAAS_DEMO_SITE')) {
-            set_alert('danger', 'disabled in demo');
-            redirect($this->returnUrl);
-            die();
-        }
     }
 }

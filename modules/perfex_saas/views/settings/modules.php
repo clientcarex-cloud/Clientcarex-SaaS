@@ -31,6 +31,10 @@ $currency = get_base_currency();
         <hr />
         <hr />
     </div>
+    <div class="alert alert-info tw-mt-2" style="margin-bottom:0">
+        <i class="fa fa-globe tw-mr-1"></i><?= _l('perfex_saas_modules_presentation_hint'); ?>
+    </div>
+
     <div class="tw-mt-4 tw-mb-4">
         <div class="tw-overflow-y-auto tw-mt-4 tw-flex tw-flex-col tw-gap-6" style="max-height: 70vh;">
             <?php foreach ($modules as $module_id => $value) :
@@ -73,6 +77,26 @@ $currency = get_base_currency();
                                 placeholder="<?= base_url('media/public/someimage.jpg'); ?>"
                                 name="settings[perfex_saas_modules_marketplace][<?= $module_id; ?>][image]"
                                 value="<?= $value['image'] ?? ''; ?>" class="form-control" />
+                        </div>
+                        <div class="tw-flex tw-gap-2">
+                            <div class="input-group" data-toggle="tooltip"
+                                data-title="<?= _l('perfex_saas_module_feature_visibility_hint'); ?>">
+                                <span class="input-group-addon tw-px-2"><?= _l('perfex_saas_module_feature_visibility'); ?></span>
+                                <?php $visible = $value['visible'] ?? true; ?>
+                                <select name="settings[perfex_saas_modules_marketplace][<?= $module_id; ?>][visible]"
+                                    class="form-control">
+                                    <option value="1" <?= $visible ? 'selected' : ''; ?>><?= _l('perfex_saas_module_feature_show'); ?></option>
+                                    <option value="0" <?= !$visible ? 'selected' : ''; ?>><?= _l('perfex_saas_module_feature_hide'); ?></option>
+                                </select>
+                            </div>
+                            <div class="input-group" data-toggle="tooltip"
+                                data-title="<?= _l('perfex_saas_module_feature_order_hint'); ?>">
+                                <span class="input-group-addon tw-px-2"><?= _l('perfex_saas_module_feature_order'); ?></span>
+                                <input type="number" step="1" min="0"
+                                    name="settings[perfex_saas_modules_marketplace][<?= $module_id; ?>][order]"
+                                    value="<?= $value['order'] ?? ''; ?>" class="form-control"
+                                    placeholder="<?= _l('perfex_saas_module_feature_order'); ?>" />
+                            </div>
                         </div>
                     </div>
                 </div>

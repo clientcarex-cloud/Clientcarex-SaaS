@@ -214,7 +214,7 @@ if ($invoice->sent == 1 && is_date($invoice->datesend)) {
                                         class="fa-regular fa-envelope"></i></span></a>
                             </span>
                             <?php } ?>
-                            <?php hooks()->do_action('before_invoice_preview_more_menu_button', $invoice); ?>
+                        <?php hooks()->do_action('before_invoice_preview_more_menu_button', $invoice); ?>
                             <!-- Single button -->
                             <div class="btn-group">
                                 <button type="button" class="btn btn-default pull-left dropdown-toggle"
@@ -223,13 +223,11 @@ if ($invoice->sent == 1 && is_date($invoice->datesend)) {
                                     <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-right">
-                                    <li>
-                                        <a href="<?= site_url('invoice/' . $invoice->id . '/' . $invoice->hash) ?>"
-                                            target="_blank"><?= _l('view_invoice_as_customer_tooltip'); ?>
-                                        </a>
+                                    <li><a href="<?= site_url('invoice/' . $invoice->id . '/' . $invoice->hash) ?>"
+                                            target="_blank"><?= _l('view_invoice_as_customer_tooltip'); ?></a>
                                     </li>
-                                    <?php hooks()->do_action('after_invoice_view_as_client_link', $invoice); ?>
                                     <li>
+                                        <?php hooks()->do_action('after_invoice_view_as_client_link', $invoice); ?>
                                         <?php if (is_invoice_overdue($invoice) && is_invoices_overdue_reminders_enabled()) { ?>
                                         <a
                                             href="<?= admin_url('invoices/send_overdue_notice/' . $invoice->id); ?>">

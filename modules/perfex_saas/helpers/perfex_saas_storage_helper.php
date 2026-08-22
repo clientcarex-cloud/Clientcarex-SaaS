@@ -234,28 +234,46 @@ function perfex_saas_tenant_storage_is_unlimited($tenant)
 /**
  * Update tenant storage size in the metadata.
  *
- * @param object $tenant The tenant object.
+ * @param object $tenant           The tenant object.
+ * @param int    $max_age_seconds  Reuse the stored figure while it is younger
+ *                                 than this. 0 (default) always recalculates.
  * @return object The tenant object with updated storage info
  */
-function perfex_saas_update_tenant_storage_size($tenant)
+function perfex_saas_update_tenant_storage_size($tenant, $max_age_seconds = 0)
 {
-    // Calculate the current storage size for the tenant.
-    $storage = perfex_saas_calculate_tenant_storage_size($tenant);
+    $stored = $tenant->metadata->storage ?? null;
 
-    // Check if the calculated total storage size is different from the stored value.
-    if ($storage->total != ($tenant->metadata->storage->total ?? 0)) {
+    // perfex_saas_calculate_tenant_storage_size() walks the tenant's whole
+    // uploads AND media tree with RecursiveDirectoryIterator — thousands of
+    // stat() calls per tenant. The cron used to do that for every tenant on
+    // every pass, so the background cost grew with tenant count and throttled
+    // on-boarding. Callers that only need a reasonably current figure pass a
+    // max age; the live path (a real upload hitting its quota) passes nothing
+    // and still gets an exact, freshly calculated number.
+    if ($max_age_seconds > 0
+        && $stored
+        && isset($stored->checked_at)
+        && (time() - (int) $stored->checked_at) < $max_age_seconds) {
+        return $tenant;
+    }
+
+    // Calculate the current storage size for the tenant.
+    $storage             = perfex_saas_calculate_tenant_storage_size($tenant);
+    $storage->checked_at = time();
+
+    // Write when the total moved, or when this was a throttled refresh — the
+    // refresh has to persist checked_at or the throttle would never advance.
+    if ($max_age_seconds > 0 || $storage->total != ($stored->total ?? 0)) {
         // Get the table name for the companies.
         $table = perfex_saas_table('companies');
 
         // Update the metadata with the new storage size information.
         $tenant->metadata = (object)array_merge((array)$tenant->metadata, ['storage' => $storage]);
         $metadata = json_encode((array)$tenant->metadata);
+        $query = "UPDATE `$table` SET `metadata` = '$metadata' WHERE slug='$tenant->slug';";
 
-        $query = "UPDATE `$table` SET `metadata` = :metadata WHERE `slug` = :slug";
-        $parameters = [':metadata' => $metadata, ':slug' => $tenant->slug];
-
-        // Execute the parameterized query to prevent SQL injection.
-        perfex_saas_raw_query($query, [], false, false, null, false, true, $parameters);
+        // Execute the raw SQL query to update the metadata.
+        perfex_saas_raw_query($query);
     }
     return $tenant;
 }

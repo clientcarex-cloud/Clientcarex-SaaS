@@ -41,6 +41,8 @@ class SaaSPDOConnectionManager
  */
 function perfex_saas_init()
 {
+    $tenant_info = false;
+
     try {
         if (isset($_SERVER['REQUEST_URI'])) {
 
@@ -211,22 +213,16 @@ function perfex_saas_init()
             // If using custom domain it neccessary we set cookie same site to none 
             // for tenant brige/cross login and iframe loading from other domain (i.e custom domain) to work
             $cookie_same_site =   defined('APP_SESSION_COOKIE_SAME_SITE_DEFAULT') ? APP_SESSION_COOKIE_SAME_SITE_DEFAULT : 'Lax';
+            if (!$tenant_info && ($options['perfex_saas_enable_cross_domain_bridge'] ?? '0') == '1') {
 
-            if (!$tenant_info) {
-                if (($options['perfex_saas_enable_cross_domain_bridge'] ?? '0') == '1') {
-
-                    $is_admin = str_starts_with(ltrim($request_uri, '/'), 'admin') !== false;
-                    $is_in_local = perfex_saas_host_is_local(perfex_saas_get_saas_default_host(), true);
-                    if (!$is_admin && !$is_in_local) {
-                        $cookie_same_site = 'none';
-                        defined('APP_COOKIE_SECURE') or define('APP_COOKIE_SECURE', true);
-                        defined('APP_COOKIE_HTTPONLY') or define('APP_COOKIE_HTTPONLY', true);
-                    }
+                $is_admin = str_starts_with(ltrim($request_uri, '/'), 'admin') !== false;
+                $is_in_local = perfex_saas_host_is_local(perfex_saas_get_saas_default_host(), true);
+                if (!$is_admin && !$is_in_local) {
+                    $cookie_same_site = 'none';
+                    defined('APP_COOKIE_SECURE') or define('APP_COOKIE_SECURE', true);
+                    defined('APP_COOKIE_HTTPONLY') or define('APP_COOKIE_HTTPONLY', true);
                 }
-
-                defined('APP_COOKIE_PREFIX') or define('APP_COOKIE_PREFIX', 'master');
             }
-
             // Ensure we always have APP_SESSION_COOKIE_SAME_SITE defined is tenant or not
             defined('APP_SESSION_COOKIE_SAME_SITE') or define('APP_SESSION_COOKIE_SAME_SITE', $cookie_same_site);
         }
@@ -235,8 +231,26 @@ function perfex_saas_init()
         perfex_saas_show_tenant_error("Initialization Error", $th->getMessage(), 500);
     }
 
-    // Define APP_BASE_URL based on the tenant's base URL, fallback to the default base URL if not available
-    define('APP_BASE_URL', defined('PERFEX_SAAS_TENANT_BASE_URL') ? PERFEX_SAAS_TENANT_BASE_URL : APP_BASE_URL_DEFAULT);
+    // Define APP_BASE_URL based on tenant host or current allowed master host.
+    $app_base_url = APP_BASE_URL_DEFAULT;
+    if (!defined('PERFEX_SAAS_TENANT_BASE_URL') && isset($_SERVER['REQUEST_URI'])) {
+        $current_host = perfex_saas_http_host($_SERVER);
+        $request_uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+        $request_path = ltrim(parse_url($request_uri, PHP_URL_PATH) ?? '', '/');
+        $custom_admin_uri = defined('CUSTOM_ADMIN_URL') ? trim((string) CUSTOM_ADMIN_URL, '/') : 'admin';
+
+        $is_custom_admin_master_request =
+            $custom_admin_uri !== ''
+            && str_starts_with($request_path, $custom_admin_uri)
+            && !$tenant_info
+            && !perfex_saas_is_registered_custom_domain($current_host);
+
+        if (perfex_saas_is_master_allowed_host($current_host) || $is_custom_admin_master_request) {
+            $app_base_url = rtrim(perfex_saas_url_origin($_SERVER), '/') . '/';
+        }
+    }
+
+    define('APP_BASE_URL', defined('PERFEX_SAAS_TENANT_BASE_URL') ? PERFEX_SAAS_TENANT_BASE_URL : $app_base_url);
 }
 
 
@@ -399,10 +413,59 @@ function perfex_saas_get_tenant_info_by_host($http_host)
         $host = ""; // Reset the host value
     }
 
+    // Resolve as tenant custom domain only when it exists in SaaS companies.
+    // This allows cloned staging hosts to open as master automatically.
+    if ($host !== '' && !perfex_saas_is_registered_custom_domain($host)) {
+        return false;
+    }
+
     return [
         'custom_domain' => $host, // Custom domain (without "www")
         'slug' => $tenant_slug // Tenant slug
     ];
+}
+
+/**
+ * Check if a host is explicitly registered as a tenant custom domain.
+ *
+ * @param string $host
+ * @return bool
+ */
+function perfex_saas_is_registered_custom_domain($host)
+{
+    $host = strtolower(trim((string) $host));
+    if ($host === '') {
+        return false;
+    }
+
+    $candidates = [$host];
+    if (str_starts_with($host, 'www.')) {
+        $candidates[] = substr($host, 4);
+    } else {
+        $candidates[] = 'www.' . $host;
+    }
+
+    $candidates = array_values(array_unique(array_filter($candidates)));
+    if (empty($candidates)) {
+        return false;
+    }
+
+    $params = [];
+    $placeholders = [];
+    foreach ($candidates as $idx => $candidate) {
+        $key = ':host' . $idx;
+        $placeholders[] = $key;
+        $params[$key] = $candidate;
+    }
+
+    $table = perfex_saas_table('companies');
+    $query = "SELECT `custom_domain` FROM `$table` WHERE `custom_domain` IN (" . implode(', ', $placeholders) . ") LIMIT 1";
+
+    try {
+        return (bool) perfex_saas_raw_query_row($query, [], true, true, $params);
+    } catch (\Throwable $th) {
+        return false;
+    }
 }
 
 /**
@@ -426,14 +489,79 @@ function perfex_saas_get_saas_alternative_host()
 }
 
 /**
+ * Check if the host is an allowed master host.
+ *
+ * @param string $host
+ * @return bool
+ */
+function perfex_saas_is_master_allowed_host($host)
+{
+    $normalize = function ($value) {
+        $value = strtolower(trim((string) $value));
+        if ($value === '') {
+            return '';
+        }
+
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            $parsed = parse_url($value, PHP_URL_HOST);
+            $value = $parsed ?: '';
+        }
+
+        $value = explode(':', $value, 2)[0];
+        if (str_starts_with($value, 'www.')) {
+            $value = substr($value, 4);
+        }
+
+        return $value;
+    };
+
+    $host = $normalize($host);
+    if ($host === '') {
+        return false;
+    }
+
+    $default_host = $normalize(perfex_saas_get_saas_default_host());
+    $alternative_host = $normalize(perfex_saas_get_saas_alternative_host());
+
+    if ($host === $default_host || ($alternative_host !== '' && $host === $alternative_host)) {
+        return true;
+    }
+
+    // Also treat staging hosts (from CCX_STAGING_HOSTS env var) as valid master hosts.
+    // Without this, non-admin URLs on staging (e.g., /clients/) fall back to production base URL.
+    if (function_exists('ccx_runtime_staging_hosts')) {
+        $stagingHosts = ccx_runtime_staging_hosts();
+        foreach ($stagingHosts as $stagingHost) {
+            if ($normalize($stagingHost) === $host) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
  * Get the default app base url. i.e the super http url.
+ * When APP_BASE_URL has been dynamically overridden (e.g., on a staging server),
+ * uses that instead of the static APP_BASE_URL_DEFAULT from .env.
+ * This ensures all redirects and URL generation stay on the current server.
  *
  * @param string $path
  * @return string
  */
 function perfex_saas_default_base_url($path = '')
 {
-    return APP_BASE_URL_DEFAULT . $path;
+    // This function must always return the MASTER (super) base URL.
+    // On production master: APP_BASE_URL_DEFAULT is correct.
+    // On staging/dev master: APP_BASE_URL may differ (dynamically resolved to current host).
+    // On tenants: APP_BASE_URL is the TENANT URL (e.g., celabs.healtho.pro),
+    //   so we must NOT use it here — always use APP_BASE_URL_DEFAULT for the master URL.
+    $base = APP_BASE_URL_DEFAULT;
+    if (!perfex_saas_is_tenant() && defined('APP_BASE_URL') && APP_BASE_URL !== APP_BASE_URL_DEFAULT) {
+        $base = APP_BASE_URL;
+    }
+    return $base . $path;
 }
 
 /**
@@ -1170,8 +1298,10 @@ function perfex_saas_pdo_safe_query($pdo, $query, $parameters)
     $statement = $pdo->prepare($query);
 
     foreach ($parameters as $key => $value) {
-        $statement->bindParam($key, $value);
-        $statement->bindValue($key, $value);
+        // PDO positional parameters (?) are 1-based, but PHP arrays are 0-based.
+        // Offset numeric keys by +1 to comply with PDO requirements.
+        $bindKey = is_int($key) ? $key + 1 : $key;
+        $statement->bindValue($bindKey, $value);
     }
 
     return $statement->execute() ? $statement : false;
@@ -1850,7 +1980,7 @@ function perfex_saas_http_request($url, $options)
  * @return array The list of tenant modules.
  */
 function perfex_saas_tenant_modules(
-    ?object $tenant = null,
+    object $tenant = null,
     bool $include_saas_module = true,
     bool $include_tenant_disabled_modules = false,
     bool $include_admin_disabled_modules = false,
@@ -2071,9 +2201,8 @@ function perfex_saas_get_options($field, bool $parse = true, $extra_clause = '')
  */
 function perfex_saas_update_option($field, $value)
 {
-    $table = perfex_saas_master_db_prefix() . 'options';
-    $option_query = "UPDATE `$table` SET `value` = :value WHERE `name` = :field";
-    return perfex_saas_raw_query($option_query, [], false, false, null, false, true, [':field' => $field, ':value' => $value]);
+    $option_query = 'UPDATE `' . perfex_saas_master_db_prefix() . "options` SET `value` ='$value' WHERE `name`='$field'";
+    return perfex_saas_raw_query($option_query, []);
 }
 
 /**
@@ -2087,10 +2216,7 @@ function perfex_saas_update_option($field, $value)
 function perfex_saas_get_or_save_client_metadata($clientid, $update_data = [])
 {
     $table = perfex_saas_table('client_metadata');
-    $client_metadata = perfex_saas_raw_query_row(
-        "SELECT * FROM $table WHERE `clientid` = :clientid",
-        [], true, false, [':clientid' => $clientid]
-    );
+    $client_metadata = perfex_saas_raw_query_row("SELECT * FROM $table WHERE `clientid`='$clientid';", [], true);
     $metadata = empty($client_metadata->metadata) ? [] : (array)json_decode($client_metadata->metadata);
 
     if (empty($update_data)) {
@@ -2098,17 +2224,15 @@ function perfex_saas_get_or_save_client_metadata($clientid, $update_data = [])
     }
 
     $id = $client_metadata->id ?? null;
+    $where = !empty($id) ? "WHERE `id`='$id' AND `clientid`='$clientid'" : '';
     $metadata = array_merge($metadata, $update_data);
     $metadata_json = json_encode($metadata);
-    if (!empty($id)) {
-        $query = "UPDATE $table SET `metadata` = :metadata WHERE `id` = :id AND `clientid` = :clientid";
-        $params = [':metadata' => $metadata_json, ':id' => $id, ':clientid' => $clientid];
-    } else {
-        $query = "INSERT INTO `$table` (`id`, `metadata`, `clientid`) VALUES (NULL, :metadata, :clientid)";
-        $params = [':metadata' => $metadata_json, ':clientid' => $clientid];
-    }
+    if (!empty($id))
+        $query = "UPDATE $table SET `metadata`='$metadata_json', `clientid` = '$clientid' $where";
+    else
+        $query = "INSERT INTO `$table` (`id`, `metadata`, `clientid`) VALUES (NULL, '$metadata_json', '$clientid')";
 
-    $updated = perfex_saas_raw_query($query, [], false, false, null, false, true, $params);
+    $updated = perfex_saas_raw_query($query);
     if ($updated)
         return $metadata;
 
@@ -2126,11 +2250,6 @@ function perfex_saas_get_or_save_client_metadata($clientid, $update_data = [])
 function perfex_saas_search_client_metadata($field, $value, $is_unsigned = true, $clientid = null)
 {
     $table = perfex_saas_table('client_metadata');
-
-    // $field is used as a JSON path and cannot be parameterized; restrict to safe identifier characters.
-    if (!preg_match('/^[a-zA-Z0-9_]+$/', $field)) {
-        return null;
-    }
 
     // Start building the query with named parameters
     if ($is_unsigned)

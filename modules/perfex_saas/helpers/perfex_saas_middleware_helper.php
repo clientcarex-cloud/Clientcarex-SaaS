@@ -95,7 +95,7 @@ function perfex_saas_tenant_middleware()
                 perfex_saas_middleware_force_load_lang();
                 perfex_saas_show_tenant_error(
                     ucfirst(_l('perfex_saas_' . $tenant->status)),
-                    _l('perfex_saas_company_not_active_mid') . ' <a class="text-blue-600 text-bold tw-font-bold" href="' . perfex_saas_default_base_url('clients/tickets?portal-message=' . $tenant->status) . '">' . _l('perfex_saas_clich_here') . '</a>',
+                    _l('perfex_saas_company_not_active_mid') . ' <a class="text-blue-600 text-bold tw-font-bold" href="' . perfex_saas_default_base_url('clients/pro_tickets?portal-message=' . $tenant->status) . '">' . _l('perfex_saas_clich_here') . '</a>',
                     400,
                     '404',
                     'inactive_tenant'
@@ -128,7 +128,10 @@ function perfex_saas_tenant_middleware()
             // Check if the active module is allowed for the tenant
             $exempted = ($activeModule === PERFEX_SAAS_MODULE_NAME &&
                 (
-                    ($controller === 'companies' && $method === 'client_portal_bridge' && (perfex_saas_tenant_is_enabled('client_bridge') || perfex_saas_tenant_is_enabled('instance_switch'))) ||
+                    ($controller === 'companies' && in_array($method, ['client_portal_bridge', 'tenant_support_unread', 'tenant_support_debug', 'tenant_smart_ticket_submit', 'tenant_support_pin']) && (perfex_saas_tenant_is_enabled('client_bridge') || perfex_saas_tenant_is_enabled('instance_switch'))) ||
+                    // Pro AI Chat floating assistant — availability is governed by the
+                    // master's pro_ai_chat options; the endpoint enforces its own guards.
+                    ($controller === 'companies' && $method === 'tenant_ai_chat') ||
                     ($controller === 'authentication' && $method === 'tenant_admin_magic_auth') ||
                     ($controller === 'tenant_modules_page')
                 )

@@ -639,14 +639,72 @@ class Clients extends AdminController
         redirect(admin_url('clients'));
     }
 
-    /* Staff can login as client */
+    /* Staff can login as client — supports view-only and full-edit modes */
     public function login_as_client($id)
     {
-        if (is_admin()) {
-            login_as_client($id);
+        $can_view = staff_can('ccx_login_as_client', 'ccx_support');
+        $can_edit = staff_can('ccx_edit_as_client', 'ccx_support');
+
+        // The Pro Support console ("Tenant Access") links here, so its own
+        // "Login as client" capability has to open the door too — otherwise
+        // granting it in Roles produced a button that always hit access_denied.
+        // It maps to read-only; full edit still needs ccx_edit_as_client.
+        if (!$can_view && function_exists('pro_support_staff_can')) {
+            $can_view = pro_support_staff_can('login_as_client');
         }
+
+        // Pro Support "Admin: Login as Client" is the super-admin-equivalent
+        // grant — no Support PIN and full edit access inside the tenant.
+        if (!$can_edit && function_exists('pro_support_can_login_as_client_direct')) {
+            $can_edit = pro_support_can_login_as_client_direct();
+        }
+
+        if (!is_admin() && !$can_view && !$can_edit) {
+            access_denied('Login as client');
+        }
+
+        // Determine mode: admin always gets edit, staff gets what they asked for (if permitted)
+        $requested_mode = $this->input->get('mode') ?: 'view';
+        if (is_admin()) {
+            $mode = $requested_mode; // Admin can choose freely
+        } elseif ($requested_mode === 'edit' && $can_edit) {
+            $mode = 'edit';
+        } else {
+            $mode = 'view'; // Default to view-only for non-admin
+        }
+
+        login_as_client($id);
+        // Prevent SaaS autosubscribe from redirecting when logging in as client
+        $this->session->set_userdata('perfex_saas_enable_auto_trial', '0');
+
+        $this->load->helper('cookie');
+
+        if ($mode === 'view') {
+            // Set view-only flag on this session and pass a cookie to the tenant
+            $this->session->set_userdata('ccx_view_only_mode', true);
+            set_cookie([
+                'name'     => 'ccx_view_only',
+                'value'    => '1',
+                'expire'   => 300, // 5 minutes
+                'path'     => '/',
+                'httponly'  => true,
+            ]);
+        } else {
+            // Edit mode — explicitly clear any stale view-only state
+            $this->session->unset_userdata('ccx_view_only_mode');
+            set_cookie([
+                'name'     => 'ccx_view_only',
+                'value'    => '0',
+                'expire'   => 300, // 5 minutes
+                'path'     => '/',
+                'httponly'  => true,
+            ]);
+        }
+
+        // Set red_url to ensure the client portal loads correctly (bypasses landing page)
+        $this->session->set_userdata('red_url', site_url('clients/'));
         hooks()->do_action('after_contact_login');
-        redirect(site_url());
+        redirect(site_url('clients/'));
     }
 
     public function get_customer_billing_and_shipping_details($id)
@@ -667,10 +725,6 @@ class Clients extends AdminController
     /* Change client status / active / inactive */
     public function change_client_status($id, $status)
     {
-        if (staff_cant('edit',  'customers') && !is_customer_admin(get_user_id_by_contact_id($id))) {
-            ajax_access_denied();
-        }
-
         if ($this->input->is_ajax_request()) {
             $this->clients_model->change_client_status($id, $status);
         }

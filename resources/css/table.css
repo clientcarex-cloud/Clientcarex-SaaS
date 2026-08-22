@@ -519,22 +519,20 @@ table.dataTable:has(.mass_select_all_wrap) tbody > tr > td:first-child {
   @apply tw-border-r tw-border-solid tw-border-neutral-100;
 }
 
-/* Base setup - only position, no border */
-table.dataTable tbody tr.has-border-left td:first-child {
-  @apply tw-relative;
+table.dataTable tbody tr.has-border-left {
+  @apply tw-relative after:tw-content-[''] after:tw-border-l after:tw-border-solid after:tw-border-transparent after:tw-h-full after:tw-block after:tw-absolute after:tw-left-0;
 }
 
-/* Add the border only when color classes are present */
-table.dataTable tbody tr.has-border-left.row-border-danger td:first-child {
-  @apply before:tw-content-[''] before:tw-border-l before:tw-border-solid before:tw-border-danger-500 before:tw-absolute before:tw-left-0 before:tw-top-0 before:tw-bottom-0;
+table.dataTable tbody tr.has-border-left.row-border-danger {
+  @apply after:tw-border-danger-500;
 }
 
-table.dataTable tbody tr.has-border-left.row-border-info td:first-child {
-  @apply before:tw-content-[''] before:tw-border-l before:tw-border-solid before:tw-border-info-500 before:tw-absolute before:tw-left-0 before:tw-top-0 before:tw-bottom-0;
+table.dataTable tbody tr.has-border-left.row-border-info {
+  @apply after:tw-border-info-500;
 }
 
-table.dataTable tbody tr.has-border-left.row-border-warning td:first-child {
-  @apply before:tw-content-[''] before:tw-border-l before:tw-border-solid before:tw-border-warning-500 before:tw-absolute before:tw-left-0 before:tw-top-0 before:tw-bottom-0;
+table.dataTable tbody tr.has-border-left.row-border-warning {
+  @apply after:tw-border-warning-500;
 }
 
 table.dataTable tbody tr:has(.checkbox) > td:first-child,

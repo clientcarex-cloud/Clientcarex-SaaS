@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Checkout Flow';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Välj vilken Stripe-kassaupplevelse som ska användas för prenumerationer. Setup-läget samlar först in betalningsmetoder och skapar sedan prenumerationer. Subscription-läget visar abonnemangsinformation i kassan och hanterar betalningsinsamlingen automatiskt.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Inställningsläge (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Prenumerationsläge (rekommenderas)';
-$lang['perfex_saas_sync_all_packages'] = 'Synkronisera alla';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Prenumerera för att låsa upp paketanpassning.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Denna demo kommer att återställas om %s. Observera att alla tillagda data kommer att rensas och att systemet kan bli långsamt under en stund.';

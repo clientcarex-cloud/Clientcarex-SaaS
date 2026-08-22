@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Потік касових опер�
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Виберіть, який інтерфейс Stripe для оформлення підписок використовувати. Режим налаштування спочатку збирає способи оплати, а потім створює підписки. Режим підписки показує деталі підписки під час оформлення замовлення і автоматично обробляє збір платежів.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Режим налаштування (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Режим підписки (рекомендовано)';
-$lang['perfex_saas_sync_all_packages'] = 'Синхронізувати все.';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Будь ласка, підпишіться, щоб розблокувати кастомізацію пакунків.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Ця демонстрація буде скинута через %s. Будь ласка, зверніть увагу, що всі додані дані буде очищено, і система може уповільнити роботу на деякий час.';

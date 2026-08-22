@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Checkout Flow';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Выберите, какой способ оформления Stripe будет использоваться для подписок. В режиме настройки сначала собираются способы оплаты, а затем создаются подписки. Режим подписки показывает детали подписки во время оформления и автоматически обрабатывает сбор платежей.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Режим настройки (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Режим подписки (рекомендуется)';
-$lang['perfex_saas_sync_all_packages'] = 'Синхронизация всех';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Пожалуйста, подпишитесь, чтобы разблокировать настройки пакета.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Эта демонстрация будет перезагружена через %s. Обратите внимание, что все добавленные данные будут очищены, а система может на некоторое время замедлиться.';

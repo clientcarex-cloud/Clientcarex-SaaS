@@ -194,16 +194,14 @@ class Subscription extends ClientsController
             // so we can determine here the customer
             $customer = $this->stripe_core->update_customer($session->customer, $customerPayload);
 
-            if ($session->subscription->default_payment_method) {
-                $pm = Stripe\PaymentMethod::retrieve($session->subscription->default_payment_method);
-                $pm->attach(['customer' => $customer->id]);
+            $pm = Stripe\PaymentMethod::retrieve($session->subscription->default_payment_method);
+            $pm->attach(['customer' => $customer->id]);
 
-                $this->stripe_core->update_customer($customer->id, [
-                    'invoice_settings' => [
-                        'default_payment_method' => $session->subscription->default_payment_method,
-                    ],
-                ]);
-            }
+            $this->stripe_core->update_customer($customer->id, [
+                'invoice_settings' => [
+                    'default_payment_method' => $session->subscription->default_payment_method,
+                ],
+            ]);
 
             // In case the webhook is slower, update the stripe_subscription_id so the user won't see the subscribe button again
             $this->subscriptions_model->update($subscription->id, ['stripe_subscription_id' => $session->subscription->id]);

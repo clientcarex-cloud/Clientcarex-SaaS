@@ -57,22 +57,28 @@
                         <?php $modules = $this->perfex_saas_model->modules(); ?>
 
 
+                        <?php 
+                            // Determine effective package modules
+                            $package_modules = isset($package_modules) ? $package_modules : []; 
+                            
+                            // Get current settings
+                            $admin_approved = (array)(isset($company->metadata->admin_approved_modules) ? $company->metadata->admin_approved_modules : []);
+                            $admin_disabled = (array)(isset($company->metadata->admin_disabled_modules) ? $company->metadata->admin_disabled_modules : []);
+                        ?>
+
+
                         <!-- admin assigned modules selection -->
                         <div class="tw-mt-8 tw-mb-8">
-                            <?php $selected = (isset($company->metadata->admin_approved_modules) ? $company->metadata->admin_approved_modules : []); ?>
                             <?php $label = _l('perfex_saas_admin_approved_modules') . perfex_saas_form_label_hint("perfex_saas_admin_approved_modules_hint"); ?>
-
-                            <?php echo perfex_saas_render_select('metadata[admin_approved_modules][]', $modules, ['system_name', ['custom_name']], $label, $selected, $select_attr); ?>
+                            <?php echo perfex_saas_render_select('metadata[admin_approved_modules][]', $modules, ['system_name', ['custom_name']], $label, $admin_approved, $select_attr); ?>
                         </div>
-
 
                         <!-- admin disabled modules selection -->
                         <div class="tw-mt-8 tw-mb-8">
-                            <?php $selected = (isset($company->metadata->admin_disabled_modules) ? $company->metadata->admin_disabled_modules : []); ?>
                             <?php $label = _l('perfex_saas_admin_disabled_modules') . perfex_saas_form_label_hint('perfex_saas_admin_disabled_modules_hint'); ?>
-                            <?php echo perfex_saas_render_select('metadata[admin_disabled_modules][]', $modules, ['system_name', ['custom_name']], $label, $selected, $select_attr); ?>
+                            <?php echo perfex_saas_render_select('metadata[admin_disabled_modules][]', $modules, ['system_name', ['custom_name']], $label, $admin_disabled, $select_attr); ?>
                         </div>
-
+                        
                         <!-- disabled default modules -->
                         <div class="tw-mt-8 tw-mb-8">
                             <?php $selected = $company->metadata->admin_disabled_default_modules ?? ''; ?>
@@ -80,6 +86,52 @@
                             <?php $label =  _l('perfex_saas_disabled_default_modules') . perfex_saas_form_label_hint('perfex_saas_disabled_default_modules_hint'); ?>
                             <?= perfex_saas_render_select('metadata[admin_disabled_default_modules][]', $default_modules, ['system_name', ['custom_name']], $label, $selected, $select_attr); ?>
                         </div>
+
+                        <!-- Remote Module Activation Section -->
+                        <?php if (isset($company) && isset($tenant_module_status)): ?>
+                        <div class="panel_s tw-mt-8 tw-bg-neutral-50 tw-border tw-border-solid tw-border-neutral-200">
+                            <div class="panel-body">
+                                <h4 class="tw-mt-0 tw-font-semibold tw-text-base tw-text-neutral-700">
+                                    Remote Module Activation
+                                </h4>
+                                <p class="tw-text-sm tw-text-neutral-500 tw-mb-4">
+                                    Directly activate or deactivate modules in the tenant's database. <strong class="text-danger">Warning: This bypasses the admin approval list constraints.</strong>
+                                </p>
+                                
+                                <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-4">
+                                    <?php foreach ($modules as $module): ?>
+                                        <?php 
+                                            $system_name = $module['system_name'];
+                                            $custom_name = $module['custom_name'] ?? $system_name;
+                                            $is_remote_active = isset($tenant_module_status[$system_name]) && $tenant_module_status[$system_name] == '1';
+                                        ?>
+                                        <div class="tw-flex tw-items-center tw-justify-between tw-p-3 tw-bg-white tw-rounded tw-border tw-border-solid tw-border-neutral-200">
+                                            <div class="tw-flex tw-flex-col">
+                                                <span class="tw-font-medium text-neutral-700">
+                                                    <?= $custom_name ?>
+                                                    <?php if(in_array($system_name, $package_modules)): ?>
+                                                        <span class="label label-info tw-ml-2"><?= _l('package'); ?></span>
+                                                    <?php endif; ?>
+                                                    <?php if(in_array($system_name, $admin_approved)): ?>
+                                                        <span class="label label-success tw-ml-2"><?= _l('approved'); ?></span>
+                                                    <?php endif; ?>
+                                                </span>
+                                                <span class="tw-text-xs tw-text-neutral-400"><?= $system_name ?></span>
+                                            </div>
+                                            <div class="onoffswitch">
+                                                <input type="checkbox" 
+                                                       data-module="<?= $system_name ?>"
+                                                       class="onoffswitch-checkbox remote-module-toggle" 
+                                                       id="remote_toggle_<?= $system_name ?>" 
+                                                       <?= $is_remote_active ? 'checked' : '' ?>>
+                                                <label class="onoffswitch-label" for="remote_toggle_<?= $system_name ?>"></label>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                         <!-- status selection -->
                         <?php if (isset($company) && $company->status != PERFEX_SAAS_STATUS_PENDING) : ?>
@@ -131,8 +183,40 @@
 <?php if (isset($company)) : ?>
 const perfex_saas_company_id = "<?= $company->id ?>";
 <?php endif ?>
+
 $(document).ready(function() {
     saasCompanyFormScript();
+
+    // Remote Module Activation Logic
+    $('.remote-module-toggle').on('change', function() {
+        const $toggle = $(this);
+        const systemName = $toggle.data('module');
+        const isActive = $toggle.is(':checked') ? 1 : 0;
+        
+        // Disable during request
+        $toggle.prop('disabled', true);
+        
+        $.post(admin_url + 'perfex_saas/companies/update_tenant_module_status', {
+            company_id: perfex_saas_company_id,
+            module_name: systemName,
+            status: isActive,
+            [csrfData['token_name']]: csrfData['hash']
+        }).done(function(response) {
+            response = JSON.parse(response);
+            if (response.success) {
+                alert_float('success', 'Module status updated remotely');
+            } else {
+                alert_float('danger', 'Failed to update: ' + (response.error || 'Unknown error'));
+                // Revert toggle
+                $toggle.prop('checked', !isActive);
+            }
+        }).fail(function() {
+            alert_float('danger', 'Request failed');
+            $toggle.prop('checked', !isActive);
+        }).always(function() {
+            $toggle.prop('disabled', false);
+        });
+    });
 });
 </script>
 </body>

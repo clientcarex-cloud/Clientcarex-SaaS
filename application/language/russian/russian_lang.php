@@ -1,8 +1,8 @@
 <?php
 
-// Version 1.0.0
-//
-// General
+# Version 1.0.0
+#
+# General
 $lang['id']                   = 'ИД';
 $lang['name']                 = 'Имя';
 $lang['options']              = 'Опции';
@@ -22,7 +22,7 @@ $lang['error_uploading_file'] = 'Ошибка при загрузки файла
 $lang['load_more']            = 'Загрузить еще';
 $lang['cant_delete_default']  = 'Не могу удалить по умолчанию %s';
 
-// Invoice General
+# Invoice General
 $lang['invoice_status_paid']                   = 'Оплачено';
 $lang['invoice_status_unpaid']                 = 'Не оплачено';
 $lang['invoice_status_overdue']                = 'Просрочено';
@@ -47,7 +47,7 @@ $lang['invoice_payments_table_mode_heading']   = 'Способ оплаты';
 $lang['invoice_payments_table_date_heading']   = 'Дата';
 $lang['invoice_payments_table_amount_heading'] = 'Сумма';
 
-// Announcements
+# Announcements
 $lang['announcement']                 = 'Объявление';
 $lang['announcement_lowercase']       = 'объявление';
 $lang['announcements']                = 'Объявления';
@@ -59,7 +59,7 @@ $lang['announcement_show_to_staff']   = 'Показать сотрудникам
 $lang['announcement_show_to_clients'] = 'Показать клиентам';
 $lang['announcement_show_my_name']    = 'Показывать мое имя';
 
-// Clients
+# Clients
 $lang['clients']                                 = 'Клиенты';
 $lang['client']                                  = 'Клиент';
 $lang['new_client']                              = 'Новый клиент';
@@ -89,7 +89,7 @@ $lang['clients_notes_table_dateadded_heading']   = 'Добавлено';
 $lang['clients_list_full_name']                  = 'Полное имя';
 $lang['clients_list_last_login']                 = 'Последний вход';
 
-// Contracts
+# Contracts
 $lang['contracts']                = 'Договоры';
 $lang['contract']                 = 'Договор';
 $lang['new_contract']             = 'Новый договор';
@@ -106,7 +106,7 @@ $lang['contract_list_subject']    = 'Заголовок';
 $lang['contract_list_start_date'] = 'Дата начала';
 $lang['contract_list_end_date']   = 'Дата окончания';
 
-// Currencies
+# Currencies
 $lang['currencies']                    = 'Валюта';
 $lang['currency']                      = 'Валюта';
 $lang['new_currency']                  = 'Новая валюта';
@@ -121,7 +121,7 @@ $lang['currency_add_edit_rate']        = 'Символ';
 $lang['currency_edit_heading']         = 'Изменить валюту';
 $lang['currency_add_heading']          = 'Добавить валюту';
 
-// Department
+# Department
 $lang['departments']                 = 'Отделы';
 $lang['department']                  = 'Отдел';
 $lang['new_department']              = 'Новый отдел';
@@ -131,7 +131,7 @@ $lang['department_email']            = 'Эл. почта отдела';
 $lang['department_hide_from_client'] = 'Скрыть от клиента?';
 $lang['department_list_name']        = 'Название';
 
-// Email Templates
+# Email Templates
 $lang['email_templates']                        = 'Шаблоны писем';
 $lang['email_template']                         = 'Шаблон письма';
 $lang['email_template_lowercase']               = 'шаблон письма';
@@ -149,7 +149,7 @@ $lang['email_template_disabled']      = 'Отключить';
 $lang['email_template_email_message'] = 'Сообщение';
 $lang['available_merge_fields']       = 'Доступные шорткоды';
 
-// Home
+# Home
 $lang['dashboard_string']                          = 'Консоль';
 $lang['home_latest_todos']                         = 'Новые задачи';
 $lang['home_no_latest_todos']                      = 'Нет задач';
@@ -164,7 +164,7 @@ $lang['home_public_event']                         = 'Открытое меро�
 $lang['home_weekly_payment_records']               = 'Еженедельные платежные отчеты';
 $lang['home_weekend_ticket_opening_statistics']    = 'Еженедельная статистика открытых тикетов';
 
-// Newsfeed
+# Newsfeed
 $lang['whats_on_your_mind']                                 = 'Обмен документами, идеи..';
 $lang['new_post']                                           = 'Отправить';
 $lang['newsfeed_upload_tooltip']                            = 'Совет: перетащите файлы, чтобы загрузить';
@@ -187,7 +187,7 @@ $lang['newsfeed_post_likes_modal_heading']                  = 'Коллеги, �
 $lang['newsfeed_comment_likes_modal_heading']               = 'Коллеги, которым нравится этот комментарий';
 $lang['newsfeed_newsfeed_post_only_visible_to_departments'] = 'Эта запись отображается только для следующих отделов: %s';
 
-// Invoice Items
+# Invoice Items
 $lang['invoice_items']                     = 'Счета';
 $lang['invoice_item']                      = 'Счет';
 $lang['new_invoice_item']                  = 'Новая позиция';
@@ -199,7 +199,7 @@ $lang['invoice_item_add_edit_rate']        = 'Стоимость';
 $lang['invoice_item_edit_heading']         = 'Изменить';
 $lang['invoice_item_add_heading']          = 'Добавить';
 
-// Invoices
+# Invoices
 $lang['invoices']                                = 'Счета на оплату';
 $lang['invoice']                                 = 'Счет на оплату';
 $lang['invoice_lowercase']                       = 'счет на оплату';
@@ -245,7 +245,7 @@ $lang['invoice_payments_received']               = 'Полученные пла�
 $lang['invoice_record_payment_note_placeholder'] = 'Примечание администратора';
 $lang['no_payments_found']                       = 'Платежи по этому счету не найдены';
 
-// Payments
+# Payments
 $lang['payments']                             = 'Платежи';
 $lang['payment']                              = 'Платеж';
 $lang['payment_lowercase']                    = 'платеж';
@@ -260,7 +260,7 @@ $lang['payment_edit_for_invoice']             = 'Оплата счета';
 $lang['payment_edit_amount_received']         = 'Полученная сумма';
 $lang['payment_edit_date']                    = 'Дата оплаты';
 
-// Knowledge Base
+# Knowledge Base
 $lang['kb_article_add_edit_subject']   = 'Тема';
 $lang['kb_article_add_edit_group']     = 'Группа';
 $lang['kb_string']                     = 'База знаний';
@@ -281,10 +281,10 @@ $lang['group_table_name_heading']      = 'Название';
 $lang['group_table_isactive_heading']  = 'Активно';
 $lang['kb_no_groups_found']            = 'Группы не найдены';
 
-// Media
+# Media
 $lang['media_files'] = 'Файлы';
 
-// Payment modes
+# Payment modes
 $lang['new_payment_mode']           = 'Новый способ оплаты';
 $lang['payment_modes']              = 'Способы оплаты';
 $lang['payment_mode']               = 'Способ оплаты';
@@ -294,7 +294,7 @@ $lang['payment_mode_add_edit_name'] = 'Название способа опла�
 $lang['payment_mode_edit_heading']  = 'Изменить способ оплаты';
 $lang['payment_mode_add_heading']   = 'Добавить способ оплаты';
 
-// Predefined Ticket Replies
+# Predefined Ticket Replies
 $lang['new_predefined_reply']              = 'Новый заготовленный ответ';
 $lang['predefined_replies']                = 'Готовые ответы';
 $lang['predefined_reply']                  = 'Готовый ответ';
@@ -303,7 +303,7 @@ $lang['predefined_replies_dt_name']        = 'Название заготовл�
 $lang['predefined_reply_add_edit_name']    = 'Название заготовленного ответа';
 $lang['predefined_reply_add_edit_content'] = 'Ответ';
 
-// Ticket Priorities
+# Ticket Priorities
 $lang['new_ticket_priority']           = 'Новый приоритет';
 $lang['ticket_priorities']             = 'Приоритеты тикетов';
 $lang['ticket_priority']               = 'Приоритет тикета';
@@ -312,7 +312,7 @@ $lang['no_ticket_priorities_found']    = 'Приоритеты отсутств�
 $lang['ticket_priority_dt_name']       = 'Название приоритета';
 $lang['ticket_priority_add_edit_name'] = 'Название приоритета';
 
-// Reports
+# Reports
 $lang['kb_reports']                                       = 'Отчеты по статьям';
 $lang['sales_reports']                                    = 'Отчеты по продажам';
 $lang['reports_choose_kb_group']                          = 'Выберите группу';
@@ -337,7 +337,7 @@ $lang['reports_sales_dt_customers_total_invoices']        = 'Всего счет
 $lang['reports_sales_dt_items_customers_amount']          = 'Сумма';
 $lang['reports_sales_dt_items_customers_amount_with_tax'] = 'Сумма с учетом налога';
 
-// Roles
+# Roles
 $lang['new_role']           = 'Новая роль';
 $lang['all_roles']          = 'Все роли';
 $lang['roles']              = 'Роли сотрудников';
@@ -347,7 +347,7 @@ $lang['roles_total_users']  = 'Всего пользователей: ';
 $lang['roles_dt_name']      = 'Название роли';
 $lang['role_add_edit_name'] = 'Название роли';
 
-// Service
+# Service
 $lang['new_service']           = 'Новая услуга';
 $lang['services']              = 'Услуги';
 $lang['service']               = 'Услуга';
@@ -355,7 +355,7 @@ $lang['service_lowercase']     = 'услуга';
 $lang['services_dt_name']      = 'Название услуги';
 $lang['service_add_edit_name'] = 'Название услуги';
 
-// Settings
+# Settings
 $lang['settings']                                                  = 'Настройки';
 $lang['settings_updated']                                          = 'Настройки сохранены';
 $lang['settings_save']                                             = 'Сохранить';
@@ -426,7 +426,7 @@ $lang['settings_sales_country_code']                               = 'Стран
 $lang['settings_sales_postal_code']                                = 'Почтовый индекс';
 $lang['settings_sales_phonenumber']                                = 'Телефон';
 
-// Leads
+# Leads
 $lang['new_lead']                          = 'Новый лид';
 $lang['leads']                             = 'Лиды';
 $lang['lead']                              = 'Лид';
@@ -470,12 +470,12 @@ $lang['lead_add_edit_add_note']            = 'Добавить примечан�
 $lang['lead_not_contacted']                = 'Я не связывался с контактом';
 $lang['lead_add_edit_contacted_this_lead'] = 'Я связался с контактом';
 
-// Misc
+# Misc
 $lang['access_denied'] = 'Доступ запрещен';
 $lang['prev']          = 'назад';
 $lang['next']          = 'далее';
 
-// Datatables
+# Datatables
 $lang['dt_paginate_first']    = 'В начало';
 $lang['dt_paginate_last']     = 'В конец';
 $lang['dt_paginate_next']     = 'Далее';
@@ -491,10 +491,10 @@ $lang['dt_empty_table']       = 'Ничего не нашли';
 $lang['dt_sort_ascending']    = 'активируйте, чтобы сортировать по возрастанию';
 $lang['dt_sort_descending']   = 'активируйте, чтобы сортировать по убыванию';
 
-// Invoice Activity Log
+# Invoice Activity Log
 $lang['user_sent_overdue_reminder'] = '%s отправлено уведомление о просроченном платеже';
 
-// Weekdays
+# Weekdays
 $lang['wd_monday']    = 'Понедельник';
 $lang['wd_tuesday']   = 'Вторник';
 $lang['wd_thursday']  = 'Четверг';
@@ -503,7 +503,7 @@ $lang['wd_friday']    = 'Пятница';
 $lang['wd_saturday']  = 'Суббота';
 $lang['wd_sunday']    = 'Воскресенье';
 
-// Admin Left Sidebar
+# Admin Left Sidebar
 $lang['als_dashboard']             = 'Консоль';
 $lang['als_clients']               = 'Клиенты';
 $lang['als_leads']                 = 'Лиды';
@@ -522,7 +522,7 @@ $lang['als_announcements_submenu'] = 'Объявления';
 $lang['als_calendar_submenu']      = 'Календарь';
 $lang['als_activity_log_submenu']  = 'Журнал операций';
 
-// Admin Customizer Sidebar
+# Admin Customizer Sidebar
 $lang['acs_ticket_priority_submenu']           = 'Приоритет';
 $lang['acs_ticket_statuses_submenu']           = 'Статусы';
 $lang['acs_ticket_predefined_replies_submenu'] = 'Готовые ответы';
@@ -538,7 +538,7 @@ $lang['acs_email_templates']                   = 'Шаблоны писем';
 $lang['acs_roles']                             = 'Роли';
 $lang['acs_settings']                          = 'Настройки';
 
-// Tickets
+# Tickets
 $lang['new_ticket']                                          = 'Открыть тикет';
 $lang['tickets']                                             = 'Тикеты';
 $lang['ticket']                                              = 'Тикет';
@@ -590,7 +590,7 @@ $lang['ticket_client_string']                                = 'Клиент';
 $lang['ticket_posted']                                       = 'Добавлено: %s';
 $lang['ticket_access_by_department_denied']                  = 'У Вас нет доступа к этому тикету. Данный тикет относится к другому отделу.';
 
-// Staff
+# Staff
 $lang['new_staff']                                     = 'Новый сотрудник';
 $lang['staff_members']                                 = 'Сотрудники';
 $lang['staff_member']                                  = 'Сотрудник';
@@ -635,7 +635,7 @@ $lang['staff_edit_profile_change_old_password']        = 'Старый паро�
 $lang['staff_edit_profile_change_new_password']        = 'Новый пароль';
 $lang['staff_edit_profile_change_repeat_new_password'] = 'Повторите новый пароль';
 
-// Staff Tasks
+# Staff Tasks
 $lang['new_task']                           = 'Новая задача';
 $lang['tasks']                              = 'Задачи';
 $lang['task']                               = 'Задача';
@@ -672,7 +672,7 @@ $lang['task_add_edit_start_date']           = 'Дата начала';
 $lang['task_add_edit_due_date']             = 'Срок';
 $lang['task_add_edit_description']          = 'Описание задания';
 
-// Taxes
+# Taxes
 $lang['new_tax']           = 'Новый налог';
 $lang['taxes']             = 'Налоги';
 $lang['tax']               = 'Налог';
@@ -684,7 +684,7 @@ $lang['tax_add_edit_rate'] = 'Ставка (процент)';
 $lang['tax_edit_title']    = 'Изменить налог';
 $lang['tax_add_title']     = 'Добавить налог';
 
-// Ticket Statuses
+# Ticket Statuses
 $lang['new_ticket_status']            = 'Добавить статус';
 $lang['ticket_statuses']              = 'Статусы';
 $lang['ticket_status']                = 'Статус тикета';
@@ -696,7 +696,7 @@ $lang['ticket_status_add_edit_name']  = 'Название статуса';
 $lang['ticket_status_add_edit_color'] = 'Цвет';
 $lang['ticket_status_add_edit_order'] = 'Позиция статуса';
 
-// Todos
+# Todos
 $lang['new_todo']                  = 'Новое задание';
 $lang['my_todos']                  = 'Список моих заданий';
 $lang['todo']                      = 'Задание';
@@ -709,7 +709,7 @@ $lang['no_unfinished_todos_found'] = 'Нет личных заданий';
 $lang['unfinished_todos_title']    = 'Незаконченные задания';
 $lang['finished_todos_title']      = 'Последние выполненные задания';
 
-// Utilities
+# Utilities
 $lang['utility_activity_log']                        = 'Журнал операций';
 $lang['utility_activity_log_filter_by_date']         = 'Фильтр по дате';
 $lang['utility_activity_log_dt_description']         = 'Описание';
@@ -723,7 +723,7 @@ $lang['utility_calendar_event_added_successfully']   = 'Новое событи�
 $lang['utility_calendar_event_deleted_successfully'] = 'Событие удалено';
 $lang['utility_calendar_new_event_placeholder']      = 'Заголовок события';
 
-// Navigation
+# Navigation
 $lang['nav_notifications']          = 'Уведомления';
 $lang['nav_my_profile']             = 'Мой профиль';
 $lang['nav_edit_profile']           = 'Изменить профиль';
@@ -732,20 +732,20 @@ $lang['nav_no_notifications']       = 'Нет уведомлений';
 $lang['nav_view_all_notifications'] = 'Посмотреть все уведомления';
 $lang['nav_notifications_tooltip']  = 'Посмотреть уведомления';
 
-// Footer
+# Footer
 $lang['clients_copyright'] = '© Все права защищены. %s';
 
-// Contracts
+# Contracts
 $lang['clients_contracts']               = 'Договоры';
 $lang['clients_contracts_dt_subject']    = 'Тема';
 $lang['clients_contracts_dt_start_date'] = 'Дата начала';
 $lang['clients_contracts_dt_end_date']   = 'Дата окончания';
 
-// Home
+# Home
 $lang['clients_quick_invoice_info']           = 'Краткая информация о счетах';
 $lang['clients_home_currency_select_tooltip'] = 'Вам необходимо выбрать основную валюту, потому что у вас есть счета в другой валюте';
 
-// Invoices
+# Invoices
 $lang['clients_invoice_html_btn_download'] = 'Скачать';
 $lang['clients_my_invoices']               = 'Счета на оплату';
 $lang['clients_invoice_dt_number']         = 'Счет #';
@@ -754,10 +754,10 @@ $lang['clients_invoice_dt_duedate']        = 'Дата оплаты';
 $lang['clients_invoice_dt_amount']         = 'Сумма';
 $lang['clients_invoice_dt_status']         = 'Статус';
 
-// Profile
+# Profile
 $lang['clients_profile_heading'] = 'Профиль';
 
-// Used for edit profile and register START
+# Used for edit profile and register START
 $lang['clients_firstname'] = 'Имя';
 $lang['clients_lastname']  = 'Фамилия';
 $lang['clients_email']     = 'Эл. почта';
@@ -769,7 +769,7 @@ $lang['clients_city']      = 'Город';
 $lang['clients_address']   = 'Адрес';
 $lang['clients_zip']       = 'Индекс';
 $lang['clients_state']     = 'Область';
-// Used for edit profile and register END
+# Used for edit profile and register END
 
 $lang['clients_register_password']                    = 'Пароль';
 $lang['clients_register_password_repeat']             = 'Повторите пароль';
@@ -781,7 +781,7 @@ $lang['clients_edit_profile_new_password_repeat']     = 'Повторите па
 $lang['clients_edit_profile_change_password_btn']     = 'Изменить пароль';
 $lang['clients_profile_last_changed_password']        = 'Последнее изменение пароля %s';
 
-// Knowledge base
+# Knowledge base
 $lang['clients_knowledge_base']                    = 'База знаний';
 $lang['clients_knowledge_base_articles_not_found'] = 'Нет записей';
 $lang['clients_knowledge_base_find_useful']        = 'Вы нашли эту статью полезной?';
@@ -790,7 +790,7 @@ $lang['clients_knowledge_base_find_useful_no']     = 'Нет';
 $lang['clients_article_only_1_vote_today']         = 'Вы можете голосовать раз в 24 часа';
 $lang['clients_article_voted_thanks_for_feedback'] = 'Спасибо за ваш отзыв!';
 
-// Tickets
+# Tickets
 $lang['clients_ticket_open_subject']               = 'Открыть тикет';
 $lang['clients_ticket_open_departments']           = 'Отдел';
 $lang['clients_tickets_heading']                   = 'Поддержка тикетов';
@@ -814,7 +814,7 @@ $lang['clients_ticket_single_priority']            = 'Приоритет: %s';
 $lang['clients_ticket_single_add_reply_btn']       = 'Ответить';
 $lang['clients_ticket_single_add_reply_heading']   = 'Ответить на тикет';
 
-// Login
+# Login
 $lang['clients_login_heading_no_register'] = 'Авторизация';
 $lang['clients_login_heading_register']    = 'Пожалуйста, войдите или зарегистрируйтесь';
 $lang['clients_login_email']               = 'Эл. почта';
@@ -822,11 +822,11 @@ $lang['clients_login_password']            = 'Пароль';
 $lang['clients_login_remember']            = 'Запомнить меня';
 $lang['clients_login_login_string']        = 'Войти';
 
-// Register
+# Register
 $lang['clients_register_string']  = 'Регистрация';
 $lang['clients_register_heading'] = 'Регистрация';
 
-// Navigation
+# Navigation
 $lang['clients_nav_login']     = 'Войти';
 $lang['clients_nav_register']  = 'Регистрация';
 $lang['clients_nav_invoices']  = 'Счета на оплату';
@@ -835,7 +835,7 @@ $lang['clients_nav_kb']        = 'База знаний';
 $lang['clients_nav_profile']   = 'Профиль';
 $lang['clients_nav_logout']    = 'Выйти';
 
-// Version 1.0.1
+# Version 1.0.1
 $lang['payment_receipt']                               = 'Квитанция об оплате';
 $lang['payment_for_string']                            = 'Оплата';
 $lang['payment_date']                                  = 'Дата оплаты:';
@@ -850,7 +850,7 @@ $lang['payment_getaway_token_not_found']               = 'Не найдено';
 $lang['online_payment_recorded_success']               = 'Оплата зарегистрирована';
 $lang['online_payment_recorded_success_fail_database'] = 'Оплата прошла успешно, но не удалось вставить платеж в базу данных, обратитесь к администратору';
 
-// Leads
+# Leads
 $lang['lead_convert_to_client']                = 'Конвертировать в клиента';
 $lang['lead_convert_to_email']                 = 'Эл. почта';
 $lang['lead_convert_to_client_firstname']      = 'Имя';
@@ -860,7 +860,7 @@ $lang['lead_to_client_base_converted_success'] = 'Контакт успешно 
 $lang['lead_have_client_profile']              = 'У этого контакта есть профиль клиента.';
 $lang['lead_converted_edit_client_profile']    = 'Изменить профиль';
 
-// Invoices
+# Invoices
 $lang['view_invoice_as_customer_tooltip']                                     = 'Посмотреть счет как клиент';
 $lang['invoice_add_edit_recurring']                                           = 'Повторить счет?';
 $lang['invoice_add_edit_recurring_no']                                        = 'Нет';
@@ -874,7 +874,7 @@ $lang['invoices_create_invoice_from_recurring_only_on_paid_invoices']         = 
 $lang['invoices_create_invoice_from_recurring_only_on_paid_invoices_tooltip'] = 'Если в этом поле установлено значение да и повторяющиеся счета не со статусом оплачен, новый счет не будет создан.';
 $lang['view_invoice_pdf_link_pay']                                            = 'Оплатить счет';
 
-// Payment modes
+# Payment modes
 $lang['payment_mode_add_edit_description']         = 'Банковский счет / Описание';
 $lang['payment_mode_add_edit_description_tooltip'] = 'Вы можете здесь указать банковские реквизиты. Будет отображаться на странице счета';
 $lang['payment_modes_dt_description']              = 'Банковские счета / Описание';
@@ -882,10 +882,10 @@ $lang['payment_modes_add_edit_announcement']       = 'Примечание: сп
 $lang['payment_mode_add_edit_active']              = 'Активно';
 $lang['payment_modes_dt_active']                   = 'Активно';
 
-// Contracts
+# Contracts
 $lang['contract_not_found'] = 'Договор не найден. Может быть его удалили, проверьте журнал активности';
 
-// Settings
+# Settings
 $lang['setting_bar_heading']                               = 'Настройка';
 $lang['settings_group_online_payment_modes']               = 'Системы оплаты';
 $lang['settings_paymentmethod_mode_label']                 = 'Название';
@@ -899,31 +899,31 @@ $lang['settings_paymentmethod_stripe_api_secret_key']      = 'Секретный
 $lang['settings_paymentmethod_stripe_api_publishable_key'] = 'Публичный ключ Stripe';
 $lang['settings_limit_top_search_bar_results']             = 'Лимит результатов поиска в панели поиска';
 
-// # Clients
+## Clients
 $lang['client_phonenumber'] = 'Телефон';
 
-// Main Clients
+# Main Clients
 $lang['clients_register']                          = 'Регистрация';
 $lang['clients_profile_updated']                   = 'Ваш профиль был обновлен';
 $lang['clients_successfully_registered']           = 'Спасибо за регистрацию';
 $lang['clients_account_created_but_not_logged_in'] = 'Ваша учетная запись была создана, но вы не вошли в систему автоматически. Пожалуйста, попробуйте войти в систему';
 
-// Tickets
+# Tickets
 $lang['clients_tickets_heading'] = 'Тикеты поддержки';
 
-// Payments
+# Payments
 $lang['payment_for_invoice'] = 'Оплата счета';
 $lang['payment_total']       = 'Итого: %s';
 
-// Invoice
+# Invoice
 $lang['invoice_html_online_payment']             = 'Онлайн оплата';
 $lang['invoice_html_online_payment_button_text'] = 'Оплатить сейчас';
 $lang['invoice_html_payment_modes_not_selected'] = 'Пожалуйста, выберите способ оплаты';
 $lang['invoice_html_amount_blank']               = 'Общая сумма не может быть пустой или с нулевым значением';
 $lang['invoice_html_offline_payment']            = 'Офлайн оплаты';
 $lang['invoice_html_amount']                     = 'Сумма';
-// Version 1.0.2
-// DataTables
+# Version 1.0.2
+# DataTables
 $lang['dt_button_column_visibility'] = 'Видимость';
 $lang['dt_button_reload']            = 'Обновить';
 $lang['dt_button_excel']             = 'Excel';
@@ -933,17 +933,17 @@ $lang['dt_button_print']             = 'Печать';
 $lang['is_not_active_export']        = 'Нет';
 $lang['is_active_export']            = 'Да';
 
-// Invoice
+# Invoice
 $lang['invoice_add_edit_advanced_options']                = 'Дополнительные опции';
 $lang['invoice_add_edit_allowed_payment_modes']           = 'Доступные способы оплаты счета';
 $lang['invoice_add_edit_recurring_invoices_from_invoice'] = 'Создать счет из повторяющегося счета';
 $lang['invoice_add_edit_no_payment_modes_found']          = 'Способы оплаты не найдены.';
 $lang['invoice_html_total_pay']                           = 'Итого: %s';
 
-// Email templates
+# Email templates
 $lang['email_templates_table_heading_name'] = 'Шаблоны';
 
-// General
+# General
 $lang['discount_type']            = 'Тип скидки';
 $lang['discount_type_after_tax']  = 'После';
 $lang['discount_type_before_tax'] = 'До налога';
@@ -952,7 +952,7 @@ $lang['reference_no']             = 'Ссылка #';
 $lang['no_discount']              = 'Нет скидки';
 $lang['view_stats_tooltip']       = 'Краткая статистика';
 
-// Clients
+# Clients
 $lang['zip_from_date']            = 'От даты:';
 $lang['zip_to_date']              = 'До даты:';
 $lang['client_zip_payments']      = 'Платежи';
@@ -963,11 +963,11 @@ $lang['client_zip_status_all']    = 'Все';
 $lang['client_zip_payment_modes'] = 'Оплата от';
 $lang['client_zip_no_data_found'] = 'Ничего не нашли';
 
-// Payments
+# Payments
 $lang['payment_mode']         = 'Способ оплаты';
 $lang['payment_view_heading'] = 'Оплата';
 
-// Settings
+# Settings
 $lang['settings_allow_payment_amount_to_be_modified']               = 'Разрешить клиенту изменять сумму оплаты (для онлайн платежей)';
 $lang['settings_delete_only_on_last_invoice']                       = 'Удаление разрешено только для последнего счета';
 $lang['settings_sales_estimate_prefix']                             = 'Префикс сметы';
@@ -989,19 +989,19 @@ $lang['settings_sales_heading_invoice']                             = 'Счет 
 $lang['settings_sales_heading_estimates']                           = 'Сметы';
 $lang['settings_sales_cron_invoice_heading']                        = 'Счет на оплату';
 
-// Tasks
+# Tasks
 $lang['tasks_dt_datestart'] = 'Дата начала';
 
-// Invoice General
+# Invoice General
 $lang['invoice_discount'] = 'Скидка';
 
-// Settings
+# Settings
 $lang['settings_rtl_support_admin']                                   = 'RTL в панели админ. (Справа налево)';
 $lang['settings_rtl_support_client']                                  = 'RTL в кабинете клиента (Справа налево)';
 $lang['settings_estimate_auto_convert_to_invoice_on_client_accept']   = 'Автоматически преобразовать смету в счет на оплату, после того, как клиент утвердит ее.';
 $lang['settings_exclude_estimate_from_client_area_with_draft_status'] = 'Исключить сметы со статусом "черновик" от клиентов';
 
-// Months
+# Months
 $lang['January']   = 'Январь';
 $lang['February']  = 'Февраль';
 $lang['March']     = 'Март';
@@ -1015,7 +1015,7 @@ $lang['October']   = 'Октябрь';
 $lang['November']  = 'Ноябрь';
 $lang['December']  = 'Декабрь';
 
-// Time ago function translate
+# Time ago function translate
 $lang['time_ago_just_now']  = 'только что';
 $lang['time_ago_minute']    = 'минуту назад';
 $lang['time_ago_minutes']   = '%s минут назад';
@@ -1030,7 +1030,7 @@ $lang['time_ago_months']    = '%s мес. назад';
 $lang['time_ago_year']      = 'год назад';
 $lang['time_ago_years']     = '%s год. назад';
 
-// Estimates
+# Estimates
 $lang['estimates']                                = 'Сметы';
 $lang['estimate']                                 = 'Смета';
 $lang['estimate_lowercase']                       = 'Смета';
@@ -1067,10 +1067,10 @@ $lang['estimate_dt_table_heading_amount']         = 'Сумма';
 $lang['estimate_dt_table_heading_status']         = 'Статус';
 $lang['estimate_convert_to_invoice']              = 'Преобразовать в счет на оплату';
 
-// Clients
+# Clients
 $lang['client_payments_tab'] = 'Платежи';
 
-// Estimate General
+# Estimate General
 $lang['estimate_pdf_heading']            = 'СМЕТА';
 $lang['estimate_table_item_heading']     = 'Позиция';
 $lang['estimate_table_quantity_heading'] = 'Количество';
@@ -1091,7 +1091,7 @@ $lang['estimate_status_accepted']        = 'Принято';
 $lang['estimate_status_expired']         = 'Просрочено';
 $lang['estimate_note']                   = 'Примечание:';
 
-// # Clients
+## Clients
 $lang['clients_estimate_dt_number']             = 'Смета #';
 $lang['clients_estimate_dt_date']               = 'Дата';
 $lang['clients_estimate_dt_duedate']            = 'Действует до';
@@ -1107,7 +1107,7 @@ $lang['clients_estimate_declined']              = 'Смета отклонена
 $lang['clients_estimate_failed_action']         = 'Не удалось принять решение по этой смете';
 $lang['client_add_edit_profile']                = 'Профиль';
 
-// Custom Fields
+# Custom Fields
 $lang['custom_field']                          = 'Произвольное поле';
 $lang['custom_field_lowercase']                = 'произвольное поле';
 $lang['custom_fields']                         = 'Произвольные поля';
@@ -1124,13 +1124,13 @@ $lang['custom_field_dt_field_type']            = 'Тип';
 $lang['custom_field_add_edit_active']          = 'Активно';
 $lang['custom_field_add_edit_disabled']        = 'Отключено';
 
-// Ticket replies
+# Ticket replies
 $lang['ticket_reply'] = 'Ответить';
 
-// Admin Customizer Sidebar
+# Admin Customizer Sidebar
 $lang['asc_custom_fields'] = 'Произвольные поля';
 
-// Contracts
+# Contracts
 $lang['contract_types']           = 'Типы договоров';
 $lang['contract_type']            = 'Тип договора';
 $lang['new_contract_type']        = 'Новый тип';
@@ -1138,15 +1138,15 @@ $lang['contract_type_lowercase']  = 'договор';
 $lang['contract_type_name']       = 'Название';
 $lang['contract_types_list_name'] = 'Тип договора';
 
-// Customizer Menu
+# Customizer Menu
 $lang['acs_contracts']      = 'Договоры';
 $lang['acs_contract_types'] = 'Типы договоров';
 
-// Version 1.0.4
-// Invoice Items
+# Version 1.0.4
+# Invoice Items
 $lang['invoice_item_long_description'] = 'Полное описание';
 
-// Customers
+# Customers
 $lang['clients_list_phone']                = 'Телефон';
 $lang['client_expenses_tab']               = 'Расходы';
 $lang['customers_summary']                 = 'Клиенты';
@@ -1154,7 +1154,7 @@ $lang['customers_summary_active']          = 'Активные контакты'
 $lang['customers_summary_inactive']        = 'Неактивные контакты';
 $lang['customers_summary_logged_in_today'] = 'Контакты, заходившие сегодня';
 
-// Authentication
+# Authentication
 $lang['admin_auth_forgot_password_email']     = 'Эл. почта';
 $lang['admin_auth_forgot_password_heading']   = 'Забыли пароль';
 $lang['admin_auth_login_heading']             = 'Авторизация';
@@ -1169,7 +1169,7 @@ $lang['admin_auth_reset_password_repeat']     = 'Повторите пароль
 $lang['admin_auth_invalid_email_or_password'] = 'Неверный адрес эл. почты или пароль';
 $lang['admin_auth_inactive_account']          = 'Профиль не активен';
 
-// Calender
+# Calender
 $lang['calendar_estimate']          = 'Смета';
 $lang['calendar_invoice']           = 'Счет на оплату';
 $lang['calendar_contract']          = 'Договор';
@@ -1177,14 +1177,14 @@ $lang['calendar_customer_reminder'] = 'Напоминание клиенту';
 $lang['calendar_event']             = 'Событие';
 $lang['calendar_task']              = 'Задача';
 
-// Leads
+# Leads
 $lang['lead_edit_delete_tooltip'] = 'Удалить лид';
 $lang['lead_attachments']         = 'Вложения';
 
-// Admin Customizer Sidebar
+# Admin Customizer Sidebar
 $lang['acs_finance'] = 'Финансы';
 
-// Settings
+# Settings
 $lang['settings_show_sale_agent_on_invoices']       = 'Показать менеджера в счете на оплату';
 $lang['settings_show_sale_agent_on_estimates']      = 'Показать менеджера в смете';
 $lang['settings_predefined_predefined_term']        = 'Стандартные условия';
@@ -1192,13 +1192,13 @@ $lang['settings_predefined_clientnote']             = 'Стандартное п
 $lang['settings_custom_pdf_logo_image_url']         = 'Логотип компании в документах PDF (JPG - 210x60px)';
 $lang['settings_custom_pdf_logo_image_url_tooltip'] = 'Возможны проблемы с прозрачностью изображений PNG. Попробуйте обновить PHP-Imagick и отключить PHP-Gd. Если оставить это поле пустым, то будет использоваться загруженный логотип.';
 
-// General
+# General
 $lang['sale_agent_string']               = 'Ведущий менеджер';
 $lang['amount_display_in_base_currency'] = 'Сумма показана в Вашей основной валюте - используется только в этом отчете, если Вы используете 1 валюту для платежей и расходов.';
-// Leads
+# Leads
 $lang['leads_summary'] = 'Все лиды';
 
-// Contracts
+# Contracts
 $lang['contract_value']                       = 'Сумма договора';
 $lang['contract_trash']                       = 'Корзина';
 $lang['contracts_view_trash']                 = 'Посмотреть корзину';
@@ -1230,21 +1230,21 @@ $lang['contract_renewal_new_end_date']        = 'Новая дата оконч�
 $lang['contract_renewal_old_end_date']        = 'Старая дата окончания: %s';
 $lang['contract_attachment']                  = 'Вложение';
 
-// Admin Aside Menu
+# Admin Aside Menu
 $lang['als_expenses']           = 'Расходы';
 $lang['als_reports_expenses']   = 'Расходы';
 $lang['als_expenses_vs_income'] = 'Расходы и Доходы';
 
-// Invoices
+# Invoices
 $lang['invoice_attach_file']           = 'Прикрепить файл';
 $lang['invoice_mark_as_sent']          = 'Отметить как отправленное';
 $lang['invoice_marked_as_sent']        = 'Счет успешно отмечен как отправленный';
 $lang['invoice_marked_as_sent_failed'] = 'Не удалось отметить счет';
 
-// Payments
+# Payments
 $lang['payment_transaction_id'] = 'ID транзакции';
 
-// Expeneses
+# Expeneses
 $lang['acs_expense_categories']                       = 'Категории расходов';
 $lang['expense_category']                             = 'Категория расходов';
 $lang['expense_category_lowercase']                   = 'категория расходов';
@@ -1304,7 +1304,7 @@ $lang['expenses_yearly_by_categories']                = 'Ежегодные ра
 $lang['total_expenses_for']                           = 'Всего расходов за'; // year
 $lang['expenses_report_for']                          = 'Расходы за'; // year
 
-// Custom fields
+# Custom fields
 $lang['custom_field_required']    = 'Обязательно';
 $lang['custom_field_show_on_pdf'] = 'Показать в PDF';
 $lang['custom_field_leads']       = 'Лиды';
@@ -1316,41 +1316,41 @@ $lang['custom_field_expenses']    = 'Расходы';
 $lang['custom_field_invoice']     = 'Счет на оплату';
 $lang['custom_field_estimate']    = 'Смета';
 
-// Tickets
+# Tickets
 $lang['ticket_single_private_staff_notes'] = 'Примечание (невидимое для клиентов)';
 
-// Business News
+# Business News
 $lang['business_news'] = 'Новости';
 
-// Navigation
+# Navigation
 $lang['nav_todo_items'] = 'Личные задания';
 
-// Contracts
+# Contracts
 $lang['clients_contracts_type'] = 'Тип договора';
 
-// Version 1.0.5
-// General
+# Version 1.0.5
+# General
 $lang['no_tax']                              = 'Без налога';
 $lang['numbers_not_formatted_while_editing'] = 'Ставка в этом поле не будет отформатирована. Не пытайтесь отформатировать ставку здесь вручную.';
-// Contracts
+# Contracts
 $lang['contracts_view_expired']         = 'Истек срок действия';
 $lang['contracts_view_without_dateend'] = 'Договор без ограничения по времени';
 
-// Email Templates
+# Email Templates
 $lang['email_template_contracts_fields_heading'] = 'Договоры';
 
-// Invoices General
+# Invoices General
 $lang['invoice_estimate_general_options'] = 'Общие настройки';
 $lang['invoice_table_item_description']   = 'Описание';
 $lang['invoice_recurring_indicator']      = 'Повторяющийся';
 
-// Estimates
+# Estimates
 $lang['estimate_convert_to_invoice_successfully'] = 'Смета преобразована в счет на оплату';
 $lang['estimate_table_item_description']          = 'Описание';
 
-// Version 1.0.6
-// Invoices
-// Currencies
+# Version 1.0.6
+# Invoices
+# Currencies
 $lang['cant_delete_base_currency'] = 'Вы не можете удалить базовую валюту. Вам необходимо назначить новую базовую валюту, чтобы удалить эту.';
 $lang['invoice_copy']              = 'Копировать счет';
 $lang['invoice_copy_success']      = 'Счет на оплату успешно скопирован';
@@ -1358,11 +1358,11 @@ $lang['invoice_copy_fail']         = 'Не удалось скопировать
 $lang['invoice_due_after_help']    = 'Установите ноль, чтобы не делать расчет';
 $lang['show_shipping_on_invoice']  = 'Отображать детали доставки в счете';
 
-// Estimates
+# Estimates
 $lang['show_shipping_on_estimate']         = 'Показать детали доставки в смете';
 $lang['is_invoiced_estimate_delete_error'] = 'Смета выставлена в счет на оплату. Вы не можете ее удалить.';
 
-// Customers & Invoices / Estimates
+# Customers & Invoices / Estimates
 $lang['ship_to']                            = 'Адрес получателя';
 $lang['customer_profile_details']           = 'Сведения о клиенте';
 $lang['billing_shipping']                   = 'Оплата и доставка';
@@ -1380,7 +1380,7 @@ $lang['shipping_zip']                       = 'Почтовый индекс';
 $lang['shipping_country']                   = 'Страна';
 $lang['get_shipping_from_customer_profile'] = 'Узнать подробности доставки из профиля клиента';
 
-// Customer
+# Customer
 $lang['customer_default_currency']                             = 'Валюта по умолчанию';
 $lang['customer_update_address_info_on_invoices']              = 'Обновить информацию об оплате и доставке для всех предыдущих счетов/смет';
 $lang['customer_update_address_info_on_invoices_help']         = 'Если вы отметите это поле, то информация о доставке и оплате будет обновлена для всех счетов и смет. Примечание: счета, имеющие статус Оплачен, не будут затронуты.';
@@ -1396,24 +1396,24 @@ $lang['customer_attachments']                                  = 'Файлы';
 $lang['customer_longitude']                                    = 'Долгота (карта Google)';
 $lang['customer_latitude']                                     = 'Широта (карта Google)';
 
-// Authentication
+# Authentication
 $lang['admin_auth_set_password']         = 'Пароль';
 $lang['admin_auth_set_password_repeat']  = 'Повторите пароль';
 $lang['admin_auth_set_password_heading'] = 'Установка пароля';
 
-// General
+# General
 $lang['apply']                         = 'Применить';
 $lang['department_calendar_id']        = 'ID календаря Google';
 $lang['localization_default_language'] = 'Язык по умолчанию';
 $lang['system_default_string']         = 'Системные настройки по умолчанию';
 $lang['advanced_options']              = 'Дополнительные опции';
 
-// Expenses
+# Expenses
 $lang['expense_list_invoice']  = 'Счет на оплату';
 $lang['expense_list_billed']   = 'Оплачен';
 $lang['expense_list_unbilled'] = 'Счет не выставлен';
 
-// Leads
+# Leads
 $lang['lead_merge_custom_field']          = 'Объединить как произвольное поле';
 $lang['lead_merge_custom_field_existing'] = 'Объединить с полем в базе данных';
 $lang['lead_dont_merge_custom_field']     = 'Не объединять';
@@ -1433,12 +1433,12 @@ $lang['lead_lost']                        = 'Потерян';
 $lang['lead_junk']                        = 'Спам';
 $lang['leads_not_assigned']               = 'Не назначен';
 
-// Contacts
+# Contacts
 $lang['contract_not_visible_to_client'] = 'Скрыть от клиента';
 $lang['contract_edit_overview']         = 'Обзор договора';
 $lang['contract_attachments']           = 'Вложения';
 
-// Tasks
+# Tasks
 $lang['task_view_make_public']     = 'Общая задача';
 $lang['task_is_private']           = 'Частная задача';
 $lang['task_finished']             = 'Завершено';
@@ -1449,7 +1449,7 @@ $lang['task_relation']             = 'Связь';
 $lang['task_public']               = 'Для всех';
 $lang['task_public_help']          = 'Если поставить отметку, то задача будет видна всем сотрудникам. В противном случае, она будет видна только тем, кто имеет отношение к данной задаче.';
 
-// Settings
+# Settings
 $lang['settings_general_favicon']                                            = 'Иконка сайта';
 $lang['settings_output_client_pdfs_from_admin_area_in_client_language']      = 'Выводить клиентские документы PDF из области администрирования на языке клиента';
 $lang['settings_output_client_pdfs_from_admin_area_in_client_language_help'] = 'Если установлено как "да", то система будет выводить документы на языке клиента, независимо от языка системы.';
@@ -1467,7 +1467,7 @@ $lang['show_contracts_on_calendar']                                          = '
 $lang['show_tasks_on_calendar']                                              = 'Задачи';
 $lang['show_customer_reminders_on_calendar']                                 = 'Напоминания клиенту';
 
-// Leads
+# Leads
 $lang['copy_custom_fields_convert_to_customer']                      = 'Скопировать произвольные поля в профиль клиента';
 $lang['copy_custom_fields_convert_to_customer_help']                 = 'Если какой-либо из следующих пользовательских полей не существует, то он будет автоматически создан с тем же именем, в противном случае только значение будет скопировано из профиля лида.';
 $lang['lead_profile']                                                = 'Профиль';
@@ -1497,11 +1497,11 @@ $lang['leads_email_integration_notify_roles']                        = 'Увед
 $lang['leads_email_integration_notify_staff']                        = 'Уведомлять сотрудников';
 $lang['lead_public']                                                 = 'Публичный';
 
-// Knowledge Base
+# Knowledge Base
 $lang['kb_group_color'] = 'Цвет';
 $lang['kb_group_order'] = 'Позиция';
 
-// Utilities - BULK PDF Exporter
+# Utilities - BULK PDF Exporter
 $lang['bulk_pdf_exporter']             = 'Массовый экспорт в PDF';
 $lang['bulk_export_pdf_payments']      = 'Платежи';
 $lang['bulk_export_pdf_estimates']     = 'Сметы';
@@ -1515,19 +1515,20 @@ $lang['bulk_export_zip_payment_modes'] = 'Тип платежей';
 $lang['bulk_export_include_tag']       = 'Включить тег';
 $lang['bulk_export_include_tag_help']  = 'Напр. Оригинал или копия. Тег будет выводиться в документе PDF. Рекомендуется использовать только 1 тег';
 
-// Version 1.0.7
-// # Customers - portal
+
+# Version 1.0.7
+## Customers - portal
 $lang['clients_nav_proposals'] = 'Предложения';
 $lang['clients_nav_support']   = 'Поддержка';
 
-// General
+# General
 $lang['more']            = 'Еще';
 $lang['add_item']        = 'Добавить позицию';
 $lang['goto_admin_area'] = 'Перейти в панель управления';
 $lang['delete']          = 'Удалить %s';
 $lang['welcome_top']     = 'Привет, %s';
 
-// Customers
+# Customers
 $lang['customer_permissions']         = 'Разрешить доступ к';
 $lang['customer_permission_invoice']  = 'Счета на оплату';
 $lang['customer_permission_estimate'] = 'Сметы';
@@ -1535,10 +1536,10 @@ $lang['customer_permission_proposal'] = 'Предложения';
 $lang['customer_permission_contract'] = 'Договоры';
 $lang['customer_permission_support']  = 'Поддержка';
 
-// Tasks
+#Tasks
 $lang['task_related_to'] = 'Задача связана с';
 
-// Send file
+# Send file
 $lang['custom_file_fail_send']    = 'Не удалось отправить файл';
 $lang['custom_file_success_send'] = 'Файл успешно отправлен %s';
 $lang['send_file_subject']        = 'Тема письма';
@@ -1548,7 +1549,7 @@ $lang['send_file']                = 'Отправить файл';
 $lang['add_checklist_item']       = 'Добавить в чек-лист';
 $lang['task_checklist_items']     = 'Чек-лист';
 
-// Import
+# Import
 $lang['default_pass_clients_import'] = 'Пароль по умолчанию для всех контактов';
 $lang['simulate_import']             = 'Имитация импорта';
 $lang['import_upload_failed']        = 'Загрузка не удалась';
@@ -1560,23 +1561,23 @@ $lang['import']                      = 'Импорт';
 $lang['lead_import_status']          = 'Статус';
 $lang['lead_import_source']          = 'Источник';
 
-// Bulk PDF Export
+# Bulk PDF Export
 $lang['bulk_export_pdf_proposals'] = 'Предложения';
 
-// Invoices
+# Invoices
 $lang['delete_invoice'] = 'Удалить';
 $lang['items']          = 'Позиции';
 $lang['support']        = 'Поддержка';
 $lang['new_ticket']     = 'Новый тикет';
 
-// Reminders
+# Reminders
 $lang['calendar_lead_reminder']  = 'Напоминание контакта';
 $lang['lead_set_reminder_title'] = 'Добавить напоминание лиду';
 $lang['set_reminder_tooltip']    = 'Эта опция позволяет вам никогда ничего не забывать о своих клиентах.';
 $lang['client_reminders_tab']    = 'Напоминания';
 $lang['leads_reminders_tab']     = 'Напоминания';
 
-// Tickets
+# Tickets
 $lang['delete_ticket_reply']  = 'Удалить ответ';
 $lang['ticket_priority_edit'] = 'Изменить приоритет';
 $lang['ticket_priority_add']  = 'Добавить приоритет';
@@ -1584,10 +1585,10 @@ $lang['ticket_status_edit']   = 'Изменить статус тикета';
 $lang['ticket_service_edit']  = 'Изменить услугу тикета';
 $lang['edit_department']      = 'Изменить отдел';
 
-// Expenses
+# Expenses
 $lang['edit_expense_category'] = 'Изменить категорию расхода';
 
-// Settings
+# Settings
 $lang['customer_default_country']                                 = 'Страна по умолчанию';
 $lang['settings_sales_require_client_logged_in_to_view_estimate'] = 'Потребовать от клиента войти в систему для просмотра сметы';
 $lang['set_reminder']                                             = 'Установить напоминание';
@@ -1611,13 +1612,13 @@ $lang['tickets_piping']                                           = 'Тикет�
 $lang['email_piping_only_replies']                                = 'Ответы разрешены только по почте';
 $lang['email_piping_only_registered']                             = 'Только для зарегистрированных пользователей';
 
-// Estimates
+# Estimates
 $lang['view_estimate_as_client']         = 'Посмотреть смету как клиент';
 $lang['estimate_mark_as']                = 'Отметить как %s';
 $lang['estimate_status_changed_success'] = 'Статус сметы изменен';
 $lang['estimate_status_changed_fail']    = 'Не удалось изменить статус сметы';
 
-// Proposals
+# Proposals
 $lang['proposal_to']                            = 'Компания / ФИО';
 $lang['proposal_date']                          = 'Дата';
 $lang['proposal_address']                       = 'Адрес';
@@ -1678,13 +1679,13 @@ $lang['proposal_converted_to_invoice_success']  = 'Предложение кон
 $lang['proposal_converted_to_estimate_fail']    = 'Ошибка конвертации в смету';
 $lang['proposal_converted_to_invoice_fail']     = 'Ошибка конвертации в счет на оплату';
 
-// Proposals - view proposal template
+# Proposals - view proposal template
 $lang['proposal_total_info']   = 'Итого: %s';
 $lang['proposal_accept_info']  = 'Принять';
 $lang['proposal_decline_info'] = 'Отклонить';
 $lang['proposal_pdf_info']     = 'Скачать в PDF';
 
-// Customers Portal
+# Customers Portal
 $lang['customer_reset_action']            = 'Сбросить';
 $lang['customer_reset_password_heading']  = 'Сброс пароля';
 $lang['customer_forgot_password_heading'] = 'Восстановление доступа';
@@ -1695,15 +1696,15 @@ $lang['customer_forgot_password_email']   = 'Эл. почта';
 $lang['customer_forgot_password_submit']  = 'Отправить';
 $lang['customer_ticket_subject']          = 'Тема';
 
-// Email templates
+# Email templates
 $lang['email_template_proposals_fields_heading'] = 'Предложения';
 
-// Tasks
+# Tasks
 $lang['add_task_attachments']  = 'Вложение';
 $lang['task_view_attachments'] = 'Вложения';
 $lang['task_view_description'] = 'Описание';
 
-// Customer Groups
+# Customer Groups
 $lang['customer_group_add_heading']      = 'Добавить новую группу клиентов';
 $lang['customer_group_edit_heading']     = 'Изменить группу клиентов';
 $lang['new_customer_group']              = 'Новая группа клиентов';
@@ -1715,19 +1716,19 @@ $lang['customer_have_invoices_by']       = 'Счета на оплату по с
 $lang['customer_have_estimates_by']      = 'Сметы по статусу %s';
 $lang['customer_have_contracts_by_type'] = 'Договоры по типу %s';
 
-// Custom fields
+# Custom fields
 $lang['custom_field_show_on_table']              = 'Таблица';
 $lang['custom_field_show_on_client_portal']      = 'Показать в клиентской области';
 $lang['custom_field_show_on_client_portal_help'] = 'Если поле отмечено, то будет отображаться в таблицах';
 $lang['custom_field_visibility']                 = 'Видимость';
 
-// Knowledge Base
+# Knowledge Base
 $lang['view_articles_list']     = 'Посмотреть статьи';
 $lang['view_articles_list_all'] = 'Все статьи';
 $lang['als_all_articles']       = 'Статьи';
 $lang['als_kb_groups']          = 'Группы';
 
-// Spam Filter - Tickets
+# Spam Filter - Tickets
 $lang['spam_filters']                 = 'Спам фильтры';
 $lang['spam_filter']                  = 'Спам фильтр';
 $lang['new_spam_filter']              = 'Новый спам фильтр';
@@ -1742,26 +1743,26 @@ $lang['spamfilter_type_subject']      = 'Тема';
 $lang['spamfilter_type_sender']       = 'Отправитель';
 $lang['spamfilter_type_phrase']       = 'Ключевое слово';
 
-// Tickets
+# Tickets
 $lang['block_sender']                = 'Блокировать отправителя';
 $lang['sender_blocked']              = 'Заблокированный отправитель';
 $lang['sender_blocked_successfully'] = 'Отправитель успешно заблокирован';
 $lang['ticket_date_created']         = 'Дата создания';
 
-// KB
+#KB
 $lang['edit_kb_group'] = 'Изменить группу';
 
-// Leads
+# Leads
 $lang['edit_source'] = 'Изменить источник';
 $lang['edit_status'] = 'Изменить статус';
 
-// Contacts
+# Contacts
 $lang['contract_type_edit'] = 'Изменить статус договора';
 
-// Reports
+# Reports
 $lang['report_by_customer_groups'] = 'Общая сумма по группам клиентов';
 
-// Utilities
+# Utilities
 $lang['ticket_pipe_log']      = 'Журнал тикетов по почте';
 $lang['ticket_pipe_name']     = 'От';
 $lang['ticket_pipe_email_to'] = 'Для';
@@ -1771,21 +1772,21 @@ $lang['ticket_pipe_message']  = 'Сообщение';
 $lang['ticket_pipe_date']     = 'Дата';
 $lang['ticket_pipe_status']   = 'Статус';
 
-// Home
+# Home
 $lang['home_latest_activity']   = 'Последняя активность';
 $lang['home_my_tasks']          = 'Мои задачи';
 $lang['home_my_todo_items']     = 'Список моих дел';
 $lang['home_widget_view_all']   = 'Посмотреть все';
 $lang['home_stats_full_report'] = 'Полный отчет';
 
-// Validation
+# Validation
 $lang['form_validation_required']    = '{field} обязательно для заполнения.';
 $lang['form_validation_valid_email'] = '{field} поле должно содержать корректный адрес эл. почты.';
 $lang['form_validation_matches']     = '{field} поле не соответствует параметрам {param}.';
 $lang['form_validation_is_unique']   = '{field} поле должно содержать уникальное значение.';
 
-// Version 1.0.8
-// Notifications & Leads/Estimates/Invoices Activity Log
+# Version 1.0.8
+# Notifications & Leads/Estimates/Invoices Activity Log
 $lang['not_event']                                                = 'Сегодня в календаре событий - %s ...';
 $lang['not_event_public']                                         = 'Общественные события, которые начинаются сегодня - %s ...';
 $lang['not_contract_expiry_reminder']                             = 'Напоминание об истечении срока действия договора - %s ...';
@@ -1867,29 +1868,29 @@ $lang['invoice_activity_payment_made_by_client']                  = 'Клиен�
 $lang['invoice_activity_payment_made_by_staff']                   = 'платеж зарегистрирован в сумме <b>%s</b> - %s';
 $lang['invoice_activity_added_attachment']                        = 'Добавлен файл';
 
-// Navigation
+# Navigation
 $lang['top_search_placeholder'] = 'Поиск...';
 
-// Staff
+# Staff
 $lang['staff_profile_inactive_account'] = 'Профиль сотрудника не активен';
 
-// Estimates
+# Estimates
 $lang['copy_estimate']                = 'Копировать смету';
 $lang['estimate_copied_successfully'] = 'Смета успешно копирована';
 $lang['estimate_copied_fail']         = 'Ошибка при копировании';
 
-// Tasks
+# Tasks
 $lang['tasks_view_assigned_to_user'] = 'Задачи закрепленные за мной';
 $lang['tasks_view_follower_by_user'] = 'Задачи, которые я отслеживаю';
 $lang['no_tasks_found']              = 'Задачи не найдены';
 
-// Leads
+# Leads
 $lang['leads_dt_datecreated']       = 'Добавлен';
 $lang['leads_sort_by']              = 'Сортировать по';
 $lang['leads_sort_by_datecreated']  = 'Дата создания';
 $lang['leads_sort_by_kanban_order'] = 'Сортировка канбан';
 
-// Authentication
+# Authentication
 $lang['check_email_for_resetting_password'] = 'Проверьте вашу эл. почту для дальнейших инструкций по восстановлению пароля';
 $lang['inactive_account']                   = 'Неактивный профиль';
 $lang['error_setting_new_password_key']     = 'Ошибка при установке нового пароля';
@@ -1899,14 +1900,14 @@ $lang['password_reset_key_expired']         = 'Пароль недействит
 $lang['auth_reset_pass_email_not_found']    = 'Почта не найдена';
 $lang['auth_reset_password_submit']         = 'Сбросить пароль';
 
-// Settings
+# Settings
 $lang['settings_amount_to_words']          = 'Количество слов';
 $lang['settings_amount_to_words_desc']     = 'Общее количество слов в счете/смете';
 $lang['settings_amount_to_words_enabled']  = 'Включить';
 $lang['settings_total_to_words_lowercase'] = 'Количество слов в нижнем регистре';
 $lang['settings_show_tax_per_item']        = 'Показать налог для каждого пункта';
 
-// Reports
+# Reports
 $lang['report_sales_months_three_months'] = 'За последние 3 месяца';
 $lang['report_invoice_number']            = 'Счет #';
 $lang['report_invoice_customer']          = 'Клиент';
@@ -1917,9 +1918,9 @@ $lang['report_invoice_amount_with_tax']   = 'Сумма с учетом нало
 $lang['report_invoice_amount_open']       = 'Открытая сумма';
 $lang['report_invoice_status']            = 'Статус';
 
-// Version 1.0.9
+#Version 1.0.9
 
-// Home stats
+# Home stats
 $lang['home_stats_by_project_status'] = 'Статистика по статусам проектов';
 $lang['home_invoice_overview']        = 'Обзор счетов';
 $lang['home_estimate_overview']       = 'Обзор смет';
@@ -1928,24 +1929,24 @@ $lang['home_lead_overview']           = 'Обзор контактов';
 $lang['home_my_projects']             = 'Мои проекты';
 $lang['home_announcements']           = 'Объявления';
 
-// Settings
+# Settings
 $lang['settings_leads_kanban_limit']                                    = 'Ограничение приводит к запрету строк на каждый статус';
 $lang['settings_group_misc']                                            = 'Разное';
 $lang['show_projects_on_calendar']                                      = 'Проекты';
 $lang['settings_media_max_file_size_upload']                            = 'Максимальный размер файла для загрузки (MB)';
 $lang['settings_client_staff_add_edit_delete_task_comments_first_hour'] = 'Разрешить клиентам/сотрудникам добавлять/редактировать комментарии только в первый час (к администраторам это не применяется)';
 
-// Email templates
+# Email templates
 $lang['email_template_only_domain_email'] = 'Только эл. почта для домена';
 
-// Announcements
+# Announcements
 $lang['dismiss_announcement']   = 'Отклонить объявление';
 $lang['announcement_from']      = 'От:';
 $lang['announcement_date']      = 'Дата публикации: %s';
 $lang['announcement_not_found'] = 'Объявление не найдено';
 $lang['announcements_recent']   = 'Последние объявления';
 
-// General
+# General
 $lang['zip_invoices']         = 'Счета';
 $lang['zip_estimates']        = 'Сметы';
 $lang['zip_payments']         = 'Платежи';
@@ -1956,16 +1957,16 @@ $lang['dt_entries']           = 'записей';
 $lang['invoice_total_paid']   = 'Общая сумма выплат';
 $lang['invoice_amount_due']   = 'Сумма к оплате';
 
-// Calendar
+# Calendar
 $lang['calendar_project'] = 'Проект';
 
-// Leads
+# Leads
 $lang['leads_import_assignee']     = 'Закреплены за';
 $lang['customer_from_lead']        = 'Клиент от %s';
 $lang['lead_kan_ban_attachments']  = 'Вложения: %s';
 $lang['leads_sort_by_lastcontact'] = 'Последний контакт';
 
-// Tasks
+# Tasks
 $lang['task_comment_added']     = 'Комментарий добавлен';
 $lang['task_duedate']           = 'Выполнить до';
 $lang['task_view_comments']     = 'Комментарии';
@@ -1989,10 +1990,10 @@ $lang['task_is_billed']         = 'На эту задачу выставлен �
 $lang['task_statistics']        = 'Статистика';
 $lang['task_milestone']         = 'Этап';
 
-// Tickets
+# Tickets
 $lang['ticket_message_updated_successfully'] = 'Сообщение обновлено';
 
-// Invoices
+# Invoices
 $lang['invoice_task_item_project_tasks_not_included'] = 'Задачи проекта не включены в этот список.';
 $lang['show_quantity_as']                             = 'Показать количество:';
 $lang['quantity_as_qty']                              = 'Кол-во';
@@ -2001,10 +2002,10 @@ $lang['invoice_table_hours_heading']                  = 'Часы';
 $lang['bill_tasks']                                   = 'Задачи';
 $lang['invoice_estimate_sent_to_email']               = 'Отправить';
 
-// Estimates
+# Estimates
 $lang['estimate_table_hours_heading'] = 'Часы';
 
-// General
+# General
 $lang['is_customer_indicator']         = 'Клиент';
 $lang['print']                         = 'Печать';
 $lang['customer_permission_projects']  = 'Проекты';
@@ -2013,7 +2014,7 @@ $lang['timers_started_confirm_logout'] = 'Таймер не остановлен
 $lang['confirm_logout']                = 'Выйти';
 $lang['timer_top_started']             = 'Запущен %s';
 
-// Projects
+# Projects
 $lang['cant_change_billing_type_billed_tasks_found']         = 'Вы не можете изменить тип счета. У этого проекта есть задачи.';
 $lang['project_customer_permission_warning']                 = 'В системе указано, что контакт не имеете разрешение на проекты. Контакт не сможет увидеть проект. Рассмотрите возможность добавить разрешение в профиле контакта.';
 $lang['project_invoice_timesheet_start_time']                = 'Время начала: %s';
@@ -2160,7 +2161,7 @@ $lang['project_note']                                        = 'Примечан
 $lang['project_note_private']                                = 'Частные примечания';
 $lang['project_save_note']                                   = 'Сохранить примечание';
 
-// Project Activity
+# Project Activity
 $lang['project_activity_created']                      = 'Создан проект';
 $lang['project_activity_updated']                      = 'Проект обновлен';
 $lang['project_activity_removed_team_member']          = 'Удален участник';
@@ -2190,7 +2191,7 @@ $lang['project_activity_status_updated']               = 'Статус прое�
 $lang['project_activity_visible_to_customer']          = 'Активность видна для клиента';
 $lang['project_activity_project_file_removed']         = 'Файл удален из проекта';
 
-// Customers area
+# Customers area
 $lang['clients_my_estimates']                                  = 'Сметы';
 $lang['client_no_reply']                                       = 'Нет ответа';
 $lang['clients_nav_projects']                                  = 'Проекты';
@@ -2237,11 +2238,11 @@ $lang['invoice_unmark_as']                                     = 'Снять о�
 $lang['invoice_status_cancelled']                              = 'Отменено';
 $lang['tasks_reminder_notification_before_help']               = 'Послать уведомление исполнителям о крайнем сроке за X дней. Уведомление/письмо отсылается только исполнителям. Если разница между датой начала задачи и сроком выполнения меньше, чем количество дней для уведомления, то уведомление не будет отправлено.';
 
-// Version 1.1.0
+# Version 1.1.0
 $lang['project_invoice_select_all_tasks'] = 'Выбрать все задачи';
 $lang['lead_company']                     = 'Компания';
 
-// Version 1.1.1
+# Version 1.1.1
 $lang['admin_auth_forgot_password_button']       = 'Подтвердить';
 $lang['task_assigned']                           = 'Участники';
 $lang['switch_to_pipeline']                      = 'Переключиться на колонки';
@@ -2314,7 +2315,7 @@ $lang['calendar_expand']                         = 'Расширить';
 $lang['view_pdf']                                = 'Посмотреть PDF';
 $lang['expense_repeat_every']                    = 'Повторять каждые';
 
-// Version 1.1.2
+# Version 1.1.2
 $lang['leads_switch_to_kanban']                   = 'Режим канбан';
 $lang['contract_content']                         = 'Договор';
 $lang['contract_save']                            = 'Сохранить договор';
@@ -2327,12 +2328,12 @@ $lang['include_attachments_to_email']             = 'Включить вложе
 $lang['contract_sent_to_client_success']          = 'Договор успешно отправлен клиенту';
 $lang['contract_sent_to_client_fail']             = 'Не удалось отправить договор';
 
-// Version 1.1.3
+# Version 1.1.3
 $lang['client_invalid_username_or_password'] = 'Неправильное имя пользователя или пароль';
 $lang['client_old_password_incorrect']       = 'Ваш старый пароль неверный';
 $lang['client_password_changed']             = 'Ваш пароль был изменен';
 
-// Version 1.1.4
+# Version 1.1.4
 $lang['total_leads_deleted']                              = 'Всего лидов удалено: %s';
 $lang['total_clients_deleted']                            = 'Всего клиентов удалено: %s';
 $lang['confirm_action_prompt']                            = 'Вы уверены, что хотите выполнить это действие?';
@@ -2397,7 +2398,7 @@ $lang['show_all_tasks_for_project_member']                = 'Позволяет 
 $lang['not_staff_added_as_project_member']                = 'Добавил вас в качестве участника проекта';
 $lang['report_expenses_base_currency_select_explanation'] = 'Вы должны выбрать валюту, поскольку система используются различные валюты для расходов.';
 
-// Version 1.1.6
+# Version 1.1.6
 $lang['project_activity_recorded_expense']   = 'Добавлен расход';
 $lang['save_customer_and_add_contact']       = 'Сохранить и добавить контакт';
 $lang['tickets_chart_weekly_opening_stats']  = 'Еженедельная статистика';
@@ -2413,7 +2414,7 @@ $lang['filter']                              = 'Фильтр';
 $lang['task_filter_detailed_all_months']     = 'Все месяцы';
 $lang['kb_article_slug']                     = 'Ярлык';
 
-// Version 1.1.7
+# Version 1.1.7
 $lang['email_template_ticket_warning']          = 'Если тикет импортируется с помощью почты (email piping) и контакт не сущестует в системе, то поля не будут заменены.';
 $lang['auto_stop_tasks_timers_on_new_timer']    = 'Остановить все активные таймеры при запуске нового таймера';
 $lang['notification_when_customer_pay_invoice'] = 'Уведомлять при оплате счета клиентом (встроенный метод)';
@@ -2457,7 +2458,7 @@ $lang['toggle_full_view']                       = 'Полный просмотр
 $lang['not_estimate_invoice_deleted']           = 'удалил созданный счет';
 $lang['not_task_new_comment']                   = 'прокомментировал задачу %s';
 
-// Version 1.1.8
+# Version 1.1.8
 $lang['invoice_number_exists']                  = 'Этот счет актуален для текущего года.';
 $lang['estimate_number_exists']                 = 'Это число сметы актуально для текущего года.';
 $lang['email_exists']                           = 'Этот эл. адрес уже существует';
@@ -2526,14 +2527,14 @@ $lang['ticket_form_validation_file_size']       = 'Размер файла до�
 $lang['has_transactions_currency_base_change']  = 'Изменение основной валюты возможно только, если нет никаких операций, которые привязаны к этой валюте. Удалить операции, чтобы изменить основную валюту';
 $lang['customers_sort_all']                     = 'Все';
 
-// Version 1.1.9
+# Version 1.1.9
 $lang['use_recaptcha_customers_area']    = 'Резрешить reCAPTCHA для клиентской области (Вход/Регистрация)';
 $lang['project_marked_as_finished']      = 'Проект завершен';
 $lang['project_status_updated']          = 'Статус проекта обновлен';
 $lang['remove_decimals_on_zero']         = 'Убрать лишние цифры в виде нулей после запятой (2.00 будет как 2, а 2.25 останется как 2.25)';
 $lang['remove_tax_name_from_item_table'] = 'Удалить название налога из строки таблицы';
 
-// Version 1.2.0
+# Version 1.2.0
 $lang['not_billable_expenses_by_categories']      = 'Неоплачиваемые расходы по категориям';
 $lang['billable_expenses_by_categories']          = 'Оплачиваемые расходы по категориям';
 $lang['format_letter_size']                       = 'A4 Альбомная';
@@ -2588,7 +2589,7 @@ $lang['task_log_time_start']  = $lang['project_timesheet_start_time'];
 $lang['task_log_time_end']    = $lang['project_timesheet_end_time'];
 $lang['task_single_log_user'] = $lang['project_timesheet_user'];
 
-// Version 1.2.2
+# Version 1.2.2
 $lang['milestone_description']                  = 'Описание';
 $lang['description_visible_to_customer']        = 'Показать описание для клиента';
 $lang['upcoming_tasks']                         = 'Предстоящие задачи';
@@ -2607,7 +2608,7 @@ $lang['invoice_recurring_years']  = $lang['expense_recurring_years'];
 $lang['invoice_recurring_days']   = $lang['expense_recurring_days'];
 $lang['invoice_recurring_weeks']  = $lang['expense_recurring_weeks'];
 
-// Version 1.2.4
+# Version 1.2.4
 $lang['document_direction']                                 = 'Направление';
 $lang['notify_project_members_status_change']               = 'Уведомлять участников проекта о статусе проекта';
 $lang['not_project_status_updated']                         = 'Статус проекта обновлен с %s на %s';
@@ -2674,7 +2675,7 @@ $lang['back_to_lead']                              = 'Назад к лиду';
 $lang['add_task_timer_started_warning']            = 'Остановите текущий таймер для этой задачи, чтобы добавить новый таймер вручную.';
 $lang['sending_email_contact_permissions_warning'] = 'Не удалось автоматически выбрать контакты клиента. Пожалуйста, убедитесь, что клиент имеет связанные контакты с разрешением %s';
 
-// Version 1.2.6
+# Version 1.2.6
 $lang['currently_supported_currencies']                       = 'Поддерживаемые валюты';
 $lang['authorize_notice']                                     = 'Защитное соединение SSL является обязательным, если вы используете Authorize.Net AIM payment API. Authorize.net поддерживает только одну валюту на один аккаунт. Убедитесь, что выдобавили только одну валюту, которая указана в вашей учетной записи Authorize в настройках валюты.';
 $lang['settings_paymentmethod_developer_mode']                = 'Режим разработчика';
@@ -2687,7 +2688,7 @@ $lang['leads_report_converted_notice']                        = 'Только л
 $lang['payment_method']                                       = 'Способ оплаты';
 $lang['payment_method_info']                                  = 'Некоторые платежные шлюзы поддерживают различные способы оплаты, такие как кредитная карта, PayPal, банковский перевод.';
 
-// Version 1.2.7
+# Version 1.2.7
 $lang['dropbox_app_key']                                    = 'Ключ Dropbox';
 $lang['project_invoice_select_all_expenses']                = 'Выбрать все расходы';
 $lang['role_update_staff_permissions']                      = 'Обновить права всех сотрудников, которые используют эту роль';
@@ -2717,7 +2718,7 @@ $lang['staff_email_signature_help']                         = 'Если подп
 $lang['default_task_priority']                              = 'Приоритет по умолчанию';
 $lang['project_send_created_email']                         = 'Отправить проект, созданный по эл. почте';
 
-// Version 1.2.8
+# Version 1.2.8
 $lang['show_transactions_on_invoice_pdf']            = 'Отображать оплаченные счета (транзакции) в файле в PDF';
 $lang['bulk_actions']                                = 'Массовые действия';
 $lang['additional_filters']                          = 'Дополнительные фильтры';
@@ -2755,7 +2756,7 @@ $lang['back_to_project']                      = 'Вернуться к прое�
 $lang['view_kanban']                          = 'Канбан';
 $lang['invoice_is_overdue']                   = 'Данный счет просрочен на %s дн.';
 
-// Version 1.2.9
+# Version 1.2.9
 $lang['time_decimal']                            = 'Время (десятичный)';
 $lang['time_h']                                  = 'Время (часы)';
 $lang['proposal_number_prefix']                  = 'Префикс номера предложения';
@@ -2807,10 +2808,10 @@ $lang['sync_proposals_up_to_date']               = 'Все предложени�
 $lang['proposal_sync_1_info']                    = 'Все данные предложений хранятся отдельно для каждого предложения после создания. Обновление информации %s не повлияет на предыдущие созданные предложения для этого %s.';
 $lang['proposal_sync_2_info']                    = 'Если вы недавно обновили информацию %s, то тогда вы можете синхронизировать все новые данные для соответствующих заявок. Ниже приведен список полей, которые можно синхронизировать.';
 
-// Version 1.3.0
+# Version 1.3.0
 $lang['expense_include_additional_data_on_convert'] = 'Включить дополнительные детали для длинного описания взятого из этих расходов.';
 
-// Version 1.4.0
+# Version 1.4.0
 $lang['calendar_events_limit']                              = 'Лимит событий календаря (Просмотр по месяцам и неделям)';
 $lang['show_page_number_on_pdf']                            = 'Показать номер страницы в файле PDF';
 $lang['customer_active_inactive_help']                      = 'Будет показано в выпадающем списке при создании новых записей';
@@ -2894,7 +2895,7 @@ $lang['hour_of_day_perform_auto_operations_format']         = '24-часовой
 $lang['inv_hour_of_day_perform_auto_operations_help']       = 'Используется для повторяющихся счетов, уведомлений о просроченности и т.д.';
 $lang['use_minified_files']                                 = 'Используйте минимизированные версии файлов css и js (только системные файлы)';
 
-// Version 1.5.0
+# Version 1.5.0
 $lang['logo_favicon_changed_notice']       = 'Обнаружено изменение логотипа или иконки сайта. Если вы все еще видите оригинальный логотип CRM, то попробуйте очистить кэш браузера';
 $lang['kb_search_articles']                = 'Поиск статьи в Базе знаний';
 $lang['kb_search']                         = 'Поиск';
@@ -2911,7 +2912,7 @@ $lang['department_username']               = 'Имя пользователя IM
 $lang['department_username_help']          = 'Заполните это поле только в том случае, если ваш сервер IMAP использует имя пользователя для входа вместо адреса эл. почты. Обратите внимание, что вам все равно нужно добавить адрес эл. почты.';
 $lang['total_tickets_deleted']             = 'Всего удалено тикетов: %s';
 
-// Version 1.5.1
+# Version 1.5.1
 $lang['ticket_linked_to_project']                                = 'Этот тикет связан с проектом: %s';
 $lang['only_own_files_contacts']                                 = 'Контакты могут видеть только собственные файлы, загруженные в клиентской области (файлы загруженные в профиле клиента)';
 $lang['only_own_files_contacts_help']                            = 'Если вы делитесь файлом вручную из профиля клиента, то другие контакты смогут увидеть этот файл.';
@@ -2921,7 +2922,7 @@ $lang['share_file_with_show']                                    = 'Этот ф�
 $lang['allow_primary_contact_to_view_edit_billing_and_shipping'] = 'Разрешить основному контакту видеть/редактировать информацию о платежах/доставке';
 $lang['estimate_due_after']                                      = 'Сроки для сметы (дни)';
 
-// Version 1.6.0
+# Version 1.6.0
 $lang['my_timesheets']                                   = 'Мои табели';
 $lang['today']                                           = 'Сегодня';
 $lang['open_in_dropbox']                                 = 'Открыть в Dropbox';
@@ -2957,7 +2958,7 @@ $lang['no_project_members']                              = 'В этом прое
 $lang['search_by_tags']                                  = 'Используйте # + имя тега для поиска по ключевым словам';
 $lang['project_status_5']                                = 'Отменено';
 
-// Version 1.7.0
+# Version 1.7.0
 $lang['not_activity_new_reminder_created']        = 'установите новое напоминание для %s с датой %s';
 $lang['not_activity_new_task_created']            = 'Создана новая задача - %s';
 $lang['recurring_invoice_draft_notice']           = 'Этот счет-фактура имеет статус черновика, поэтому вы должны отметить его как отправленный. Повторяющиеся счета в статусе черновик не создаются в планировщике задач.';
@@ -3008,7 +3009,7 @@ $lang['group_by_task']                            = 'По задачам';
 $lang['save']                                     = 'Сохранить';
 $lang['disable_languages']                        = 'Отключить языки';
 
-// Version 1.8.0
+# Version 1.8.0
 $lang['not_customer_viewed_invoice']                         = 'Счет с номером %s просмотрен';
 $lang['not_customer_viewed_estimate']                        = 'Смета с номером %s просмотрена';
 $lang['not_customer_viewed_proposal']                        = 'Предложение с номером %s просмотрено';
@@ -3075,7 +3076,7 @@ $lang['allow_staff_view_proposals_assigned']                 = 'Разрешит
 $lang['task_users_working_on_tasks_multiple']                = 'В настоящее время %s работают над этим заданием';
 $lang['task_users_working_on_tasks_single']                  = 'В настоящее время %s работает над этим заданием';
 
-// Version 1.9.0
+# Version 1.9.0
 $lang['estimated_hours']                               = 'Оценка в часах';
 $lang['two_factor_auth_failed_to_send_code']           = 'Не удалось отправить код аутентификации по электронной почте, настройки SMTP могут быть неправильно настроены';
 $lang['two_factor_auth_code_sent_successfully']        = 'Письмо было отправлено %s с кодом верификации для проверки вашей авторизации';
@@ -3109,7 +3110,7 @@ $lang['task_add_description']                          = 'Добавить оп�
 $lang['project_setting_create_tasks']                  = 'создать задачи';
 $lang['project_setting_edit_tasks']                    = 'редактировать задачи (только задачи созданные для контакта)';
 
-// Version 1.9.2
+# Version 1.9.2
 $lang['items_report']                            = 'Отчет о продажах';
 $lang['reports_item']                            = 'Продажа';
 $lang['quantity_sold']                           = 'Количество продаж';
@@ -3136,11 +3137,11 @@ $lang['payment_gateway_payu_money_key']          = 'Ключ PayU';
 $lang['payment_gateway_payu_money_salt']         = 'Соль PayU';
 $lang['settings_paymentmethod_description']      = 'Описание платежного метода';
 
-// Version 1.9.3
+# Version 1.9.3
 $lang['default_ticket_reply_status']          = 'Статус по умолчанию при ответе на тикет';
 $lang['ticket_add_response_and_back_to_list'] = 'Вернуться в список тикетов после отправки ответа';
 
-// Version 1.9.4
+# Version 1.9.4
 $lang['default_task_status']                               = 'Статус по умолчанию при создании новой задачи';
 $lang['custom_field_pdf_html_help']                        = 'Убедитесь, что вы отметили поле ' . $lang['custom_field_show_on_client_portal'] . ' если хотите, чтобы пользовательские поля были видимыми в клиентской области и когда клиент загружает PDF или получает PDF по почте.';
 $lang['auto']                                              = 'Автоматически';
@@ -3165,7 +3166,7 @@ $lang['reccuring_invoice_option_gen_unpaid']               = 'Создать н�
 $lang['reccuring_invoice_option_gen_draft']                = 'Создать черновик счета';
 $lang['event_created_by']                                  = 'Это событие создано %s';
 
-// Version 1.9.5
+# Version 1.9.5
 $lang['customers_assigned_to_me']              = 'Клиенты, назначенные на меня';
 $lang['bcc_all_emails']                        = 'BCC (cкрытая копия) - скрытые получатели письма, чьи адреса не показываются другим получателям.';
 $lang['confirmation_of_identity']              = 'Подтверждение личности';
@@ -3178,7 +3179,7 @@ $lang['expense_field_billable_help']           = 'Если Оплачиваем�
 $lang['task_biillable_checked_on_creation']    = 'Опция Оплачиваемое по умолчанию проверяется при создании новой задачи?';
 $lang['pause_overdue_reminders']               = 'Остановить напоминания о просроченности';
 $lang['resume_overdue_reminders']              = 'Возобновить напоминания о просроченности';
-// Credit Notes
+# Credit Notes
 $lang['credit_notes']                                            = 'Кредитные записи';
 $lang['credit_note']                                             = 'Кредитная запись';
 $lang['credit_note_lowercase']                                   = 'кредитная запись';
@@ -3263,7 +3264,7 @@ $lang['credit_note_table_tax_heading']      = $lang['invoice_table_tax_heading']
 $lang['credit_note_table_amount_heading']   = $lang['invoice_table_amount_heading'];
 $lang['credit_notes_list_all']              = $lang['invoices_list_all'];
 
-// Version 1.9.7
+# Version 1.9.7
 $lang['ticket_assigned']                          = 'Назначено';
 $lang['dashboard_options']                        = 'Настройки дашборда';
 $lang['reset_dashboard']                          = 'Сбросить';
@@ -3296,7 +3297,7 @@ $lang['existing_customer']                        = 'Существующий к
 $lang['use_company_name_instead']                 = 'Вместо этого использовать название компании';
 $lang['customer_delete_transactions_warning']     = 'У этого клиента есть транзакции, %s, вы должны удалить транзакции или перейти к другому клиенту, чтобы выполнить это действие.';
 
-// Version 1.9.8
+# Version 1.9.8
 $lang['sending_email_contact_permissions_warning'] = 'Не удалось выбрать контакты клиента. Убедитесь, что у клиента есть активные контакты и связанные контакты с уведомлениями на почту для %s включены.';
 $lang['help_leads_create_permission']              = 'Все сотрудники могут создавать потенциальные лиды, кроме пользователей, отмеченных как Не сотрудники';
 $lang['help_leads_edit_permission']                = 'Каждый кто имеет доступ к конкретному лиду, может редактировать информацию о лиде';
@@ -3316,14 +3317,14 @@ $lang['timesheet_date_instead']                    = 'Ввести время н
 $lang['allow_non_admin_members_to_import_leads']   = 'Разрешить сотрудникам (не админам) импортировать лиды';
 $lang['project_hide_tasks_settings_info']          = 'Задачи исключеные из таблицы основных задач для этого проекта, вы можете просматривать задачи проекта только в этой области.';
 
-// Version 1.9.9
+# Version 1.9.9
 $lang['ticket_create_no_contact']            = 'Тикет без контакта';
 $lang['ticket_create_to_contact']            = 'Тикет для контакта';
 $lang['showing_billable_tasks_from_project'] = 'Отображение оплачиваемых задач из проекта';
 $lang['no_billable_tasks_found']             = 'Оплачиваемые задачи не найдены';
 $lang['help_leads_permission_view']          = 'Если это разрешение не отмечено, тогда сотрудник сможет просматривать только назначенные лиды, созданные сотрудником и лиды, которые отмечены как общедоступные';
 
-// Version 2.0.0
+# Version 2.0.0
 
 $lang['customers']                                              = $lang['clients'];
 $lang['knowledge_base']                                         = $lang['kb_string'];
@@ -3454,7 +3455,7 @@ $lang['customer_is_subscribed_to_subscription_info']            = 'Клиент 
 $lang['save_last_order_for_tables']                             = 'Сохранить последнюю сортировку для таблиц';
 $lang['date_created']                                           = 'Дата создания';
 
-// Version 2.0.1
+# Version 2.0.1
 $lang['company_logo_dark']                                      = 'Темный логотип компании';
 $lang['customers_register_require_confirmation']                = 'Администратор должен подтвердить регистрацию клиента';
 $lang['customer_requires_registration_confirmation']            = 'Требуется подтверждение регистрации';
@@ -3475,7 +3476,7 @@ $lang['send_test_sms']                                          = 'Отправ�
 $lang['gdpr_short']                                             = 'GDPR';
 $lang['allow_non_admin_staff_to_delete_ticket_attachments']     = 'Разрешить сотрудникам, не являющимся администраторами, удалять вложения к тикетам';
 
-// Version 2.1.0
+# Version 2.1.0
 $lang['contract_number']                                = 'Номер договора';
 $lang['project_changing_status_recurring_tasks_notice'] = 'Вы сменили статус на {0}, все повторяющиеся задачи будут отменены';
 $lang['not_contract_signed']                            = 'Договор с темой %s был подписан клиентом';
@@ -3488,14 +3489,14 @@ $lang['project_member']                                 = 'Участник пр
 $lang['contract_notes']                                 = 'Заметки';
 $lang['contract_add_note']                              = 'Добавить заметку';
 
-// Version 2.1.1
+# Version 2.1.1
 $lang['frequency']              = 'Частота';
 $lang['frequency_every']        = 'Каждый %s';
 $lang['last_invoice_date']      = 'Дата последнего счета';
 $lang['next_invoice_date_list'] = 'Следующая дата выставления счета';
 $lang['enter_new_card']         = 'Введите новую карту';
 
-// Version 2.2.0
+# Version 2.2.0
 $lang['save_and_record_payment']                                     = 'Сохранить и записать платеж';
 $lang['choose_from_google_drive']                                    = 'Выберите из Google Диска';
 $lang['open_in_google']                                              = 'Открыть в Google';
@@ -3533,13 +3534,14 @@ $lang['no_description_provided']                                     = 'Нет �
 $lang['pay_with_card']                                               = 'Оплатить картой';
 $lang['not_customer_uploaded_file']                                  = 'Новый файл(ы) загружен(ы) в профиль';
 
-// Version 2.2.1
+# Version 2.2.1
 $lang['customer_files_info_message'] = 'Файлы из проектов и задач, связанных с клиентом, в этой таблице не отображаются.';
 $lang['ticket_import_reply_only']    = 'Попробуйте импортировать только фактический ответ на тикет (без цитируемого/перенаправленного сообщения)';
 $lang['learn_more']                  = 'Подробнее';
 $lang['sales_item']                  = 'Продажа';
 
-// Version 2.3.0
+
+# Version 2.3.0
 
 $lang['modules']                                 = 'Модули';
 $lang['module']                                  = 'Модуль';
@@ -3563,7 +3565,7 @@ $lang['refund_amount']                           = 'Сумма возврата'
 $lang['not_refunds_found']                       = 'Возвраты не найдены';
 $lang['refunds_applied_cant_delete_credit_note'] = 'На этот кредит возмещены деньги, вам нужно сначала удалить возвраты.';
 
-// Version 2.3.2
+# Version 2.3.2
 $lang['create_recurring_from_child_error_message'] = 'Вы не можете установить %s как повторяющийся, потому что %s является дочерним по отношению к другим повторяющимся %s.';
 $lang['statement_credit_note_refund']              = 'Возврат кредитной ноты - %s';
 $lang['no_validation']                             = 'Нет подтверждения';
@@ -3575,11 +3577,11 @@ $lang['send_payment_receipt_to_client']            = 'Отправить кли�
 $lang['payment_sent_successfully']                 = 'Квитанция об оплате успешно отправлена.';
 $lang['payment_sent_failed']                       = 'Не удалось отправить квитанцию об оплате.';
 
-// Version 2.3.5
+# Version 2.3.5
 $lang['tags_update_replace_warning'] = 'Некоторые теги не обновляются, потому что имя тега уже существует.';
 $lang['attach_statement']            = 'Прикрепить клиентскую выписку';
 
-// Version 2.4.0
+# Version 2.4.0
 $lang['delete_credit_card']                        = 'Удалить карту';
 $lang['delete_credit_card_info']                   = 'Вы не можете удалить кредитную карту, так как у вас есть активные подписки.';
 $lang['credit_card_successfully_deleted']          = 'Карта успешно удалена.';
@@ -3594,7 +3596,7 @@ $lang['subscription_plan_currency_does_not_match'] = 'Валюта выбран�
 $lang['subscription_first_billing_date_info']      = 'Оставьте поле пустым, чтобы использовать дату, когда клиент подписывается. Это поле должно быть будущей датой, если вы выбрали дату и она наступила, но клиент еще не подписан, то будет использоваться дата, когда клиент подпишется.';
 $lang['stripe_subscription_select_plan']           = 'Выберите план Stripe';
 
-// Version 2.4.1
+# Version 2.4.1
 $lang['contract_content_permission_edit_warning'] = 'Ваши текущие разрешения не позволяют вам редактировать содержимое договора. Свяжитесь с администратором, чтобы получить разрешение на редактирование договоров.';
 $lang['mark_as_signed']                           = 'Отметить как подписанное';
 $lang['unmark_as_signed']                         = 'Убрать подпись';
@@ -3607,7 +3609,7 @@ $lang['schedule_date']                            = 'Когда вы хотит�
 $lang['email_scheduled_successfully']             = 'График успешно отправлен на Email';
 $lang['invoice_will_be_sent_at']                  = 'Счет будет отправлен по адресу %s';
 
-// Version 2.5.0
+# Version 2.5.0
 $lang['recaptcha_ignore_ips']            = 'Игнорируемые IP-адреса';
 $lang['recaptcha_ignore_ips_info']       = 'Введите IP-адреса через запятую, которые reCaptcha должна игнорировать.';
 $lang['show_task_reminders_on_calendar'] = 'Напоминания о задачах';
@@ -3619,13 +3621,13 @@ $lang['leads_dt_lead_value']             = 'Значение лида';
 $lang['leads_canban_lead_value']         = 'Значение лида: %s';
 $lang['lead_add_edit_lead_value']        = 'Значение лида';
 
-// Version 2.6.0
+# Version 2.6.0
 $lang['gantt_view_day']   = 'Обзор за день';
 $lang['gantt_view_week']  = 'Обзор за неделю';
 $lang['gantt_view_month'] = 'Обзор за месяц';
 $lang['gantt_view_year']  = 'Обзор за год';
 
-// Version 2.7.0
+# Version 2.7.0
 
 $lang['hour_of_day_perform_tasks_reminder_notification_help'] = '24-часовой формат экв. 9 для 9 утра или 15 для 15:00. Используется для повторяющихся задач, напоминаний о задачах и т.д.';
 $lang['clients_nav_contacts']                                 = 'Контакты';
@@ -3652,7 +3654,8 @@ $lang['google_2fa_code_invalid']                     = 'Введен невер�
 $lang['google_2fa_scan_qr_guide']                    = 'Отсканируйте QR-код ниже с помощью приложения Google Authenticator на вашем мобильном устройстве, после чего заполните поле ниже кодом, сгенерированным в приложении.';
 $lang['google_2fa_manul_input_secret']               = 'Секретный ключ для ручного ввода';
 
-// Version 2.7.1
+
+# Version 2.7.1
 $lang['templates']                                   = 'Шаблоны';
 $lang['add_template']                                = 'Добавить шаблон';
 $lang['edit_template']                               = 'Редактировать шаблон';
@@ -3683,7 +3686,7 @@ $lang['imap_folder']                     = 'Папка';
 $lang['retrieve_folders']                = 'Получить папки';
 $lang['email_to_ticket_config']          = 'Эл. почта для настроки тикета';
 
-// Version 2.8.0
+# Version 2.8.0
 $lang['enable_support_menu_badges']              = 'Включить значок пункта меню поддержки';
 $lang['item_copy_success']                       = 'Элемент успешно скопирован';
 $lang['item_copy_fail']                          = 'Не удалось скопировать элемент';
@@ -3745,13 +3748,13 @@ $lang['due_reminders']                   = 'Предстоящие напоми�
 $lang['due_reminders_for_invoices_info'] = 'Напоминания о сроке оплаты отправляются на неоплаченные и частично оплаченные счета в качестве напоминания клиенту оплатить счет до наступления срока оплаты.';
 $lang['expenses_list_made_payment_by']   = 'Произведена оплата %s';
 
-// Version 2.8.2
+# Version 2.8.2
 $lang['hide_task_checklist_items_completed'] = 'Скрыть завершенные элементы';
 $lang['show_task_checklist_items_completed'] = 'Показать завершенные элементы %s';
 $lang['task_checklist_assign']               = 'Назначить персонал';
 $lang['task_checklist_assigned']             = 'Назначен на %s';
 
-// Version 2.8.3
+# Version 2.8.3
 $lang['projects_send_contact_notification']                   = 'Отправлять уведомления контактам';
 $lang['project_send_all_contacts_with_notifications_enabled'] = 'Всем контактам с включенными уведомлениями о проектах';
 $lang['project_do_not_send_contacts_notifications']           = 'Не отправлять уведомления';
@@ -3766,7 +3769,7 @@ $lang['total_expenses_deleted']                               = 'Общая су
 $lang['estimate_convert_to_project']                          = 'Преобразовать в проект';
 $lang['estimate_items_convert_to_tasks']                      = 'Элементы, которые будут преобразованы в задачи';
 
-// Version 2.9.0
+# Version 2.9.0
 $lang['home_payment_records']                                  = 'Платежные записи';
 $lang['weekly']                                                = 'Еженедельно';
 $lang['monthly']                                               = 'Ежемесячно';
@@ -3783,14 +3786,14 @@ $lang['submit_button_bg_color']                                = 'Цвет фо�
 $lang['submit_button_text_color']                              = 'Цвет текста кнопки отправить';
 $lang['automatically_assign_ticket_to_first_staff_responding'] = 'Автоматически назначать тикет первому сотруднику, который отправит ответ?';
 
-// Version 2.9.1
+# Version 2.9.1
 $lang['contract_signed_not_all_fields_editable'] = 'Этот договор подписан, поэтому не все поля можно редактировать, пока подпись не будет удалена.';
 $lang['form_submit_success_action']              = 'Что должно произойти после того, как посетитель отправит эту форму';
 $lang['form_submit_success_display_thank_you']   = 'Показать сообщение с благодарностью';
 $lang['form_submit_success_redirect_to_website'] = 'Перенаправить на другой сайт';
 $lang['form_submit_website_url']                 = 'URL веб-сайта';
 
-// Version 2.9.2
+# Version 2.9.2
 $lang['open_google_map']                                  = 'Открыть на карте Google';
 $lang['milestone_start_date']                             = 'Дата начала';
 $lang['send_reminder_for_completed_but_not_billed_tasks'] = 'Отправить напоминание по эл. почте о выполненных оплачиваемых задачах, но не оплачиваемых';
@@ -3823,7 +3826,7 @@ $lang['batch_payments_send_invoice_payment_recorded']     = 'Не отправл
 $lang['invoice_batch_payments']                           = 'Пакетный платеж';
 $lang['staff_is_currently_replying']                      = '%s в настоящее время отвечает на тикет.';
 
-// Version 2.9.4
+# Version 2.9.4
 $lang['permission_view_timesheet_report']                  = 'Посмотреть отсчет о табелях';
 $lang['timesheets_overview_all_members_notice_permission'] = 'Обзор табелей для всех сотрудников доступен только для сотрудников, имеющих разрешение на просмотр отчетов о табелях, и администраторов.';
 $lang['show_project_on_proposal']                          = 'Показать название проекта в предложении';
@@ -3843,7 +3846,7 @@ $lang['import_expenses']                                         = 'Импорт
 $lang['show_pdf_signature_proposal']                             = 'Показать PDF подпись в предложении';
 $lang['enable_honeypot_spam_validation']                         = 'Включить проверку спама Honeypot';
 
-// Version 3.0.0
+# Version 3.0.0
 $lang['contracts_view_marked_as_signed'] = 'Помечено как подписанный';
 $lang['contracts_view_signed']           = 'подписанный';
 $lang['contracts_view_not_expired']      = 'Не истек';
@@ -3853,7 +3856,7 @@ $lang['search_proposals']                = 'Поиск предложений';
 $lang['search_estimates']                = 'Поиск оценок';
 $lang['quick_create']                    = 'Быстрое создание';
 
-// Version 3.0.5
+# Version 3.0.5
 $lang['subscription_last_sent']                             = 'Последнее отправленное';
 $lang['automatically_set_logged_in_staff_sales_agent']      = 'Автоматически назначать зарегистрированных сотрудников в качестве агентов по продажам';
 $lang['automatically_set_logged_in_staff_sales_agent_help'] = 'Применимо для: смет, счетов, предложений';
@@ -3868,191 +3871,186 @@ $lang['payment_attempt_fee']                                = 'Комиссия 
 $lang['feature']                                            = 'Особенность';
 $lang['capabilities']                                       = 'Возможности';
 
-// Version 3.1.0
-$lang['filter_boolean_yes']       = 'Да';
-$lang['filter_boolean_no']        = 'Нет';
-$lang['filter_matchtype_and']     = 'и';
-$lang['filter_matchtype_or']      = 'или';
-$lang['filter_share']             = 'Делиться с другими членами команды?';
-$lang['filter_mark_as_default']   = 'Отметить как основной';
+# Version 3.1.0
+$lang['filter_boolean_yes'] = 'Да';
+$lang['filter_boolean_no'] = 'Нет';
+$lang['filter_matchtype_and'] = 'и';
+$lang['filter_matchtype_or'] = 'или';
+$lang['filter_share'] = 'Делиться с другими членами команды?';
+$lang['filter_mark_as_default'] = 'Отметить как основной';
 $lang['filter_unmark_as_default'] = 'Снять отметку "Основной"';
-$lang['filter_save']              = 'Сохранить фильтр';
-$lang['filter_name']              = 'Имя фильтра';
-$lang['filter_apply']             = 'Применить';
-$lang['filter_apply_and_save']    = 'Применить и сохранить';
+$lang['filter_save'] = 'Сохранить фильтр';
+$lang['filter_name'] = 'Имя фильтра';
+$lang['filter_apply'] = 'Применить';
+$lang['filter_apply_and_save'] = 'Применить и сохранить';
 $lang['filter_use_dynamic_dates'] = 'Использовать динамические даты';
-$lang['filter_new']               = 'Новый фильтр';
-$lang['filter_clear_active']      = 'Очистить фильтр';
-$lang['filter_edit']              = 'Редактировать';
-$lang['filter_create']            = 'Создать фильтр';
-$lang['filter_update']            = 'Обновить фильтр';
-$lang['filter_delete']            = 'Удалить фильтр';
-$lang['filter_cannot_be_shared']  = 'Этот фильтр не может быть общим с другими членами команды, так как он содержит правила, которые могут быть недоступны для всех пользователей.';
-$lang['filter_add_rule']          = 'Добавить правило';
+$lang['filter_new'] = 'Новый фильтр';
+$lang['filter_clear_active'] = 'Очистить фильтр';
+$lang['filter_edit'] = 'Редактировать';
+$lang['filter_create'] = 'Создать фильтр';
+$lang['filter_update'] = 'Обновить фильтр';
+$lang['filter_delete'] = 'Удалить фильтр';
+$lang['filter_cannot_be_shared'] = 'Этот фильтр не может быть общим с другими членами команды, так как он содержит правила, которые могут быть недоступны для всех пользователей.';
+$lang['filter_add_rule'] = 'Добавить правило';
 
-$lang['filter_operator_is_empty']         = 'неизвестно';
-$lang['filter_operator_is_not_empty']     = 'известно';
-$lang['filter_operator_equal']            = 'равно';
-$lang['filter_operator_not_equal']        = 'не равно';
-$lang['filter_operator_begins_with']      = 'начинается с';
-$lang['filter_operator_not_begins_with']  = 'не начинается с';
-$lang['filter_operator_contains']         = 'содержит';
-$lang['filter_operator_not_contains']     = 'не содержит';
-$lang['filter_operator_ends_with']        = 'заканчивается на';
-$lang['filter_operator_not_ends_with']    = 'не заканчивается на';
-$lang['filter_operator_in']               = 'в';
-$lang['filter_operator_not_in']           = 'не в';
-$lang['filter_operator_between']          = 'между';
-$lang['filter_operator_not_between']      = 'не между';
-$lang['filter_operator_dynamic']          = 'динамический';
-$lang['filter_operator_greater']          = 'больше';
+$lang['filter_operator_is_empty'] = 'неизвестно';
+$lang['filter_operator_is_not_empty'] = 'известно';
+$lang['filter_operator_equal'] = 'равно';
+$lang['filter_operator_not_equal'] = 'не равно';
+$lang['filter_operator_begins_with'] = 'начинается с';
+$lang['filter_operator_not_begins_with'] = 'не начинается с';
+$lang['filter_operator_contains'] = 'содержит';
+$lang['filter_operator_not_contains'] = 'не содержит';
+$lang['filter_operator_ends_with'] = 'заканчивается на';
+$lang['filter_operator_not_ends_with'] = 'не заканчивается на';
+$lang['filter_operator_in'] = 'в';
+$lang['filter_operator_not_in'] = 'не в';
+$lang['filter_operator_between'] = 'между';
+$lang['filter_operator_not_between'] = 'не между';
+$lang['filter_operator_dynamic'] = 'динамический';
+$lang['filter_operator_greater'] = 'больше';
 $lang['filter_operator_greater_or_equal'] = 'больше или равно';
-$lang['filter_operator_less']             = 'меньше';
-$lang['filter_operator_less_or_equal']    = 'меньше или равно';
-$lang['no_filters_found']                 = 'Нет сохраненных фильтров. Начните с создания нового фильтра.';
+$lang['filter_operator_less'] = 'меньше';
+$lang['filter_operator_less_or_equal'] = 'меньше или равно';
+$lang['no_filters_found'] = 'Нет сохраненных фильтров. Начните с создания нового фильтра.';
 
 $lang['staff_logged_in_public_ticket_warning'] = 'Вы вошли как сотрудник. Если вы хотите ответить на заявку от имени сотрудника, вы должны сделать это через панель администратора.';
 
-// Version 3.1.2
+# Version 3.1.2
 $lang['allow_non_admin_members_to_delete_tickets_and_replies'] = 'Разрешить сотрудникам, не являющимся администраторами, удалять заявки и ответы';
-$lang['default_filter_info']                                   = 'Фильтр будет помечен как используемый по умолчанию только для вашей учетной записи.';
-$lang['required_register_fields']                              = 'Обязательные поля для регистрации (личный кабинет клиента)';
+$lang['default_filter_info'] = 'Фильтр будет помечен как используемый по умолчанию только для вашей учетной записи.';
+$lang['required_register_fields'] = 'Обязательные поля для регистрации (личный кабинет клиента)';
 
-// Version 3.1.6
-$lang['allow_non_admin_members_to_edit_ticket_messages']   = 'Разрешить сотрудникам, не являющимся администраторами, удалять заявки и ответы';
-$lang['proposal_auto_convert_to_invoice_on_client_accept'] = 'Автоматическое преобразование предложения в счет после принятия клиентом';
-$lang['invoice_activity_auto_converted_from_proposal']     = 'Счет автоматически создается из предложения с номером %s';
-$lang['clients_proposal_invoiced_successfully']            = 'Благодарим вас за принятие предложения. Пожалуйста, ознакомьтесь с созданным счетом-фактурой для этого предложения';
+# Version 3.1.6
+$lang['allow_non_admin_members_to_edit_ticket_messages'] = 'Разрешить сотрудникам, не являющимся администраторами, удалять заявки и ответы';
+$lang['proposal_auto_convert_to_invoice_on_client_accept'] = 'Автоматическое преобразование предложения в счет после принятия клиентом (только предложения, связанные с клиентами)';
+$lang['invoice_activity_auto_converted_from_proposal']      = 'Счет автоматически создается из предложения с номером %s';
+$lang['clients_proposal_invoiced_successfully'] = 'Благодарим вас за принятие предложения. Пожалуйста, ознакомьтесь с созданным счетом-фактурой для этого предложения';
 
-// Version 3.2.0
-$lang['ideal_payment_failure_message']     = 'Платеж не выполнен или был отменен.';
-$lang['ideal_api_publishable_key']         = 'Публичный ключ Stripe';
-$lang['ideal_api_secret_key']              = 'Секретный ключ Stripe';
-$lang['filters']                           = 'Фильтры';
-$lang['view_financial_stats']              = 'Просмотр финансовой статистики';
-$lang['timesheet_summary']                 = 'Сводка по табелю';
-$lang['timesheet_detailed_overview']       = 'Детальный обзор зарегистрированных табелей и часов';
-$lang['ticket_request_history']            = 'История запросов';
-$lang['integrations']                      = 'Интеграции';
-$lang['settings_group_other']              = 'Прочее';
+# Version 3.2.0
+$lang['ideal_payment_failure_message'] = 'Платеж не выполнен или был отменен.';
+$lang['ideal_api_publishable_key'] = 'Публичный ключ Stripe';
+$lang['ideal_api_secret_key'] = 'Секретный ключ Stripe';
+$lang['filters'] = 'Фильтры';
+$lang['view_financial_stats'] = 'Просмотр финансовой статистики';
+$lang['timesheet_summary'] = 'Сводка по табелю';
+$lang['timesheet_detailed_overview'] = 'Детальный обзор зарегистрированных табелей и часов';
+$lang['ticket_request_history'] = 'История запросов';
+$lang['integrations'] = 'Интеграции';
+$lang['settings_group_other'] = 'Прочее';
 $lang['settings_group_configure_features'] = 'Настроить функции';
-$lang['disable_ticket_public_url']         = 'Отключить публичный URL заявки';
+$lang['disable_ticket_public_url'] = 'Отключить публичный URL заявки';
 
-// Version 3.2.1
-$lang['ideal_gateway_keys_not_configured']                     = 'API шлюза оплаты iDEAL не настроен.';
+# Version 3.2.1
+$lang['ideal_gateway_keys_not_configured'] = 'API шлюза оплаты iDEAL не настроен.';
 $lang['ideal_gateway_cannot_be_activated_keys_not_configured'] = 'Шлюз оплаты iDEAL не может быть активирован, так как публичный/API ключ Stripe не настроен.';
-$lang['company_logo_light']                                    = 'Светлый логотип компании';
-$lang['welcome_back_sign_in']                                  = 'Добро пожаловать, пожалуйста, войдите в свою панель управления';
+$lang['company_logo_light'] = 'Светлый логотип компании';
+$lang['welcome_back_sign_in'] = 'Добро пожаловать, пожалуйста, войдите в свою панель управления';
 
-// Version 3.3.0
-$lang['settings_ai']                                      = 'ИИ';
-$lang['settings_group_ai']                                = 'Интеграция ИИ';
-$lang['settings_ai_general']                              = 'Общие настройки';
-$lang['settings_ai_provider']                             = 'Провайдер';
-$lang['settings_ai_system_prompt']                        = 'Системная подсказка';
-$lang['settings_ai_system_prompt_help']                   = 'Укажите контекст о вашей компании и о том, как вы обрабатываете обращения в поддержку, чтобы ИИ мог генерировать более качественные ответы.';
-$lang['settings_ai_enable_ticket_summarization']          = 'Включить краткое содержание обращений';
-$lang['settings_ai_enable_ticket_summarization_help']     = 'Включите функцию краткого резюме, чтобы ИИ автоматически создавал краткое содержание переписки по обращению.';
-$lang['settings_ai_enable_ticket_reply_suggestions']      = 'Включить предложения ответов на обращения';
+# Version 3.3.0
+$lang['settings_ai'] = 'ИИ';
+$lang['settings_group_ai'] = 'Интеграция ИИ';
+$lang['settings_ai_general'] = 'Общие настройки';
+$lang['settings_ai_provider'] = 'Провайдер';
+$lang['settings_ai_system_prompt'] = 'Системная подсказка';
+$lang['settings_ai_system_prompt_help'] = 'Укажите контекст о вашей компании и о том, как вы обрабатываете обращения в поддержку, чтобы ИИ мог генерировать более качественные ответы.';
+$lang['settings_ai_enable_ticket_summarization'] = 'Включить краткое содержание обращений';
+$lang['settings_ai_enable_ticket_summarization_help'] = 'Включите функцию краткого резюме, чтобы ИИ автоматически создавал краткое содержание переписки по обращению.';
+$lang['settings_ai_enable_ticket_reply_suggestions'] = 'Включить предложения ответов на обращения';
 $lang['settings_ai_enable_ticket_reply_suggestions_help'] = 'Включите функцию предложений ответов, чтобы ИИ автоматически генерировал ответ клиенту на основе истории обращения.';
-$lang['ticket_summarization_disabled']                    = 'Функция краткого резюме обращений отключена';
-$lang['ticket_reply_suggestion_disabled']                 = 'Функция предложений ответов отключена';
+$lang['ticket_summarization_disabled'] = 'Функция краткого резюме обращений отключена';
+$lang['ticket_reply_suggestion_disabled'] = 'Функция предложений ответов отключена';
 
-$lang['openai_api_key']                 = 'API-ключ OpenAI';
-$lang['openai_model']                   = 'Модель OpenAI';
-$lang['openai']                         = 'OpenAI';
-$lang['ticket_summarize_ai']            = 'Резюме (ИИ)';
-$lang['ticket_suggest_reply']           = 'Предложить ответ (ИИ)';
-$lang['ticket_rephrase_reply']          = 'Переформулировать (ИИ)';
-$lang['ai_ticket_summary']              = 'Краткое содержание обращения (ИИ)';
-$lang['openai_max_token']               = 'Максимум токенов в ответе';
-$lang['warn_ticket_thread_too_long']    = 'Это обращение содержит большой объём информации. Обработка такого объёма может потребовать больше токенов и повлиять на точность или скорость ответа. Хотите продолжить?';
+$lang['openai_api_key'] = 'API-ключ OpenAI';
+$lang['openai_model'] = 'Модель OpenAI';
+$lang['openai'] = 'OpenAI';
+$lang['ticket_summarize_ai'] = 'Резюме (ИИ)';
+$lang['ticket_suggest_reply'] = 'Предложить ответ (ИИ)';
+$lang['ticket_rephrase_reply'] = 'Переформулировать (ИИ)';
+$lang['ai_ticket_summary'] = 'Краткое содержание обращения (ИИ)';
+$lang['openai_max_token'] = 'Максимум токенов в ответе';
+$lang['warn_ticket_thread_too_long'] = 'Это обращение содержит большой объём информации. Обработка такого объёма может потребовать больше токенов и повлиять на точность или скорость ответа. Хотите продолжить?';
 $lang['text_enhancement_make_friendly'] = 'Сделать более дружелюбным';
-$lang['text_enhancement_make_formal']   = 'Сделать более официальным';
-$lang['text_enhancement_make_polite']   = 'Сделать более вежливым';
+$lang['text_enhancement_make_formal'] = 'Сделать более официальным';
+$lang['text_enhancement_make_polite'] = 'Сделать более вежливым';
 
-$lang['openai_fine_tuning']                 = 'Тонкая настройка OpenAI';
-$lang['fine_tuning_source_data']            = 'Исходные данные для тонкой настройки';
-$lang['available_articles']                 = 'Доступные статьи';
-$lang['fine_tuning_min_articles']           = 'Необходимо как минимум 10 статей базы знаний для тонкой настройки.';
-$lang['start_fine_tuning']                  = 'Запустить тонкую настройку';
-$lang['last_fine_tuning_job']               = 'Последняя задача тонкой настройки';
-$lang['job_id']                             = 'ID задачи';
-$lang['status']                             = 'Статус';
-$lang['fine_tuned_model']                   = 'Настроенная модель';
-$lang['created_at']                         = 'Создано';
-$lang['finished_at']                        = 'Завершено';
-$lang['loading_job_status']                 = 'Загрузка статуса задачи...';
-$lang['refresh_status']                     = 'Обновить статус';
-$lang['fine_tuned_models']                  = 'Настроенные модели';
-$lang['enable_fine_tuning']                 = 'Включить тонкую настройку';
-$lang['no_fine_tuned_models']               = 'Настроенные модели пока отсутствуют.';
-$lang['model_id']                           = 'ID модели';
-$lang['owned_by']                           = 'Владелец';
-$lang['options']                            = 'Опции';
-$lang['active']                             = 'Активна';
-$lang['set_as_active']                      = 'Установить как активную';
-$lang['processing']                         = 'Обработка...';
-$lang['error_processing_request']           = 'Ошибка при обработке запроса';
-$lang['fine_tuning_completed']              = 'Тонкая настройка успешно завершена!';
-$lang['fine_tuning_enabled']                = 'Тонкая настройка включена';
-$lang['fine_tuning_disabled']               = 'Тонкая настройка отключена';
-$lang['fine_tuned_model_set']               = 'Настроенная модель установлена как активная';
-$lang['confirm_delete_fine_tuned_model']    = 'Вы уверены, что хотите удалить эту настроенную модель? Это действие нельзя отменить.';
-$lang['fine_tuned_model_deleted']           = 'Настроенная модель удалена';
-$lang['fine_tuned_model_delete_failed']     = 'Не удалось удалить настроенную модель';
-$lang['fine_tuning_base_model']             = 'Базовая модель для настройки';
+$lang['openai_fine_tuning']          = 'Тонкая настройка OpenAI';
+$lang['fine_tuning_source_data']     = 'Исходные данные для тонкой настройки';
+$lang['available_articles']          = 'Доступные статьи';
+$lang['fine_tuning_min_articles']    = 'Необходимо как минимум 10 статей базы знаний для тонкой настройки.';
+$lang['start_fine_tuning']           = 'Запустить тонкую настройку';
+$lang['last_fine_tuning_job']        = 'Последняя задача тонкой настройки';
+$lang['job_id']                      = 'ID задачи';
+$lang['status']                      = 'Статус';
+$lang['fine_tuned_model']            = 'Настроенная модель';
+$lang['created_at']                  = 'Создано';
+$lang['finished_at']                 = 'Завершено';
+$lang['loading_job_status']          = 'Загрузка статуса задачи...';
+$lang['refresh_status']              = 'Обновить статус';
+$lang['fine_tuned_models']           = 'Настроенные модели';
+$lang['enable_fine_tuning']          = 'Включить тонкую настройку';
+$lang['no_fine_tuned_models']        = 'Настроенные модели пока отсутствуют.';
+$lang['model_id']                    = 'ID модели';
+$lang['owned_by']                    = 'Владелец';
+$lang['options']                     = 'Опции';
+$lang['active']                      = 'Активна';
+$lang['set_as_active']               = 'Установить как активную';
+$lang['processing']                  = 'Обработка...';
+$lang['error_processing_request']    = 'Ошибка при обработке запроса';
+$lang['fine_tuning_completed']       = 'Тонкая настройка успешно завершена!';
+$lang['fine_tuning_enabled']         = 'Тонкая настройка успешно завершена!';
+$lang['fine_tuning_disabled']        = 'Тонкая настройка отключена';
+$lang['fine_tuned_model_set']        = 'Настроенная модель установлена как активная';
+$lang['confirm_delete_fine_tuned_model'] = 'Вы уверены, что хотите удалить эту настроенную модель? Это действие нельзя отменить.';
+$lang['fine_tuned_model_deleted']    = 'Настроенная модель удалена';
+$lang['fine_tuned_model_delete_failed'] = 'Не удалось удалить настроенную модель';
+$lang['fine_tuning_base_model']      = 'Базовая модель для настройки';
 $lang['fine_tuning_base_model_description'] = 'Это базовая модель, которая будет использована для тонкой настройки. Разные модели имеют разные возможности и стоимость.';
-$lang['advanced_features']                  = 'Расширенные функции';
-$lang['openai_fine_tuning_description']     = 'Настройте модели OpenAI на основе вашей базы знаний и шаблонов ответов для более точных результатов.';
-$lang['retrain_model']                      = 'Переобучить модель';
-$lang['retrain_model_description']          = 'Создать новую настроенную модель с обновлённым содержанием. Предыдущие модели будут удалены.';
-$lang['model_is_recommended']               = 'Рекомендуется';
+$lang['advanced_features']           = 'Расширенные функции';
+$lang['openai_fine_tuning_description'] = 'Настройте модели OpenAI на основе вашей базы знаний и шаблонов ответов для более точных результатов.';
+$lang['retrain_model']               = 'Переобучить модель';
+$lang['retrain_model_description']   = 'Создать новую настроенную модель с обновлённым содержанием. Предыдущие модели будут удалены.';
+$lang['model_is_recommended'] = 'Рекомендуется';
 
-// 3.4.0
-$lang['settings_group_einvoice']                                = 'Электронный счёт-фактура (e-Invoice)';
-$lang['settings_einvoice_templates']                            = 'Шаблоны e-Invoice';
-$lang['einvoice']                                               = 'Электронный счёт-фактура';
-$lang['settings_einvoice_default_template']                     = 'Шаблон e-Invoice по умолчанию';
-$lang['settings_einvoice_default_credit_note_template']         = 'Шаблон e-Invoice по умолчанию для кредит-ноты';
-$lang['settings_einvoice_send_as_invoice_email_attachment']     = 'Отправлять e-Invoice как вложение к письму со счётом';
-$lang['settings_einvoice_send_as_credit_note_email_attachment'] = 'Отправлять e-Invoice как вложение к письму с кредит-нотой';
-$lang['einvoice_new_template']                                  = 'Новый шаблон e-Invoice';
-$lang['einvoice_template_invalid_xml']                          = 'Введённый XML содержит ошибки. Пожалуйста, исправьте их.';
-$lang['einvoice_template_invalid_xml_on_submit']                = 'Неверный XML. Исправьте ошибки перед отправкой.';
-$lang['einvoice_template_invalid_json']                         = 'Введённый JSON содержит ошибки. Исправьте синтаксис JSON.';
-$lang['einvoice_template_invalid_mustache']                     = 'Шаблон содержит ошибочный синтаксис Mustache. Проверьте переменные шаблона.';
-$lang['xml_error']                                              = 'Ошибка XML';
-$lang['einvoice_no_template_set']                               = 'Не задан шаблон e-Invoice. Укажите шаблон в настройках.';
-$lang['einvoice_module_permission_bulk']                        = 'Массовый экспорт';
-$lang['einvoice_module_bulk_export']                            = 'Экспорт e-Invoice';
-$lang['template_type']                                          = 'Тип';
-$lang['template_variables']                                     = 'Переменные шаблона';
-$lang['validate_template']                                      = 'Проверить шаблон';
-$lang['validating']                                             = 'Проверка...';
-$lang['saving']                                                 = 'Сохранение...';
-$lang['template_validation_success']                            = 'Проверка шаблона прошла успешно!';
-$lang['template_content_required']                              = 'Необходимо указать содержимое шаблона.';
+# 3.4.0
+$lang['settings_group_einvoice']                                = 'e-Invoice';
+$lang['settings_einvoice_templates']                            = 'e-Invoice Templates';
+$lang['einvoice']                                               = 'e-Invoice';
+$lang['settings_einvoice_default_template']                     = 'Default e-Invoice template';
+$lang['settings_einvoice_default_credit_note_template']         = 'Default e-Invoice template for credit note';
+$lang['settings_einvoice_send_as_invoice_email_attachment']     = 'Send e-Invoice as invoice attachment with email';
+$lang['settings_einvoice_send_as_credit_note_email_attachment'] = 'Send e-Invoice as credit note attachment with email';
+$lang['einvoice_new_template']                          = 'New e-Invoice template';
+$lang['einvoice_template_invalid_xml']                  = 'The entered XML content is invalid. Please fix';
+$lang['einvoice_template_invalid_xml_on_submit']        = 'Invalid XML. Please correct errors before submitting.';
+$lang['einvoice_template_invalid_json']                 = 'The entered JSON content is invalid. Please fix the JSON syntax.';
+$lang['einvoice_template_invalid_mustache']             = 'The template contains invalid Mustache syntax. Please check your template variables.';
+$lang['xml_error']                                      = 'XML Error';
+$lang['einvoice_no_template_set']                       = 'No e-Invoice template set. Please set one in the settings.';
+$lang['einvoice_module_permission_bulk']                = 'Bulk export';
+$lang['einvoice_module_bulk_export']                    = 'e-Invoice Export';
+$lang['template_type']                        = 'Type';
+$lang['template_variables']                   = 'Template variables';
+$lang['validate_template']                    = 'Validate Template';
+$lang['validating']                           = 'Validating...';
+$lang['saving']                               = 'Saving...';
+$lang['template_validation_success']          = 'Template validation successful!';
+$lang['template_content_required']            = 'Template content is required.';
 
-$lang['item_is_optional']  = 'Этот элемент является необязательным';
-$lang['item_is_selected']  = 'Выбрано';
-$lang['note_title']        = 'Заголовок заметки';
-$lang['note_content']      = 'Содержание заметки';
-$lang['enabled_languages'] = 'Включённые языки';
+$lang['item_is_optional'] = 'This item is optional';
+$lang['item_is_selected'] = 'Selected';
+$lang['note_title'] = 'Note Title';
+$lang['note_content'] = 'Note Content';
+$lang['enabled_languages'] = 'Enabled Languages';
 
-$lang['csv_export']               = 'Экспорт CSV';
-$lang['csv_exports']              = 'Экспорты CSV';
-$lang['contacts']                 = 'Контакты';
-$lang['csv_export_select_type']   = 'Тип экспорта';
-$lang['csv_export_all_time']      = 'За всё время';
-$lang['csv_export_three_months']  = 'За последние 3 месяца';
-$lang['csv_export_six_months']    = 'За последние 6 месяцев';
-$lang['csv_export_twelve_months'] = 'За последние 12 месяцев';
-$lang['csv_export_from_date']     = 'С даты';
-$lang['csv_export_to_date']       = 'По дату';
-$lang['csv_export_button']        = 'Экспортировать';
-
-# 3.4.1
-$lang['clear_queue'] = 'Clear Queue';
-$lang['email_queue_cleared'] = 'Email queue cleared successfully';
-$lang['proposal_auto_convert_leads_to_client_on_client_accept'] = 'Auto convert leads to clients when proposal is accepted';
+$lang['csv_export'] = 'CSV Export';
+$lang['csv_exports'] = 'CSV Exports';
+$lang['contacts'] = 'Contacts';
+$lang['csv_export_select_type'] = 'Export Type';
+$lang['csv_export_all_time'] = 'All Time';
+$lang['csv_export_three_months'] = 'Last 3 Months';
+$lang['csv_export_six_months'] = 'Last 6 Months';
+$lang['csv_export_twelve_months'] = 'Last 12 Months';
+$lang['csv_export_from_date'] = 'From Date';
+$lang['csv_export_to_date'] = 'To Date';
+$lang['csv_export_button'] = 'Export';

@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'تدفُّق السحب على ال
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'اختر تجربة الدفع عبر Stripe التي تريد استخدامها للاشتراكات. يجمع وضع الإعداد طرق الدفع أولاً ثم ينشئ الاشتراكات. يعرض وضع الاشتراك تفاصيل الاشتراك أثناء السداد ويتولى تحصيل المدفوعات تلقائيًا.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'وضع الإعداد (قديم)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'وضع الاشتراك (موصى به)';
-$lang['perfex_saas_sync_all_packages'] = 'مزامنة الكل';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'يُرجى الاشتراك لإلغاء قفل تخصيص الحزمة.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'سيتم إعادة تعيين هذا العرض التوضيحي في %s. يرجى ملاحظة أنه سيتم مسح جميع البيانات المضافة وقد يتباطأ النظام للحظة.';

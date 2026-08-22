@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Flujo de pago de Stripe';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Elija qué experiencia de pago de Stripe desea utilizar para las suscripciones. El modo Configuración recopila primero los métodos de pago y luego crea las suscripciones. El modo Suscripción muestra los detalles de la suscripción durante el proceso de pago y gestiona el cobro automáticamente.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Modo Configuración (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Modo de suscripción (recomendado)';
-$lang['perfex_saas_sync_all_packages'] = 'Sincronizar todo';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Por favor, suscríbase para desbloquear la personalización del paquete.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Esta demo se reiniciará en %s. Tenga en cuenta que todos los datos añadidos se borrarán y el sistema puede ralentizarse durante un momento.';

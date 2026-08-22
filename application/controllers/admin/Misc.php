@@ -80,10 +80,88 @@ class Misc extends AdminController
 
     public function tinymce_file_browser()
     {
-        $data['connector']   = admin_url() . '/utilities/media_connector';
+        $data['connector']   = admin_url('utilities/media_connector');
         $data['mediaLocale'] = get_media_locale();
         $this->app_css->add('app-css', base_url($this->app_css->core_file('assets/css', 'style.css')) . '?v=' . $this->app_css->core_version(), 'editor-media');
         $this->load->view('admin/includes/elfinder_tinymce', $data);
+    }
+
+    /**
+     * Handle pasted image upload from TinyMCE editor.
+     * Saves the image to the media folder and returns the URL.
+     */
+    public function tinymce_paste_image_upload()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        if (empty($_FILES['file'])) {
+            echo json_encode(['error' => 'No file uploaded']);
+            return;
+        }
+
+        $file = $_FILES['file'];
+
+        // Validate mime type - only allow images
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'image/svg+xml'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime, $allowed_types)) {
+            echo json_encode(['error' => 'Invalid file type. Only images are allowed.']);
+            return;
+        }
+
+        $media_folder = $this->app->get_media_folder();
+        $upload_path = FCPATH . $media_folder;
+
+        // Create directory if it doesn't exist
+        if (!is_dir($upload_path)) {
+            mkdir($upload_path, 0755, true);
+        }
+
+        // For non-admin users, use their personal media folder
+        if (!is_admin()) {
+            $this->db->select('media_path_slug')
+                ->from(db_prefix() . 'staff')
+                ->where('staffid', get_staff_user_id());
+            $user = $this->db->get()->row();
+            if (!empty($user->media_path_slug)) {
+                $upload_path = $upload_path . '/' . $user->media_path_slug;
+                $media_folder = $media_folder . '/' . $user->media_path_slug;
+                if (!is_dir($upload_path)) {
+                    mkdir($upload_path, 0755, true);
+                }
+            }
+        }
+
+        // Generate unique filename
+        $ext = '';
+        $mime_to_ext = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/bmp'  => 'bmp',
+            'image/webp' => 'webp',
+            'image/svg+xml' => 'svg',
+        ];
+        if (isset($mime_to_ext[$mime])) {
+            $ext = $mime_to_ext[$mime];
+        } else {
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        }
+
+        $filename = 'paste_' . uniqid() . '_' . time() . '.' . $ext;
+        $destination = $upload_path . '/' . $filename;
+
+        if (move_uploaded_file($file['tmp_name'], $destination)) {
+            $url = site_url($media_folder . '/' . $filename);
+            echo json_encode(['location' => $url]);
+        } else {
+            echo json_encode(['error' => 'Failed to save uploaded file.']);
+        }
     }
 
     public function get_relation_data()

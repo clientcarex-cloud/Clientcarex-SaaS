@@ -474,7 +474,7 @@ $(function () {
       .prop("aria-expanded", true);
   }
 
-  // Check for setu menu active class
+  // Check for setup menu active class
   if (setup_menu.hasClass("display-block")) {
     var $linkSetupSidebarActive = setup_menu.find(
       'li > a[href="' + location + '"]'
@@ -489,6 +489,11 @@ $(function () {
         .parents("li")
         .find("a:first-child")
         .prop("aria-expanded", true);
+    } else if ($linkSidebarActive.length) {
+      // Active link is in the sidebar, not in setup menu — close setup menu
+      setup_menu.removeClass("display-block fadeInLeft fadeInRight");
+      setup_menu.addClass(isRTL == "true" ? "fadeOutRight" : "fadeOutLeft");
+      requestGet("misc/set_setup_menu_closed");
     }
   }
 
@@ -3860,13 +3865,17 @@ function logout() {
 
 // Init the media elfinder for tinymce browser
 function elFinderBrowser(callback, value, meta) {
-  tinymce.activeEditor.windowManager.elfinderCallback = callback
-  
   tinymce.activeEditor.windowManager.openUrl({
       url: admin_url + "misc/tinymce_file_browser",
       title: app.lang.media_files,
       width: 900,
       height: 450,
+      onMessage: function(api, data) {
+          if (data.mceAction === 'elFinderFile') {
+              callback(data.url);
+              api.close();
+          }
+      }
   });
   
   return false;
@@ -3887,8 +3896,20 @@ function init_editor(selector, settings) {
     }
   });
 
+  // Default text color of the editor canvas. TinyMCE ships no color of its own,
+  // so text ends up whatever the editor iframe inherits, which reads as a washed
+  // out black. Force a true black and reset it on the common containers as well,
+  // so older content that inherits a grey from a wrapper renders dark too.
+  // A color the user actually picked sits in an inline style on the element
+  // itself and still wins over these rules.
+  var _editor_default_color =
+    "body," +
+    "body p,body div,body td,body th,body li," +
+    "body h1,body h2,body h3,body h4,body h5,body h6{color:#000000;}";
+
   // Original settings
   var _settings = {
+    content_style: _editor_default_color,
     branding: false,
     promotion: false,
     selector: selector,
@@ -3909,7 +3930,7 @@ function init_editor(selector, settings) {
     removed_menuitems: "newdocument restoredraft",
     forced_root_block: "p",
     autosave_restore_when_empty: false,
-    font_size_formats: "8pt 10pt 12pt 14pt 18pt 24pt 36pt",
+    font_size_formats: "1px 2px 3px 4px 5px 6px 7px 8px 9px 10px 11px 12px 13px 14px 15px 16px 17px 18px 19px 20px",
     table_default_styles: {
       width: "100%",
     },
@@ -3921,6 +3942,35 @@ function init_editor(selector, settings) {
     toolbar: "fontfamily fontsize | forecolor backcolor | bold italic | alignleft aligncenter alignright alignjustify | image link | bullist numlist | restoredraft",
     contextmenu: "link image | paste copy",
     file_picker_callback : elFinderBrowser,
+    paste_data_images: true,
+    images_upload_handler: function (blobInfo, progress) {
+      return new Promise(function (resolve, reject) {
+        var formData = new FormData();
+        formData.append('file', blobInfo.blob(), blobInfo.filename());
+        if (typeof csrfData !== 'undefined') {
+          formData.append(csrfData['token_name'], csrfData['hash']);
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', admin_url + 'misc/tinymce_paste_image_upload');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onload = function () {
+          if (xhr.status !== 200) {
+            reject('HTTP Error: ' + xhr.status);
+            return;
+          }
+          var json = JSON.parse(xhr.responseText);
+          if (json && typeof json.location === 'string') {
+            resolve(json.location);
+          } else {
+            reject('Invalid response: ' + xhr.responseText);
+          }
+        };
+        xhr.onerror = function () {
+          reject('Upload failed due to a network error.');
+        };
+        xhr.send(formData);
+      });
+    },
     setup: function (ed) {
       // Default fontsize is 12
       ed.on("init", function () {
@@ -3938,10 +3988,13 @@ function init_editor(selector, settings) {
   // Possible settings passed to be overwrited or added
   if (typeof settings != "undefined") {
     for (var key in settings) {
-      if (key != "append_plugins") {
-        _settings[key] = settings[key];
-      } else {
+      if (key == "append_plugins") {
         _settings.plugins.push(settings[key]);
+      } else if (key == "content_style") {
+        // Keep the black default, the caller's own rules are appended after it
+        _settings.content_style = _editor_default_color + settings[key];
+      } else {
+        _settings[key] = settings[key];
       }
     }
   }
@@ -8805,7 +8858,16 @@ function init_ajax_search(type, selector, server_data, url) {
             value: processData[i].id,
             text: processData[i].name,
           };
-          if (processData[i].subtext) {
+          if (processData[i].rate !== undefined && processData[i].rate !== null) {
+            var rate = parseFloat(processData[i].rate);
+            var subtextHtml = processData[i].subtext ? ' | <small class=\'text-muted\'>' + processData[i].subtext + '</small>' : '';
+            tmp_data.data = {
+              content: '<div style=\'padding-right: 50px;\'>' +
+                '<span>' + processData[i].name + subtextHtml + '</span>' +
+                '<span style=\'position:absolute; right:15px; top:50%; transform:translateY(-50%); white-space:nowrap; font-weight:600; color:#28a745;\'>' + '₹' + rate.toFixed(2) + '</span>' +
+                '</div>'
+            };
+          } else if (processData[i].subtext) {
             tmp_data.data = {
               subtext: processData[i].subtext,
             };

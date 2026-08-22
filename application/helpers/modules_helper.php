@@ -256,7 +256,7 @@ function register_language_files($module, $languages = [])
             $file_path = $path . $file_name . '_lang' . '.php';
             if (file_exists($file_path)) {
                 $CI->lang->load($module . '/' . $file_name, $language);
-            } elseif ($language != 'english' && !file_exists($file_path)) {
+            } elseif ($language != 'english' && file_exists(APP_MODULES_PATH . $module . '/language/english/' . $file_name . '_lang' . '.php')) {
                 /**
                  * The module language is not yet translated nor exists in the language that the customer is using
                  * For this reason we will load the english language

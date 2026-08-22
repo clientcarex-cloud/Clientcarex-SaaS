@@ -49,10 +49,26 @@ class Authentication extends ClientsController
         $support_custom_domain_magic_login = get_option('perfex_saas_enable_cross_domain_bridge') == "1";
         $links = perfex_saas_tenant_base_url($company, '', 'all');
 
+        // On non-production hosts (detected via .env), force path-mode magic auth
+        // and rebuild the path URL from the current request origin to stay on this server.
+        $is_staging_host = $this->should_force_path_magic_auth();
+        if ($is_staging_host) {
+            $urlmode = 'path';
+        }
+
         if ($urlmode == 'all' || !isset($links[$urlmode])) {
             $urlmode = 'subdomain';
             if (!empty($links['custom_domain']) && $support_custom_domain_magic_login)
                 $urlmode = 'custom_domain';
+        }
+
+        // Rebuild path URL from the current server origin to ensure the redirect
+        // stays on this server and doesn't follow APP_BASE_URL_DEFAULT to another host.
+        if ($is_staging_host && $urlmode === 'path') {
+            $current_origin = (is_https() ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? '');
+            $slug = !empty($company->slug) ? perfex_saas_clean_slug($company->slug, 'url') : '';
+            $tenant_sig = perfex_saas_tenant_url_signature($slug);
+            $links['path'] = rtrim($current_origin, '/') . '/' . $tenant_sig . '/';
         }
 
         // Improve experience in newly created instance on cpanel/plesk that might not have subdomain SSL fully setup.
@@ -83,9 +99,48 @@ class Authentication extends ClientsController
 
         $query = 'billing/my_account/magic_auth?auth_code=' . urlencode($auth_code);
         if (!empty($redirect_query = $this->input->get('redirect', true)))
-            $query .= '&redirect=' . $redirect_query;
+            $query .= '&redirect=' . urlencode($redirect_query);
+
+        // Propagate CCX view-only flag through magic auth chain
+        if ($this->session->userdata('ccx_view_only_mode')) {
+            $query .= '&ccx_view_only=1';
+        } else {
+            // Explicitly signal edit mode to clear any stale view-only state on tenant
+            $query .= '&ccx_view_only=0';
+        }
 
         return redirect($redirect . $query);
+    }
+
+    /**
+     * Force path-based magic auth when the current host differs from the
+     * configured production base URL. This covers staging servers automatically
+     * without any hardcoded domain list — driven entirely by .env values.
+     */
+    private function should_force_path_magic_auth(): bool
+    {
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if ($host === '') {
+            return false;
+        }
+
+        $host = explode(':', $host, 2)[0];
+
+        // Method 1: Explicit staging hosts from env
+        if (function_exists('ccx_runtime_staging_hosts')) {
+            $stagingHosts = ccx_runtime_staging_hosts();
+            if (!empty($stagingHosts) && in_array($host, $stagingHosts, true)) {
+                return true;
+            }
+        }
+
+        // Method 2: If current host doesn't match APP_BASE_URL_DEFAULT host,
+        // we're on a non-production server (staging/dev) — force path mode.
+        $defaultHost = strtolower((string) parse_url(APP_BASE_URL_DEFAULT, PHP_URL_HOST));
+        $defaultHost = ltrim($defaultHost, 'www.');
+        $checkHost   = ltrim($host, 'www.');
+
+        return $checkHost !== '' && $defaultHost !== '' && $checkHost !== $defaultHost;
     }
 
     /**
@@ -107,8 +162,14 @@ class Authentication extends ClientsController
             // Determine the redirect URL or use a default if not provided
             $redirect = $this->input->get('redirect', true) ?? 'clients/my_account';
 
+            // Read unfiltered — the token is authenticated by decryption, and XSS
+            // cleaning would only risk mangling the ciphertext.
+            $actor = perfex_saas_parse_portal_actor_token($this->input->get('actor'));
+
             // If the client is already logged in with a magic code, redirect
-            if (is_client_logged_in() && $this->session->has_userdata('magic_auth')) {
+            if (is_client_logged_in() && $this->session->has_userdata('magic_code')) {
+                $this->store_portal_actor($actor, get_client_user_id());
+
                 return redirect($redirect);
             }
 
@@ -122,6 +183,7 @@ class Authentication extends ClientsController
 
             // Sign in as a client in Saas (i.e., superclient)
             login_as_client($contact->userid);
+            $this->store_portal_actor($actor, $clientid);
             $user_data = [
                 'magic_auth'       => [
                     'cross_domain' => (int)$this->input->get('cross_domain', true),
@@ -134,6 +196,29 @@ class Authentication extends ClientsController
         } catch (\Throwable $th) {
             perfex_saas_show_tenant_error(_l('perfex_saas_authentication_error'), $th->getMessage());
         }
+    }
+
+    /**
+     * Remember WHICH tenant staff member is behind this portal session.
+     *
+     * Everyone arriving over the bridge is signed in as the customer's primary
+     * contact, so this is the only trace of the real person; modules that record
+     * authorship (Pro Tickets) read it back from the session. Always (re)written
+     * — including to null — so one bridge hop can never inherit the identity of
+     * the previous one, and tagged with the customer it belongs to so a stale
+     * entry can never be applied to somebody else's portal session.
+     *
+     * @param array|null $actor
+     * @param int|string $clientid
+     * @return void
+     */
+    private function store_portal_actor($actor, $clientid)
+    {
+        if (is_array($actor)) {
+            $actor['clientid'] = (int) $clientid;
+        }
+
+        $this->session->set_userdata('perfex_saas_portal_actor', $actor);
     }
 
     /**
@@ -170,6 +255,19 @@ class Authentication extends ClientsController
 
             // Sign in as the current tenant instance's admin
             perfex_saas_tenant_admin_autologin();
+
+            // Propagate CCX view-only mode into tenant via cookie
+            $ccx_vo = $this->input->get('ccx_view_only');
+            if ($ccx_vo === '1' || $ccx_vo === '0') {
+                $this->load->helper('cookie');
+                set_cookie([
+                    'name'     => 'ccx_view_only',
+                    'value'    => $ccx_vo,
+                    'expire'   => 300, // 5 minutes — picked up by hook on first admin load
+                    'path'     => '/',
+                    'httponly'  => true,
+                ]);
+            }
 
             $redirect .=  (empty($redirect) ? '?' : '&') . '_magic_auth_session';
             return redirect(admin_url($redirect));

@@ -27,10 +27,6 @@
                         </div>
                     </div>
                     <?php echo form_close(); ?>
-                    <hr />
-                    <div class="relative" style="max-height:380px">
-                        <canvas class="leads-staff-report mtop20" height="380" id="leads-staff-report"></canvas>
-                    </div>
                 </div>
             </div>
         </div>
@@ -38,14 +34,6 @@
 </div>
 </div>
 <?php init_tail(); ?>
-<script>
-    window.onload = function(){
-        new Chart($('#leads-staff-report'),{
-            data:<?php echo $leads_staff_report; ?>,
-            type:'bar',
-            options:{responsive:true,maintainAspectRatio:false}
-        })
-    };
-</script>
+
 </body>
 </html>

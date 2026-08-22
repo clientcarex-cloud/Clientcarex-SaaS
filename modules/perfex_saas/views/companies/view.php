@@ -89,6 +89,144 @@
 
             </div>
         </div>
+
+        <?php if ($is_admin_and_not_impersonating_client) : ?>
+            <?php
+            // Current subscription + admin package-change panel
+            $subscription_invoice = null;
+            try {
+                $subscription_invoice = !empty($company->clientid) ? $this->perfex_saas_model->get_company_invoice($company->clientid) : null;
+            } catch (\Throwable $e) {
+                log_message('error', 'SaaS companies view: could not load subscription invoice: ' . $e->getMessage());
+            }
+            $current_package_id = $subscription_invoice->{perfex_saas_column('packageid')} ?? '';
+            $on_trial           = $subscription_invoice && function_exists('perfex_saas_invoice_is_on_trial') && perfex_saas_invoice_is_on_trial($subscription_invoice);
+
+            $available_packages = [];
+            if (!empty($company->clientid)) {
+                $available_packages = (array) $this->perfex_saas_model->packages_filter_by_assigned_client((array) $this->perfex_saas_model->packages(), $company->clientid, $current_package_id);
+            }
+
+            $subscription_change_log = array_reverse(array_values((array) ($company->metadata->subscription_change_log ?? [])));
+            ?>
+            <div class="panel_s">
+                <div class="panel-body">
+                    <h4 class="tw-mt-0 tw-font-semibold tw-text-base tw-text-neutral-700"><?= _l('perfex_saas_subscription'); ?></h4>
+
+                    <?php if ($subscription_invoice) : ?>
+                        <div class="form-group">
+                            <label><?= _l('perfex_saas_subscription_current_package'); ?></label>
+                            <p class="form-control-static">
+                                <strong><?= html_escape($subscription_invoice->name ?? '-'); ?></strong>
+                                — <?= app_format_money((float) ($subscription_invoice->price ?? 0), get_base_currency()); ?>
+                                <?php if ($on_trial) : ?>
+                                    <span class="label label-info tw-ml-2"><?= _l('perfex_saas_subscription_on_trial'); ?></span>
+                                <?php elseif (isset($subscription_invoice->status) && function_exists('format_invoice_status')) : ?>
+                                    <span class="tw-ml-2"><?= format_invoice_status((int) $subscription_invoice->status); ?></span>
+                                <?php endif; ?>
+                                <?php if (!empty($subscription_invoice->id) && empty($subscription_invoice->is_mock)) : ?>
+                                    <a href="<?= admin_url('invoices/list_invoices/' . $subscription_invoice->id); ?>" class="tw-ml-2" target="_blank"><?= format_invoice_number($subscription_invoice->id); ?></a>
+                                <?php endif; ?>
+                            </p>
+                        </div>
+                    <?php else : ?>
+                        <p class="text-muted"><?= _l('perfex_saas_subscription_none'); ?></p>
+                    <?php endif; ?>
+
+                    <?php if (!empty($company->clientid)) : ?>
+                        <button type="button" class="btn btn-info" data-toggle="modal" data-target="#subscription_change_modal">
+                            <?= _l('perfex_saas_change_subscription'); ?>
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if (!empty($subscription_change_log)) : ?>
+                        <hr />
+                        <label><?= _l('perfex_saas_subscription_change_log'); ?></label>
+                        <div class="tw-max-h-64 tw-overflow-y-auto">
+                            <table class="table table-condensed tw-text-xs">
+                                <thead>
+                                    <tr>
+                                        <th><?= _l('perfex_saas_date_created'); ?></th>
+                                        <th><?= _l('perfex_saas_subscription_from'); ?></th>
+                                        <th><?= _l('perfex_saas_subscription_to'); ?></th>
+                                        <th><?= _l('perfex_saas_subscription_changed_by'); ?></th>
+                                        <th><?= _l('invoice'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($subscription_change_log as $entry) : $entry = (object) $entry; ?>
+                                        <tr>
+                                            <td><?= html_escape($entry->date ?? '-'); ?></td>
+                                            <td><?= html_escape($entry->from_package ?? '-'); ?></td>
+                                            <td>
+                                                <?= html_escape($entry->to_package ?? '-'); ?>
+                                                <?php if (!empty($entry->pending_payment)) : ?>
+                                                    <span class="label label-warning"><?= _l('perfex_saas_subscription_pending_payment_label'); ?></span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= html_escape($entry->staff_name ?? '-'); ?></td>
+                                            <td>
+                                                <?php if (!empty($entry->invoice_id)) : ?>
+                                                    <a href="<?= admin_url('invoices/list_invoices/' . (int) $entry->invoice_id); ?>" target="_blank"><?= format_invoice_number((int) $entry->invoice_id); ?></a>
+                                                <?php else : ?>
+                                                    -
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                        <?php if (!empty($entry->note)) : ?>
+                                            <tr>
+                                                <td colspan="5" class="text-muted tw-italic"><?= html_escape($entry->note); ?></td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Change subscription modal -->
+            <div class="modal fade" id="subscription_change_modal" tabindex="-1" role="dialog">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <?php echo form_open(admin_url(PERFEX_SAAS_ROUTE_NAME . '/companies/change_subscription'), ['id' => 'subscription_change_form', 'onsubmit' => "return confirm('" . perfex_saas_ecape_js_attr(_l('perfex_saas_subscription_change_confirm')) . "');"]); ?>
+                        <?php echo form_hidden('company_id', $company->id); ?>
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <h4 class="modal-title"><?= _l('perfex_saas_change_subscription'); ?></h4>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning">
+                                <?= _l('perfex_saas_subscription_change_warning'); ?>
+                            </div>
+                            <div class="form-group select-placeholder">
+                                <label for="packageid"><?= _l('perfex_saas_subscription_new_package'); ?></label>
+                                <select name="packageid" id="packageid" class="selectpicker" data-live-search="true" data-width="100%" required
+                                    data-none-selected-text="<?= _l('dropdown_non_selected_tex'); ?>">
+                                    <option value=""></option>
+                                    <?php foreach ($available_packages as $p) : ?>
+                                        <?php if ((isset($p->status) && $p->status != '1') || $p->id == $current_package_id) continue; ?>
+                                        <option value="<?= $p->id; ?>">
+                                            <?= html_escape($p->name); ?> — <?= app_format_money((float) $p->price, get_base_currency()); ?><?= $p->is_private == '1' ? ' (' . _l('perfex_saas_private') . ')' : ''; ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="change_note"><?= _l('perfex_saas_subscription_change_note'); ?></label>
+                                <textarea name="change_note" id="change_note" class="form-control" rows="2" maxlength="500"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+                            <button type="submit" class="btn btn-info" data-loading-text="<?= _l('perfex_saas_saving...'); ?>" data-form="#subscription_change_form"><?= _l('perfex_saas_change_subscription'); ?></button>
+                        </div>
+                        <?php echo form_close(); ?>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 

@@ -1,8 +1,6 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 
-<div class="ps-alert-container">
-    <?php get_instance()->load->view('authentication/includes/alerts'); ?>
-</div>
+<?php get_instance()->load->view('authentication/includes/alerts'); ?>
 
 <?php
 $CI = &get_instance();

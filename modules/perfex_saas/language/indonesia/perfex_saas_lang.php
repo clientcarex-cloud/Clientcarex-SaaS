@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Alur Pembayaran Stripe';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Pilih pengalaman checkout Stripe mana yang akan digunakan untuk langganan. Mode pengaturan mengumpulkan metode pembayaran terlebih dahulu lalu membuat langganan. Mode langganan menampilkan detail langganan selama checkout dan menangani pengumpulan pembayaran secara otomatis.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Mode Pengaturan (Legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Mode Berlangganan (Direkomendasikan)';
-$lang['perfex_saas_sync_all_packages'] = 'Sinkronisasi Semua';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Silakan berlangganan untuk membuka kustomisasi paket.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Demo ini akan diatur ulang dalam %s. Harap diperhatikan bahwa semua data yang ditambahkan akan dihapus dan sistem mungkin akan melambat sejenak.';

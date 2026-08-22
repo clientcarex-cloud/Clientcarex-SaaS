@@ -226,7 +226,7 @@ class Perfex_saas_client extends ClientsController
     {
         $this->ensure_subscription_access();
 
-        $redirect_url = base_url('clients/' . (perfex_saas_is_single_package_mode() ? 'my_account' : '?subscription'));
+        $redirect_url = base_url('clients/' . perfex_saas_is_single_package_mode() ? 'my_account' : '?subscription');
 
         if (!(int)get_option('perfex_saas_allow_customer_cancel_subscription')) {
             return redirect($redirect_url);

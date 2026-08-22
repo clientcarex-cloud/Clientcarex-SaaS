@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Checkout Flow';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Velg hvilken Stripe-kasseopplevelse du vil bruke for abonnementer. Oppsettmodus samler først inn betalingsmetoder og oppretter deretter abonnementer. Abonnementsmodus viser abonnementsdetaljer i kassen og håndterer innsamling av betaling automatisk.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Oppsettmodus (eldre)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Abonnementsmodus (anbefalt)';
-$lang['perfex_saas_sync_all_packages'] = 'Synkroniser alle';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Abonner for å låse opp pakketilpasning.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Denne demoen vil tilbakestilles om %s. Vær oppmerksom på at alle data som er lagt til, vil bli slettet, og at systemet kan bli tregt i et øyeblikk.';

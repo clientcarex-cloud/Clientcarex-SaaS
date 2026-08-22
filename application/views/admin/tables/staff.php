@@ -33,7 +33,6 @@ if (count($custom_fields) > 4) {
     @$this->ci->db->query('SET SQL_BIG_SELECTS=1');
 }
 
-$join = hooks()->apply_filters('staff_table_sql_join', $join);
 $where = hooks()->apply_filters('staff_table_sql_where', []);
 
 $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, [

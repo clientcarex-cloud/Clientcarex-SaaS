@@ -661,6 +661,3 @@ $lang['perfex_saas_stripe_checkout_flow'] = 'Stripe Afrekenen Stroom';
 $lang['perfex_saas_stripe_checkout_flow_hint'] = 'Kies welke Stripe-afrekenervaring je wilt gebruiken voor abonnementen. De Setupmodus verzamelt eerst de betalingsmethoden en maakt vervolgens de abonnementen aan. De abonnementsmodus toont abonnementsgegevens tijdens het afrekenen en handelt het innen van betalingen automatisch af.';
 $lang['perfex_saas_stripe_checkout_flow_setup'] = 'Setupmodus (legacy)';
 $lang['perfex_saas_stripe_checkout_flow_subscription'] = 'Abonnementsmodus (aanbevolen)';
-$lang['perfex_saas_sync_all_packages'] = 'Alles synchroniseren';
-$lang['perfex_saas_subscribe_to_unlock_customization'] = 'Neem een abonnement om het aanpassen van pakketten te ontgrendelen.';
-$lang['perfex_saas_demo_reset_banner_message'] = 'Deze demo wordt gereset in %s. Let op: alle toegevoegde gegevens worden gewist en het systeem kan even trager worden.';

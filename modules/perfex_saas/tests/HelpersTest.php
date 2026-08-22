@@ -551,205 +551,94 @@ class HelpersTest extends PerfexSaasTest
     }
 
     /**
-     * Test perfex_saas_search_client_metadata field validation.
-     *
-     * $field is embedded in a JSON_EXTRACT path and cannot be parameterized.
-     * It must be rejected if it contains any characters outside [a-zA-Z0-9_].
-     *
-     * No database connection is required for these cases — the validation
-     * guard returns null before any query is built.
+     * Test for perfex_saas_safe_query helper for importing perfex sql file
      *
      * @return void
      */
-    public function testSearchClientMetadataFieldValidation()
+    public function testPerfexSaasSafeQuery()
     {
-        $cases = [
-            [
-                'field'    => "subscription_id",
-                'expected' => null,
-                'desc'     => 'Valid field name — query runs, returns null for non-existent data',
-            ],
-            [
-                'field'    => "field' OR '1'='1",
-                'expected' => null,
-                'desc'     => 'SQL injection via single quotes must return null (blocked by regex)',
-            ],
-            [
-                'field'    => "field) AND SLEEP(5)--",
-                'expected' => null,
-                'desc'     => 'Blind injection attempt must return null (blocked by regex)',
-            ],
-            [
-                'field'    => "../../../etc/passwd",
-                'expected' => null,
-                'desc'     => 'Path traversal characters must return null (blocked by regex)',
-            ],
-            [
-                'field'    => "field; DROP TABLE options--",
-                'expected' => null,
-                'desc'     => 'Statement stacking attempt must return null (blocked by regex)',
-            ],
-            [
-                'field'    => "",
-                'expected' => null,
-                'desc'     => 'Empty field must return null (blocked by regex)',
-            ],
-        ];
+        // Safe query
+        $safe_query = 'SELECT * FROM customers';
+        $safe_expected_result = $safe_query;
 
-        foreach ($cases as $case) {
-            $result = perfex_saas_search_client_metadata($case['field'], 'any_value', false);
-            $this->CI->unit->run(
-                $result,
-                $case['expected'],
-                $case['desc'],
-                $this->customTestNote($result, $case['expected'])
-            );
-        }
-    }
+        $safe_result = perfex_saas_safe_query($safe_query, 'current_database');
+        $this->CI->unit->run(
+            $safe_result,
+            $safe_expected_result,
+            'Safe Query Test',
+            $this->customTestNote($safe_result, $safe_expected_result)
+        );
 
-    /**
-     * Test perfex_saas_get_or_save_client_metadata with injection payloads.
-     *
-     * Verifies that SQL injection strings in $update_data values are stored
-     * as literal data (not executed) and retrieved correctly.
-     *
-     * Requires a live database. Uses clientid=0 so no real record is affected.
-     *
-     * @return void
-     */
-    public function testGetOrSaveClientMetadataInjectionSafety()
-    {
-        $injection_payloads = [
-            "normal_value",
-            "value'); DROP TABLE options; --",
-            "value' OR '1'='1",
-            '{"nested":"json","with":"quotes\'and\\"escapes"}',
-        ];
+        // Empty query
+        $empty_query = '';
+        $empty_query_expected_exception = Exception::class;
 
-        foreach ($injection_payloads as $payload) {
-            $exception_thrown = false;
-            $result           = null;
-
-            try {
-                // Use clientid=0: safe test value that won't collide with real data.
-                $result = perfex_saas_get_or_save_client_metadata(0, ['test_key' => $payload]);
-            } catch (\Throwable $e) {
-                $exception_thrown = true;
-            }
-
-            // The function must not throw — payload must be stored/handled silently.
-            $this->CI->unit->run(
-                $exception_thrown,
-                false,
-                'No exception thrown for payload: ' . substr($payload, 0, 40),
-                $this->customTestNote($exception_thrown, false)
-            );
-
-            // If a row was written, the returned metadata must contain the exact literal payload.
-            if (is_array($result) && isset($result['test_key'])) {
-                $this->CI->unit->run(
-                    $result['test_key'],
-                    $payload,
-                    'Payload stored as literal string (not executed): ' . substr($payload, 0, 40),
-                    $this->customTestNote($result['test_key'], $payload)
-                );
-            }
-        }
-    }
-
-    /**
-     * Test perfex_saas_update_option with injection payloads.
-     *
-     * Verifies that injection strings in $value are stored literally
-     * and do not mutate other rows or raise unhandled exceptions.
-     *
-     * Uses a dedicated test option key that is cleaned up after the test.
-     *
-     * @return void
-     */
-    public function testUpdateOptionInjectionSafety()
-    {
-        $test_key = 'perfex_saas_test_injection_key_' . time();
-        add_option($test_key);
-        $payloads = [
-            "safe_value",
-            "value', `name`='admin_key' WHERE '1'='1",
-            "value\"; UPDATE options SET value='hacked'--",
-        ];
-
-        foreach ($payloads as $payload) {
-            $exception_thrown = false;
-
-            try {
-                perfex_saas_update_option($test_key, $payload);
-            } catch (\Throwable $e) {
-                $exception_thrown = true;
-            }
-
-            $this->CI->unit->run(
-                $exception_thrown,
-                false,
-                'perfex_saas_update_option: no exception for payload: ' . substr($payload, 0, 40),
-                $this->customTestNote($exception_thrown, false)
-            );
-
-            // Verify the option stored is exactly the payload — no SQL leakage.
-            $stored = perfex_saas_get_options($test_key);
-            if ($stored !== null && $stored !== false) {
-                $this->CI->unit->run(
-                    $stored,
-                    $payload,
-                    'Option value stored as literal string: ' . substr($payload, 0, 40),
-                    $this->customTestNote($stored, $payload)
-                );
-            }
-        }
-
-        // Cleanup test key
         try {
-            perfex_saas_update_option($test_key, '');
-        } catch (\Throwable $e) {
+            perfex_saas_safe_query($empty_query, 'current_database');
+            $empty_query_result = 'No exception thrown';
+        } catch (Exception $e) {
+            $empty_query_result = get_class($e);
         }
-    }
 
-    /**
-     * Test perfex_saas_update_tenant_storage_size SQL injection safety.
-     *
-     * Uses a fake tenant object with a malicious slug and confirms that
-     * no exception is thrown (i.e. the parameterized query handles it).
-     *
-     * @return void
-     */
-    public function testUpdateTenantStorageSizeInjectionSafety()
-    {
-        $this->CI->load->helper(PERFEX_SAAS_MODULE_NAME . '/' . PERFEX_SAAS_MODULE_NAME . '_storage');
+        $this->CI->unit->run(
+            $empty_query_result,
+            $empty_query_expected_exception,
+            'Empty Query Test',
+            $this->customTestNote($empty_query_result, $empty_query_expected_exception)
+        );
 
-        $malicious_slugs = [
-            "tenant'; DROP TABLE " . perfex_saas_table('companies') . "; --",
-            "tenant' OR '1'='1",
-        ];
+        // Prohibited statements
+        $prohibited_query = 'DROP TABLE customers';
+        $prohibited_query_expected_exception = Exception::class;
 
-        foreach ($malicious_slugs as $slug) {
-            $fake_tenant           = new stdClass();
-            $fake_tenant->slug     = $slug;
-            $fake_tenant->metadata = (object)['storage' => (object)['total' => 0]];
-
-            $exception_thrown = false;
-
-            try {
-                // storage->total matches metadata->storage->total so no UPDATE fires —
-                // safe to run without touching real data.
-                perfex_saas_update_tenant_storage_size($fake_tenant);
-            } catch (\Throwable $e) {
-                $exception_thrown = true;
-            }
-
-            $this->CI->unit->run(
-                $exception_thrown,
-                false,
-                'updateTenantStorageSize: no exception for malicious slug: ' . substr($slug, 0, 40),
-                $this->customTestNote($exception_thrown, false)
-            );
+        try {
+            perfex_saas_safe_query($prohibited_query, 'current_database');
+            $prohibited_query_result = 'No exception thrown';
+        } catch (Exception $e) {
+            $prohibited_query_result = get_class($e);
         }
+
+        $this->CI->unit->run(
+            $prohibited_query_result,
+            $prohibited_query_expected_exception,
+            'Prohibited Statement Test',
+            $this->customTestNote($prohibited_query_result, $prohibited_query_expected_exception)
+        );
+
+        // SQL injection
+        $injection_query = "SELECT * FROM customers WHERE id = 1; DROP TABLE customers";
+        $injection_query_expected_exception = Exception::class;
+
+        try {
+            perfex_saas_safe_query($injection_query, 'current_database');
+            $injection_query_result = 'No exception thrown';
+        } catch (Exception $e) {
+            $injection_query_result = get_class($e);
+        }
+
+        $this->CI->unit->run(
+            $injection_query_result,
+            $injection_query_expected_exception,
+            'SQL Injection Test',
+            $this->customTestNote($injection_query_result, $injection_query_expected_exception)
+        );
+
+        // Dangerous SQL case
+        $dangerous_query = "DROP DATABASE current_database";
+        $dangerous_query_expected_exception = Exception::class;
+
+        try {
+            perfex_saas_safe_query($dangerous_query, 'current_database');
+            $dangerous_query_result = 'No exception thrown';
+        } catch (Exception $e) {
+            $dangerous_query_result = get_class($e);
+        }
+
+        $this->CI->unit->run(
+            $dangerous_query_result,
+            $dangerous_query_expected_exception,
+            'Dangerous SQL Case Test',
+            $this->customTestNote($dangerous_query_result, $dangerous_query_expected_exception)
+        );
     }
 }
