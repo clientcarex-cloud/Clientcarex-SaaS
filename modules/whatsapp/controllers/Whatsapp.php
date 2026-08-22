@@ -1310,8 +1310,14 @@ class Whatsapp extends AdminController
     public function unread_inbox()
     {
         // Read-only poll: hand the MySQL session row lock back straight away so
-        // this doesn't serialise the user's other in-flight AJAX calls.
-        ccx_release_session_lock();
+        // this doesn't serialise the user's other in-flight AJAX calls. The
+        // CCX helper is optional — it is not defined on every install, and an
+        // unguarded call fataled this endpoint (500) on every poll.
+        if (function_exists('ccx_release_session_lock')) {
+            ccx_release_session_lock();
+        } elseif (function_exists('session_write_close')) {
+            @session_write_close();
+        }
 
         header('Content-Type: application/json');
         header('Cache-Control: no-store, no-cache, must-revalidate');
