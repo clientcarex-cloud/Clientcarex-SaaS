@@ -11,6 +11,12 @@ Requires at least: 2.3.*
 
 define('CCX_MSGS_MODULE_NAME', 'ccx_msgs');
 
+// Reserved allocations row for THIS installation's own balance. The allocations
+// table lists clients (tenants) and `clients.userid` auto-increments from 1, so
+// 0 can never collide with a real client — messages sent from this account draw
+// on this row and it is surfaced separately, above the tenant table.
+defined('CCX_MSGS_SELF_CLIENT_ID') or define('CCX_MSGS_SELF_CLIENT_ID', 0);
+
 hooks()->add_action('admin_init', 'ccx_msgs_module_init_menu_items');
 hooks()->add_action('after_cron_run', 'ccx_msgs_cron_purge_old_logs');
 
