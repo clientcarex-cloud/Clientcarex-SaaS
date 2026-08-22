@@ -158,6 +158,53 @@ function env(string $key, string $default = ''): string
     return $default;
 }
 
+/* ------------------------------------------- CodeIgniter 3 decryption --- */
+
+/**
+ * Replicates CI3 Encryption::decrypt() for the openssl driver with the
+ * defaults this CRM uses (aes-128-cbc, sha512 HMAC, base64) so the page can
+ * tell "tenant DSN encrypted under another APP_ENC_KEY" apart from "tenant
+ * database unreachable". Nothing decrypted is printed except db name + host.
+ */
+function ci_hkdf(string $key, ?int $length, string $info): string
+{
+    $length = $length ?: 64;
+    $prk    = hash_hmac('sha512', $key, str_repeat("\0", 64), true);
+    $out    = '';
+    for ($block = '', $i = 1; strlen($out) < $length; $i++) {
+        $block = hash_hmac('sha512', $block . $info . chr($i), $prk, true);
+        $out  .= $block;
+    }
+
+    return substr($out, 0, $length);
+}
+
+/** @return string|false|null  false = HMAC mismatch (wrong key), null = malformed */
+function ci_decrypt(string $data, string $key)
+{
+    if ($key === '' || strlen($data) <= 128 || !function_exists('openssl_decrypt')) {
+        return null;
+    }
+    $hmac = substr($data, 0, 128);
+    $data = substr($data, 128);
+    if (!hash_equals(hash_hmac('sha512', $data, ci_hkdf($key, null, 'authentication')), $hmac)) {
+        return false;
+    }
+    $raw = base64_decode($data, true);
+    if ($raw === false || strlen($raw) <= 16) {
+        return null;
+    }
+    $plain = openssl_decrypt(
+        substr($raw, 16),
+        'aes-128-cbc',
+        ci_hkdf($key, strlen($key), 'encryption'),
+        OPENSSL_RAW_DATA,
+        substr($raw, 0, 16)
+    );
+
+    return $plain === false ? null : $plain;
+}
+
 /* --------------------------------------------------------------- gate --- */
 
 $expected = env('CCX_DEBUG_KEY', ACCESS_KEY);
@@ -360,7 +407,7 @@ if ($dbName === '' || $dbUser === '') {
 
             $res = @mysqli_query(
                 $link,
-                'SELECT `id`, `slug`, `name`, `status`, `custom_domain`, ' .
+                'SELECT `id`, `slug`, `name`, `status`, `custom_domain`, `dsn`, ' .
                 "(CASE WHEN `dsn` IS NULL OR `dsn` = '' THEN 0 ELSE 1 END) AS has_dsn " .
                 "FROM `$table` ORDER BY `id` DESC LIMIT 100"
             );
@@ -389,6 +436,70 @@ if ($dbError !== '') {
             $match['status'] === 'active' ? '' : 'Only "active" instances serve traffic.');
         row($match['has_dsn'] ? 'ok' : 'fail', 'Tenant DSN', $match['has_dsn'] ? 'stored' : 'EMPTY',
             $match['has_dsn'] ? '' : 'Without a DSN the instance cannot connect to its own database.');
+
+        if ($match['has_dsn']) {
+            // Keys to try: the one the CRM runs with, then the literal in app-config.php.
+            $keys   = [];
+            $envKey = env('APP_ENC_KEY');
+            if ($envKey !== '') {
+                $keys['the running APP_ENC_KEY (from ' . ($value_sources['APP_ENC_KEY'] ?? '?') . ')'] = $envKey;
+            }
+            $litKey = config_defaults()['APP_ENC_KEY'] ?? '';
+            if ($litKey !== '' && $litKey !== $envKey) {
+                $keys['the literal in app-config.php'] = $litKey;
+            }
+
+            $plain = null;
+            $with  = '';
+            foreach ($keys as $label => $k) {
+                $try = ci_decrypt((string) $match['dsn'], $k);
+                if (is_string($try) && $try !== '') {
+                    $plain = $try;
+                    $with  = $label;
+                    break;
+                }
+            }
+
+            if ($plain === null) {
+                row('fail', 'Tenant DSN decrypts', 'NO',
+                    'The stored DSN does not decrypt with ' . implode(' nor with ', array_keys($keys)) .
+                    '. It was encrypted under a different APP_ENC_KEY (or is corrupt). This is exactly what makes the ' .
+                    'instance answer 503 "This instance is currently being configured". Restore the key it was ' .
+                    'created with, or re-deploy the instance (its DSN is re-encrypted with the current key).');
+            } else {
+                $isCurrent = array_key_first($keys) === $with;
+                row($isCurrent ? 'ok' : 'fail', 'Tenant DSN decrypts', 'yes — with ' . $with,
+                    $isCurrent ? '' : 'but NOT with the key the CRM is running with, so the CRM answers 503. ' .
+                        'Set .env APP_ENC_KEY back to the value the instance was created with (or re-deploy it).');
+
+                $parts = [];
+                foreach (['host', 'dbname', 'user'] as $p) {
+                    if (preg_match('/(?:^|[:;])' . $p . '=([^;]*)/i', $plain, $m)) {
+                        $parts[$p] = $m[1];
+                    }
+                }
+                $pw = '';
+                if (($pos = stripos($plain, ';password=')) !== false) {
+                    $pw = rtrim(substr($plain, $pos + 10), ';');
+                }
+
+                if (!isset($parts['host'], $parts['dbname'], $parts['user'])) {
+                    row('fail', 'Tenant DSN format', 'unparseable',
+                        'Decrypted, but not of the form "mysqli:host=…;dbname=…;user=…;password=…".');
+                } else {
+                    $t = @mysqli_connect($parts['host'], $parts['user'], $pw, $parts['dbname']);
+                    if ($t) {
+                        row('ok', 'Tenant database', $parts['dbname'] . ' @ ' . $parts['host']);
+                        mysqli_close($t);
+                    } else {
+                        row('fail', 'Tenant database',
+                            $parts['dbname'] . ' @ ' . $parts['host'] . ' — ' . mysqli_connect_error(),
+                            'The tenant database/user does not exist on this server or the password is wrong ' .
+                            '(was it created on the other server?). Re-deploy the instance.');
+                    }
+                }
+            }
+        }
     }
 }
 
