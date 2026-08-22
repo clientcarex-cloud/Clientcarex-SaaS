@@ -123,7 +123,14 @@ function env(string $key, string $default = ''): string
     $map = env_map();
     $cfg = config_defaults();
 
-    foreach ([$key, str_replace('_DEFAULT', '', $key)] as $candidate) {
+    $candidates = array_unique([$key, str_replace('_DEFAULT', '', $key)]);
+
+    // Mirror app-config.php: app_env_value('X_DEFAULT', app_env_value('X', <literal>)).
+    // BOTH env names are tried before the config literal is considered —
+    // otherwise the X_DEFAULT literal in app-config.php wins over a perfectly
+    // good X in .env and the report blames a host/database the CRM is not
+    // actually using.
+    foreach ($candidates as $candidate) {
         if (isset($map[$candidate]) && $map[$candidate] !== '') {
             $value_sources[$key] = '.env';
 
@@ -136,7 +143,9 @@ function env(string $key, string $default = ''): string
 
             return $runtime;
         }
+    }
 
+    foreach ($candidates as $candidate) {
         if (isset($cfg[$candidate]) && $cfg[$candidate] !== '') {
             $value_sources[$key] = 'application/config/app-config.php';
 
@@ -252,6 +261,15 @@ row($masterHost === '' ? 'fail' : ($hostMatchesMaster ? 'ok' : 'warn'),
               $currentHost . ' are not recognised as tenants at all — they are matched against *.' . $masterHost . '.'));
 row('info', 'Base URL comes from', $value_sources['APP_BASE_URL_DEFAULT'] ?? 'not found');
 row(isset(env_map()['__FILE__']) ? 'info' : 'info', '.env file', env_map()['__FILE__'] ?? 'none (config literals used instead)');
+
+// Key NAMES only (never values). A readable .env that lacks APP_BASE_URL is the
+// usual reason the CRM silently runs on the literal defaults in app-config.php.
+$envKeys = array_values(array_filter(array_keys(env_map()), static fn ($k) => $k !== '__FILE__'));
+$hasBase = (bool) array_intersect(['APP_BASE_URL', 'APP_BASE_URL_DEFAULT'], $envKeys);
+row($envKeys === [] ? 'warn' : ($hasBase ? 'ok' : 'fail'), '.env keys present',
+    $envKeys === [] ? '(none)' : implode(', ', $envKeys),
+    $hasBase ? '' : 'APP_BASE_URL is missing from this .env, so the CRM runs on the literal default in ' .
+        'app-config.php. Add APP_BASE_URL=https://' . $currentHost . ' to it.');
 
 $slug = '';
 $mode = 'unknown — APP_BASE_URL_DEFAULT is not readable';
