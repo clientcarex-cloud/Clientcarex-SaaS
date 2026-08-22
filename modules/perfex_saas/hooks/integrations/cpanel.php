@@ -67,6 +67,28 @@ if (!function_exists('perfex_saas_get_cpanel')) {
     }
 }
 
+if (!function_exists('perfex_saas_cpanel_document_root')) {
+    /**
+     * Document root the tenant sub/addon domains must be pointed at.
+     *
+     * cPanel's addsubdomain/addaddondomain treat an EMPTY "dir" as "make one
+     * up", and create the vhost against a brand new, empty
+     * /public_html/<slug> folder. Apache then answers every request on that
+     * subdomain — including /admin/ — with its own plain "Not Found", because
+     * the CRM's index.php and .htaccess are not in that folder at all.
+     * Falling back to FCPATH (this installation's own web root) keeps the
+     * vhost pointed at the CRM when the setting was never filled in.
+     *
+     * @return string
+     */
+    function perfex_saas_cpanel_document_root()
+    {
+        $root_dir = trim((string) get_option('perfex_saas_cpanel_document_root'));
+
+        return $root_dir === '' ? FCPATH : $root_dir;
+    }
+}
+
 if (!function_exists('perfex_saas_cpanel_setup_tenant_db')) {
     /**
      * Create database and user for the tenant slug
@@ -239,7 +261,6 @@ hooks()->add_filter('perfex_saas_module_tenant_data_payload', function ($payload
     if ($new_domain !== $old_domain) {
 
         $cpanel = perfex_saas_get_cpanel();
-        $root_domain = perfex_saas_get_saas_default_host();
 
         if (!empty($old_domain)) {
             // Remove old custom domain
@@ -254,8 +275,10 @@ hooks()->add_filter('perfex_saas_module_tenant_data_payload', function ($payload
         // Create new addon entry
         if (!empty($new_domain)) {
             try {
-                $root_dir = get_option('perfex_saas_cpanel_document_root');
-                $cpanel->createAddonDomain($new_domain, $slug . 'addon', $root_domain, $root_dir);
+                // createAddonDomain() takes ($domain, $subdomain, $dir) — passing
+                // $root_domain third pointed the vhost at a "clientcarex.com"
+                // folder that does not exist, and the extra argument was dropped.
+                $cpanel->createAddonDomain($new_domain, $slug . 'addon', perfex_saas_cpanel_document_root());
             } catch (\Throwable $th) {
                 $payload['data']['custom_domain'] = '';
                 $payload['error'] = $th->getMessage();
@@ -277,7 +300,7 @@ hooks()->add_action('perfex_saas_module_tenant_deployed', function ($data) {
     if (!perfex_saas_cpanel_allowed_for_tenant($tenant)) return;
 
     $cpanel = perfex_saas_get_cpanel();
-    $root_dir = get_option('perfex_saas_cpanel_document_root');
+    $root_dir = perfex_saas_cpanel_document_root();
     $root_domain = perfex_saas_get_saas_default_host();
 
     $slug = $tenant->slug;
@@ -305,7 +328,7 @@ hooks()->add_action('perfex_saas_module_tenant_deployed', function ($data) {
     // Create custom domain as addon domain
     if (!empty($custom_domain) && $can_use_custom_domain) {
         try {
-            $cpanel->createAddonDomain($custom_domain, $slug . 'addon', $root_domain, $root_dir);
+            $cpanel->createAddonDomain($custom_domain, $slug . 'addon', $root_dir);
         } catch (\Throwable $th) {
             log_message('error', $th->getMessage());
             get_instance()->session->set_flashdata('message-danger', $th->getMessage());

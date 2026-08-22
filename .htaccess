@@ -33,6 +33,23 @@ RewriteRule (^|/)\.(?!well-known/) - [F,L]
 RewriteRule ^partials/ - [F,L]
 
 # ── 2) Marketing site (files live in /homepage) ──────────────────
+#
+# MASTER HOST ONLY. Tenant subdomains (acme.clientcarex.com) and tenant
+# custom domains share this document root, so without a host gate every
+# rule in this section fires for them too: a tenant opening their own
+# root URL would get the ClientcareX landing page instead of their CRM,
+# and /assets/… would be answered from /homepage/assets. Requests from
+# any other host skip straight to section 3 (CodeIgniter), which is what
+# the SaaS module needs in order to resolve the tenant from HTTP_HOST.
+#
+# Add hosts here (alternation, regex-escaped dots) if the marketing site
+# ever has to answer on another domain — e.g. a staging host.
+#
+# The flag marks TENANT hosts rather than master hosts on purpose: should a
+# server ever not honour the E= / %{ENV:} pair, the marketing rules simply
+# keep firing as they did before, instead of the landing page disappearing.
+RewriteCond %{HTTP_HOST} !^(www\.)?(clientcarex\.com|localhost)(:[0-9]+)?$ [NC]
+RewriteRule ^ - [E=CCX_TENANT_HOST:1]
 
 # Single job opening: /careers/{slug} → the marketing site's detail
 # page. /homepage holds no careers/ directory, so without this rule
@@ -42,14 +59,17 @@ RewriteRule ^partials/ - [F,L]
 # Underscores are excluded on purpose: careers/careers_api and
 # careers/careers_embed are the CRM's own public endpoints and must
 # keep reaching CodeIgniter.
+RewriteCond %{ENV:CCX_TENANT_HOST} !=1
 RewriteCond %{DOCUMENT_ROOT}/homepage/career.php -f
 RewriteRule ^careers/([A-Za-z0-9][A-Za-z0-9\-]*)/?$ homepage/career.php?j=$1 [L,QSA]
 
 # Root URL → marketing landing page. Prefer index.php, fall back to
 # the legacy index.html so the root never lands on the CRM login.
+RewriteCond %{ENV:CCX_TENANT_HOST} !=1
 RewriteCond %{DOCUMENT_ROOT}/homepage/index.php -f
 RewriteRule ^$ homepage/index.php [L]
 
+RewriteCond %{ENV:CCX_TENANT_HOST} !=1
 RewriteCond %{DOCUMENT_ROOT}/homepage/index.html -f
 RewriteRule ^$ homepage/index.html [L]
 
@@ -57,18 +77,21 @@ RewriteRule ^$ homepage/index.html [L]
 # sitemap.xml, robots.txt, api/plans.php, pricing.php, …
 # Real Perfex files fail the first -f check and fall through to
 # section 3, so the CRM keeps priority over its own paths.
+RewriteCond %{ENV:CCX_TENANT_HOST} !=1
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{DOCUMENT_ROOT}/homepage/$1 -f
 RewriteRule ^(.+)$ homepage/$1 [L]
 
 # Clean URL → .php page:  /pricing → /homepage/pricing.php
+RewriteCond %{ENV:CCX_TENANT_HOST} !=1
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{DOCUMENT_ROOT}/homepage/$1.php -f
 RewriteRule ^(.+?)/?$ homepage/$1.php [L]
 
 # Clean URL → .html page (kept for any page not yet migrated)
+RewriteCond %{ENV:CCX_TENANT_HOST} !=1
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{DOCUMENT_ROOT}/homepage/$1.html -f

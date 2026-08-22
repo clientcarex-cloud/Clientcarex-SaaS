@@ -40,7 +40,11 @@ class Integrations extends AdminController
                 $prefix
             );
 
-            $root_dir = get_option('perfex_saas_cpanel_document_root');
+            // An empty document root makes cPanel invent /public_html/<slug>, so
+            // the created vhost never reaches this installation. Mirror the
+            // fallback used when tenants are deployed.
+            $root_dir = trim((string) get_option('perfex_saas_cpanel_document_root'));
+            $root_dir = $root_dir === '' ? FCPATH : $root_dir;
             $primarydomain = $config['perfex_saas_cpanel_primary_domain'];
 
             //test creating subdomain and database and its removal
