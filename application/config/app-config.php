@@ -156,12 +156,12 @@ define('APP_DB_HOSTNAME_DEFAULT', app_env_value('APP_DB_HOSTNAME_DEFAULT', app_e
 /**
  * The username used to connect to the database
  */
-define('APP_DB_USERNAME_DEFAULT', app_env_value('APP_DB_USERNAME_DEFAULT', app_env_value('APP_DB_USERNAME', 'healtho_pro')));
+define('APP_DB_USERNAME_DEFAULT', app_env_value('APP_DB_USERNAME_DEFAULT', app_env_value('APP_DB_USERNAME', 'healtho_prodd')));
 
 /**
  * The password used to connect to the database
  */
-define('APP_DB_PASSWORD_DEFAULT', app_env_value('APP_DB_PASSWORD_DEFAULT', app_env_value('APP_DB_PASSWORD', '}ruz;b*35qw)#?SJ')));
+define('APP_DB_PASSWORD_DEFAULT', app_env_value('APP_DB_PASSWORD_DEFAULT', app_env_value('APP_DB_PASSWORD', '};b*35qw)#?SJ')));
 
 /**
  * The name of the database you want to connect to
