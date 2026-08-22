@@ -156,12 +156,45 @@ class Cpanel_api
     }
 
 
-    public function createSubdomain($subdomain, $rootdomain, $dir = '/public_html/', $disallowdot = 1)
+    /**
+     * Resolve the document root to hand to cPanel.
+     *
+     * Callers read the document root from an option that is very often empty
+     * (the settings screen only *displays* FCPATH as a placeholder, it does not
+     * store it until the tab is saved). An empty string still overrides a PHP
+     * default argument, so cPanel used to fall back to its own behaviour and
+     * point each new subdomain at an empty ~/public_html/<slug> folder, which
+     * serves a bare 404 instead of the CRM. Default to the current install.
+     *
+     * cPanel also resolves `dir` against the account home directory, so an
+     * absolute server path (FCPATH is one) can be re-rooted as
+     * /home/<account>/home/<account>/public_html. Strip the home directory
+     * prefix and pass the home-relative path cPanel expects.
+     *
+     * @param string $dir
+     * @return string
+     */
+    public static function normalizeDocumentRoot($dir)
+    {
+        $dir = rtrim(trim(str_replace('\\', '/', (string) $dir)), '/');
+
+        if ($dir === '') {
+            $dir = rtrim(str_replace('\\', '/', FCPATH), '/');
+        }
+
+        if (preg_match('~^/home\d*/[^/]+/(.+)$~', $dir, $matches)) {
+            $dir = $matches[1];
+        }
+
+        return '/' . trim($dir, '/') . '/';
+    }
+
+    public function createSubdomain($subdomain, $rootdomain, $dir = '', $disallowdot = 1)
     {
         $params = [
             'domain' => $subdomain,
             'rootdomain' => $rootdomain,
-            'dir' => $dir,
+            'dir' => self::normalizeDocumentRoot($dir),
             'disallowdot' => $disallowdot
         ];
 
@@ -177,13 +210,13 @@ class Cpanel_api
         return $this->makeAPICallv2('SubDomain', 'delsubdomain', $params);
     }
 
-    public function createAddonDomain($domain, $subdomain, $dir = '/public_html/')
+    public function createAddonDomain($domain, $subdomain, $dir = '')
     {
 
         $params = [
             'newdomain' => $domain,
             'subdomain' => $subdomain,
-            'dir' => $dir,
+            'dir' => self::normalizeDocumentRoot($dir),
         ];
 
         return $this->makeAPICallv2('AddonDomain', 'addaddondomain', $params);

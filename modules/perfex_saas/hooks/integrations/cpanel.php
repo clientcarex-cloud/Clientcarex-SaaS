@@ -255,7 +255,7 @@ hooks()->add_filter('perfex_saas_module_tenant_data_payload', function ($payload
         if (!empty($new_domain)) {
             try {
                 $root_dir = get_option('perfex_saas_cpanel_document_root');
-                $cpanel->createAddonDomain($new_domain, $slug . 'addon', $root_domain, $root_dir);
+                $cpanel->createAddonDomain($new_domain, $slug . 'addon', $root_dir);
             } catch (\Throwable $th) {
                 $payload['data']['custom_domain'] = '';
                 $payload['error'] = $th->getMessage();
@@ -305,7 +305,7 @@ hooks()->add_action('perfex_saas_module_tenant_deployed', function ($data) {
     // Create custom domain as addon domain
     if (!empty($custom_domain) && $can_use_custom_domain) {
         try {
-            $cpanel->createAddonDomain($custom_domain, $slug . 'addon', $root_domain, $root_dir);
+            $cpanel->createAddonDomain($custom_domain, $slug . 'addon', $root_dir);
         } catch (\Throwable $th) {
             log_message('error', $th->getMessage());
             get_instance()->session->set_flashdata('message-danger', $th->getMessage());

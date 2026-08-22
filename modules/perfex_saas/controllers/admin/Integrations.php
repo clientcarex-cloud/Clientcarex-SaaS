@@ -40,7 +40,9 @@ class Integrations extends AdminController
                 $prefix
             );
 
-            $root_dir = get_option('perfex_saas_cpanel_document_root');
+            // Test what the admin typed, not only what was last saved.
+            $root_dir = $config['perfex_saas_cpanel_document_root']
+                ?? get_option('perfex_saas_cpanel_document_root');
             $primarydomain = $config['perfex_saas_cpanel_primary_domain'];
 
             //test creating subdomain and database and its removal
