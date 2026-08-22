@@ -1,0 +1,82 @@
+AddDefaultCharset utf-8
+
+# ── Deny web access to dotfiles: .env, .git/, .user.ini … ────────
+# Without this the CRM's .env (DB password + APP_ENC_KEY) is
+# downloadable, because it is a real file at the web root and so
+# never reaches any rewrite below.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# ── 0) Pass the HTTP Authorization header through to PHP ─────────
+# Some FastCGI / LiteSpeed setups drop the Authorization header before it
+# reaches PHP. API endpoints that authenticate via that header (e.g.
+# /saas/api/*) then see an EMPTY credential and reject every request with
+# "Invalid credential". Re-expose it as $_SERVER['HTTP_AUTHORIZATION'].
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# ── 1) Hard blocks ───────────────────────────────────────────────
+
+# Dotfiles and dot-directories (.env, .git/…), except ACME/well-known.
+RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
+# The marketing site's shared includes are never requested directly.
+RewriteRule ^partials/ - [F,L]
+
+# ── 2) Marketing site (files live in /homepage) ──────────────────
+
+# Single job opening: /careers/{slug} → the marketing site's detail
+# page. /homepage holds no careers/ directory, so without this rule
+# the request falls through to section 3 and CodeIgniter answers it
+# (the ccx_hiring module claims careers/(:any)) with a 404 — every
+# opening link, and every Google Jobs result, would be dead.
+# Underscores are excluded on purpose: careers/careers_api and
+# careers/careers_embed are the CRM's own public endpoints and must
+# keep reaching CodeIgniter.
+RewriteCond %{DOCUMENT_ROOT}/homepage/career.php -f
+RewriteRule ^careers/([A-Za-z0-9][A-Za-z0-9\-]*)/?$ homepage/career.php?j=$1 [L,QSA]
+
+# Root URL → marketing landing page. Prefer index.php, fall back to
+# the legacy index.html so the root never lands on the CRM login.
+RewriteCond %{DOCUMENT_ROOT}/homepage/index.php -f
+RewriteRule ^$ homepage/index.php [L]
+
+RewriteCond %{DOCUMENT_ROOT}/homepage/index.html -f
+RewriteRule ^$ homepage/index.html [L]
+
+# Exact file in /homepage: styles.css, script.js, assets/…, js/…,
+# sitemap.xml, robots.txt, api/plans.php, pricing.php, …
+# Real Perfex files fail the first -f check and fall through to
+# section 3, so the CRM keeps priority over its own paths.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/homepage/$1 -f
+RewriteRule ^(.+)$ homepage/$1 [L]
+
+# Clean URL → .php page:  /pricing → /homepage/pricing.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/homepage/$1.php -f
+RewriteRule ^(.+?)/?$ homepage/$1.php [L]
+
+# Clean URL → .html page (kept for any page not yet migrated)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/homepage/$1.html -f
+RewriteRule ^(.+?)/?$ homepage/$1.html [L]
+
+# ── 3) Perfex CRM (CodeIgniter) — everything else ────────────────
+RewriteCond $1 !^(index\.php|resources|robots\.txt|homepage)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?/$1 [L,QSA]
+</IfModule>
