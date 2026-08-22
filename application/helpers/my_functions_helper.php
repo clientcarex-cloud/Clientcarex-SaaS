@@ -327,12 +327,12 @@ function ccx_login_frontend_assets()
                 } else {
                      // Default placeholder if all ads hidden
                      adsContainer.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
-                     adsContainer.innerHTML = '<div style="color:white; font-size: 2rem; font-weight: bold; opacity: 0.8;">Welcome to HealthO Pro</div>';
+                     adsContainer.innerHTML = '<div style="color:white; font-size: 2rem; font-weight: bold; opacity: 0.8;">Welcome to Clientcarex</div>';
                 }
             } else {
                 // Default placeholder if no ads
                  adsContainer.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
-                 adsContainer.innerHTML = '<div style="color:white; font-size: 2rem; font-weight: bold; opacity: 0.8;">Welcome to HealthO Pro</div>';
+                 adsContainer.innerHTML = '<div style="color:white; font-size: 2rem; font-weight: bold; opacity: 0.8;">Welcome to Clientcarex</div>';
             }
             
             // Move footer into form wrapper or keep fixed at bottom left

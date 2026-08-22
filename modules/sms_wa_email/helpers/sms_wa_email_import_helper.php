@@ -168,7 +168,7 @@ function sms_wa_email_import_content_key($content)
 
 /**
  * Drop the brand sign-off DLT templates almost always end with
- * ("… do not share. - HealthO Pro"), so it never colours the generated title.
+ * ("… do not share. - Clientcarex"), so it never colours the generated title.
  */
 function sms_wa_email_import_strip_signature($text)
 {

@@ -125,7 +125,7 @@
     </div>
     <div class="ccx-branding-container" id="ccxBrandingTrigger">
         <span>Powered by</span>
-        <img src="<?php echo base_url('modules/ccx_login/assets/images/healtho_logo.png'); ?>" alt="HealthO">
+        <img src="<?php echo base_url('modules/ccx_login/assets/images/healtho_logo.png'); ?>" alt="Clientcarex">
 
         <div class="ccx-healtho-card" id="ccxHealthoCard">
             <h5>Get our service for your Healthcare Brand</h5>

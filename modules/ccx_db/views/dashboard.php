@@ -841,7 +841,7 @@
                     <h4><i class="fa fa-cloud"></i> Step 1 — Create Project &amp; Enable the Drive API</h4>
                     <ol>
                         <li>Open the <a href="https://console.cloud.google.com" target="_blank" rel="noopener">Google Cloud Console <i class="fa fa-external-link"></i></a> and sign in with the Google account whose Drive will store the backups.</li>
-                        <li>In the top bar, click the <strong>project dropdown</strong> &rarr; <strong>New Project</strong> &rarr; name it (e.g. <code>HealthO Backups</code>) &rarr; <strong>Create</strong>, then select it.</li>
+                        <li>In the top bar, click the <strong>project dropdown</strong> &rarr; <strong>New Project</strong> &rarr; name it (e.g. <code>Clientcarex Backups</code>) &rarr; <strong>Create</strong>, then select it.</li>
                         <li>Go to <strong>APIs &amp; Services &rarr; Library</strong>, search for <strong>Google Drive API</strong> and click <strong>Enable</strong>.</li>
                     </ol>
                     <div class="alert alert-info" style="font-size:12px;"><i class="fa fa-info-circle"></i> Use a dedicated Google account (or your company account) — all backups will be uploaded to <strong>this account's Drive</strong>.</div>
@@ -853,7 +853,7 @@
                     <ol>
                         <li>Go to <strong>APIs &amp; Services &rarr; OAuth consent screen</strong> (also called <em>Google Auth Platform</em>).</li>
                         <li>User type: <strong>External</strong> &rarr; Create.</li>
-                        <li>Fill only the required fields: <strong>App name</strong> (e.g. <code>HealthO Backup</code>), your <strong>support email</strong> and <strong>developer email</strong> &rarr; Save through the remaining steps.</li>
+                        <li>Fill only the required fields: <strong>App name</strong> (e.g. <code>Clientcarex Backup</code>), your <strong>support email</strong> and <strong>developer email</strong> &rarr; Save through the remaining steps.</li>
                         <li>After creating it, click <strong>Publish App</strong> so the status becomes <strong>In production</strong>.</li>
                     </ol>
                     <div class="alert alert-warning" style="font-size:12px;">
@@ -866,7 +866,7 @@
                     <h4><i class="fa fa-key"></i> Step 3 — Create the OAuth Client ID</h4>
                     <ol>
                         <li>Go to <strong>APIs &amp; Services &rarr; Credentials &rarr; + Create Credentials &rarr; OAuth client ID</strong>.</li>
-                        <li>Application type: <strong>Web application</strong>. Name: anything (e.g. <code>HealthO Backup Client</code>).</li>
+                        <li>Application type: <strong>Web application</strong>. Name: anything (e.g. <code>Clientcarex Backup Client</code>).</li>
                         <li>Under <strong>Authorized redirect URIs</strong> click <strong>+ Add URI</strong> and paste exactly (no trailing slash):</li>
                     </ol>
                     <div class="input-group gdrive-copy-group">
@@ -906,7 +906,7 @@
                 <div class="gdrive-guide-step" data-step="5">
                     <h4><i class="fa fa-folder-open"></i> Step 5 — Get the Drive Folder ID</h4>
                     <ol>
-                        <li>In <a href="https://drive.google.com" target="_blank" rel="noopener">Google Drive <i class="fa fa-external-link"></i></a>, create a folder for the backups (e.g. <code>HealthO-DB-Backups</code>).</li>
+                        <li>In <a href="https://drive.google.com" target="_blank" rel="noopener">Google Drive <i class="fa fa-external-link"></i></a>, create a folder for the backups (e.g. <code>Clientcarex-DB-Backups</code>).</li>
                         <li>Open the folder and look at the browser address bar:<br><code>https://drive.google.com/drive/folders/<strong style="background:#fff3cd;">1AbCdEfGh_xxxxxxxx</strong></code></li>
                         <li>The highlighted part after <code>/folders/</code> is the <strong>Folder ID</strong> — copy it.</li>
                     </ol>

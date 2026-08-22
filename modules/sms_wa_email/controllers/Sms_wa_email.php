@@ -624,9 +624,9 @@ class Sms_wa_email extends AdminController
         $out = fopen('php://output', 'w');
         fprintf($out, "\xEF\xBB\xBF");
         fputcsv($out, ['message', 'sender_id', 'approved_message']);
-        fputcsv($out, ['1107161234567890', 'HLTHO', 'Dear {#var#}, your appointment with {#var#} is confirmed for {#var#}. - HealthO Pro']);
-        fputcsv($out, ['1107161234567891', 'HLTHO', 'Dear {#var#}, your lab report is ready. Download it here: {#var#} - HealthO Pro']);
-        fputcsv($out, ['1107161234567892', '123456', 'Dear {#var#}, get 20% off on our full body check-up package this month. Call {#var#} to book. - HealthO Pro']);
+        fputcsv($out, ['1107161234567890', 'HLTHO', 'Dear {#var#}, your appointment with {#var#} is confirmed for {#var#}. - Clientcarex']);
+        fputcsv($out, ['1107161234567891', 'HLTHO', 'Dear {#var#}, your lab report is ready. Download it here: {#var#} - Clientcarex']);
+        fputcsv($out, ['1107161234567892', '123456', 'Dear {#var#}, get 20% off on our full body check-up package this month. Call {#var#} to book. - Clientcarex']);
         fclose($out);
         exit;
     }

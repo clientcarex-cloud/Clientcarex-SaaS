@@ -20,7 +20,7 @@
 
                             <div class="crs-field">
                                 <label class="crs-label">Public careers page URL</label>
-                                <input type="url" name="careers_site_url" class="crs-input" placeholder="https://healtho.pro/careers"
+                                <input type="url" name="careers_site_url" class="crs-input" placeholder="https://clientcarex.com/careers"
                                        value="<?= html_escape((string) careers_opt('careers_site_url')); ?>">
                                 <div class="crs-hint">Used for the "view live" links here and for the job links in candidate emails.</div>
                             </div>
@@ -36,7 +36,7 @@
                     <!-- ── Embed widget ── -->
                     <?php
                     $embed_js      = site_url('careers/careers_embed/js');
-                    $embed_snippet = '<!-- HealthO Careers — live openings -->' . "\n"
+                    $embed_snippet = '<!-- Clientcarex Careers — live openings -->' . "\n"
                         . '<div data-careers-embed></div>' . "\n"
                         . '<script src="' . $embed_js . '" async></script>';
                     $embed_iframe  = '<iframe src="' . site_url('careers/careers_embed/page')
@@ -97,7 +97,7 @@
                             <div class="crs-field">
                                 <label class="crs-label">Restrict to these domains</label>
                                 <input type="text" name="careers_embed_domains" class="crs-input"
-                                       placeholder="healtho.pro, careers.partner.com — leave empty to allow any site"
+                                       placeholder="clientcarex.com, careers.partner.com — leave empty to allow any site"
                                        value="<?= html_escape((string) careers_opt('careers_embed_domains')); ?>">
                                 <div class="crs-hint">Only the openings you publish are ever exposed, so leaving this empty is safe.</div>
                             </div>

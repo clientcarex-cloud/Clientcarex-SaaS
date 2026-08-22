@@ -10,8 +10,8 @@ if (perfex_saas_is_tenant()) {
 
     /**
      * Redirect tenant root URL to admin dashboard.
-     * When users visit surya.healtho.pro, they should land on surya.healtho.pro/admin
-     * instead of the default clients portal (healtho.pro website).
+     * When users visit surya.clientcarex.com, they should land on surya.clientcarex.com/admin
+     * instead of the default clients portal (clientcarex.com website).
      */
     $route['default_controller'] = 'admin/dashboard';
     $route['/'] = 'admin/dashboard';
@@ -93,7 +93,7 @@ if (!perfex_saas_is_tenant()) {
     } else {
         /**
          * Custom Homepage for Master Account
-         * Serve homepage/index.html directly at the root URL (healtho.pro/)
+         * Serve homepage/index.html directly at the root URL (clientcarex.com/)
          */
         if (isset($_SERVER['REQUEST_URI'])) {
             $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);

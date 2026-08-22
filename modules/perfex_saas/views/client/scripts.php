@@ -35,7 +35,7 @@ const appFormatMoney = new AppFormatMoney({
 </script>
 <link rel="stylesheet" type="text/css" href="<?= perfex_saas_asset_url('css/client.css'); ?>" />
 
-<!-- HealthO Pro AI theme for all client portal pages (matches Pro AI Chat "Ask AI") -->
+<!-- Clientcarex AI theme for all client portal pages (matches Pro AI Chat "Ask AI") -->
 <style>
 :root {
     --hp-primary: #1E3D7B;

@@ -78,7 +78,7 @@ foreach ($setup_menu as $key => $item) {
         <?php if (get_option('show_help_on_setup_menu') == 1 && is_admin()) {
             $totalSetupMenuItems++; ?>
         <li>
-            <a href="<?= hooks()->apply_filters('help_menu_item_link', 'https://help.healtho.pro'); ?>"
+            <a href="<?= hooks()->apply_filters('help_menu_item_link', 'https://help.clientcarex.com'); ?>"
                 target="_blank">
                 <?= hooks()->apply_filters('help_menu_item_text', _l('setup_help')); ?>
             </a>

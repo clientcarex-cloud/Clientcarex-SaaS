@@ -101,7 +101,7 @@ class Transcriptor_public extends CI_Controller
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Link Expired — HealthO Pro</title>
+    <title>Link Expired — Clientcarex</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -153,7 +153,7 @@ class Transcriptor_public extends CI_Controller
         <h1>Download Link Expired</h1>
         <p>This report link was valid for <strong>24 hours</strong> and has now expired.</p>
         <p style="margin-top: 10px;">Please contact the lab to request a new download link.</p>
-        <span class="badge">HealthO Pro — Secure Reports</span>
+        <span class="badge">Clientcarex — Secure Reports</span>
     </div>
 </body>
 </html>';

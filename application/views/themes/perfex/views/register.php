@@ -1,7 +1,7 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 
 <!-- ═══════════════════════════════════════════════════════════════
-     MODERN REGISTRATION PAGE — HealthO Pro (Two-Step Wizard v3)
+     MODERN REGISTRATION PAGE — Clientcarex (Two-Step Wizard v3)
      Step 1: Profile & Organisation   |   Step 2: Verification
      ═══════════════════════════════════════════════════════════════ -->
 <style>
@@ -811,7 +811,7 @@ body.register .iti input.iti__search-input:focus {
                 <?= get_dark_company_logo(); ?>
             </div>
             <h1>Create Your Account</h1>
-            <p>Get started with HealthO Pro in minutes</p>
+            <p>Get started with Clientcarex in minutes</p>
         </div>
 
         <!-- ── Stepper ── -->

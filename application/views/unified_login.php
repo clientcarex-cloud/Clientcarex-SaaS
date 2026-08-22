@@ -435,7 +435,7 @@
                     <p>Select an organization to continue</p>
                 <?php } else { ?>
                     <h1>Welcome Back</h1>
-                    <p>Sign in to your HealthO Pro Staff Portal</p>
+                    <p>Sign in to your Clientcarex Staff Portal</p>
                 <?php } ?>
             </div>
 
@@ -468,7 +468,7 @@
                                     </div>
                                     <div class="tenant-details">
                                         <h3><?php echo htmlspecialchars($match['company']->name); ?></h3>
-                                        <p><?php echo htmlspecialchars($match['company']->slug); ?>.healtho.pro</p>
+                                        <p><?php echo htmlspecialchars($match['company']->slug); ?>.clientcarex.com</p>
                                     </div>
                                 </div>
                                 <i class="fa fa-chevron-right"></i>

@@ -117,7 +117,7 @@ h1.poll-title{font-size:clamp(22px,3.4vw,34px);font-weight:900;line-height:1.25;
         </div>
     </div>
 
-    <div class="footer">Live voting powered by <?php echo html_escape($company ?: 'HealthO'); ?></div>
+    <div class="footer">Live voting powered by <?php echo html_escape($company ?: 'Clientcarex'); ?></div>
 </div>
 
 <script>

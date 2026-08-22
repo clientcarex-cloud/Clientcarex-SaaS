@@ -82,7 +82,7 @@ h1.poll-title{font-size:clamp(19px,5vw,24px);font-weight:900;line-height:1.28;ma
 
     <div class="card" id="stage"></div>
 
-    <div class="footer">Live voting powered by <?php echo html_escape($company ?: 'HealthO'); ?></div>
+    <div class="footer">Live voting powered by <?php echo html_escape($company ?: 'Clientcarex'); ?></div>
 </div>
 
 <script>

@@ -1,14 +1,14 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * Shared chrome for the HealthO Pro dashboard widgets (Todo, Pro Tickets,
+ * Shared chrome for the Clientcarex dashboard widgets (Todo, Pro Tickets,
  * Mailbox, Caller). Every module ships an identical copy so any widget can
  * render first; the HPW_DASHBOARD_BASE constant guarantees the styles and
  * the Chart.js loader are emitted only once per page.
  */
 ?>
 <?php if (!defined('HPW_DASHBOARD_BASE')) { define('HPW_DASHBOARD_BASE', 1); ?>
-<!-- ── Shared base for HealthO Pro dashboard widgets (emitted once per page) ── -->
+<!-- ── Shared base for Clientcarex dashboard widgets (emitted once per page) ── -->
 <style>
 .hpw-col{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;}
 .hpw-card{background:#fff;border:1px solid #e9e9f2;border-radius:16px;box-shadow:0 1px 2px rgba(15,15,35,.04),0 10px 28px -20px rgba(15,15,35,.28);margin-bottom:22px;overflow:hidden;}
