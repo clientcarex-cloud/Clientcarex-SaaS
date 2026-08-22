@@ -33,6 +33,17 @@ RewriteRule (^|/)\.(?!well-known/) - [F,L]
 RewriteRule ^partials/ - [F,L]
 
 # ── 2) Marketing site (files live in /homepage) ──────────────────
+#
+# Host-scoped on purpose. Every tenant subdomain (and every custom
+# domain) shares this document root, so without the guard below a
+# tenant visiting https://<slug>.clientcarex.com/ gets rewritten to
+# homepage/index.php and lands on the marketing site instead of their
+# CRM login. Only the master host may see /homepage; everything else
+# falls through to CodeIgniter in section 3, which resolves the tenant
+# from HTTP_HOST.
+RewriteCond %{HTTP_HOST} ^(www\.)?clientcarex\.com$ [NC]
+RewriteRule .* - [E=CCX_MASTER_HOST:1]
+
 
 # Single job opening: /careers/{slug} → the marketing site's detail
 # page. /homepage holds no careers/ directory, so without this rule
@@ -42,14 +53,17 @@ RewriteRule ^partials/ - [F,L]
 # Underscores are excluded on purpose: careers/careers_api and
 # careers/careers_embed are the CRM's own public endpoints and must
 # keep reaching CodeIgniter.
+RewriteCond %{ENV:CCX_MASTER_HOST} =1
 RewriteCond %{DOCUMENT_ROOT}/homepage/career.php -f
 RewriteRule ^careers/([A-Za-z0-9][A-Za-z0-9\-]*)/?$ homepage/career.php?j=$1 [L,QSA]
 
 # Root URL → marketing landing page. Prefer index.php, fall back to
 # the legacy index.html so the root never lands on the CRM login.
+RewriteCond %{ENV:CCX_MASTER_HOST} =1
 RewriteCond %{DOCUMENT_ROOT}/homepage/index.php -f
 RewriteRule ^$ homepage/index.php [L]
 
+RewriteCond %{ENV:CCX_MASTER_HOST} =1
 RewriteCond %{DOCUMENT_ROOT}/homepage/index.html -f
 RewriteRule ^$ homepage/index.html [L]
 
@@ -57,18 +71,21 @@ RewriteRule ^$ homepage/index.html [L]
 # sitemap.xml, robots.txt, api/plans.php, pricing.php, …
 # Real Perfex files fail the first -f check and fall through to
 # section 3, so the CRM keeps priority over its own paths.
+RewriteCond %{ENV:CCX_MASTER_HOST} =1
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{DOCUMENT_ROOT}/homepage/$1 -f
 RewriteRule ^(.+)$ homepage/$1 [L]
 
 # Clean URL → .php page:  /pricing → /homepage/pricing.php
+RewriteCond %{ENV:CCX_MASTER_HOST} =1
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{DOCUMENT_ROOT}/homepage/$1.php -f
 RewriteRule ^(.+?)/?$ homepage/$1.php [L]
 
 # Clean URL → .html page (kept for any page not yet migrated)
+RewriteCond %{ENV:CCX_MASTER_HOST} =1
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{DOCUMENT_ROOT}/homepage/$1.html -f
