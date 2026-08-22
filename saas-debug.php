@@ -5,12 +5,16 @@
  * Answers one question first: does a tenant subdomain
  * (e.g. https://shra.clientcarex.com/) actually reach THIS folder?
  *
- *   • Page renders on the subdomain  → the subdomain reaches the CRM, and
- *     the fault is in app/DB config. Read the checks below.
- *   • Apache's own "Not Found" on the subdomain, while the same URL works on
- *     the master domain → the subdomain never reaches this folder at all.
- *     Nothing in this repository can fix that; the subdomain's DocumentRoot
- *     (or the missing wildcard vhost) has to be corrected in cPanel/Plesk.
+ *   • Anything rendered by this file — the report, or the 403 "key required"
+ *     page — means the subdomain DOES reach the CRM, and the fault is in
+ *     app/DB config. Read the checks below.
+ *   • Apache's own "Not Found", while the same URL works on the master
+ *     domain → the subdomain never reaches this folder at all. Nothing in
+ *     this repository can fix that; the subdomain's DocumentRoot (or the
+ *     missing wildcard vhost) has to be corrected in cPanel/Plesk.
+ *
+ * A wrong/absent key answers 403, never 404, precisely so the two cases stay
+ * distinguishable.
  *
  * Usage:  https://<host>/saas-debug.php?key=<ACCESS_KEY>
  *         &host=shra.clientcarex.com   ← optional, resolve another host from
@@ -94,8 +98,26 @@ function env(string $key, string $default = ''): string
 
 $expected = env('CCX_DEBUG_KEY', ACCESS_KEY);
 if (($_GET['key'] ?? '') !== $expected) {
-    http_response_code(404);
-    exit('Not found');
+    /**
+     * Deliberately NOT a 404. The whole purpose of this page is to tell
+     * "Apache never found this folder" apart from "the app answered", and a
+     * 404 here would be indistinguishable from Apache's own. A 403 that
+     * clearly came from PHP proves the host reached this document root even
+     * before the key is supplied. No configuration is disclosed.
+     */
+    http_response_code(403);
+    $host = htmlspecialchars((string) ($_SERVER['HTTP_HOST'] ?? ''), ENT_QUOTES, 'UTF-8');
+    exit(
+        '<!doctype html><meta charset="utf-8">'
+        . '<title>Diagnostic — key required</title>'
+        . '<body style="font:15px/1.6 system-ui,sans-serif;max-width:38rem;margin:3rem auto;padding:0 1rem">'
+        . '<h1 style="font-size:19px">Reached the CRM folder ✔</h1>'
+        . '<p><strong>' . $host . '</strong> is served from this installation — PHP ran and produced this page, '
+        . 'so the vhost, DNS and document root for this host are all correct.</p>'
+        . '<p>Append the access key to see the full report:<br>'
+        . '<code>?key=&lt;ACCESS_KEY from saas-debug.php&gt;</code></p>'
+        . '</body>'
+    );
 }
 
 /* ------------------------------------------------------------- helpers --- */
