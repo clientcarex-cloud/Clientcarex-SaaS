@@ -112,6 +112,41 @@ class Shra extends AdminController
         $this->load->view('riders', $data);
     }
 
+    /** Riders who purchased a package — one row per enrollment, active first. */
+    public function package_riders()
+    {
+        $this->need('view');
+
+        $filters = [
+            'q'      => $this->input->get('q'),
+            'status' => $this->input->get('status') ?: 'active',
+            'aud'    => $this->input->get('aud'),
+        ];
+        $f = ['q' => $filters['q']];
+        if ($filters['status'] !== 'all') {
+            $f['status'] = $filters['status'];
+        }
+        $rows = $this->shra_model->get_enrollments($f, 500);
+        if ($filters['aud']) {
+            $rows = array_values(array_filter($rows, function ($e) use ($filters) { return $e->audience === $filters['aud']; }));
+        }
+        $today = date('Y-m-d');
+        $att   = [];
+        foreach ($this->shra_model->get_attendance(['date' => $today], 500) as $a) {
+            $att[$a->rider_id] = true;
+        }
+        foreach ($rows as $e) {
+            $e->attended_today = isset($att[$e->rider_id]);
+        }
+
+        $data['title']         = 'Package riders';
+        $data['filters']       = $filters;
+        $data['rows']          = $rows;
+        $data['payment_modes'] = $this->payment_modes();
+
+        $this->load->view('package_riders', $data);
+    }
+
     public function rider_form($id = '')
     {
         $this->need($id ? 'edit' : 'create');
