@@ -95,12 +95,15 @@ function perfex_saas_init()
                     $tenant_base_url .= "$tenant_path_id/";
                 }
 
-                if (!$tenant_id)
+                if (!$tenant_id) {
+                    perfex_saas_redirect_unknown_tenant_host($tenancy_access_mode);
                     perfex_saas_show_tenant_error("Invalid Tenant", "We could not find the requested instance.", 404);
+                }
 
                 // Check if tenant exists
                 $tenant = perfex_saas_search_tenant_by_field($field, $tenant_id);
                 if (!$tenant) {
+                    perfex_saas_redirect_unknown_tenant_host($tenancy_access_mode);
                     perfex_saas_show_tenant_error("Invalid Tenant", "The requested tenant does not exist.", 404);
                 }
 
@@ -1726,6 +1729,43 @@ function perfex_saas_get_pdo_conn($dsn, $use_cache = true)
  *                                                    UI and Http helpers                                               *
  *                                                                                                                      *
  ***##################################################################################################################**/
+
+/**
+ * Send a request for an unresolvable tenant subdomain back to the marketing site.
+ *
+ * Wildcard DNS points every *.clientcarex.com name at this document root, so a
+ * subdomain that matches no tenant — a typo, a decommissioned instance, or a
+ * name that was never provisioned (e.g. shra.clientcarex.com) — reaches
+ * CodeIgniter and dies on a bare "Invalid Tenant" 404. Bounce those visitors to
+ * the master site instead. Only subdomain requests qualify: path mode and
+ * custom-domain mode are already on a host that serves a usable page, so their
+ * 404 is the correct answer.
+ *
+ * The 302 is deliberate. The slug may be provisioned as a real tenant later, and
+ * a 301 would stay cached in browsers and at Cloudflare long after that.
+ *
+ * @param string $tenancy_access_mode How the tenant was recognized in the request.
+ * @return void Redirects and exits when it applies; returns otherwise.
+ */
+function perfex_saas_redirect_unknown_tenant_host($tenancy_access_mode)
+{
+    if ($tenancy_access_mode !== PERFEX_SAAS_TENANT_MODE_SUBDOMAIN) {
+        return;
+    }
+
+    $target      = rtrim((string) perfex_saas_default_base_url(), '/') . '/';
+    $target_host = strtolower((string) parse_url($target, PHP_URL_HOST));
+    $current_host = strtolower(explode(':', (string) ($_SERVER['HTTP_HOST'] ?? ''), 2)[0]);
+
+    // Never bounce a host onto itself - that is an infinite redirect loop.
+    if ($target_host === '' || $target_host === $current_host) {
+        return;
+    }
+
+    header('Cache-Control: no-store');
+    header('Location: ' . $target, true, 302);
+    exit();
+}
 
 /**
  * Show a custom error page for the tenant (middleware).
