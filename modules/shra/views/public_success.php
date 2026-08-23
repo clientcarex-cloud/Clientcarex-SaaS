@@ -24,8 +24,7 @@ $pkg     = $rider->preferred_package;
             <div style="width:180px;height:180px;margin:22px auto 6px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px"><?php echo shra_qr_svg(shra_verify_url($rider->rider_no), 4); ?></div>
             <div class="hint" style="text-align:center;margin-bottom:18px">Show this code at the desk</div>
             <?php if ($pdf_url) { ?>
-            <a href="<?php echo $pdf_url; ?>" class="btn"><i class="fa-solid fa-id-card"></i> Download membership PDF</a>
-            <div class="hint" style="text-align:center;margin-top:12px">Save it to your phone — it includes a cut-out membership card.</div>
+            <div class="hint" style="text-align:center">Your membership card will be issued at the reception desk.</div>
             <?php } else { ?>
             <a href="<?php echo site_url('join'); ?>" class="btn ghost"><i class="fa-solid fa-graduation-cap"></i> Want to learn riding? Become a rider</a>
             <?php } ?>
