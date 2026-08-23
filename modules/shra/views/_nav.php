@@ -4,7 +4,7 @@ $shra_tabs   = [];
 if (shra_can('view')) {
     $shra_tabs[] = ['dashboard', 'shra', 'fa-solid fa-gauge-high', _l('shra_dashboard')];
     $shra_tabs[] = ['riders', 'shra/riders', 'fa-solid fa-users', _l('shra_riders')];
-    $shra_tabs[] = ['package_riders', 'shra/package_riders', 'fa-solid fa-id-badge', 'Package riders'];
+    $shra_tabs[] = ['membership', 'shra/membership', 'fa-solid fa-id-card', 'Membership'];
 }
 if (shra_can_billing()) {
     $shra_tabs[] = ['billing', 'shra/billing', 'fa-solid fa-cash-register', _l('shra_billing')];

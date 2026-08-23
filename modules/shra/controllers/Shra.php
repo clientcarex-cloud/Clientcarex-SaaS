@@ -112,39 +112,49 @@ class Shra extends AdminController
         $this->load->view('riders', $data);
     }
 
-    /** Riders who purchased a package — one row per enrollment, active first. */
-    public function package_riders()
+    /** Membership: every learner (membership holder) with the plan they chose, what they bought and where they stand. */
+    public function membership()
     {
         $this->need('view');
 
         $filters = [
-            'q'      => $this->input->get('q'),
-            'status' => $this->input->get('status') ?: 'active',
-            'aud'    => $this->input->get('aud'),
+            'q'    => $this->input->get('q'),
+            'show' => $this->input->get('show') ?: 'all',   // all | active | pending | none
         ];
-        $f = ['q' => $filters['q']];
-        if ($filters['status'] !== 'all') {
-            $f['status'] = $filters['status'];
+        $rows = $this->shra_model->get_riders(['q' => $filters['q'], 'type' => 'learner']);
+        $p    = db_prefix();
+        $ids  = array_map(function ($r) { return (int) $r->id; }, $rows);
+        $enr  = [];
+        if (count($ids)) {
+            foreach ($this->shra_model->get_enrollments(['rider_ids' => $ids], 2000) as $e) {
+                $enr[$e->rider_id][] = $e;
+            }
         }
-        $rows = $this->shra_model->get_enrollments($f, 500);
-        if ($filters['aud']) {
-            $rows = array_values(array_filter($rows, function ($e) use ($filters) { return $e->audience === $filters['aud']; }));
+        foreach ($rows as $r) {
+            $r->enrollments = $enr[$r->id] ?? [];
+            $r->current    = null;
+            foreach ($r->enrollments as $e) {
+                if ($e->status === 'active') { $r->current = $e; break; }
+            }
+            $r->last = $r->enrollments[0] ?? null;
+            $r->stage = $r->current ? 'active' : (count($r->enrollments) ? 'none' : 'pending'); // pending = registered, nothing bought yet
         }
-        $today = date('Y-m-d');
-        $att   = [];
-        foreach ($this->shra_model->get_attendance(['date' => $today], 500) as $a) {
-            $att[$a->rider_id] = true;
-        }
-        foreach ($rows as $e) {
-            $e->attended_today = isset($att[$e->rider_id]);
+        if ($filters['show'] !== 'all') {
+            $rows = array_values(array_filter($rows, function ($r) use ($filters) { return $r->stage === $filters['show']; }));
         }
 
-        $data['title']         = 'Package riders';
+        $data['title']         = 'Membership';
         $data['filters']       = $filters;
         $data['rows']          = $rows;
         $data['payment_modes'] = $this->payment_modes();
 
-        $this->load->view('package_riders', $data);
+        $this->load->view('membership', $data);
+    }
+
+    /** @deprecated kept for old links */
+    public function package_riders()
+    {
+        redirect(admin_url('shra/membership'));
     }
 
     public function rider_form($id = '')

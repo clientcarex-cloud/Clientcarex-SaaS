@@ -724,6 +724,9 @@ class Shra_model extends App_Model
         if (!empty($filters['rider_id'])) {
             $this->db->where('e.rider_id', (int) $filters['rider_id']);
         }
+        if (!empty($filters['rider_ids'])) {
+            $this->db->where_in('e.rider_id', array_map('intval', $filters['rider_ids']));
+        }
         if (!empty($filters['status'])) {
             $this->db->where('e.status', $filters['status']);
         }
