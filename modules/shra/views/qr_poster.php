@@ -22,7 +22,14 @@
 .shra-poster .step small{display:block;font-size:11px;color:#7a6f5e;margin-top:3px;line-height:1.35}
 .shra-poster .powered{margin-top:24px;padding-top:16px;border-top:1px solid #e3d6b8}
 .shra-poster .powered .shra-powered img{height:20px;width:auto;border-radius:0;box-shadow:none}
-@media print{body *{visibility:hidden}.shra-poster,.shra-poster *{visibility:visible}.shra-poster{position:absolute;left:0;right:0;top:20px;margin:auto;outline:none}#wrapper{margin:0!important}}
+@media print{
+  body *{visibility:hidden}
+  .shra-poster,.shra-poster *{visibility:visible}
+  .shra-poster{position:absolute;left:0;right:0;top:20px;margin:auto;outline:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .shra-poster a[href]:after,.shra-poster abbr[title]:after{content:"" !important}
+  .shra-poster .step .ic,.shra-poster .step .n{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #wrapper{margin:0!important}
+}
 </style>
 <div id="wrapper" class="shra">
 <div class="content">
