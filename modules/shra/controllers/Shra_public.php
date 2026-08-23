@@ -51,23 +51,50 @@ class Shra_public extends App_Controller
             return $this->verify($a, $b);
         }
 
+        $packages = $this->shra_model->get_packages(true);
+        $plans    = [];
+        foreach ($packages as $pk) {
+            $q       = $this->shra_model->quote($pk);
+            $plans[] = [
+                'id'           => (int) $pk->id,
+                'name'         => $pk->name,
+                'audience'     => $pk->audience,
+                'sessions'     => (int) $pk->sessions,
+                'duration_min' => (int) $pk->duration_min,
+                'is_guest'     => (int) $pk->is_guest,
+                'is_featured'  => (int) $pk->is_featured,
+                'per_session'  => shra_money($pk->per_session),
+                'price'        => shra_money($pk->price),
+                'total'        => shra_money($q['total']),
+                'discount'     => $q['discount_percent'] + 0,
+            ];
+        }
+
         $data = [
-            'title'  => 'Rider membership — ' . get_option('shra_academy_name'),
-            'levels' => shra_riding_levels(),
-            'terms'  => get_option('shra_terms'),
-            'errors' => [],
-            'old'    => [],
+            'title'     => 'Join — ' . get_option('shra_academy_name'),
+            'levels'    => shra_riding_levels(),
+            'terms'     => get_option('shra_terms'),
+            'plans'     => $plans,
+            'offer'     => shra_offer(),
+            'minor_age' => (int) get_option('shra_minor_age'),
+            'errors'    => [],
+            'old'       => [],
         ];
 
         if ($this->input->post()) {
-            $post = $this->input->post(null, true);
-            $errors = $this->validate($post);
+            $post   = $this->input->post(null, true);
+            $type   = ($post['rider_type'] ?? '') === 'guest' ? 'guest' : 'learner';
+            $errors = $this->validate($post, $type);
 
             if (!count($errors)) {
-                $post['rider_type']     = 'learner';
+                $post['rider_type']     = $type;
                 $post['terms_accepted'] = 1;
                 $post['status']         = 'active';
                 unset($post['csrf_token_name']);
+
+                // Plan chosen on the form — must be an active package of the right kind
+                $pkg = !empty($post['package_id']) ? $this->shra_model->get_package((int) $post['package_id']) : null;
+                $post['preferred_package_id'] = ($pkg && $pkg->active && (int) $pkg->is_guest === ($type === 'guest' ? 1 : 0)) ? $pkg->id : null;
 
                 $id = $this->shra_model->add_rider($post, 'self');
                 if ($id) {
@@ -84,9 +111,10 @@ class Shra_public extends App_Controller
         $this->load->view('public_register', $data);
     }
 
-    private function validate(array $p)
+    private function validate(array $p, $type = 'learner')
     {
         $e = [];
+        $learner = $type === 'learner';
         if (trim((string) ($p['full_name'] ?? '')) === '') {
             $e[] = 'Please enter the rider\'s full name.';
         }
@@ -105,7 +133,7 @@ class Shra_public extends App_Controller
         if (empty($p['gender'])) {
             $e[] = 'Please select a gender.';
         }
-        if (trim((string) ($p['address'] ?? '')) === '') {
+        if ($learner && trim((string) ($p['address'] ?? '')) === '') {
             $e[] = 'Please enter the full address.';
         }
         $minor = !empty($p['dob']) && shra_is_minor($p['dob']);
@@ -119,9 +147,9 @@ class Shra_public extends App_Controller
             $e[] = 'Please type the guardian\'s name to accept the terms on the rider\'s behalf.';
         }
 
-        // Simple duplicate guard — same mobile already registered as a learner
+        // Duplicate guard — same name + mobile already on file (guests may return; learners should not re-register)
         $existing = $this->shra_model->find_rider_by_mobile($mobile);
-        if ($existing && mb_strtolower(trim($existing->full_name)) === mb_strtolower(trim((string) ($p['full_name'] ?? '')))) {
+        if ($existing && $learner && mb_strtolower(trim($existing->full_name)) === mb_strtolower(trim((string) ($p['full_name'] ?? '')))) {
             $e[] = 'A rider with this name and mobile number is already registered (' . $existing->rider_no . '). Please ask the reception desk.';
         }
 
@@ -135,10 +163,13 @@ class Shra_public extends App_Controller
             return $this->error('Not found', 'We could not find this registration.');
         }
 
+        $plan = $rider->preferred_package ? $this->shra_model->quote($rider->preferred_package) : null;
+
         $this->load->view('public_success', [
             'title'   => 'Welcome to the academy',
             'rider'   => $rider,
-            'pdf_url' => site_url('join/pdf/' . $rider->rider_no . '/' . $sig),
+            'plan'    => $plan,
+            'pdf_url' => $rider->rider_type === 'learner' ? site_url('join/pdf/' . $rider->rider_no . '/' . $sig) : null,
         ]);
     }
 

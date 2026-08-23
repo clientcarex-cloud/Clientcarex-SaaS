@@ -49,6 +49,10 @@ class Shra_model extends App_Model
     {
         $r->age      = shra_age($r->dob);
         $r->audience = shra_audience_for($r->dob);
+        $r->preferred_package = null;
+        if (!empty($r->preferred_package_id)) {
+            $r->preferred_package = $this->get_package($r->preferred_package_id);
+        }
     }
 
     public function get_riders($filters = [])
@@ -88,7 +92,7 @@ class Shra_model extends App_Model
         $p = db_prefix();
         $q = $this->db->escape_like_str(trim((string) $q));
 
-        $this->db->select("r.id, r.rider_no, r.full_name, r.mobile, r.dob, r.rider_type, r.riding_level, r.membership_no, r.status,
+        $this->db->select("r.id, r.rider_no, r.full_name, r.mobile, r.dob, r.rider_type, r.riding_level, r.membership_no, r.status, r.preferred_package_id,
             (SELECT COALESCE(SUM(e.sessions_total - e.sessions_used),0) FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND e.status = 'active') AS sessions_left")
             ->from($p . 'shra_riders r');
 
@@ -219,7 +223,7 @@ class Shra_model extends App_Model
     private function clean_rider_data(array $in)
     {
         $allowed = ['rider_type', 'full_name', 'guardian_name', 'guardian_relationship', 'mobile', 'email', 'gender', 'dob',
-            'place_of_birth', 'address', 'marital_status', 'riding_level', 'terms_accepted', 'terms_accepted_by', 'status', 'notes'];
+            'place_of_birth', 'address', 'marital_status', 'riding_level', 'preferred_package_id', 'terms_accepted', 'terms_accepted_by', 'status', 'notes'];
         $out = [];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $in)) {
@@ -235,6 +239,9 @@ class Shra_model extends App_Model
         }
         if (isset($out['terms_accepted'])) {
             $out['terms_accepted'] = $out['terms_accepted'] ? 1 : 0;
+        }
+        if (isset($out['preferred_package_id'])) {
+            $out['preferred_package_id'] = (int) $out['preferred_package_id'] ?: null;
         }
         foreach (['email', 'guardian_name', 'guardian_relationship', 'place_of_birth', 'address', 'marital_status', 'gender', 'notes'] as $k) {
             if (isset($out[$k]) && $out[$k] === '') {

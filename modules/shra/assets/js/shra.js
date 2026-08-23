@@ -89,8 +89,6 @@
 
     S.riderPicker($('#shra-rider-q'), $('#shra-rider-results'), setRider);
 
-    if (cfg.preselect) { setRider(cfg.preselect); }
-
     function setRider(r) {
       rider = r;
       var aud = (r.age !== null && r.age !== undefined && r.age < cfg.minorAge) ? 'children' : 'adults';
@@ -102,6 +100,15 @@
       $('#shra-rider-id').val(r.id);
       renderPkgs();
       pkg = null; summary();
+      // Plan chosen on the self-registration form → preselect it
+      if (r.preferred_package_id && cfg.packages[r.preferred_package_id]) {
+        var $pp = $pkgs.find('.shra-pkg[data-id="' + r.preferred_package_id + '"]');
+        if ($pp.length) {
+          var a = cfg.packages[r.preferred_package_id].audience;
+          $('input[name=audience][value=' + a + ']').prop('checked', true); renderPkgs();
+          $pp.trigger('click');
+        }
+      }
     }
 
     // Quick add (name + mobile)
@@ -196,6 +203,7 @@
     });
 
     summary();
+    if (cfg.preselect) { setRider(cfg.preselect); }
   };
 
   /* ───────── Attendance page ───────── */

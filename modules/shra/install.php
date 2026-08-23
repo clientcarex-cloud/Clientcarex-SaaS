@@ -29,6 +29,7 @@ if (!$CI->db->table_exists($p . 'shra_riders')) {
         `address` TEXT DEFAULT NULL,
         `marital_status` VARCHAR(20) DEFAULT NULL COMMENT 'single | married | divorced | other',
         `riding_level` VARCHAR(30) NOT NULL DEFAULT 'beginner',
+        `preferred_package_id` INT(11) UNSIGNED DEFAULT NULL,
         `is_minor` TINYINT(1) NOT NULL DEFAULT 0,
         `terms_accepted` TINYINT(1) NOT NULL DEFAULT 0,
         `terms_accepted_by` VARCHAR(191) DEFAULT NULL COMMENT 'rider or guardian name',
@@ -129,6 +130,11 @@ if (!$CI->db->table_exists($p . 'shra_attendance')) {
         KEY `session_date` (`session_date`),
         KEY `trainer_id` (`trainer_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Self-heal: plan chosen on the public form ──
+if (!$CI->db->field_exists('preferred_package_id', $p . 'shra_riders')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_riders` ADD COLUMN `preferred_package_id` INT(11) UNSIGNED DEFAULT NULL AFTER `riding_level`");
 }
 
 // ── Options (add_option is a no-op when the key exists) ──
