@@ -502,6 +502,36 @@ function shra_lead_due_text($datetime)
     return '<span class="shra-due"><i class="fa fa-calendar"></i> ' . date('D d M', $ts) . '</span>';
 }
 
+/**
+ * Everything views/leads/partials/modals.php needs. The modals are printed on
+ * every SHRA page (see shra_add_footer_components) so the header "New lead"
+ * button works outside the leads tab, where the leads controller's common()
+ * data is not available.
+ */
+function shra_lead_modal_vars()
+{
+    $CI = &get_instance();
+    if (!isset($CI->shra_leads_model)) {
+        $CI->load->model('shra/shra_leads_model');
+    }
+    if (!isset($CI->shra_model)) {
+        $CI->load->model('shra/shra_model');
+    }
+
+    return [
+        'agents'     => shra_lead_agents(),
+        'sources'    => $CI->shra_leads_model->sources(),
+        'packages'   => $CI->shra_model->get_packages(true),
+        'slots'      => shra_lead_visit_slots(),
+        'reasons'    => shra_lead_lost_reasons(),
+        'outcomes'   => shra_lead_outcomes(),
+        'templates'  => shra_lead_wa_templates(),
+        'weekend'    => shra_lead_weekend_dates(),
+        'can_all'    => shra_leads_can('all'),
+        'can_manage' => shra_leads_can('manage'),
+    ];
+}
+
 /** Staff who can work leads (have leads_own / leads_all / leads_manage or are admins). */
 function shra_lead_agents($active_only = true)
 {

@@ -54,6 +54,14 @@
                 <div class="help" style="margin-top:8px">Static link — print it once, it never changes.</div>
             </div></div>
 
+            <?php if (shra_leads_can('manage')) { ?>
+            <div class="shra-card shra-mt"><div class="shra-card-head"><h4>Import leads</h4></div><div class="shra-card-body">
+                <div class="help" style="margin-top:0">Facebook / Instagram lead exports, Google Form sheets or any CSV. The importer reads the columns itself, shows a preview, and skips numbers that are already leads.</div>
+                <a href="<?php echo admin_url('shra/shra_leads/import'); ?>" class="shra-btn shra-btn-gold shra-btn-block shra-mt"><i class="fa fa-file-arrow-up"></i> Import leads</a>
+                <a href="<?php echo admin_url('shra/shra_leads/settings'); ?>" class="shra-btn shra-btn-outline shra-btn-block shra-mt"><i class="fa fa-sliders"></i> Lead settings &amp; targets</a>
+            </div></div>
+            <?php } ?>
+
             <button type="submit" class="shra-btn shra-btn-primary shra-btn-block shra-mt"><i class="fa fa-check"></i> Save settings</button>
         </div>
     </div>

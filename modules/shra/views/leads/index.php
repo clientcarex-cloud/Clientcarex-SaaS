@@ -122,7 +122,6 @@
     <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
-<?php include __DIR__ . '/partials/modals.php'; ?>
 <?php init_tail(); ?>
 </body>
 </html>

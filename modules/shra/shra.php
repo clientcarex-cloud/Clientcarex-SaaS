@@ -194,6 +194,14 @@ function shra_add_footer_components()
         return;
     }
 
+    // Lead modals on every SHRA page — the header "New lead" button, and the
+    // billing lead match, must work outside the leads tab. Printed before the
+    // scripts because shra_leads.js binds to the forms as it loads.
+    if (shra_leads_can('own')) {
+        extract(shra_lead_modal_vars());
+        include module_dir_path(SHRA_MODULE_NAME, 'views/leads/partials/modals.php');
+    }
+
     echo '<script src="' . module_dir_url(SHRA_MODULE_NAME, 'assets/js/shra.js') . '?v=' . shra_asset_ver('assets/js/shra.js') . '"></script>';
     echo '<script src="' . module_dir_url(SHRA_MODULE_NAME, 'assets/js/shra_leads.js') . '?v=' . shra_asset_ver('assets/js/shra_leads.js') . '"></script>';
 }
