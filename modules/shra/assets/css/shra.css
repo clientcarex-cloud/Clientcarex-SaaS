@@ -279,3 +279,97 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-stats-6 .shra-stat{padding:16px 18px}
 .shra-stats-6 .shra-stat-label{padding-right:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .shra-stats-6 .shra-stat-icon{width:28px;height:28px;font-size:12px;right:12px;top:12px}
+
+/* ═══════════ Dense lead work list (My Day) — built for 150+ leads/day ═══════════ */
+.shra [hidden]{display:none!important}
+.shra tr.is-off{display:none!important}
+
+/* funnel + numbers strip, pinned at the top of the page */
+.shra-hd{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.shra-funnel-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-width:0}
+.shra-fn{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:8px;font-size:12px;
+  color:var(--ink-2)!important;text-decoration:none!important;background:var(--cream-2);border:1px solid transparent;white-space:nowrap;transition:.12s}
+.shra-fn:hover{border-color:var(--gold);color:var(--ink)!important}
+.shra-fn i{width:7px;height:7px;border-radius:50%;flex:none}
+.shra-fn b{font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.shra-fn.zero{opacity:.45}
+.shra-kpi-bar{display:flex;gap:22px;flex-wrap:wrap;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.shra-kpi{line-height:1.15;white-space:nowrap}
+.shra-kpi b{display:block;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.shra-kpi span{font-size:11px;color:var(--muted)}
+
+/* filter bar */
+.shra-fl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin-bottom:10px}
+.shra-fl-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.shra-fl .form-control{margin:0;height:34px;padding:6px 10px;font-size:12.5px;width:auto;border-radius:8px}
+.shra-fl .shra-search input{width:230px;padding-left:32px!important}
+.shra-fl .shra-search i{left:11px;font-size:12px}
+.shra-tabs{display:inline-flex;gap:3px;background:var(--cream);border:1px solid var(--line);border-radius:9px;padding:3px;flex-wrap:wrap}
+.shra-tab{border:0;background:none;padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.shra-tab b{font-variant-numeric:tabular-nums;opacity:.65;margin-left:3px}
+.shra-tab:hover{background:var(--sand-2)}
+.shra-tab.on{background:var(--ink);color:var(--cream)}
+.shra-tab.on b{opacity:.8}
+.shra-tab.t-red{color:var(--red)}
+.shra-tab.t-red.on{background:var(--red);color:#fff}
+.shra-tab.t-gold{color:var(--brown)}
+.shra-tab.t-gold.on{background:var(--gold);color:#fff}
+
+/* the table itself — tight rows, sticky header.
+   Wide screens keep the header sticky to the viewport; narrow ones trade that for
+   horizontal scrolling (a scroll container would anchor sticky to itself). */
+.shra-work{overflow-x:auto}
+@media(min-width:1200px){.shra-work{overflow-x:visible}}
+.shra-wt{font-size:13px}
+.shra-wt thead th{position:sticky;top:0;z-index:3;padding:8px 10px;font-size:10px}
+.shra-wt td{padding:7px 10px;border-bottom:1px solid #f3ecdd;vertical-align:middle;line-height:1.3}
+.shra-wt tr:hover td{background:#fdfaf3}
+.shra-wt tr.over td{background:#fffafa}
+.shra-wt tr.over:hover td{background:#fff4f3}
+.shra-wt tr.over td:first-child{box-shadow:inset 3px 0 0 var(--red)}
+.shra-wt tr.unset td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
+.shra-wt tr.unset .shra-r-due{color:var(--red)}
+.shra-wt tr.closed{opacity:.7}
+.shra-wt tr.flash td{background:#fbf3dd}
+.shra-r-name{max-width:240px;width:24%}
+.shra-wt th:nth-child(3){width:130px}.shra-wt th:nth-child(4){width:120px}.shra-wt th:nth-child(5){width:104px}
+.shra-r-name a{font-weight:600;color:var(--ink)!important;text-decoration:none!important;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shra-r-name a:hover{color:var(--brown)!important;text-decoration:underline!important}
+.shra-r-sub{display:block;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shra-r-tel{font-variant-numeric:tabular-nums;color:var(--ink-2)!important;text-decoration:none!important}
+.shra-r-phone{white-space:nowrap}
+.shra-r-visit,.shra-r-src{font-size:12px;white-space:nowrap}
+.shra-r-calls{width:52px;color:var(--ink-2)}
+.shra-r-flags{white-space:nowrap}
+.shra-r-val{font-size:11.5px;color:var(--brown);font-variant-numeric:tabular-nums}
+.shra-r-due{white-space:nowrap}
+.shra-wt .shra-badge{padding:2px 8px;font-size:10px}
+.shra-wt .shra-stage{white-space:nowrap}
+.shra-r-act{text-align:right;white-space:nowrap;width:1%}
+.shra-r-act .shra-btn,.shra-r-act .shra-ic{vertical-align:middle}
+.shra-btn-xs{padding:4px 9px;font-size:11.5px;border-radius:7px;gap:5px}
+.shra-ic.xs{width:26px;height:26px;border-radius:7px;font-size:12px;margin-left:3px}
+.shra-ic.xs.muted{margin-left:3px}
+.shra-work-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+
+/* row overflow menu, rendered at body level so the table never clips it */
+.shra-row-menu{position:fixed;z-index:1060;display:none;min-width:186px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 10px 30px rgba(28,26,23,.16);padding:5px}
+.shra-row-menu a,.shra-row-menu button{display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px;border:0;background:none;
+  border-radius:7px;font-size:12.5px;color:var(--ink)!important;text-decoration:none!important;cursor:pointer;text-align:left}
+.shra-row-menu a:hover,.shra-row-menu button:hover{background:var(--cream-2)}
+.shra-row-menu i{width:14px;text-align:center;color:var(--muted)}
+.shra-row-menu .danger{color:var(--red)!important}
+.shra-row-menu .danger i{color:var(--red)}
+
+@media(max-width:1199px){
+  .shra-wt .shra-r-src,.shra-wt thead th:nth-child(8){display:none}
+  /* keep the primary action reachable while the table scrolls sideways */
+  .shra-wt td.shra-r-act,.shra-wt th.shra-r-act{position:sticky;right:0;background:#fff;box-shadow:-7px 0 9px -7px rgba(28,26,23,.16)}
+  .shra-wt th.shra-r-act{z-index:4;background:var(--cream)}
+  .shra-wt tr.over td.shra-r-act{background:#fffafa}
+  .shra-wt tr:hover td.shra-r-act{background:#fdfaf3}
+  .shra-wt tr.flash td.shra-r-act{background:#fbf3dd}
+}
+@media(max-width:900px){.shra-wt .shra-r-calls,.shra-wt .shra-r-flags,.shra-wt thead th:nth-child(6),.shra-wt thead th:nth-child(7){display:none}}
+@media(max-width:700px){.shra-wt .shra-r-visit,.shra-wt thead th:nth-child(5){display:none}}

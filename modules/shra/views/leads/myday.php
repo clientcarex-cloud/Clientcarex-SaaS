@@ -5,73 +5,110 @@
     <?php $shra_active = 'leads'; include __DIR__ . '/../_nav.php'; ?>
 
     <?php
-    $m      = $month;
-    $total  = count($queues['overdue']) + count($queues['today']) + count($queues['upcoming']) + count($queues['later']) + count($queues['unset']);
-    $rev    = $m ? (float) $m->revenue : 0;
-    $rev_t  = $m && $m->revenue_target ? (float) $m->revenue_target : 0;
-    ?>
-    <div class="shra-toolbar" style="justify-content:space-between">
-        <h4 class="shra-title" style="margin:0">My Day <span class="thin">· <?php echo date('l, d M'); ?></span></h4>
-        <?php if ($can_all) { ?>
-        <form method="get" class="shra-toolbar" style="margin:0">
-            <select name="agent" class="form-control" style="width:auto" onchange="this.form.submit()">
-                <?php foreach ($agents as $a) { ?><option value="<?php echo $a->staffid; ?>" <?php echo $a->staffid == $agent ? 'selected' : ''; ?>><?php echo html_escape($a->full_name); ?><?php echo $a->staffid == get_staff_user_id() ? ' (me)' : ''; ?></option><?php } ?>
-            </select>
-        </form>
-        <?php } ?>
-    </div>
+    $m     = $month;
+    $rev   = $m ? (float) $m->revenue : 0;
+    $rev_t = $m && $m->revenue_target ? (float) $m->revenue_target : 0;
 
-    <div class="shra-stats shra-stats-6">
-        <div class="shra-stat"><div class="shra-stat-label">Overdue</div><div class="shra-stat-value" style="color:<?php echo count($queues['overdue']) ? 'var(--red)' : 'inherit'; ?>"><?php echo count($queues['overdue']); ?></div><div class="shra-stat-sub">call these first</div><div class="shra-stat-icon"><i class="fa fa-exclamation"></i></div></div>
-        <div class="shra-stat"><div class="shra-stat-label">Due today</div><div class="shra-stat-value"><?php echo count($queues['today']); ?></div><div class="shra-stat-sub"><?php echo $total; ?> open in total</div><div class="shra-stat-icon"><i class="fa fa-sun"></i></div></div>
-        <div class="shra-stat"><div class="shra-stat-label">Calls this month</div><div class="shra-stat-value"><?php echo $m ? (int) $m->calls : 0; ?></div><div class="shra-stat-sub"><?php echo $m && $m->calls_target ? 'target ' . (int) $m->calls_target : ($m ? (int) $m->contact_rate . '% reached' : ''); ?></div><div class="shra-stat-icon"><i class="fa fa-phone"></i></div></div>
-        <div class="shra-stat"><div class="shra-stat-label">Visits booked</div><div class="shra-stat-value"><?php echo $m ? (int) $m->visits_booked : 0; ?></div><div class="shra-stat-sub"><?php echo $m ? (int) $m->visited . ' visited · ' . (int) $m->show_rate . '% show' : ''; ?></div><div class="shra-stat-icon"><i class="fa fa-calendar-check"></i></div></div>
-        <div class="shra-stat"><div class="shra-stat-label">Joined</div><div class="shra-stat-value"><?php echo $m ? (int) $m->won : 0; ?></div><div class="shra-stat-sub"><?php echo $m ? (int) $m->win_rate . '% of assigned' : ''; ?></div><div class="shra-stat-icon"><i class="fa fa-trophy"></i></div></div>
-        <div class="shra-stat"><div class="shra-stat-label">Revenue credited</div><div class="shra-stat-value" style="font-size:22px"><?php echo shra_money($rev); ?></div><div class="shra-stat-sub"><?php if ($rev_t > 0) { ?><div class="shra-progress" style="margin-top:4px"><span style="width:<?php echo min(100, round($rev / $rev_t * 100)); ?>%"></span></div><?php echo min(999, round($rev / $rev_t * 100)); ?>% of <?php echo shra_money($rev_t); ?><?php } else { echo 'this month'; } ?></div><div class="shra-stat-icon"><i class="fa fa-indian-rupee-sign"></i></div></div>
-    </div>
-
-    <?php if (count($queues['unset'])) { ?>
-    <div class="shra-alert shra-alert-bad" style="margin-bottom:14px"><i class="fa fa-triangle-exclamation"></i> <b><?php echo count($queues['unset']); ?></b> lead<?php echo count($queues['unset']) == 1 ? ' has' : 's have'; ?> no follow-up date — fix now, nothing may sit without a next action.</div>
-    <?php } ?>
-
-    <?php
-    $sections = [
-        ['unset', 'No follow-up set', 'fa-triangle-exclamation', 'var(--red)'],
-        ['overdue', 'Overdue', 'fa-exclamation-circle', 'var(--red)'],
-        ['today', 'Today', 'fa-sun', 'var(--gold)'],
-        ['upcoming', 'Next 7 days', 'fa-calendar', 'var(--brown)'],
-        ['later', 'Later', 'fa-clock', 'var(--muted)'],
+    // Flatten the queues into one work list — the order IS the priority order.
+    $order = ['unset', 'overdue', 'today', 'upcoming', 'later'];
+    $rows  = [];
+    $seen  = [];
+    foreach ($order as $k) {
+        foreach ($queues[$k] as $l) {
+            $rows[]          = $l;
+            $seen[$l->id]    = true;
+        }
+    }
+    $ns = [];
+    foreach ($no_shows as $l) {
+        if (!isset($seen[$l->id])) { $ns[] = $l; }
+    }
+    $counts = [
+        'all'      => count($rows),
+        'unset'    => count($queues['unset']),
+        'overdue'  => count($queues['overdue']),
+        'today'    => count($queues['today']),
+        'upcoming' => count($queues['upcoming']),
+        'later'    => count($queues['later']),
+        'noshow'   => count($ns),
     ];
-    foreach ($sections as $sec) {
-        [$key, $label, $icon, $color] = $sec;
-        $rows = $queues[$key];
-        if (!count($rows) && in_array($key, ['unset', 'later'])) { continue; }
+    $tabs = [
+        ['overdue',  'Overdue',   'red'],
+        ['today',    'Today',     'gold'],
+        ['unset',    'No date',   'red'],
+        ['upcoming', 'Next 7 days', ''],
+        ['later',    'Later',     ''],
+        ['noshow',   'No-show',   'red'],
+        ['all',      'All open',  ''],
+    ];
+    $start = $counts['overdue'] ? 'overdue' : ($counts['today'] ? 'today' : ($counts['unset'] ? 'unset' : 'all'));
     ?>
-    <div class="shra-card" style="margin-bottom:16px">
-        <div class="shra-card-head"><h4><i class="fa <?php echo $icon; ?>" style="color:<?php echo $color; ?>"></i> <?php echo $label; ?></h4><span class="shra-pill"><?php echo count($rows); ?></span></div>
-        <?php if (!count($rows)) { ?>
-            <div class="shra-empty" style="padding:24px"><i class="fa fa-check" style="color:var(--green)"></i><?php echo $key === 'overdue' ? 'Nothing overdue — great discipline.' : ($key === 'today' ? 'Nothing more due today.' : 'Nothing scheduled.'); ?></div>
-        <?php } else { ?>
-            <div class="shra-lead-list"><?php foreach ($rows as $l) { include __DIR__ . '/partials/lead_card.php'; } ?></div>
-        <?php } ?>
-    </div>
-    <?php } ?>
 
-    <?php if ($can_all && count($no_shows)) { ?>
-    <div class="shra-card" style="margin-bottom:16px">
-        <div class="shra-card-head"><h4><i class="fa fa-user-slash" style="color:var(--red)"></i> Scheduled visits that never arrived</h4><span class="shra-pill"><?php echo count($no_shows); ?></span></div>
-        <div class="shra-lead-list"><?php foreach ($no_shows as $l) { include __DIR__ . '/partials/lead_card.php'; } ?></div>
-    </div>
-    <?php } ?>
-
-    <div class="shra-card shra-card-cream">
-        <div class="shra-card-body" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
-            <b style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Funnel</b>
-            <?php foreach (shra_lead_stage_defs() as $k => $d) { if (in_array($k, ['junk'])) { continue; } ?>
-                <a href="<?php echo admin_url('shra/shra_leads/pipeline?stage=' . $k . (!$can_all ? '' : '')); ?>" class="shra-funnel-item"><span style="background:<?php echo $d[2]; ?>"></span><?php echo $d[0]; ?> <b><?php echo (int) ($funnel[$k] ?? 0); ?></b></a>
+    <!-- ── Funnel + numbers ───────────────────────────────────────── -->
+    <div class="shra-hd">
+        <div class="shra-funnel-bar">
+            <?php foreach (shra_lead_stage_defs() as $k => $d) { if ($k === 'junk') { continue; } $c = (int) ($funnel[$k] ?? 0); ?>
+                <a href="<?php echo admin_url('shra/shra_leads/pipeline?view=list&stage=' . $k . ($can_all && $agent ? '&agent=' . (int) $agent : '')); ?>"
+                   class="shra-fn<?php echo $c ? '' : ' zero'; ?>" title="<?php echo $d[0]; ?> — open in pipeline">
+                    <i style="background:<?php echo $d[2]; ?>"></i><span><?php echo $d[0]; ?></span><b><?php echo $c; ?></b>
+                </a>
             <?php } ?>
         </div>
+        <div class="shra-kpi-bar">
+            <div class="shra-kpi"><b><?php echo $m ? (int) $m->calls : 0; ?></b><span>calls<?php echo $m && $m->calls_target ? ' / ' . (int) $m->calls_target : ''; ?></span></div>
+            <div class="shra-kpi"><b><?php echo $m ? (int) $m->visits_booked : 0; ?></b><span>visits<?php echo $m ? ' · ' . (int) $m->show_rate . '% show' : ''; ?></span></div>
+            <div class="shra-kpi"><b><?php echo $m ? (int) $m->won : 0; ?></b><span>joined<?php echo $m ? ' · ' . (int) $m->win_rate . '%' : ''; ?></span></div>
+            <div class="shra-kpi"><b><?php echo shra_money($rev); ?></b><span><?php echo $rev_t > 0 ? min(999, round($rev / $rev_t * 100)) . '% of ' . shra_money($rev_t) : 'this month'; ?></span></div>
+        </div>
     </div>
+
+    <!-- ── Filters ────────────────────────────────────────────────── -->
+    <div class="shra-fl" id="shra-filters" data-start="<?php echo $start; ?>">
+        <div class="shra-tabs">
+            <?php foreach ($tabs as $t) { if (!$counts[$t[0]] && in_array($t[0], ['unset', 'later', 'noshow'])) { continue; } ?>
+                <button type="button" class="shra-tab<?php echo $t[2] ? ' t-' . $t[2] : ''; ?>" data-bucket="<?php echo $t[0]; ?>"><?php echo $t[1]; ?> <b><?php echo $counts[$t[0]]; ?></b></button>
+            <?php } ?>
+        </div>
+        <div class="shra-fl-right">
+            <div class="shra-search"><i class="fa fa-search"></i><input type="text" id="shra-q" class="form-control" placeholder="Search name, phone, city…  (/)" autocomplete="off"></div>
+            <select id="shra-f-stage" class="form-control"><option value="">All stages</option><?php foreach (shra_lead_stage_defs() as $k => $d) { if (in_array($k, ['won', 'lost', 'junk'])) { continue; } ?><option value="<?php echo $k; ?>"><?php echo $d[0]; ?></option><?php } ?></select>
+            <select id="shra-f-source" class="form-control"><option value="">All sources</option><?php foreach ($sources as $s) { ?><option value="<?php echo $s->id; ?>"><?php echo html_escape($s->name); ?></option><?php } ?></select>
+            <?php if ($can_all) { ?>
+            <form method="get" style="margin:0">
+                <select name="agent" class="form-control" onchange="this.form.submit()" title="Whose day">
+                    <?php foreach ($agents as $a) { ?><option value="<?php echo $a->staffid; ?>" <?php echo $a->staffid == $agent ? 'selected' : ''; ?>><?php echo html_escape($a->full_name); ?><?php echo $a->staffid == get_staff_user_id() ? ' (me)' : ''; ?></option><?php } ?>
+                </select>
+            </form>
+            <?php } ?>
+            <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="shra-f-clear" title="Clear filters"><i class="fa fa-rotate-left"></i></button>
+        </div>
+    </div>
+
+    <!-- ── Work list ──────────────────────────────────────────────── -->
+    <div class="shra-card shra-work">
+        <table class="shra-table shra-wt">
+            <thead>
+                <tr>
+                    <th>Lead</th>
+                    <th>Phone</th>
+                    <th>Stage</th>
+                    <th>Next action</th>
+                    <th>Visit</th>
+                    <th class="num">Calls</th>
+                    <th></th>
+                    <th><?php echo $can_all ? 'Source / agent' : 'Source'; ?></th>
+                    <th class="shra-r-act">Action</th>
+                </tr>
+            </thead>
+            <tbody id="shra-rows">
+                <?php foreach ($rows as $l) { include __DIR__ . '/partials/lead_row.php'; } ?>
+                <?php foreach ($ns as $l) { $force_bucket = 'noshow'; include __DIR__ . '/partials/lead_row.php'; unset($force_bucket); } ?>
+            </tbody>
+        </table>
+        <div class="shra-empty" id="shra-none" hidden><i class="fa-solid fa-check" style="color:var(--green)"></i>Nothing here — pick another tab or clear the search.</div>
+        <div class="shra-work-foot"><span id="shra-count"></span><?php if ($can_manage) { ?><a href="<?php echo admin_url('shra/shra_leads/export?agent=' . (int) $agent); ?>" class="shra-btn shra-btn-outline shra-btn-xs"><i class="fa fa-download"></i> Export</a><?php } ?></div>
+    </div>
+
     <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>

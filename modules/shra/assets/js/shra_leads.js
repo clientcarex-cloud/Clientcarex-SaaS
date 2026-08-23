@@ -16,7 +16,7 @@
 
   function cardOf(id) { return $('.shra-lead[data-lead="' + id + '"]'); }
 
-  /** Replace every rendering of a card with the fresh HTML; recount queues/columns. */
+  /** Replace every rendering of a lead with the fresh HTML; recount queues/columns. */
   function swapCard(id, html) {
     var $new = $(html);
     var $old = cardOf(id);
@@ -30,13 +30,16 @@
       if (!$c.closest('.shra-col').is($col.closest('.shra-col'))) { $col.prepend($c); }
       $('.shra-col').each(function () { $(this).find('.shra-col-count').text($(this).find('.shra-lead').length); });
     }
-    // My Day: leave the queue placement alone but flash it
+    // Work list / My Day: flash the row where it stands, then re-apply the filters
+    // so it leaves the tab it no longer belongs to.
     cardOf(id).addClass('flash');
-    setTimeout(function () { cardOf(id).removeClass('flash'); }, 1200);
+    setTimeout(function () { cardOf(id).removeClass('flash'); W.refresh(); }, 1200);
     if (typeof S.onLeadUpdated === 'function') { S.onLeadUpdated(id, $new); }
   }
 
   function post(url, data, done) {
+    // Tell the server which rendering to send back: dense row or board card.
+    if (data && data.lead_id && !data.fmt) { data.fmt = cardOf(data.lead_id).first().is('tr') ? 'row' : 'card'; }
     $.post(url, data, function (res) {
       if (!res.success) {
         toast('danger', res.message || 'Could not save.');
@@ -229,6 +232,101 @@
   /* ───────── Lead page: details & notes ───────── */
   $('#shra-lead-details-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.details, formObj($(this)), function () { location.reload(); }); });
   $('#shra-lead-note-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.note, formObj($(this)), function () { location.reload(); }); });
+
+  /* ───────── Dense work list: tabs, instant search, row menu ───────── */
+  var W = (function () {
+    var $rows = null, $tabs = null, bucket = 'all', q = '', stage = '', source = '';
+
+    function counts() {
+      if (!$rows) { return; }
+      var c = {};
+      $rows.children('tr.shra-lead').each(function () {
+        var b = this.getAttribute('data-bucket');
+        c[b] = (c[b] || 0) + 1;
+        if (b !== 'noshow' && b !== 'closed') { c.all = (c.all || 0) + 1; }
+      });
+      $tabs.each(function () { $(this).find('b').text(c[$(this).data('bucket')] || 0); });
+    }
+
+    function apply() {
+      if (!$rows) { return; }
+      var shown = 0, total = 0;
+      $rows.children('tr.shra-lead').each(function () {
+        var r = this, b = r.getAttribute('data-bucket');
+        total++;
+        var ok = (bucket === 'all' ? (b !== 'noshow' && b !== 'closed') : b === bucket)
+              && (!stage || r.getAttribute('data-stage') === stage)
+              && (!source || r.getAttribute('data-source') === source)
+              && (!q || r.getAttribute('data-s').indexOf(q) !== -1);
+        if (ok) { r.className = r.className.replace(/\s*is-off\b/, ''); shown++; }
+        else if (r.className.indexOf('is-off') === -1) { r.className += ' is-off'; }
+      });
+      $('#shra-none').prop('hidden', shown > 0);
+      $('.shra-wt thead').toggle(shown > 0);
+      $('#shra-count').text(shown + ' of ' + total + ' shown');
+    }
+
+    function refresh() { counts(); apply(); }
+
+    function init() {
+      var $f = $('#shra-filters');
+      if (!$f.length) { return; }
+      $rows = $('#shra-rows');
+      $tabs = $f.find('.shra-tab');
+      bucket = $f.data('start') || 'all';
+      $tabs.filter('[data-bucket="' + bucket + '"]').addClass('on');
+      if (!$tabs.filter('.on').length) { bucket = 'all'; $tabs.filter('[data-bucket=all]').addClass('on'); }
+
+      $tabs.on('click', function () {
+        $tabs.removeClass('on'); $(this).addClass('on');
+        bucket = $(this).data('bucket'); apply();
+      });
+
+      var t = null;
+      $('#shra-q').on('input', function () {
+        var v = $.trim(this.value).toLowerCase();
+        clearTimeout(t);
+        t = setTimeout(function () { q = v; apply(); }, 120);
+      });
+      $('#shra-f-stage').on('change', function () { stage = this.value; apply(); });
+      $('#shra-f-source').on('change', function () { source = this.value; apply(); });
+      $('#shra-f-clear').on('click', function () {
+        q = stage = source = ''; $('#shra-q').val(''); $('#shra-f-stage,#shra-f-source').val('');
+        $tabs.removeClass('on').filter('[data-bucket=all]').addClass('on'); bucket = 'all';
+        apply();
+      });
+
+      // "/" focuses search, Esc clears it — agents live on the keyboard here.
+      $(document).on('keydown', function (e) {
+        if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ''))) { e.preventDefault(); $('#shra-q').focus(); }
+        if (e.key === 'Escape') { closeMenu(); }
+      });
+
+      refresh();
+    }
+
+    /* Row overflow menu — rendered at body level so the table never clips it. */
+    var $menu = null;
+    function closeMenu() { if ($menu) { $menu.hide(); } }
+    $(document).on('click', '[data-shra-more]', function (e) {
+      e.stopPropagation();
+      var $src = $(this).closest('tr').find('.shra-r-menu');
+      if (!$menu) { $menu = $('<div class="shra-row-menu"></div>').appendTo('body'); }
+      if ($menu.is(':visible') && $menu.data('for') === $(this).data('shra-more')) { closeMenu(); return; }
+      $menu.data('for', $(this).data('shra-more')).html($src.html()).show();
+      var b = this.getBoundingClientRect(), h = $menu.outerHeight(), w = $menu.outerWidth();
+      $menu.css({
+        top: (b.bottom + h + 8 > window.innerHeight ? Math.max(8, b.top - h - 4) : b.bottom + 4) + 'px',
+        left: Math.max(8, Math.min(b.right - w, window.innerWidth - w - 8)) + 'px'
+      });
+    });
+    $(document).on('click', function () { closeMenu(); });
+    $(document).on('click', '.shra-row-menu', function () { closeMenu(); });
+    $(window).on('scroll resize', closeMenu);
+
+    $(init);
+    return { refresh: refresh, closeMenu: closeMenu };
+  })();
 
   /* ───────── Billing: phone → lead match banner ───────── */
   S.leadMatch = function (url) {

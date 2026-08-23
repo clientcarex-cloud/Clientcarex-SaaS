@@ -378,12 +378,16 @@ class Shra_leads extends AdminController
         $this->json(['match' => true, 'id' => $l->id, 'name' => $l->name, 'agent' => $l->agent_name ?: 'Unassigned', 'stage' => shra_lead_stage_label($l->stage), 'url' => shra_lead_url($l->id), 'won' => $l->stage === 'won']);
     }
 
-    /** Re-rendered card HTML after an action (queues / pipeline update in place). */
+    /**
+     * Re-rendered lead HTML after an action, so the page updates in place.
+     * The caller posts fmt=row from the dense work list and fmt=card from the board.
+     */
     private function card($lead_id)
     {
-        $l = $this->leads->get($lead_id);
+        $l    = $this->leads->get($lead_id);
+        $view = $this->input->post('fmt') === 'row' ? 'leads/partials/lead_row' : 'leads/partials/lead_card';
 
-        return $this->load->view('leads/partials/lead_card', ['l' => $l, 'can_all' => shra_leads_can('all')], true);
+        return $this->load->view($view, ['l' => $l, 'can_all' => shra_leads_can('all')], true);
     }
 
     /* ═══════════════════════ Team & reports ═══════════════════════ */
