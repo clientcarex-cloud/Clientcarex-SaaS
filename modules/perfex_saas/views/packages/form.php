@@ -294,9 +294,6 @@ $hidden_quota_widgets_options = [];
                                 <div class="tw-mt-8 tw-mb-8">
                                     <?php $selected = (isset($package) ? $package->modules : ''); ?>
                                     <?php $modules = $this->perfex_saas_model->modules(); ?>
-                                    <?php $modules = array_filter($modules, function($module) {
-                                        return stripos($module['custom_name'], 'CCX') !== 0;
-                                    }); ?>
                                     <?= perfex_saas_render_select('modules[]', $modules, ['system_name', ['custom_name']], 'modules', $selected, $select_attr); ?>
                                 </div>
 
