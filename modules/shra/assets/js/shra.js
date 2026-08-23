@@ -342,6 +342,18 @@
     });
   };
 
+  /* ───────── No "Leave site?" prompts on SHRA pages ─────────
+     Perfex binds jquery.are-you-sure to every admin form; the counter screens
+     are transactional (saved via AJAX or one click), so the prompt only annoys. */
+  function killUnloadPrompt() {
+    $('form').removeClass('dirty').off('.areYouSure').find('input,select,textarea').attr('data-ays-ignore', 'true');
+    $(window).off('beforeunload');
+    window.onbeforeunload = null;
+  }
+  $(killUnloadPrompt);
+  $(window).on('load', killUnloadPrompt);
+  $(document).on('change input', 'form', function () { $(this).removeClass('dirty'); });
+
   /* ───────── Small helpers ───────── */
   $(document).on('click', '.shra-copy', function () {
     var t = $(this).data('copy');
