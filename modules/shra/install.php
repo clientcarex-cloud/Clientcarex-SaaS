@@ -499,6 +499,7 @@ $lead_defaults = [
     'shra_lead_gads_id'              => '',
     'shra_lead_gads_label'           => '',
     'shra_lead_ga4_id'               => '',
+    'shra_lead_ig_cache'             => '',
 ];
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);

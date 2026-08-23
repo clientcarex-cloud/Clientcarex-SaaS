@@ -15,7 +15,10 @@ $adult_try = $guest($adults);
 $from_raw = null;
 foreach ($plans as $p) { if (!$p['is_guest'] && $p['sessions'] > 0) { $ps = $p['total_raw'] / $p['sessions']; if ($from_raw === null || $ps < $from_raw) { $from_raw = $ps; } } }
 $from     = $from_raw !== null ? shra_money($from_raw) : '';
-$more_reels = array_slice($landing['reels'], 0, 6);
+$live     = !empty($landing['latest_reels']);
+$reels    = $live ? array_slice($landing['latest_reels'], 0, 8) : array_map(function ($id) { return ['id' => $id, 'thumb' => '', 'views' => 0, 'likes' => 0, 'taken' => 0, 'caption' => '']; }, array_slice($landing['reels'], 0, 6));
+$fmt      = function ($n) { return $n >= 1000000 ? round($n / 1000000, 1) . 'M' : ($n >= 1000 ? round($n / 1000, $n >= 10000 ? 0 : 1) . 'K' : (string) $n); };
+$ago      = function ($t) { $d = max(0, time() - $t); if ($d < 86400) { return 'today'; } if ($d < 604800) { return floor($d / 86400) . 'd ago'; } if ($d < 2592000) { return floor($d / 604800) . 'w ago'; } return date('M Y', $t); };
 $phone_href = $landing['phone_digits'] !== '' ? 'tel:+' . preg_replace('/\D+/', '', get_option('shra_lead_phone_country')) . ltrim(shra_phone_norm($landing['phone']), '0') : '';
 $faq = [
     ['Is horse riding safe for children?', 'Yes. Every lesson is one-on-one with a trained instructor who stays with the rider throughout. We start on calm, well-schooled horses at a walk and only progress when the rider is confident. Children from ' . (int) $landing['min_age'] . ' years can join.'],
@@ -126,8 +129,13 @@ section{padding:52px 0}
 .reel .ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;background:radial-gradient(80% 60% at 50% 35%,#4a3a24 0%,#2a2621 70%);color:#fff;text-align:center;padding:20px}
 .reel .ph .pl{width:62px;height:62px;border-radius:50%;background:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-size:22px;color:#fff;box-shadow:0 10px 30px rgba(184,146,46,.5);transition:.15s}
 .reel .ph:hover .pl{transform:scale(1.06)}
-.reel .ph b{font-size:14px}
-.reel .ph small{font-size:12px;color:#b9ad97}
+.reel .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.reel .ph .sh{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.75) 100%)}
+.reel .ph .pl,.reel .ph .meta,.reel .ph .cap{position:relative;z-index:1}
+.reel .ph .meta{position:absolute;left:14px;right:14px;bottom:14px;display:flex;gap:12px;font-size:12.5px;font-weight:600;color:#fff;text-align:left}
+.reel .ph .meta i{color:var(--gold-2);margin-right:2px}
+.reel .ph .meta .ago{margin-left:auto;color:#b9ad97;font-weight:500}
+.reel .ph .cap{position:absolute;left:14px;right:14px;bottom:40px;font-size:12px;color:#e6dcc6;text-align:left;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ig-link{text-align:center;margin-top:8px}
 .ig-link a{color:#fff;text-decoration:none;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.25);padding:10px 18px;border-radius:999px}
 .ig-link a:hover{background:rgba(255,255,255,.08)}
@@ -245,7 +253,7 @@ section{padding:52px 0}
             </div>
             <div class="proof">
                 <div class="av"><span>A</span><span>R</span><span>S</span><span>+</span></div>
-                <div>Join <b>7,000+ followers</b> watching our riders grow <?php if ($landing['instagram']) { ?>· <a href="<?php echo html_escape($landing['instagram']); ?>" target="_blank" rel="noopener" style="color:var(--brown);font-weight:600">@stallionhorseriding</a><?php } ?></div>
+                <div>Join <b><?php echo $landing['ig_followers'] > 0 ? $fmt(floor($landing['ig_followers'] / 100) * 100) . '+' : '7,000+'; ?> followers</b> watching our riders grow <?php if ($landing['instagram']) { ?>· <a href="<?php echo html_escape($landing['instagram']); ?>" target="_blank" rel="noopener" style="color:var(--brown);font-weight:600">@<?php echo html_escape($landing['ig_handle'] ?: 'stallionhorseriding'); ?></a><?php } ?></div>
             </div>
         </div>
 
@@ -287,26 +295,34 @@ section{padding:52px 0}
     </div>
 </section>
 
-<?php if (count($more_reels)) { ?>
-<section class="reels-sec">
+<?php if (count($reels)) { ?>
+<section class="reels-sec" id="reels">
     <div class="wrap">
         <div class="sec-h">
-            <div class="eyebrow">Straight from the arena</div>
+            <div class="eyebrow"><i class="fa-brands fa-instagram"></i> <?php echo $live ? 'Latest from Instagram' : 'Straight from the arena'; ?></div>
             <h2>See our riders in action</h2>
-            <p>Real lessons, real riders — from first-timers to confident canters.</p>
+            <p>Real lessons, real riders — from first-timers to confident canters.<?php if ($live) { ?> Updated automatically from <a href="<?php echo html_escape($landing['instagram']); ?>" target="_blank" rel="noopener" style="color:#fff;font-weight:600">@<?php echo html_escape($landing['ig_handle']); ?></a>.<?php } ?></p>
         </div>
         <div class="reels">
-            <?php foreach ($more_reels as $i => $rid) { ?>
-            <div class="reel" data-reel="<?php echo html_escape($rid); ?>">
+            <?php foreach ($reels as $r) { ?>
+            <div class="reel" data-reel="<?php echo html_escape($r['id']); ?>">
                 <div class="ph" role="button" tabindex="0" aria-label="Play reel">
+                    <?php if ($r['thumb'] !== '') { ?><img src="<?php echo html_escape($r['thumb']); ?>" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"><?php } ?>
+                    <div class="sh"></div>
                     <span class="pl"><i class="fa-solid fa-play"></i></span>
-                    <b>Watch reel</b>
-                    <small><i class="fa-brands fa-instagram"></i> @stallionhorseriding</small>
+                    <div class="meta">
+                        <?php if ($r['views'] > 0) { ?><span><i class="fa-solid fa-play"></i> <?php echo $fmt($r['views']); ?></span><?php } ?>
+                        <?php if ($r['likes'] > 0) { ?><span><i class="fa-solid fa-heart"></i> <?php echo $fmt($r['likes']); ?></span><?php } ?>
+                        <?php if ($r['taken'] > 0) { ?><span class="ago"><?php echo $ago($r['taken']); ?></span><?php } ?>
+                    </div>
+                    <?php if ($r['caption'] !== '') { ?><div class="cap"><?php echo html_escape($r['caption']); ?></div><?php } ?>
                 </div>
             </div>
             <?php } ?>
         </div>
-        <?php if ($landing['instagram']) { ?><div class="ig-link"><a href="<?php echo html_escape($landing['instagram']); ?>" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> More on Instagram</a></div><?php } ?>
+        <div class="ig-link">
+            <a href="<?php echo html_escape($landing['instagram'] ?: 'https://www.instagram.com/'); ?>" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> Follow<?php if ($landing['ig_followers'] > 0) { ?> · <?php echo $fmt($landing['ig_followers']); ?> followers<?php } ?></a>
+        </div>
     </div>
 </section>
 <?php } ?>
@@ -438,9 +454,9 @@ section{padding:52px 0}
         ph.addEventListener('click',function(){loadReel(ph.parentNode);});
         ph.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();loadReel(ph.parentNode);}});
     });
-    // Auto-load the first reel when the strip scrolls into view
+    // No thumbnails (manual fallback list) — auto-load the first reel when the strip scrolls into view
     var first=document.querySelector('.reel');
-    if(first&&'IntersectionObserver' in window){
+    if(first&&!first.querySelector('img')&&'IntersectionObserver' in window){
         new IntersectionObserver(function(en,io){en.forEach(function(e){if(e.isIntersecting){loadReel(first);io.disconnect();}});},{rootMargin:'200px'}).observe(first);
     }
     // Submit state + tracking

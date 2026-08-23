@@ -240,7 +240,7 @@ class Shra_public extends App_Controller
             return preg_match('/^[A-Za-z0-9_-]{5,}$/', $l) ? $l : null;
         }, preg_split('/[\r\n,]+/', (string) get_option('shra_lead_landing_reels')))));
 
-        return [
+        $out = [
             'phone'       => $phone,
             'phone_digits' => preg_replace('/\D+/', '', $phone),
             'wa_link'     => $phone !== '' ? shra_wa_link($phone, 'Hi! I saw your ad and I\'m interested in horse riding lessons at ' . get_option('shra_academy_name') . '. Please share the packages and visit timings.') : '',
@@ -253,6 +253,108 @@ class Shra_public extends App_Controller
             'gads_label'  => trim((string) get_option('shra_lead_gads_label')),
             'ga4_id'      => trim((string) get_option('shra_lead_ga4_id')),
             'min_age'     => (int) (get_option('shra_lead_landing_min_age') ?: 4),
+        ];
+        $ig = $this->instagram_feed($out['instagram']);
+        $out['ig_handle']    = $ig['handle'];
+        $out['ig_followers'] = $ig['followers'];
+        $out['ig_posts']     = $ig['posts'];
+        $out['latest_reels'] = $ig['reels'];
+
+        return $out;
+    }
+
+    /**
+     * Latest reels from the academy's public Instagram profile (no login / token needed).
+     * Cached in an option for 6 h; a stale cache is served if Instagram is unreachable;
+     * an empty result means the view falls back to the manually configured reel list.
+     */
+    private function instagram_feed($profile_url, $ttl = 21600)
+    {
+        $handle = '';
+        if (preg_match('~instagram\.com/([A-Za-z0-9_.]+)~', (string) $profile_url, $m)) {
+            $handle = $m[1];
+        }
+        $empty = ['handle' => $handle, 'followers' => 0, 'posts' => 0, 'reels' => []];
+        if ($handle === '') {
+            return $empty;
+        }
+
+        $cache = json_decode((string) get_option('shra_lead_ig_cache'), true);
+        $fresh = is_array($cache) && ($cache['handle'] ?? '') === $handle && time() - (int) ($cache['ts'] ?? 0) < $ttl;
+        if ($fresh) {
+            return $cache['data'] + $empty;
+        }
+
+        $data = $this->instagram_fetch($handle);
+        if ($data !== null) {
+            update_option('shra_lead_ig_cache', json_encode(['handle' => $handle, 'ts' => time(), 'data' => $data]));
+
+            return $data + $empty;
+        }
+        if (is_array($cache) && ($cache['handle'] ?? '') === $handle) {
+            // Instagram unreachable — serve the stale copy, but retry again in 15 min rather than hammering
+            $cache['ts'] = time() - $ttl + 900;
+            update_option('shra_lead_ig_cache', json_encode($cache));
+
+            return $cache['data'] + $empty;
+        }
+
+        return $empty;
+    }
+
+    private function instagram_fetch($handle)
+    {
+        if (!function_exists('curl_init')) {
+            return null;
+        }
+        $ch = curl_init('https://www.instagram.com/api/v1/users/web_profile_info/?username=' . rawurlencode($handle));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+            CURLOPT_HTTPHEADER     => ['x-ig-app-id: 936619743392459', 'Accept: */*', 'Accept-Language: en-US,en;q=0.9'],
+        ]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($code !== 200 || !$body) {
+            return null;
+        }
+        $j    = json_decode($body, true);
+        $user = $j['data']['user'] ?? null;
+        if (!$user) {
+            return null;
+        }
+
+        $reels = [];
+        foreach ((array) ($user['edge_owner_to_timeline_media']['edges'] ?? []) as $e) {
+            $n = $e['node'] ?? [];
+            if (empty($n['is_video']) || empty($n['shortcode'])) {
+                continue;
+            }
+            $caption = '';
+            foreach ((array) ($n['edge_media_to_caption']['edges'] ?? []) as $c) {
+                $caption = trim((string) ($c['node']['text'] ?? ''));
+                break;
+            }
+            $reels[] = [
+                'id'      => $n['shortcode'],
+                'thumb'   => (string) ($n['thumbnail_src'] ?? $n['display_url'] ?? ''),
+                'views'   => (int) ($n['video_view_count'] ?? $n['video_play_count'] ?? 0),
+                'likes'   => (int) ($n['edge_liked_by']['count'] ?? $n['edge_media_preview_like']['count'] ?? 0),
+                'taken'   => (int) ($n['taken_at_timestamp'] ?? 0),
+                'caption' => mb_substr(trim(preg_replace(['/[#@][\w.]+/u', '/\s+/'], ['', ' '], $caption)), 0, 140),
+            ];
+        }
+        usort($reels, function ($a, $b) { return $b['taken'] - $a['taken']; });
+
+        return [
+            'handle'    => $handle,
+            'followers' => (int) ($user['edge_followed_by']['count'] ?? 0),
+            'posts'     => (int) ($user['edge_owner_to_timeline_media']['count'] ?? 0),
+            'reels'     => array_slice($reels, 0, 12),
         ];
     }
 
