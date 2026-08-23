@@ -286,36 +286,35 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-fn i{width:7px;height:7px;border-radius:50%;flex:none}
 .shra-fn b{font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink)}
 .shra-fn.zero{opacity:.45}
-.shra-kpi-bar{display:flex;gap:22px;flex-wrap:wrap;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
-.shra-kpi{line-height:1.15;white-space:nowrap}
-.shra-kpi b{display:block;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
-.shra-kpi span{font-size:11px;color:var(--muted)}
-
-/* monthly target pace, under the numbers strip */
-.shra-tg{margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
-.shra-tg-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
-.shra-tg-ttl{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:600}
-.shra-tg-ttl b{color:var(--ink-2)}
-.shra-tg-ttl i{color:var(--gold)}
-.shra-tg-pace{font-size:11px;color:var(--muted)}
-.shra-tg-hd .shra-tg-eod{margin-left:auto}
-.shra-tg-none{font-size:12px;color:var(--muted);padding-bottom:2px}
-.shra-tg-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 22px}
-@media(max-width:767px){.shra-tg-row{grid-template-columns:1fr}}
-.shra-tg-item{min-width:0}
-.shra-tg-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--ink-2);margin-bottom:4px}
-.shra-tg-top i{color:var(--muted);font-size:10px;margin-right:3px}
-.shra-tg-top b{font-size:13px;font-variant-numeric:tabular-nums}
-.shra-tg-track{position:relative}
-.shra-tg-track .shra-progress{height:7px}
-.shra-tg-tick{position:absolute;top:-2px;width:2px;height:11px;background:var(--ink);opacity:.45;border-radius:2px;transform:translateX(-1px)}
-.shra-tg-sub{font-size:11px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shra-tg-item.ahead .shra-progress span,.shra-tg-item.done .shra-progress span{background:var(--green)}
-.shra-tg-item.close .shra-progress span{background:linear-gradient(90deg,var(--gold),var(--gold-2))}
-.shra-tg-item.behind .shra-progress span{background:var(--red)}
-.shra-tg-item.behind .shra-tg-top b{color:var(--red)}
-.shra-tg-item.done .shra-tg-top b,.shra-tg-item.ahead .shra-tg-top b{color:var(--green)}
-.shra-tg-item.none .shra-progress span{background:var(--sand)}
+/* one strip: this month's numbers, their pace against target, and the EOD button */
+.shra-mrow{display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;margin-top:9px;padding-top:10px;border-top:1px solid var(--line)}
+.shra-mx{flex:1 1 140px;min-width:0}
+.shra-mx.wide{flex:1.45 1 185px}
+.shra-mx-hd{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
+.shra-mx-hd>span{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shra-mx-hd>span i{font-size:9.5px;opacity:.7;margin-right:2px}
+.shra-mx-hd u{text-decoration:none;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted)}
+.shra-mx-val{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0;margin:1px 0 5px}
+.shra-mx-val b{font-size:17px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
+.shra-mx-val b em{font-style:normal;font-size:11.5px;font-weight:500;color:var(--muted)}
+.shra-mx-val>span{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shra-mx-track{position:relative}
+.shra-mx-track .shra-progress{height:6px}
+.shra-mx-track>i{position:absolute;top:-2px;width:2px;height:10px;background:var(--ink);opacity:.4;border-radius:2px;transform:translateX(-1px)}
+.shra-mx.ahead .shra-progress span,.shra-mx.done .shra-progress span{background:var(--green)}
+.shra-mx.close .shra-progress span{background:linear-gradient(90deg,var(--gold),var(--gold-2))}
+.shra-mx.behind .shra-progress span{background:var(--red)}
+.shra-mx.plain .shra-progress span{background:var(--ink-2);opacity:.5}
+.shra-mx.none .shra-progress span{background:var(--sand)}
+.shra-mx.behind .shra-mx-hd u{color:var(--red)}
+.shra-mx.ahead .shra-mx-hd u,.shra-mx.done .shra-mx-hd u{color:var(--green)}
+.shra-mx.close .shra-mx-hd u{color:var(--brown)}
+.shra-mx-aside{display:flex;align-items:center;gap:12px;flex:0 0 auto;margin-left:auto;padding-bottom:1px}
+.shra-mx-meta{font-size:10.5px;line-height:1.5;color:var(--muted);text-align:right;white-space:nowrap}
+.shra-mx-meta b{display:block;font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.shra-mx-meta b i{color:var(--gold);font-size:10px;margin-right:2px}
+@media(max-width:1099px){.shra-mx,.shra-mx.wide{flex:1 1 44%}.shra-mx-aside{width:100%;margin-left:0;justify-content:flex-end}}
+@media(max-width:575px){.shra-mrow{gap:14px}.shra-mx,.shra-mx.wide{flex:1 1 100%}}
 
 /* EOD report — WhatsApp preview */
 .shra-eod-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
