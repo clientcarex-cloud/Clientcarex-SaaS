@@ -49,6 +49,69 @@
             <div class="shra-kpi"><b><?php echo $m ? (int) $m->won : 0; ?></b><span>joined<?php echo $m ? ' · ' . (int) $m->win_rate . '%' : ''; ?></span></div>
             <div class="shra-kpi"><b><?php echo shra_money($rev); ?></b><span><?php echo $rev_t > 0 ? min(999, round($rev / $rev_t * 100)) . '% of ' . shra_money($rev_t) : 'this month'; ?></span></div>
         </div>
+
+        <!-- ── Target pace ─────────────────────────────────────────── -->
+        <?php
+        // The KPI bar above always belongs to one agent (own, or the one picked in
+        // the filter) — so the targets under it do too.
+        $tg_name = '';
+        foreach ($agents as $a) {
+            if ((int) $a->staffid === (int) $agent) { $tg_name = $a->full_name; }
+        }
+        $tg_rows = [
+            ['Calls', 'fa-phone', $m ? (float) $m->calls : 0, $m ? (float) $m->calls_target : 0, false],
+            ['Visits booked', 'fa-calendar-check', $m ? (float) $m->visits_booked : 0, $m ? (float) $m->visits_target : 0, false],
+            ['Revenue', 'fa-indian-rupee-sign', $rev, $rev_t, true],
+        ];
+        $tg_any = false;
+        foreach ($tg_rows as $r) { if ($r[3] > 0) { $tg_any = true; } }
+        $tg_day = shra_lead_target_progress(1, 1);
+        ?>
+        <div class="shra-tg">
+            <div class="shra-tg-hd">
+                <span class="shra-tg-ttl"><i class="fa fa-bullseye"></i> Target &middot; <b><?php echo date('F Y'); ?></b><?php echo $tg_name ? ' &middot; ' . html_escape($tg_name) : ''; ?></span>
+                <span class="shra-tg-pace">day <?php echo $tg_day['day']; ?> of <?php echo $tg_day['days']; ?> &middot; <?php echo $tg_day['pace']; ?>% of the month gone</span>
+                <button type="button" class="shra-btn shra-btn-primary shra-btn-sm shra-tg-eod" data-shra-eod="<?php echo (int) $agent; ?>" title="End-of-day report, ready for WhatsApp">
+                    <i class="fa-solid fa-file-lines"></i> EOD Report
+                </button>
+            </div>
+            <?php if (!$tg_any) { ?>
+                <div class="shra-tg-none">
+                    No monthly target set<?php echo $tg_name ? ' for ' . html_escape($tg_name) : ''; ?>.
+                    <?php if ($can_manage) { ?><a href="<?php echo admin_url('shra/shra_leads/settings'); ?>">Set targets &rarr;</a><?php } ?>
+                </div>
+            <?php } else { ?>
+            <div class="shra-tg-row">
+                <?php foreach ($tg_rows as $r) {
+                    list($t_label, $t_icon, $t_done, $t_target, $t_money) = $r;
+                    $pr    = shra_lead_target_progress($t_done, $t_target);
+                    $state = shra_lead_target_state($pr);
+                    $fmtv  = function ($v) use ($t_money) { return $t_money ? shra_money($v) : number_format((float) $v); };
+                ?>
+                <div class="shra-tg-item <?php echo $state; ?>">
+                    <div class="shra-tg-top">
+                        <span><i class="fa <?php echo $t_icon; ?>"></i> <?php echo $t_label; ?></span>
+                        <b><?php echo $pr ? $pr['pct'] . '%' : '&mdash;'; ?></b>
+                    </div>
+                    <div class="shra-tg-track">
+                        <div class="shra-progress"><span style="width:<?php echo $pr ? min(100, $pr['pct']) : 0; ?>%"></span></div>
+                        <?php if ($pr) { ?><i class="shra-tg-tick" style="left:<?php echo min(100, $pr['pace']); ?>%" title="Where you should be today"></i><?php } ?>
+                    </div>
+                    <div class="shra-tg-sub">
+                        <?php if (!$pr) { ?>
+                            <?php echo $fmtv($t_done); ?> &middot; no target
+                        <?php } elseif ($pr['done']) { ?>
+                            <i class="fa fa-check"></i> <?php echo $fmtv($t_done); ?> of <?php echo $fmtv($t_target); ?> &mdash; hit
+                        <?php } else { ?>
+                            <?php echo $fmtv($t_done); ?> of <?php echo $fmtv($t_target); ?>
+                            &middot; <?php echo $pr['days_left'] > 0 ? $fmtv(ceil($pr['per_day'])) . '/day left' : $fmtv($pr['left']) . ' short'; ?>
+                        <?php } ?>
+                    </div>
+                </div>
+                <?php } ?>
+            </div>
+            <?php } ?>
+        </div>
     </div>
 
     <!-- ── Filters ────────────────────────────────────────────────── -->

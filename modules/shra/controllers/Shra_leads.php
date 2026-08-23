@@ -143,6 +143,33 @@ class Shra_leads extends AdminController
         $this->load->view('leads/index', $data);
     }
 
+    /**
+     * End-of-day report for one agent, as a WhatsApp-ready message. Agents may
+     * pull their own day; managers (leads_all) may pull anyone's.
+     */
+    public function eod()
+    {
+        $me    = (int) get_staff_user_id();
+        $agent = (int) $this->input->get('agent') ?: $me;
+        if ($agent !== $me && !shra_leads_can('all')) {
+            $agent = $me;
+        }
+        $date  = (string) $this->input->get('date');
+        $date  = $date && strtotime($date) ? date('Y-m-d', strtotime($date)) : date('Y-m-d');
+        if ($date > date('Y-m-d')) {
+            $date = date('Y-m-d');
+        }
+
+        $report = $this->leads->day_report($agent, $date);
+        $this->json([
+            'success' => true,
+            'agent'   => $report['agent'],
+            'date'    => $date,
+            'label'   => date('D, d M Y', strtotime($date)),
+            'text'    => shra_lead_eod_message($report),
+        ]);
+    }
+
     /** Pipeline used to be its own page; it is the same screen now. */
     public function pipeline()
     {

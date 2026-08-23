@@ -149,6 +149,30 @@ $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
     </div>
 </div></div></div>
 
+<!-- End-of-day report -->
+<div class="modal fade shra" id="shra-lead-eod" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa-solid fa-file-lines"></i> End-of-day report</h4></div>
+    <div class="modal-body">
+        <div class="shra-eod-bar">
+            <?php if ($can_all) { ?>
+            <select id="shra-eod-agent" class="form-control" title="Whose day">
+                <?php foreach ($agents as $a) { ?><option value="<?php echo $a->staffid; ?>" <?php echo $a->staffid == get_staff_user_id() ? 'selected' : ''; ?>><?php echo html_escape($a->full_name); ?><?php echo $a->staffid == get_staff_user_id() ? ' (me)' : ''; ?></option><?php } ?>
+            </select>
+            <?php } ?>
+            <input type="date" id="shra-eod-date" class="form-control" max="<?php echo date('Y-m-d'); ?>" value="<?php echo date('Y-m-d'); ?>" title="Which day">
+            <span class="help" style="margin:0">Paste it straight into the team group.</span>
+        </div>
+        <div class="shra-eod-wrap">
+            <div class="shra-eod-bubble" id="shra-eod-preview"><span class="shra-eod-loading"><i class="fa fa-circle-notch fa-spin"></i> Building the report&hellip;</span></div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Close</button>
+        <a href="#" target="_blank" rel="noopener" class="shra-btn shra-btn-outline" id="shra-eod-wa"><i class="fa-brands fa-whatsapp"></i> Send on WhatsApp</a>
+        <button type="button" class="shra-btn shra-btn-primary" id="shra-eod-copy"><i class="fa fa-copy"></i> Copy message</button>
+    </div>
+</div></div></div>
+
 <script>
 window.SHRA_LEADS_CFG = {
     urls: {
@@ -165,7 +189,8 @@ window.SHRA_LEADS_CFG = {
         stage: <?php echo json_encode(admin_url('shra/shra_leads/stage')); ?>,
         reassign: <?php echo json_encode(admin_url('shra/shra_leads/reassign')); ?>,
         note: <?php echo json_encode(admin_url('shra/shra_leads/note')); ?>,
-        details: <?php echo json_encode(admin_url('shra/shra_leads/update_details')); ?>
+        details: <?php echo json_encode(admin_url('shra/shra_leads/update_details')); ?>,
+        eod: <?php echo json_encode(admin_url('shra/shra_leads/eod')); ?>
     },
     templates: <?php echo json_encode($templates); ?>,
     academy: <?php echo json_encode(get_option('shra_academy_name') ?: 'SHRA'); ?>,

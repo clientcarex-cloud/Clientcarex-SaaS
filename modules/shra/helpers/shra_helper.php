@@ -476,6 +476,161 @@ function shra_lead_fill_template($text, $lead)
     ]);
 }
 
+/* ══════════════ Targets / EOD report ══════════════ */
+
+/**
+ * Where a monthly target stands, plus the pace it needs from here. Returns null
+ * when nothing was set — callers show "no target" rather than a fake 0%.
+ */
+function shra_lead_target_progress($done, $target, $date = null)
+{
+    $target = (float) $target;
+    if ($target <= 0) {
+        return null;
+    }
+    $ts    = $date && strtotime($date) ? strtotime($date) : time();
+    $days  = (int) date('t', $ts);
+    $day   = (int) date('j', $ts);
+    $left  = max(0, $days - $day);
+    $done  = (float) $done;
+    $short = max(0, $target - $done);
+
+    return [
+        'pct'      => (int) min(999, round($done / $target * 100)),
+        'pace'     => (int) round($day / $days * 100),
+        'day'      => $day,
+        'days'     => $days,
+        'days_left' => $left,
+        'left'     => $short,
+        'per_day'  => $short > 0 ? ($left > 0 ? $short / $left : $short) : 0,
+        'on_track' => $done >= $target * ($day / $days),
+        'done'     => $done >= $target,
+    ];
+}
+
+/** Target health for a badge / bar colour: 'done' | 'ahead' | 'close' | 'behind'. */
+function shra_lead_target_state($p)
+{
+    if (!$p) {
+        return 'none';
+    }
+    if ($p['done']) {
+        return 'done';
+    }
+    if ($p['on_track']) {
+        return 'ahead';
+    }
+
+    return $p['pct'] >= $p['pace'] * 0.7 ? 'close' : 'behind';
+}
+
+/** A progress bar drawn in text, for the WhatsApp report. */
+function shra_lead_text_bar($pct, $len = 10)
+{
+    $pct  = max(0, min(100, (int) $pct));
+    $fill = (int) round($pct / 100 * $len);
+
+    return str_repeat('▓', $fill) . str_repeat('░', $len - $fill);
+}
+
+/**
+ * The end-of-day report as a WhatsApp message — *bold*, _italics_ and emoji,
+ * sized to paste straight into a group chat. $d comes from
+ * Shra_leads_model::day_report().
+ */
+function shra_lead_eod_message(array $d)
+{
+    $t   = $d['today'];
+    $m   = $d['month'];
+    $ts  = strtotime($d['date']);
+    $n   = function ($v) { return number_format((float) $v); };
+    $L   = [];
+    $rule = str_repeat('━', 16);
+
+    $L[] = '🐎 *' . strtoupper(get_option('shra_academy_name') ?: 'SHRA') . '*';
+    $L[] = '*END OF DAY REPORT*';
+    $L[] = $rule;
+    $L[] = '👤 ' . $d['agent'];
+    $L[] = '📅 ' . date('l, d M Y', $ts);
+    $L[] = '';
+
+    $L[] = '📞 *CALLING*';
+    $L[] = 'Calls *' . $n($t->calls) . '*  ·  WhatsApp *' . $n($t->whatsapp) . '*';
+    $L[] = 'Leads worked *' . $n($t->touched) . '*  ·  Reached *' . $n($t->connected) . '*';
+    $L[] = 'Interested *' . $n($t->interested) . '*  ·  New leads in *' . $n($t->new_leads) . '*';
+    $L[] = '';
+
+    $L[] = '🏇 *VISITS*';
+    $L[] = 'Booked *' . $n($t->booked) . '*  ·  Walked in *' . $n($t->visited) . '*';
+    $L[] = 'Confirmed *' . $n($t->confirmed) . '*  ·  No-show *' . $n($t->no_show) . '*';
+    $L[] = '';
+
+    $L[] = '🏆 *CLOSED TODAY*';
+    $L[] = 'Joined *' . $n($t->won) . '*  ·  Renewals *' . $n($t->renewals) . '*  ·  Lost *' . $n($t->lost) . '*';
+    $L[] = 'Revenue *' . shra_money($t->revenue) . '*  ·  Collected *' . shra_money($t->collected) . '*';
+    foreach ($d['wins'] as $w) {
+        $L[] = '  ✨ ' . trim((string) $w->name) . ($w->package_name ? ' — ' . $w->package_name : '')
+             . ' · ' . shra_money($w->amount_billed) . ($w->kind === 'repeat' ? ' _(renewal)_' : '');
+    }
+    $L[] = '';
+
+    // ── Month against target ──
+    $bars = [];
+    if ($m) {
+        $bars = [
+            ['📞 Calls', (float) $m->calls, (float) $m->calls_target, false],
+            ['🏇 Visits', (float) $m->visits_booked, (float) $m->visits_target, false],
+            ['💰 Revenue', (float) $m->revenue, (float) $m->revenue_target, true],
+        ];
+    }
+    $shown = 0;
+    $head  = null;
+    foreach ($bars as $b) {
+        $p = shra_lead_target_progress($b[1], $b[2], $d['date']);
+        if (!$p) {
+            continue;
+        }
+        if (!$shown) {
+            $head = $p;
+            $L[]  = '🎯 *' . strtoupper(date('F', $ts)) . ' TARGET* · _day ' . $p['day'] . ' of ' . $p['days'] . '_';
+        }
+        $shown++;
+        $fmt   = $b[3] ? 'shra_money' : $n;
+        $L[]   = $b[0] . '  ' . shra_lead_text_bar($p['pct']) . '  *' . $p['pct'] . '%*';
+        $note  = $fmt($b[1]) . ' of ' . $fmt($b[2]);
+        if ($p['done']) {
+            $note .= ' · ✅ done';
+        } elseif ($p['days_left'] > 0) {
+            $note .= ' · ' . $fmt(ceil($p['per_day'])) . '/day to finish';
+        } else {
+            $note .= ' · ' . $fmt($p['left']) . ' short';
+        }
+        $L[] = '   _' . $note . '_';
+    }
+    if ($shown) {
+        $st  = shra_lead_target_state($head);
+        $L[] = $st === 'done' || $st === 'ahead'
+            ? '✅ _On pace — ' . $head['pace'] . '% of the month gone._'
+            : '⚠️ _Behind pace — ' . $head['pace'] . '% of the month gone, ' . $head['days_left'] . ' days left._';
+        $L[] = '';
+    }
+
+    $L[] = '📋 *PIPELINE NOW*';
+    $L[] = 'Open *' . $n($t->open_now) . '*  ·  Overdue *' . $n($t->overdue_now) . '*';
+    $L[] = '';
+
+    $L[] = '⏭️ *TOMORROW · ' . date('D, d M', strtotime($d['tomorrow'])) . '*';
+    $L[] = 'Follow-ups due *' . $n($t->due_tomorrow) . '*  ·  Visits *' . count($d['visits']) . '*';
+    foreach ($d['visits'] as $v) {
+        $L[] = '  ⏰ ' . ($v->visit_slot ? shra_slot($v->visit_slot) : 'time TBD') . ' — ' . trim((string) $v->name);
+    }
+
+    $L[] = $rule;
+    $L[] = '_Sent from ' . (get_option('companyname') ?: 'ClientCareX') . ' · SHRA Leads_';
+
+    return implode("\n", $L);
+}
+
 /** Humanised "in 2 h" / "3 d overdue". */
 function shra_lead_due_text($datetime)
 {

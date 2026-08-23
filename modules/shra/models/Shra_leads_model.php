@@ -1175,10 +1175,11 @@ class Shra_leads_model extends App_Model
             WHERE l.lost = 1 AND l.last_status_change BETWEEN ? AND ? GROUP BY x.lost_reason ORDER BY c DESC", [$from . ' 00:00:00', $to . ' 23:59:59'])->result();
     }
 
-    /** Agent-level KPIs for My Day header (this month). */
-    public function my_month($staff_id)
+    /** Agent-level KPIs for My Day header (this month, or the month $in falls in). */
+    public function my_month($staff_id, $in = null)
     {
-        $rows = $this->team_stats(date('Y-m-01'), date('Y-m-t'));
+        $ts   = $in && strtotime($in) ? strtotime($in) : time();
+        $rows = $this->team_stats(date('Y-m-01', $ts), date('Y-m-t', $ts));
         foreach ($rows as $r) {
             if ((int) $r->staffid === (int) $staff_id) {
                 return $r;
@@ -1186,6 +1187,70 @@ class Shra_leads_model extends App_Model
         }
 
         return null;
+    }
+
+    /**
+     * One agent's day, for the EOD report: what they did between 00:00 and 23:59 on
+     * $date, where the month stands against target, and what is waiting tomorrow.
+     */
+    public function day_report($staff_id, $date)
+    {
+        $p   = db_prefix();
+        $id  = (int) $staff_id;
+        $f   = $date . ' 00:00:00';
+        $t   = $date . ' 23:59:59';
+        $tm  = date('Y-m-d', strtotime($date . ' +1 day'));
+        $now = date('Y-m-d H:i:s');
+
+        // Calls / WhatsApp are credited to whoever logged them; everything else to
+        // whoever owns the lead right now — same rule the leaderboard uses.
+        $ev = "SELECT COUNT(DISTINCT e.lead_id) FROM {$p}shra_lead_events e JOIN {$p}leads l ON l.id = e.lead_id
+               WHERE l.assigned = ? AND e.created_at BETWEEN ? AND ? AND e.event_type";
+        $sql = "SELECT
+            (SELECT COUNT(*) FROM {$p}shra_lead_events e WHERE e.staff_id = ? AND e.created_at BETWEEN ? AND ? AND e.event_type = 'call') AS calls,
+            (SELECT COUNT(*) FROM {$p}shra_lead_events e WHERE e.staff_id = ? AND e.created_at BETWEEN ? AND ? AND e.event_type = 'whatsapp') AS whatsapp,
+            (SELECT COUNT(DISTINCT e.lead_id) FROM {$p}shra_lead_events e WHERE e.staff_id = ? AND e.created_at BETWEEN ? AND ? AND e.event_type IN ('call','whatsapp')) AS touched,
+            (SELECT COUNT(DISTINCT e.lead_id) FROM {$p}shra_lead_events e WHERE e.staff_id = ? AND e.created_at BETWEEN ? AND ? AND e.event_type IN ('call','whatsapp') AND e.outcome IN ('interested','callback_requested','not_interested')) AS connected,
+            (SELECT COUNT(DISTINCT e.lead_id) FROM {$p}shra_lead_events e WHERE e.staff_id = ? AND e.created_at BETWEEN ? AND ? AND e.event_type IN ('call','whatsapp') AND e.outcome = 'interested') AS interested,
+            (SELECT COUNT(*) FROM {$p}leads l WHERE l.assigned = ? AND l.dateadded BETWEEN ? AND ?) AS new_leads,
+            ({$ev} IN ('visit_scheduled','visit_rescheduled')) AS booked,
+            ({$ev} = 'visited') AS visited,
+            ({$ev} = 'confirmed') AS confirmed,
+            ({$ev} = 'no_show') AS no_show,
+            (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ? AND a.kind = 'first') AS won,
+            (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ? AND a.kind = 'repeat') AS renewals,
+            (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ?) AS revenue,
+            (SELECT COALESCE(SUM(a.amount_paid),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ?) AS collected,
+            (SELECT COUNT(*) FROM {$p}leads l WHERE l.assigned = ? AND l.last_status_change BETWEEN ? AND ? AND l.lost = 1) AS lost,
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_now,
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.next_action_at < ?) AS overdue_now,
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND DATE(x.next_action_at) = ?) AS due_tomorrow";
+
+        $b = [];
+        for ($i = 0; $i < 15; $i++) {
+            array_push($b, $id, $f, $t);
+        }
+        array_push($b, $id, $id, $now, $id, $tm);
+        $today = $this->db->query($sql, $b)->row();
+
+        // Names make the report worth reading — who joined, who is coming tomorrow.
+        $wins = $this->db->query("SELECT l.name, e.package_name, a.amount_billed, a.kind FROM {$p}shra_lead_attribution a
+            LEFT JOIN {$p}leads l ON l.id = a.lead_id LEFT JOIN {$p}shra_enrollments e ON e.id = a.enrollment_id
+            WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ? ORDER BY a.id ASC LIMIT 10", [$id, $f, $t])->result();
+        $visits = $this->db->query("SELECT l.name, l.phonenumber, x.visit_slot FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
+            WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key = 'visit_scheduled' AND x.visit_date = ?
+            ORDER BY x.visit_slot ASC LIMIT 10", [$id, $tm])->result();
+
+        return [
+            'agent_id' => $id,
+            'agent'    => get_staff_full_name($id),
+            'date'     => $date,
+            'tomorrow' => $tm,
+            'today'    => $today,
+            'month'    => $this->my_month($id, $date),
+            'wins'     => $wins,
+            'visits'   => $visits,
+        ];
     }
 
     /** Dashboard tiles. */

@@ -291,7 +291,46 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-kpi b{display:block;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
 .shra-kpi span{font-size:11px;color:var(--muted)}
 
-/* filter bar */
+/* monthly target pace, under the numbers strip */
+.shra-tg{margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.shra-tg-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.shra-tg-ttl{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.shra-tg-ttl b{color:var(--ink-2)}
+.shra-tg-ttl i{color:var(--gold)}
+.shra-tg-pace{font-size:11px;color:var(--muted)}
+.shra-tg-hd .shra-tg-eod{margin-left:auto}
+.shra-tg-none{font-size:12px;color:var(--muted);padding-bottom:2px}
+.shra-tg-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 22px}
+@media(max-width:767px){.shra-tg-row{grid-template-columns:1fr}}
+.shra-tg-item{min-width:0}
+.shra-tg-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--ink-2);margin-bottom:4px}
+.shra-tg-top i{color:var(--muted);font-size:10px;margin-right:3px}
+.shra-tg-top b{font-size:13px;font-variant-numeric:tabular-nums}
+.shra-tg-track{position:relative}
+.shra-tg-track .shra-progress{height:7px}
+.shra-tg-tick{position:absolute;top:-2px;width:2px;height:11px;background:var(--ink);opacity:.45;border-radius:2px;transform:translateX(-1px)}
+.shra-tg-sub{font-size:11px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shra-tg-item.ahead .shra-progress span,.shra-tg-item.done .shra-progress span{background:var(--green)}
+.shra-tg-item.close .shra-progress span{background:linear-gradient(90deg,var(--gold),var(--gold-2))}
+.shra-tg-item.behind .shra-progress span{background:var(--red)}
+.shra-tg-item.behind .shra-tg-top b{color:var(--red)}
+.shra-tg-item.done .shra-tg-top b,.shra-tg-item.ahead .shra-tg-top b{color:var(--green)}
+.shra-tg-item.none .shra-progress span{background:var(--sand)}
+
+/* EOD report — WhatsApp preview */
+.shra-eod-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.shra-eod-bar .form-control{margin:0;height:34px;padding:6px 10px;font-size:12.5px;width:auto;border-radius:8px}
+.shra-eod-wrap{background:#e9e2d5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 20h40M20 0v40' stroke='%23000' stroke-opacity='.03'/%3E%3C/svg%3E");
+  border:1px solid var(--line);border-radius:12px;padding:16px;max-height:52vh;overflow:auto}
+.shra-eod-bubble{background:#fff;border-radius:12px 12px 12px 4px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.12);max-width:520px;
+  font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.55;color:#111;white-space:pre-wrap;word-break:break-word;position:relative}
+.shra-eod-bubble b{font-weight:700}
+.shra-eod-bubble em{font-style:italic;color:#5a5a5a}
+.shra-eod-bubble .bar{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.5px}
+.shra-eod-time{display:block;text-align:right;font-size:10.5px;color:#8a8a8a;margin-top:6px}
+.shra-eod-loading{padding:30px;text-align:center;color:var(--muted)}
+
+/* filter bar
 .shra-fl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin-bottom:10px}
 .shra-fl-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .shra-fl .form-control{margin:0;height:34px;padding:6px 10px;font-size:12.5px;width:auto;border-radius:8px}

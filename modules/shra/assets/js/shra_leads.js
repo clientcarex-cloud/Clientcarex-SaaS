@@ -379,6 +379,70 @@
     return { refresh: refresh, closeMenu: closeMenu };
   })();
 
+  /* ───────── End-of-day report ───────── */
+  (function () {
+    var text = '', seq = 0;
+
+    // WhatsApp markup → HTML, so the preview reads the way the message will.
+    function render(t) {
+      return esc(t)
+        .replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
+        .replace(/_([^_\n]+)_/g, '<em>$1</em>')
+        .replace(/([▓░]{4,})/g, '<span class="bar">$1</span>');
+    }
+
+    function load() {
+      // Changing the agent or the date re-fetches; only the newest answer may paint.
+      var mine = ++seq;
+      text = '';
+      $('#shra-eod-preview').html('<span class="shra-eod-loading"><i class="fa fa-circle-notch fa-spin"></i> Building the report…</span>');
+      $('#shra-eod-copy').prop('disabled', true);
+      $.getJSON(cfg().urls.eod, { agent: $('#shra-eod-agent').val() || '', date: $('#shra-eod-date').val() || '' }, function (res) {
+        if (mine !== seq) { return; }
+        if (!res || !res.success) { $('#shra-eod-preview').html('<span class="shra-eod-loading">Could not build the report.</span>'); return; }
+        text = res.text;
+        $('#shra-eod-preview').html(render(text) + '<span class="shra-eod-time">' + esc(res.label) + ' ✓✓</span>');
+        $('#shra-eod-copy').prop('disabled', false);
+        $('#shra-eod-wa').attr('href', 'https://wa.me/?text=' + encodeURIComponent(text));
+      }).fail(function () {
+        if (mine === seq) { $('#shra-eod-preview').html('<span class="shra-eod-loading">Request failed.</span>'); }
+      });
+    }
+
+    function copy() {
+      if (!text) { return; }
+      var done = function () {
+        toast('success', 'Report copied — paste it into WhatsApp.');
+        var $b = $('#shra-eod-copy');
+        $b.html('<i class="fa fa-check"></i> Copied');
+        setTimeout(function () { $b.html('<i class="fa fa-copy"></i> Copy message'); }, 2000);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else {
+        fallback();
+      }
+      function fallback() {
+        // Older browsers / plain http: copy out of a throwaway textarea.
+        var $ta = $('<textarea>').val(text).css({ position: 'fixed', top: '-1000px', opacity: 0 }).appendTo('body');
+        $ta[0].select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        $ta.remove();
+        if (ok) { done(); } else { toast('warning', 'Could not copy automatically — select the message and copy it.'); }
+      }
+    }
+
+    $(document).on('click', '[data-shra-eod]', function () {
+      var agent = String($(this).data('shra-eod') || '');
+      if (agent && $('#shra-eod-agent option[value="' + agent + '"]').length) { $('#shra-eod-agent').val(agent); }
+      $('#shra-lead-eod').modal('show');
+      load();
+    });
+    $(document).on('change', '#shra-eod-agent,#shra-eod-date', load);
+    $(document).on('click', '#shra-eod-copy', copy);
+  })();
+
   /* ───────── Billing: phone → lead match banner ───────── */
   S.leadMatch = function (url) {
     $(document).on('shra:riderPicked', function (_, r) {
