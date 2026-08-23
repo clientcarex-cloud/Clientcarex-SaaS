@@ -202,6 +202,16 @@ $route['join/(:any)/(:any)/(:any)']    = 'shra/shra_public/register/$1/$2/$3';
 $route['inquire']                      = 'shra/shra_public/inquire';
 $route['inquire/(:any)']               = 'shra/shra_public/inquire/$1';
 
+// SHRA leads desk — the leads pages live in the module's second controller
+// (modules/shra/controllers/Shra_leads.php), which HMVC resolves at
+// admin/shra/shra_leads/<method>. Alias the shorter admin/shra_leads/<method>
+// form so bookmarks and older links keep working. (:any) matches a single
+// segment in CI3, so each depth needs its own line.
+$route['admin/shra_leads']                             = 'shra/shra_leads/index';
+$route['admin/shra_leads/(:any)']                      = 'shra/shra_leads/$1';
+$route['admin/shra_leads/(:any)/(:any)']               = 'shra/shra_leads/$1/$2';
+$route['admin/shra_leads/(:any)/(:any)/(:any)']        = 'shra/shra_leads/$1/$2/$3';
+
 // Short URLs for public live voting (voting module)
 // /vote/{code} = telecast screen (question + QR + live results)
 // /v/{code}    = voter ballot (vote only, no results exposed)

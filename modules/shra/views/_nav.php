@@ -13,14 +13,14 @@ if (shra_can_attendance()) {
     $shra_tabs[] = ['attendance', 'shra/attendance', 'fa-solid fa-clipboard-check', _l('shra_attendance')];
 }
 if (shra_leads_can('own')) {
-    $shra_tabs[] = ['leads', 'shra_leads', 'fa-solid fa-phone-volume', 'Leads'];
-    $shra_tabs[] = ['pipeline', 'shra_leads/pipeline', 'fa-solid fa-diagram-project', 'Pipeline'];
+    $shra_tabs[] = ['leads', 'shra/shra_leads', 'fa-solid fa-phone-volume', 'Leads'];
+    $shra_tabs[] = ['pipeline', 'shra/shra_leads/pipeline', 'fa-solid fa-diagram-project', 'Pipeline'];
 }
 if (shra_leads_can('all') || shra_can_billing()) {
-    $shra_tabs[] = ['visits', 'shra_leads/visits', 'fa-solid fa-calendar-check', 'Visits'];
+    $shra_tabs[] = ['visits', 'shra/shra_leads/visits', 'fa-solid fa-calendar-check', 'Visits'];
 }
 if (shra_leads_can('reports')) {
-    $shra_tabs[] = ['team', 'shra_leads/team', 'fa-solid fa-ranking-star', 'Team'];
+    $shra_tabs[] = ['team', 'shra/shra_leads/team', 'fa-solid fa-ranking-star', 'Team'];
 }
 if (shra_can('view')) {
     $shra_tabs[] = ['reports', 'shra/reports', 'fa-solid fa-chart-column', 'Reports'];
