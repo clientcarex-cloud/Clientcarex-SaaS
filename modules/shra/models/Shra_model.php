@@ -1002,6 +1002,86 @@ class Shra_model extends App_Model
         return $t ? (int) $t->id : null;
     }
 
+    /* ═══════════════════════ Reports ═══════════════════════ */
+
+    /**
+     * Finance + academy analytics for a date range (inclusive, Y-m-d).
+     * Collections are taken from the invoice payment records of SHRA bills,
+     * so balance payments recorded later land on the day they were received.
+     */
+    public function report($from, $to)
+    {
+        $p  = db_prefix();
+        $f  = $this->db->escape($from);
+        $t  = $this->db->escape($to);
+        $q  = function ($sql) { return $this->db->query($sql)->result(); };
+        $r1 = function ($sql) { return (array) $this->db->query($sql)->row(); };
+
+        // Payments in range that belong to SHRA enrollments
+        $pay_join = "FROM {$p}invoicepaymentrecords pr
+            JOIN {$p}shra_enrollments e ON e.invoice_id = pr.invoiceid AND e.status <> 'cancelled'
+            LEFT JOIN {$p}payment_modes pm ON pm.id = pr.paymentmode
+            LEFT JOIN {$p}shra_riders r ON r.id = e.rider_id
+            WHERE DATE(pr.date) BETWEEN {$f} AND {$t}";
+
+        $out = [];
+        $out['kpi'] = $r1("SELECT
+            (SELECT COALESCE(SUM(pr.amount),0) {$pay_join}) AS collected,
+            (SELECT COUNT(*) {$pay_join}) AS payments,
+            (SELECT COALESCE(SUM(e.total),0) FROM {$p}shra_enrollments e WHERE DATE(e.created_at) BETWEEN {$f} AND {$t} AND e.status <> 'cancelled') AS billed,
+            (SELECT COALESCE(SUM(e.list_price),0) FROM {$p}shra_enrollments e WHERE DATE(e.created_at) BETWEEN {$f} AND {$t} AND e.status <> 'cancelled') AS list_value,
+            (SELECT COALESCE(SUM(e.discount_amount),0) FROM {$p}shra_enrollments e WHERE DATE(e.created_at) BETWEEN {$f} AND {$t} AND e.status <> 'cancelled') AS discounts,
+            (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE DATE(e.created_at) BETWEEN {$f} AND {$t} AND e.status <> 'cancelled') AS packages_sold,
+            (SELECT COALESCE(SUM(e.sessions_total),0) FROM {$p}shra_enrollments e WHERE DATE(e.created_at) BETWEEN {$f} AND {$t} AND e.status <> 'cancelled') AS sessions_sold,
+            (SELECT COALESCE(SUM(GREATEST(0, e.total - COALESCE((SELECT SUM(x.amount) FROM {$p}invoicepaymentrecords x WHERE x.invoiceid = e.invoice_id), e.paid_amount))),0)
+                FROM {$p}shra_enrollments e WHERE DATE(e.created_at) BETWEEN {$f} AND {$t} AND e.status <> 'cancelled') AS due_in_range,
+            (SELECT COALESCE(SUM(GREATEST(0, e.total - COALESCE((SELECT SUM(x.amount) FROM {$p}invoicepaymentrecords x WHERE x.invoiceid = e.invoice_id), e.paid_amount))),0)
+                FROM {$p}shra_enrollments e WHERE e.status <> 'cancelled') AS due_total,
+            (SELECT COUNT(*) FROM {$p}shra_attendance a WHERE a.session_date BETWEEN {$f} AND {$t}) AS sessions_held,
+            (SELECT COUNT(DISTINCT a.rider_id) FROM {$p}shra_attendance a WHERE a.session_date BETWEEN {$f} AND {$t}) AS riders_rode,
+            (SELECT COUNT(DISTINCT a.session_date) FROM {$p}shra_attendance a WHERE a.session_date BETWEEN {$f} AND {$t}) AS riding_days,
+            (SELECT COUNT(*) FROM {$p}shra_riders r WHERE DATE(r.created_at) BETWEEN {$f} AND {$t}) AS new_riders,
+            (SELECT COUNT(*) FROM {$p}shra_riders r WHERE DATE(r.created_at) BETWEEN {$f} AND {$t} AND r.rider_type = 'learner') AS new_learners,
+            (SELECT COUNT(*) FROM {$p}shra_riders r WHERE DATE(r.created_at) BETWEEN {$f} AND {$t} AND r.source = 'self') AS new_self,
+            (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE DATE(e.certificate_issued_at) BETWEEN {$f} AND {$t}) AS certificates,
+            (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE DATE(e.completed_at) BETWEEN {$f} AND {$t} AND e.status = 'completed') AS completed,
+            (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE e.status = 'active') AS active_packages,
+            (SELECT COALESCE(SUM(e.sessions_total - e.sessions_used),0) FROM {$p}shra_enrollments e WHERE e.status = 'active') AS sessions_outstanding,
+            (SELECT COUNT(*) FROM {$p}shra_riders) AS riders_total
+        ");
+
+        $out['by_mode'] = $q("SELECT COALESCE(pm.name, NULLIF(pr.paymentmode,''), 'Unspecified') AS mode, COUNT(*) AS n, SUM(pr.amount) AS amount {$pay_join} GROUP BY mode ORDER BY amount DESC");
+        $out['by_day']  = $q("SELECT DATE(pr.date) AS d, SUM(pr.amount) AS amount, COUNT(*) AS n {$pay_join} GROUP BY DATE(pr.date) ORDER BY d");
+        $out['sessions_by_day'] = $q("SELECT a.session_date AS d, COUNT(*) AS n FROM {$p}shra_attendance a WHERE a.session_date BETWEEN {$f} AND {$t} GROUP BY a.session_date ORDER BY d");
+        $out['payments'] = $q("SELECT pr.id, pr.date, pr.amount, pr.transactionid, COALESCE(pm.name, pr.paymentmode) AS mode, e.enrollment_no, e.package_name, e.rider_id, r.full_name, r.rider_no {$pay_join} ORDER BY pr.date DESC, pr.id DESC LIMIT 500");
+
+        $enr_where = "FROM {$p}shra_enrollments e WHERE DATE(e.created_at) BETWEEN {$f} AND {$t} AND e.status <> 'cancelled'";
+        $out['by_package']  = $q("SELECT e.package_name, e.audience, e.is_guest, COUNT(*) AS n, SUM(e.sessions_total) AS sessions, SUM(e.list_price) AS list_value, SUM(e.discount_amount) AS discounts, SUM(e.total) AS billed,
+            SUM(COALESCE((SELECT SUM(x.amount) FROM {$p}invoicepaymentrecords x WHERE x.invoiceid = e.invoice_id), e.paid_amount)) AS collected {$enr_where} GROUP BY e.package_name, e.audience, e.is_guest ORDER BY billed DESC");
+        $out['by_audience'] = $q("SELECT e.audience AS k, COUNT(*) AS n, SUM(e.total) AS billed {$enr_where} GROUP BY e.audience");
+        $out['by_type']     = $q("SELECT IF(e.is_guest = 1, 'guest', 'learner') AS k, COUNT(*) AS n, SUM(e.total) AS billed {$enr_where} GROUP BY k");
+
+        $out['by_trainer'] = $q("SELECT COALESCE(t.name, 'Unassigned') AS trainer, COUNT(*) AS n, COUNT(DISTINCT a.rider_id) AS riders, COUNT(DISTINCT a.session_date) AS days
+            FROM {$p}shra_attendance a LEFT JOIN {$p}shra_trainers t ON t.id = a.trainer_id WHERE a.session_date BETWEEN {$f} AND {$t} GROUP BY trainer ORDER BY n DESC");
+        $out['by_weekday'] = $q("SELECT DAYOFWEEK(a.session_date) AS dow, COUNT(*) AS n FROM {$p}shra_attendance a WHERE a.session_date BETWEEN {$f} AND {$t} GROUP BY dow");
+        $out['by_hour']    = $q("SELECT HOUR(a.session_time) AS h, COUNT(*) AS n FROM {$p}shra_attendance a WHERE a.session_date BETWEEN {$f} AND {$t} AND a.session_time IS NOT NULL GROUP BY h ORDER BY h");
+        $out['top_riders'] = $q("SELECT r.id, r.full_name, r.rider_no, r.rider_type, COUNT(*) AS n, MAX(a.session_date) AS last_session
+            FROM {$p}shra_attendance a JOIN {$p}shra_riders r ON r.id = a.rider_id WHERE a.session_date BETWEEN {$f} AND {$t} GROUP BY r.id ORDER BY n DESC, r.full_name ASC LIMIT 10");
+        $out['top_horses'] = $q("SELECT a.horse_name, COUNT(*) AS n FROM {$p}shra_attendance a WHERE a.session_date BETWEEN {$f} AND {$t} AND a.horse_name IS NOT NULL AND a.horse_name <> '' GROUP BY a.horse_name ORDER BY n DESC LIMIT 8");
+        $out['riders_by_source'] = $q("SELECT r.source AS k, r.rider_type, COUNT(*) AS n FROM {$p}shra_riders r WHERE DATE(r.created_at) BETWEEN {$f} AND {$t} GROUP BY r.source, r.rider_type");
+        $out['riders_by_level']  = $q("SELECT r.riding_level AS k, COUNT(*) AS n FROM {$p}shra_riders r WHERE r.rider_type = 'learner' GROUP BY r.riding_level ORDER BY n DESC");
+        $out['age_bands'] = $q("SELECT CASE WHEN r.dob IS NULL THEN 'Unknown' WHEN TIMESTAMPDIFF(YEAR, r.dob, CURDATE()) < 8 THEN 'Under 8' WHEN TIMESTAMPDIFF(YEAR, r.dob, CURDATE()) < 13 THEN '8–12'
+            WHEN TIMESTAMPDIFF(YEAR, r.dob, CURDATE()) < 18 THEN '13–17' WHEN TIMESTAMPDIFF(YEAR, r.dob, CURDATE()) < 30 THEN '18–29' WHEN TIMESTAMPDIFF(YEAR, r.dob, CURDATE()) < 45 THEN '30–44' ELSE '45+' END AS k, COUNT(*) AS n
+            FROM {$p}shra_riders r GROUP BY k ORDER BY FIELD(k,'Under 8','8–12','13–17','18–29','30–44','45+','Unknown')");
+        $out['dues'] = $q("SELECT e.id, e.enrollment_no, e.package_name, e.created_at, e.total, e.rider_id, r.full_name, r.rider_no, r.mobile,
+            GREATEST(0, e.total - COALESCE((SELECT SUM(x.amount) FROM {$p}invoicepaymentrecords x WHERE x.invoiceid = e.invoice_id), e.paid_amount)) AS due
+            FROM {$p}shra_enrollments e JOIN {$p}shra_riders r ON r.id = e.rider_id WHERE e.status <> 'cancelled' HAVING due > 0.009 ORDER BY due DESC LIMIT 100");
+        $out['expiring'] = $q("SELECT e.id, e.package_name, e.expires_at, e.sessions_total - e.sessions_used AS left_n, r.full_name, r.rider_no, r.id AS rider_id
+            FROM {$p}shra_enrollments e JOIN {$p}shra_riders r ON r.id = e.rider_id WHERE e.status = 'active' AND e.expires_at IS NOT NULL AND e.expires_at <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) ORDER BY e.expires_at ASC LIMIT 50");
+
+        return $out;
+    }
+
     /* ═══════════════════════ Dashboard ═══════════════════════ */
 
     public function get_summary()

@@ -8,7 +8,8 @@
   S.money = function (n) {
     n = parseFloat(n || 0);
     var cur = S.currency || { symbol: '', placement: 'before', decimals: 2 };
-    var s = n.toLocaleString(undefined, { minimumFractionDigits: cur.decimals, maximumFractionDigits: cur.decimals });
+    var whole = Math.abs(n - Math.round(n)) < 0.005;
+    var s = n.toLocaleString(undefined, { minimumFractionDigits: whole ? 0 : cur.decimals, maximumFractionDigits: cur.decimals });
     return cur.placement === 'after' ? s + cur.symbol : cur.symbol + s;
   };
 

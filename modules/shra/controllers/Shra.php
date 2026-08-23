@@ -614,6 +614,50 @@ class Shra extends AdminController
         redirect(admin_url('shra/packages'));
     }
 
+    /* ═══════════════════════ Reports ═══════════════════════ */
+
+    public function reports()
+    {
+        if (!is_admin() && !shra_can('view')) {
+            access_denied('shra');
+        }
+
+        $range = $this->input->get('range') ?: 'month';
+        $from  = $this->input->get('from');
+        $to    = $this->input->get('to');
+        $today = date('Y-m-d');
+        $presets = [
+            'today'      => [$today, $today],
+            'yesterday'  => [date('Y-m-d', strtotime('-1 day')), date('Y-m-d', strtotime('-1 day'))],
+            'week'       => [date('Y-m-d', strtotime('monday this week')), $today],
+            'month'      => [date('Y-m-01'), $today],
+            'last_month' => [date('Y-m-01', strtotime('first day of last month')), date('Y-m-t', strtotime('last day of last month'))],
+            'quarter'    => [date('Y-m-d', strtotime('-3 months')), $today],
+            'year'       => [date('Y-01-01'), $today],
+            'all'        => ['2000-01-01', $today],
+        ];
+        if ($range === 'custom' && $from && $to) {
+            $from = date('Y-m-d', strtotime($from));
+            $to   = date('Y-m-d', strtotime($to));
+            if ($from > $to) {
+                [$from, $to] = [$to, $from];
+            }
+        } else {
+            if (!isset($presets[$range])) {
+                $range = 'month';
+            }
+            [$from, $to] = $presets[$range];
+        }
+
+        $data['title']  = 'Reports';
+        $data['range']  = $range;
+        $data['from']   = $from;
+        $data['to']     = $to;
+        $data['report'] = $this->shra_model->report($from, $to);
+
+        $this->load->view('reports', $data);
+    }
+
     /* ═══════════════════════ Trainers ═══════════════════════ */
 
     public function trainers()

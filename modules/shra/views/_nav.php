@@ -12,6 +12,9 @@ if (shra_can_billing()) {
 if (shra_can_attendance()) {
     $shra_tabs[] = ['attendance', 'shra/attendance', 'fa-solid fa-clipboard-check', _l('shra_attendance')];
 }
+if (shra_can('view')) {
+    $shra_tabs[] = ['reports', 'shra/reports', 'fa-solid fa-chart-column', 'Reports'];
+}
 if (is_admin()) {
     $shra_tabs[] = ['packages', 'shra/packages', 'fa-solid fa-tags', _l('shra_packages')];
     $shra_tabs[] = ['trainers', 'shra/trainers', 'fa-solid fa-user-tie', 'Trainers'];

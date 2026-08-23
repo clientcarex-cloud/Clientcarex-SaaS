@@ -53,9 +53,17 @@ function shra_relationships()
 }
 
 /** Currency-formatted amount using the base currency. */
+/** Money for the admin screens — whole amounts drop the trailing ".00" (₹1,340 not ₹1,340.00). */
 function shra_money($amount)
 {
-    return app_format_money((float) $amount, get_base_currency());
+    $cur = get_base_currency();
+    $out = app_format_money((float) $amount, $cur);
+    $dec = $cur->decimal_separator ?: '.';
+    if (abs((float) $amount - round((float) $amount)) < 0.005) {
+        $out = preg_replace('/' . preg_quote($dec, '/') . '0+(?=\D*$)/', '', $out);
+    }
+
+    return $out;
 }
 
 /** Public self-registration URL. */
