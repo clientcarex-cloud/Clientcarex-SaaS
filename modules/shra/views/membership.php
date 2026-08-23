@@ -45,8 +45,6 @@
                         <?php } elseif ($left > 0 && shra_can_attendance()) { ?><a href="<?php echo admin_url('shra/attendance?rider=' . $r->id); ?>" class="shra-btn shra-btn-primary shra-btn-sm"><i class="fa-solid fa-clipboard-check"></i> Mark session</a>
                         <?php } elseif ($left === 0 && shra_can_billing()) { ?><a href="<?php echo admin_url('shra/billing?rider=' . $r->id); ?>" class="shra-btn shra-btn-primary shra-btn-sm"><i class="fa-solid fa-cash-register"></i> <?php echo $r->stage === 'pending' ? 'Bill chosen plan' : 'Bill'; ?></a><?php } ?>
                         <?php if ($due > 0.009 && $r->due_enrollment_id && shra_can_billing()) { ?><button type="button" class="shra-btn shra-btn-gold shra-btn-sm shra-collect" data-id="<?php echo (int) $r->due_enrollment_id; ?>" data-due="<?php echo $due; ?>" data-name="<?php echo html_escape($r->full_name); ?>"><i class="fa-solid fa-hand-holding-dollar"></i> Collect</button><?php } ?>
-                        <?php if ($e) { ?><a href="<?php echo admin_url('shra/receipt_pdf/' . $e->id); ?>" target="_blank" class="shra-btn shra-btn-outline shra-btn-sm" title="Receipt"><i class="fa-solid fa-receipt"></i></a><?php } ?>
-                        <a href="<?php echo admin_url('shra/membership_pdf/' . $r->id); ?>" target="_blank" class="shra-btn shra-btn-outline shra-btn-sm" title="Membership PDF"><i class="fa-solid fa-id-card"></i></a>
                     </td>
                 </tr>
             <?php } ?>
