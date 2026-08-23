@@ -121,16 +121,16 @@
 
 <div class="ccx-login-footer-container">
     <div class="copyright">
-        Copyright &copy; <?php echo date('Y'); ?> Healthocare Private Limited. All rights reserved.
+        Copyright &copy; <?php echo date('Y'); ?> Clientcarex AI Private Limited. All rights reserved.
     </div>
     <div class="ccx-branding-container" id="ccxBrandingTrigger">
         <span>Powered by</span>
-        <img src="<?php echo base_url('modules/ccx_login/assets/images/healtho_logo.png'); ?>" alt="ClientcareX">
+        <img src="<?php echo base_url('modules/ccx_login/assets/images/clientcarex_logo.png'); ?>" alt="ClientcareX">
 
         <div class="ccx-healtho-card" id="ccxHealthoCard">
             <h5>Get our service for your Healthcare Brand</h5>
             <a href="tel:+919390893024" class="ccx-healtho-card-item">
-                <i class="fas fa-phone-alt"></i> +91 9700730044
+                <i class="fas fa-phone-alt"></i> +91 9390893024
             </a>
             <a href="mailto:Sales@healtho.in" class="ccx-healtho-card-item">
                 <i class="fas fa-envelope"></i> Sales@healtho.in

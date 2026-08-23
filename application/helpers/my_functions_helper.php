@@ -394,7 +394,7 @@ function ccx_inject_global_footer() {
     document.addEventListener("DOMContentLoaded", function() {
         var footerEl = document.createElement("div");
         footerEl.className = "ccx-global-footer";
-        footerEl.innerHTML = "&copy; ' . $current_year . ' Healthocare Private Limited. All rights reserved.";
+        footerEl.innerHTML = "&copy; ' . $current_year . ' Clientcarex AI Private Limited. All rights reserved.";
         footerEl.style.cssText = "padding: 15px; text-align: center; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; background: transparent; margin-top: 30px; width: 100%; clear: both;";
         
         // Find the main content container to inject it naturally at the bottom
