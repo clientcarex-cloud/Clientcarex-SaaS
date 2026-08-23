@@ -33,7 +33,6 @@
                 <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="reopen" data-lead="<?php echo $l->id; ?>"><i class="fa fa-rotate-left"></i> Reopen</button>
             <?php } ?>
             <?php if ($can_manage) { ?><button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="reassign" data-lead="<?php echo $l->id; ?>"><i class="fa fa-headset"></i> Reassign</button><?php } ?>
-            <?php if (has_permission('leads', '', 'view') || is_admin()) { ?><a href="<?php echo admin_url('leads/index/' . $l->id); ?>" class="shra-btn shra-btn-outline shra-btn-sm" title="Open in core CRM"><i class="fa fa-external-link"></i></a><?php } ?>
         </div>
     </div>
 
