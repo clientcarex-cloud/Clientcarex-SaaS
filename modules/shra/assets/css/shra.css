@@ -329,7 +329,7 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-eod-time{display:block;text-align:right;font-size:10.5px;color:#8a8a8a;margin-top:6px}
 .shra-eod-loading{padding:30px;text-align:center;color:var(--muted)}
 
-/* filter bar
+/* filter bar */
 .shra-fl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin-bottom:10px}
 .shra-fl-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .shra-fl .form-control{margin:0;height:34px;padding:6px 10px;font-size:12.5px;width:auto;border-radius:8px}
