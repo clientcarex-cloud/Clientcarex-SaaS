@@ -19,6 +19,7 @@ hooks()->add_action('admin_init', 'shra_module_permissions');
 hooks()->add_action('app_admin_head', 'shra_add_head_components');
 hooks()->add_action('app_admin_footer', 'shra_add_footer_components');
 hooks()->add_filter('module_shra_action_links', 'shra_module_action_links');
+hooks()->add_filter('sidebar_menu_items', 'shra_hide_customers_menu');
 
 register_activation_hook(SHRA_MODULE_NAME, 'shra_module_activation_hook');
 
@@ -80,6 +81,17 @@ function shra_module_init_menu_items()
     ]);
 
     // Single sidebar entry — the module's own tab bar handles in-page navigation.
+}
+
+/**
+ * Riders are managed inside SHRA (each rider is still a CRM customer behind
+ * the scenes), so the core "Customers" menu only duplicates the Riders tab.
+ */
+function shra_hide_customers_menu($items)
+{
+    unset($items['customers']);
+
+    return $items;
 }
 
 /* ───────────────────────────── Permissions ───────────────────────────── */
