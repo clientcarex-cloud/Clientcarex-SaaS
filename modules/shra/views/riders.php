@@ -25,18 +25,18 @@
     <?php if ($view === 'home') { ?>
         <?php $due_sum = 0; foreach ($due as $d) { $due_sum += (float) $d->total_due; } ?>
         <div class="shra-card" style="margin-bottom:18px">
+            <div class="shra-card-head"><h4><i class="fa-solid fa-hand-holding-dollar" style="color:var(--red)"></i> Amount due</h4><span class="shra-pill" style="<?php echo $due_sum > 0 ? 'background:#f8e3e2;color:var(--red)' : ''; ?>"><?php echo count($due); ?> rider<?php echo count($due) == 1 ? '' : 's'; ?> · <?php echo shra_money($due_sum); ?></span></div>
+            <?php if (!count($due)) { ?>
+                <div class="shra-empty" style="padding:30px"><i class="fa fa-check" style="color:var(--green)"></i>No balance pending — every bill is fully paid.</div>
+            <?php } else { $riders = $due; include __DIR__ . '/partials/rider_rows.php'; } ?>
+        </div>
+        <div class="shra-card">
             <div class="shra-card-head"><h4><i class="fa-solid fa-sun" style="color:var(--gold)"></i> Today's riders <span class="thin">· <?php echo date('d M Y'); ?></span></h4><span class="shra-pill"><?php echo count($today); ?> rider<?php echo count($today) == 1 ? '' : 's'; ?></span></div>
             <?php if (!count($today)) { ?>
                 <div class="shra-empty" style="padding:30px"><i class="fa-solid fa-horse"></i>No one has been billed or marked today yet.<br><a href="<?php echo admin_url('shra/riders?view=all'); ?>">Open all riders</a> to bill or mark a session.</div>
             <?php } else { $riders = $today; include __DIR__ . '/partials/rider_rows.php'; } ?>
         </div>
 
-        <div class="shra-card">
-            <div class="shra-card-head"><h4><i class="fa-solid fa-hand-holding-dollar" style="color:var(--red)"></i> Amount due</h4><span class="shra-pill" style="<?php echo $due_sum > 0 ? 'background:#f8e3e2;color:var(--red)' : ''; ?>"><?php echo count($due); ?> rider<?php echo count($due) == 1 ? '' : 's'; ?> · <?php echo shra_money($due_sum); ?></span></div>
-            <?php if (!count($due)) { ?>
-                <div class="shra-empty" style="padding:30px"><i class="fa fa-check" style="color:var(--green)"></i>No balance pending — every bill is fully paid.</div>
-            <?php } else { $riders = $due; include __DIR__ . '/partials/rider_rows.php'; } ?>
-        </div>
     <?php } else { ?>
         <div class="shra-card">
             <?php if (!count($riders)) { ?>
