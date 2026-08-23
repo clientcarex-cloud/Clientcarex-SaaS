@@ -79,29 +79,7 @@ function shra_module_init_menu_items()
         'position' => 28,
     ]);
 
-    $children = [];
-
-    if (shra_can('view')) {
-        $children[] = ['slug' => 'shra_dashboard', 'name' => _l('shra_dashboard'), 'href' => admin_url('shra'), 'position' => 5];
-        $children[] = ['slug' => 'shra_riders', 'name' => _l('shra_riders'), 'href' => admin_url('shra/riders'), 'position' => 10];
-    }
-    if (shra_can_billing()) {
-        $children[] = ['slug' => 'shra_billing', 'name' => _l('shra_billing'), 'href' => admin_url('shra/billing'), 'position' => 15];
-    }
-    if (shra_can_attendance()) {
-        $children[] = ['slug' => 'shra_attendance', 'name' => _l('shra_attendance'), 'href' => admin_url('shra/attendance'), 'position' => 20];
-    }
-    if (shra_can('view')) {
-        $children[] = ['slug' => 'shra_enrollments', 'name' => _l('shra_enrollments'), 'href' => admin_url('shra/enrollments'), 'position' => 25];
-    }
-    if (is_admin()) {
-        $children[] = ['slug' => 'shra_packages', 'name' => _l('shra_packages'), 'href' => admin_url('shra/packages'), 'position' => 30];
-        $children[] = ['slug' => 'shra_settings', 'name' => _l('shra_settings'), 'href' => admin_url('shra/settings'), 'position' => 35];
-    }
-
-    foreach ($children as $child) {
-        $CI->app_menu->add_sidebar_children_item('shra', $child);
-    }
+    // Single sidebar entry — the module's own tab bar handles in-page navigation.
 }
 
 /* ───────────────────────────── Permissions ───────────────────────────── */

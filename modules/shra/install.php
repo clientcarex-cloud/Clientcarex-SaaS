@@ -192,6 +192,36 @@ if ($count === 0) {
     }
 }
 
+// ── Base currency: INR with the Rupee symbol ──
+// The academy bills in Rupees. Create INR if it is missing and make it the
+// base currency. Perfex refuses to change the base currency once invoices /
+// payments exist in the old one — in that case INR is still added and the
+// admin can switch it manually under Setup → Finance → Currencies.
+$inr = $CI->db->where('name', 'INR')->get($p . 'currencies')->row();
+if (!$inr) {
+    $CI->db->insert($p . 'currencies', [
+        'symbol'             => '₹',
+        'name'               => 'INR',
+        'decimal_separator'  => '.',
+        'thousand_separator' => ',',
+        'placement'          => 'before',
+        'isdefault'          => 0,
+    ]);
+    $inr = $CI->db->where('id', $CI->db->insert_id())->get($p . 'currencies')->row();
+} elseif ($inr->symbol !== '₹') {
+    $CI->db->where('id', $inr->id)->update($p . 'currencies', ['symbol' => '₹']);
+}
+
+if ($inr && (int) $inr->isdefault !== 1) {
+    $CI->load->model('currencies_model');
+    $result = $CI->currencies_model->make_base_currency($inr->id);
+    if ($result === true) {
+        log_activity('SHRA: base currency set to INR (₹)');
+    } elseif (is_array($result) && !empty($result['has_transactions_currency'])) {
+        log_activity('SHRA: could not switch base currency to INR — transactions exist in the current base currency. Change it manually under Setup → Finance → Currencies.');
+    }
+}
+
 // ── Upload dir for logo / PDFs ──
 $shra_dir = FCPATH . 'uploads/shra/';
 if (!is_dir($shra_dir)) {
