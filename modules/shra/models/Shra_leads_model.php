@@ -12,23 +12,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
  */
 class Shra_leads_model extends App_Model
 {
-    /** Allowed stage transitions (server-side, regardless of UI). */
-    private $transitions = [
-        'new'              => ['prospect', 'enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
-        'prospect'         => ['enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
-        'enquired'         => ['prospect', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
-        'contacted'        => ['no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
-        'no_response'      => ['contacted', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
-        'callback_request' => ['contacted', 'no_response', 'followup', 'visit_scheduled', 'lost', 'junk'],
-        'followup'         => ['contacted', 'no_response', 'callback_request', 'visit_scheduled', 'lost', 'junk'],
-        'visit_scheduled'  => ['visited', 'followup', 'visit_scheduled', 'no_response', 'callback_request', 'lost'],
-        'visited'          => ['confirmed', 'followup', 'visit_scheduled', 'lost'],
-        'confirmed'        => ['won', 'followup', 'visit_scheduled', 'lost'],
-        'won'              => [],
-        'lost'             => ['followup'],
-        'junk'             => ['followup'],
-    ];
-
     public function __construct()
     {
         parent::__construct();
@@ -623,7 +606,7 @@ class Shra_leads_model extends App_Model
         if ($from === $to) {
             return true;
         }
-        if (!in_array($to, $this->transitions[$from] ?? [])) {
+        if (!in_array($to, shra_lead_transitions($from))) {
             return 'Cannot move from "' . shra_lead_stage_label($from) . '" to "' . shra_lead_stage_label($to) . '".';
         }
         switch ($to) {

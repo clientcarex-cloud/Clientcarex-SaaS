@@ -58,8 +58,13 @@ $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
             </div>
             <input type="datetime-local" name="next_action_at" class="form-control" style="margin-top:8px" value="<?php echo $tomorrow; ?>">
         </div>
+        <div id="shra-call-stage" style="margin-top:14px">
+            <label>Status <span class="shra-muted" style="font-weight:400;font-size:11.5px">— leave as is, or move it</span></label>
+            <div class="shra-chips" id="shra-call-stage-list"></div>
+            <input type="hidden" name="stage" value="">
+        </div>
         <div class="form-group" style="margin-top:12px"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Optional — what was discussed"></div>
-        <div class="help">Need a visit instead? Close this and use the <i class="fa fa-calendar-plus"></i> button.</div>
+        <div class="help">Booking a visit, confirming or losing the lead has its own step — use the row buttons.</div>
     </div>
     <div class="modal-footer"><button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button><button type="submit" class="shra-btn shra-btn-primary"><i class="fa fa-check"></i> Save</button></div>
     </form>
@@ -166,6 +171,9 @@ window.SHRA_LEADS_CFG = {
     academy: <?php echo json_encode(get_option('shra_academy_name') ?: 'SHRA'); ?>,
     agent: <?php echo json_encode(get_staff_full_name(get_staff_user_id())); ?>,
     cc: <?php echo json_encode(preg_replace('/\D+/', '', (string) get_option('shra_lead_phone_country'))); ?>,
-    canAll: <?php echo $can_all ? 'true' : 'false'; ?>
+    canAll: <?php echo $can_all ? 'true' : 'false'; ?>,
+    stages: <?php echo json_encode(array_map(function ($d) { return ['label' => $d[0], 'color' => $d[2]]; }, shra_lead_stage_defs())); ?>,
+    transitions: <?php echo json_encode(shra_lead_transitions()); ?>,
+    quickStages: <?php echo json_encode(shra_lead_quick_stages()); ?>
 };
 </script>

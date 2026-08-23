@@ -14,7 +14,6 @@ if (shra_can_attendance()) {
 }
 if (shra_leads_can('own')) {
     $shra_tabs[] = ['leads', 'shra/shra_leads', 'fa-solid fa-phone-volume', 'Leads'];
-    $shra_tabs[] = ['pipeline', 'shra/shra_leads/pipeline', 'fa-solid fa-diagram-project', 'Pipeline'];
 }
 if (shra_leads_can('all') || shra_can_billing()) {
     $shra_tabs[] = ['visits', 'shra/shra_leads/visits', 'fa-solid fa-calendar-check', 'Visits'];

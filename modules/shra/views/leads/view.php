@@ -4,7 +4,7 @@
 <div class="content">
     <?php $shra_active = 'leads'; include __DIR__ . '/../_nav.php'; $l = $lead; ?>
 
-    <div id="shra-lead-title" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>"></div>
+    <div id="shra-lead-title" data-stage="<?php echo html_escape($l->stage); ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>"></div>
     <div class="shra-toolbar" style="justify-content:space-between;align-items:flex-start">
         <div>
             <a href="<?php echo admin_url('shra/shra_leads'); ?>" class="shra-muted" style="font-size:12px"><i class="fa fa-arrow-left"></i> Leads</a>

@@ -4,7 +4,7 @@ $can_all = isset($can_all) ? $can_all : shra_leads_can('all');
 $cls     = 'shra-lead' . ($l->is_overdue ? ' overdue' : '') . ($l->is_stale ? ' stale' : '') . (!$l->is_open ? ' closed' : '');
 $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : '') : ($l->rider_for === 'both' ? 'Self + child' : 'Self' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : ''));
 ?>
-<div class="<?php echo $cls; ?>" data-lead="<?php echo $l->id; ?>" data-stage="<?php echo $l->stage; ?>" draggable="<?php echo $l->is_open ? 'true' : 'false'; ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>">
+<div class="<?php echo $cls; ?>" data-lead="<?php echo $l->id; ?>" data-stage="<?php echo $l->stage; ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>">
     <div class="shra-lead-top">
         <a href="<?php echo shra_lead_url($l->id); ?>" class="shra-lead-name"><?php echo html_escape($l->name); ?></a>
         <?php echo shra_lead_stage_badge($l->stage); ?>

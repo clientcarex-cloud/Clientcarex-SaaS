@@ -77,8 +77,14 @@ class Shra_leads extends AdminController
         ];
     }
 
-    /* ═══════════════════════ My Day ═══════════════════════ */
+    /* ═══════════════════════ Leads (work list + pipeline in one) ═══════════════════════ */
 
+    /**
+     * The one leads screen. `scope=mine` (default) loads the agent's open queue — what to
+     * call today; `scope=all` loads every lead the user may see, optionally narrowed by
+     * agent and date added. Stage / source / text filtering happens in the browser over
+     * whatever was loaded, so it stays instant either way.
+     */
     public function index()
     {
         $me    = get_staff_user_id();
@@ -86,47 +92,64 @@ class Shra_leads extends AdminController
         if ($agent !== (int) $me && !shra_leads_can('all')) {
             $agent = $me;
         }
-        $data            = $this->common();
-        $data['title']   = 'Leads · My Day';
-        $data['agent']   = $agent;
-        $data['queues']  = $this->leads->queues_for($agent);
-        $data['month']   = $this->leads->my_month($agent);
-        $data['funnel']  = $this->leads->funnel_counts(!shra_leads_can('all'));
-        $data['no_shows'] = shra_leads_can('all') ? $this->leads->no_shows(20) : [];
-        $this->load->view('leads/myday', $data);
+        $scope = $this->input->get('scope') === 'all' ? 'all' : 'mine';
+        $from  = (string) $this->input->get('from');
+        $to    = (string) $this->input->get('to');
+
+        $data          = $this->common();
+        $data['title'] = 'Leads';
+        $data['agent'] = $agent;
+        $data['scope'] = $scope;
+        // `stage=open|closed` and `overdue=1` come from dashboard / team links: they pick a
+        // tab rather than a stage.
+        $stage  = (string) $this->input->get('stage');
+        $bucket = '';
+        if (in_array($stage, ['open', 'closed'], true)) {
+            $bucket = $stage === 'open' ? 'open' : 'closed';
+            $stage  = '';
+        } elseif ($this->input->get('overdue')) {
+            $bucket = 'overdue';
+        }
+        $data['filters'] = [
+            'from'   => $from,
+            'to'     => $to,
+            'stage'  => $stage,
+            'bucket' => $bucket,
+            'source' => (int) $this->input->get('source'),
+            'q'      => trim((string) $this->input->get('q')),
+        ];
+
+        if ($scope === 'all') {
+            $data['rows']     = $this->leads->get_list(array_filter([
+                'agent' => $agent && $this->input->get('agent') ? $agent : 0,
+                'from'  => $from,
+                'to'    => $to,
+            ]), 1500);
+            $data['no_shows'] = [];
+        } else {
+            $queues = $this->leads->queues_for($agent);
+            $rows   = [];
+            foreach (['unset', 'overdue', 'today', 'upcoming', 'later'] as $k) {
+                foreach ($queues[$k] as $l) {
+                    $rows[] = $l;
+                }
+            }
+            $data['rows']     = $rows;
+            $data['no_shows'] = shra_leads_can('all') ? $this->leads->no_shows(20) : [];
+        }
+
+        $data['month']  = $this->leads->my_month($agent);
+        $data['funnel'] = $this->leads->funnel_counts(!shra_leads_can('all'));
+        $this->load->view('leads/index', $data);
     }
 
-    /* ═══════════════════════ Pipeline ═══════════════════════ */
-
+    /** Pipeline used to be its own page; it is the same screen now. */
     public function pipeline()
     {
-        $f = [
-            'agent'    => (int) $this->input->get('agent'),
-            'source'   => (int) $this->input->get('source'),
-            'q'        => trim((string) $this->input->get('q')),
-            'from'     => (string) $this->input->get('from'),
-            'to'       => (string) $this->input->get('to'),
-            'audience' => (string) $this->input->get('audience'),
-            'stage'    => (string) $this->input->get('stage'),
-            'overdue'  => (int) $this->input->get('overdue'),
-            'stale'    => (int) $this->input->get('stale'),
-        ];
-        $view = $this->input->get('view') === 'list' ? 'list' : 'board';
-        $list = $this->leads->get_list(array_filter($f), 1500);
-        $cols = [];
-        foreach (array_keys(shra_lead_stage_defs()) as $k) {
-            $cols[$k] = [];
-        }
-        foreach ($list as $l) {
-            $cols[$l->stage][] = $l;
-        }
-        $data            = $this->common();
-        $data['title']   = 'Leads · Pipeline';
-        $data['filters'] = $f;
-        $data['view']    = $view;
-        $data['list']    = $list;
-        $data['cols']    = $cols;
-        $this->load->view('leads/pipeline', $data);
+        $q = $this->input->get();
+        unset($q['view']);
+        $q['scope'] = 'all';
+        redirect(admin_url('shra/shra_leads?' . http_build_query($q)));
     }
 
     public function export()
@@ -242,8 +265,28 @@ class Shra_leads extends AdminController
 
     public function log_call()
     {
-        $l = $this->lead_or_fail($this->input->post('lead_id'), true);
-        $res = $this->leads->log_call($l->id, (string) $this->input->post('outcome'), (string) $this->input->post('next_action_at'), trim((string) $this->input->post('note')), (string) $this->input->post('channel') ?: 'call');
+        $l    = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $note = trim((string) $this->input->post('note'));
+        $res  = $this->leads->log_call($l->id, (string) $this->input->post('outcome'), (string) $this->input->post('next_action_at'), $note, (string) $this->input->post('channel') ?: 'call');
+
+        // The agent may also move the status from the same dialog.
+        $stage = (string) $this->input->post('stage');
+        if ($res === true && $stage !== '' && in_array($stage, shra_lead_quick_stages())) {
+            $fresh = $this->leads->get($l->id);
+            if ($fresh && $fresh->stage !== $stage) {
+                $moved = $this->leads->set_stage($l->id, $stage, ['silent_next' => true, 'note' => $note]);
+                if ($moved !== true) {
+                    $this->json(['success' => true, 'warning' => true, 'card' => $this->card($l->id),
+                        'message' => 'Call logged — status not changed: ' . (is_string($moved) ? $moved : 'not allowed from here.')]);
+
+                    return;
+                }
+                $this->result(true, 'Call logged · status set to ' . shra_lead_stage_label($stage) . '.', ['card' => $this->card($l->id)]);
+
+                return;
+            }
+        }
+
         $this->result($res, 'Call logged.', ['card' => $this->card($l->id)]);
     }
 

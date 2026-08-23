@@ -216,7 +216,6 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-lead.stale{border-style:dashed}
 .shra-lead.closed{opacity:.75}
 .shra-lead.flash{box-shadow:0 0 0 3px rgba(184,146,46,.35)}
-.shra-lead.dragging{opacity:.4}
 .shra-lead-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
 .shra-lead-name{font-weight:700;font-size:14.5px;color:var(--ink)!important;text-decoration:none!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .shra-lead-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
@@ -240,14 +239,6 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-progress span{display:block;height:100%;background:var(--gold);border-radius:6px}
 
 /* kanban */
-.shra-board{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;align-items:flex-start}
-.shra-col{flex:0 0 290px;background:var(--cream);border:1px solid var(--line);border-radius:14px;min-height:200px;max-height:calc(100vh - 260px);display:flex;flex-direction:column;transition:.15s}
-.shra-col.over{box-shadow:0 0 0 3px rgba(184,146,46,.35);background:#fbf5e6}
-.shra-col-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-weight:700;font-size:13px;border-radius:14px 14px 0 0;background:#fff;border-bottom:1px solid var(--line)}
-.shra-col-body{padding:8px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;flex:1}
-.shra-col-body .shra-lead{cursor:grab}
-.shra-col-body .shra-lead-actions{display:none}
-.shra-col-body .shra-lead:hover .shra-lead-actions{display:flex}
 
 /* modals */
 .shra-outcomes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -260,6 +251,8 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-chips{display:flex;flex-wrap:wrap;gap:6px}
 .shra-chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-2)}
 .shra-chip.on,.shra-chip:hover{border-color:var(--gold);color:var(--brown);background:var(--cream)}
+.shra-chip i{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px}
+#shra-call-stage-list{margin-top:6px}
 .shra-wa-tpl{display:block;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px;text-decoration:none!important;color:var(--ink)!important}
 .shra-wa-tpl:hover{border-color:#128c7e}
 .shra-wa-tpl b{display:block;font-size:13px}
@@ -303,6 +296,8 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-fl-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .shra-fl .form-control{margin:0;height:34px;padding:6px 10px;font-size:12.5px;width:auto;border-radius:8px}
 .shra-fl .shra-search input{width:230px;padding-left:32px!important}
+.shra-scope{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.shra-fl input[type=date]{width:135px}
 .shra-fl .shra-search i{left:11px;font-size:12px}
 .shra-tabs{display:inline-flex;gap:3px;background:var(--cream);border:1px solid var(--line);border-radius:9px;padding:3px;flex-wrap:wrap}
 .shra-tab{border:0;background:none;padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;white-space:nowrap}

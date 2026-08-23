@@ -16,22 +16,14 @@
 
   function cardOf(id) { return $('.shra-lead[data-lead="' + id + '"]'); }
 
-  /** Replace every rendering of a lead with the fresh HTML; recount queues/columns. */
+  /** Replace every rendering of a lead with the fresh HTML, then recount the tabs. */
   function swapCard(id, html) {
     var $new = $(html);
     var $old = cardOf(id);
     if (!$old.length) { location.reload(); return; }
     $old.each(function () { $(this).replaceWith($new.clone()); });
-    var stage = $new.data('stage');
-    // Pipeline: move to the right column
-    var $col = $('.shra-col[data-stage="' + stage + '"] .shra-col-body');
-    if ($col.length) {
-      var $c = cardOf(id).first();
-      if (!$c.closest('.shra-col').is($col.closest('.shra-col'))) { $col.prepend($c); }
-      $('.shra-col').each(function () { $(this).find('.shra-col-count').text($(this).find('.shra-lead').length); });
-    }
-    // Work list / My Day: flash the row where it stands, then re-apply the filters
-    // so it leaves the tab it no longer belongs to.
+    // Flash the row where it stands, then re-apply the filters so it leaves the
+    // tab it no longer belongs to.
     cardOf(id).addClass('flash');
     setTimeout(function () { cardOf(id).removeClass('flash'); W.refresh(); }, 1200);
     if (typeof S.onLeadUpdated === 'function') { S.onLeadUpdated(id, $new); }
@@ -46,7 +38,7 @@
         if (res.duplicate && res.url) { setTimeout(function () { if (confirm('Open the existing lead?')) { location.href = res.url; } }, 300); }
         return;
       }
-      toast('success', res.message || 'Saved.');
+      toast(res.warning ? 'warning' : 'success', res.message || 'Saved.');
       if (res.card) { swapCard(data.lead_id, res.card); }
       if (done) { done(res); }
     }, 'json').fail(function () { toast('danger', 'Request failed.'); });
@@ -121,6 +113,7 @@
         var $m = openModal('#shra-lead-call', id);
         $m.find('[name=outcome]').val(''); $m.find('.shra-oc').removeClass('on'); $m.find('[name=note]').val('');
         $m.find('[name=next_action_at]').val(localDT('tomorrow 10:00')).trigger('change'); $('#shra-call-next').show();
+        buildStageChips(stageOf(id));
         break;
       case 'visit': openModal('#shra-lead-visit', id); break;
       case 'lost': openModal('#shra-lead-lost', id).find('[name=reason]').val(''); break;
@@ -139,6 +132,36 @@
     }
   });
 
+  /** The lead's stage, wherever the dialog was opened from (work list row, board card, lead page). */
+  function stageOf(id) {
+    var $c = cardOf(id).first();
+
+    return ($c.length ? $c.data('stage') : $('#shra-lead-title').data('stage')) || '';
+  }
+
+  /**
+   * Status picker inside Log call: "Keep <current>" plus the moves allowed from here that
+   * need no extra details. Visits, confirmations and losses keep their own dialogs.
+   */
+  function buildStageChips(from) {
+    var c = cfg(), $wrap = $('#shra-call-stage'), $list = $('#shra-call-stage-list');
+    $('#shra-lead-call [name=stage]').val('');
+    if (!c.stages || !c.transitions) { $wrap.hide(); return; }
+    var allowed = (c.transitions[from] || []).filter(function (k) { return (c.quickStages || []).indexOf(k) !== -1; });
+    if (!allowed.length) { $wrap.hide(); return; }
+    var cur = c.stages[from];
+    var html = '<button type="button" class="shra-chip on" data-stage="">Keep ' + esc(cur ? cur.label : 'current') + '</button>';
+    allowed.forEach(function (k) {
+      html += '<button type="button" class="shra-chip" data-stage="' + k + '"><i style="background:' + esc(c.stages[k].color) + '"></i>' + esc(c.stages[k].label) + '</button>';
+    });
+    $list.html(html);
+    $wrap.show();
+  }
+  $('#shra-lead-call').on('click', '#shra-call-stage-list .shra-chip', function () {
+    $(this).addClass('on').siblings().removeClass('on');
+    $('#shra-lead-call [name=stage]').val($(this).data('stage'));
+  });
+
   // Log call modal
   $('#shra-lead-call').on('click', '.shra-oc', function () {
     var $m = $('#shra-lead-call');
@@ -146,7 +169,8 @@
     $m.find('[name=outcome]').val($(this).data('outcome'));
     $('#shra-call-next').toggle(+$(this).data('next') === 1);
   });
-  $('#shra-lead-call').on('click', '.shra-chip', function () { $('#shra-lead-call [name=next_action_at]').val(localDT($(this).data('plus'))).trigger('change'); $(this).addClass('on').siblings().removeClass('on'); });
+  // Scoped to the follow-up block — the status picker below it uses .shra-chip too.
+  $('#shra-lead-call').on('click', '#shra-call-next .shra-chip', function () { $('#shra-lead-call [name=next_action_at]').val(localDT($(this).data('plus'))).trigger('change'); $(this).addClass('on').siblings().removeClass('on'); });
   $('#shra-lead-call-form').on('submit', function (e) {
     e.preventDefault();
     var $f = $(this);
@@ -196,7 +220,7 @@
     $m.modal('show');
     $('#shra-wa-list').off('click').on('click', 'a', function () {
       $m.modal('hide');
-      setTimeout(function () { var $mm = openModal('#shra-lead-call', id); $mm.find('[name=channel]').val('whatsapp'); $mm.find('.shra-oc[data-outcome=whatsapp_sent]').trigger('click'); }, 400);
+      setTimeout(function () { var $mm = openModal('#shra-lead-call', id); $mm.find('[name=channel]').val('whatsapp'); buildStageChips(stageOf(id)); $mm.find('.shra-oc[data-outcome=whatsapp_sent]').trigger('click'); }, 400);
     });
   });
   $('#shra-lead-call').on('hidden.bs.modal', function () { $(this).find('[name=channel]').val('call'); });
@@ -206,28 +230,6 @@
     $.each($f.serializeArray(), function (_, kv) { o[kv.name] = kv.value; });
     return o;
   }
-
-  /* ───────── Kanban drag & drop ───────── */
-  var dragId = null;
-  $(document).on('dragstart', '.shra-lead[draggable=true]', function (e) { dragId = $(this).data('lead'); e.originalEvent.dataTransfer.setData('text/plain', dragId); $(this).addClass('dragging'); });
-  $(document).on('dragend', '.shra-lead', function () { $(this).removeClass('dragging'); $('.shra-col').removeClass('over'); });
-  $(document).on('dragover', '.shra-col', function (e) { e.preventDefault(); $(this).addClass('over'); });
-  $(document).on('dragleave', '.shra-col', function () { $(this).removeClass('over'); });
-  $(document).on('drop', '.shra-col', function (e) {
-    e.preventDefault(); $(this).removeClass('over');
-    var to = $(this).data('stage'), id = dragId; dragId = null;
-    if (!id) { return; }
-    var from = cardOf(id).first().data('stage');
-    if (from === to) { return; }
-    if (to === 'visit_scheduled') { openModal('#shra-lead-visit', id); return; }
-    if (to === 'lost' || to === 'junk') { openModal('#shra-lead-lost', id); return; }
-    if (to === 'confirmed') { if (!cfg().canAll) { toast('warning', 'Only front desk / manager can confirm visits.'); return; } openModal('#shra-lead-confirm', id); return; }
-    if (to === 'visited') { if (!cfg().canAll) { toast('warning', 'Only front desk / manager can mark visits.'); return; } post(cfg().urls.visited, { lead_id: id }); return; }
-    if (to === 'won') { toast('info', 'Leads become customers when a bill is created — use "Bill now".'); return; }
-    var next = prompt('Next follow-up (YYYY-MM-DD HH:MM) — leave blank to keep the current one:', '');
-    if (next === null) { return; }
-    post(cfg().urls.stage, { lead_id: id, to: to, next_action_at: next });
-  });
 
   /* ───────── Lead page: details & notes ───────── */
   $('#shra-lead-details-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.details, formObj($(this)), function () { location.reload(); }); });
@@ -248,51 +250,88 @@
   $(document).on('shown.bs.modal', '.modal.shra', function () { $(this).find('input[type=datetime-local]').each(function () { dtHint($(this)); }); });
   $(function () { $('.shra input[type=datetime-local]').each(function () { dtHint($(this)); }); });
 
-  /* ───────── Dense work list: tabs, instant search, row menu ───────── */
+  /* ───────── The leads work list: tabs, instant search, row menu ───────── */
   var W = (function () {
+    // Buckets in the order an agent should work them. `all` is everything but the no-show tab.
+    var TABS = [
+      ['overdue',  'Overdue',     't-red'],
+      ['today',    'Today',       't-gold'],
+      ['unset',    'No date',     't-red'],
+      ['upcoming', 'Next 7 days', ''],
+      ['later',    'Later',       ''],
+      ['noshow',   'No-show',     't-red'],
+      ['open',     'Open',        ''],
+      ['closed',   'Closed',      ''],
+      ['all',      'All',         '']
+    ];
     var $rows = null, $tabs = null, bucket = 'all', q = '', stage = '', source = '';
 
     function counts() {
-      if (!$rows) { return; }
-      var c = {};
+      var c = { all: 0, open: 0 };
       $rows.children('tr.shra-lead').each(function () {
         var b = this.getAttribute('data-bucket');
         c[b] = (c[b] || 0) + 1;
-        if (b !== 'noshow' && b !== 'closed') { c.all = (c.all || 0) + 1; }
+        if (b !== 'noshow') { c.all++; }
+        if (b !== 'noshow' && b !== 'closed') { c.open++; }
       });
-      $tabs.each(function () { $(this).find('b').text(c[$(this).data('bucket')] || 0); });
+
+      return c;
+    }
+
+    /** (Re)draw the tab strip — a bucket with nothing in it does not earn a tab. */
+    function drawTabs() {
+      var c = counts(), html = '';
+      TABS.forEach(function (t) {
+        if (!c[t[0]] && t[0] !== 'all') { return; }
+        // "Open" would just repeat "All" unless closed leads are on the page too.
+        if (t[0] === 'open' && !c.closed) { return; }
+        html += '<button type="button" class="shra-tab ' + t[2] + (t[0] === bucket ? ' on' : '') +
+                '" data-bucket="' + t[0] + '">' + t[1] + ' <b>' + (c[t[0]] || 0) + '</b></button>';
+      });
+      $('#shra-tabs').html(html);
+      $tabs = $('#shra-tabs .shra-tab');
+      if (!$tabs.filter('.on').length) { bucket = 'all'; $tabs.filter('[data-bucket=all]').addClass('on'); }
     }
 
     function apply() {
-      if (!$rows) { return; }
       var shown = 0, total = 0;
       $rows.children('tr.shra-lead').each(function () {
         var r = this, b = r.getAttribute('data-bucket');
         total++;
-        var ok = (bucket === 'all' ? (b !== 'noshow' && b !== 'closed') : b === bucket)
+        var inBucket = bucket === 'all' ? b !== 'noshow'
+                     : bucket === 'open' ? (b !== 'noshow' && b !== 'closed')
+                     : b === bucket;
+        var ok = inBucket
               && (!stage || r.getAttribute('data-stage') === stage)
               && (!source || r.getAttribute('data-source') === source)
               && (!q || r.getAttribute('data-s').indexOf(q) !== -1);
         if (ok) { r.className = r.className.replace(/\s*is-off\b/, ''); shown++; }
         else if (r.className.indexOf('is-off') === -1) { r.className += ' is-off'; }
       });
-      $('#shra-none').prop('hidden', shown > 0);
+      $('#shra-none').prop('hidden', shown > 0 || !total);
       $('.shra-wt thead').toggle(shown > 0);
-      $('#shra-count').text(shown + ' of ' + total + ' shown');
+      $('#shra-count').text(total ? shown + ' of ' + total + ' shown' : '');
     }
 
-    function refresh() { counts(); apply(); }
+    function refresh() { if ($rows) { drawTabs(); apply(); } }
 
     function init() {
       var $f = $('#shra-filters');
       if (!$f.length) { return; }
-      $rows = $('#shra-rows');
-      $tabs = $f.find('.shra-tab');
-      bucket = $f.data('start') || 'all';
-      $tabs.filter('[data-bucket="' + bucket + '"]').addClass('on');
-      if (!$tabs.filter('.on').length) { bucket = 'all'; $tabs.filter('[data-bucket=all]').addClass('on'); }
+      $rows  = $('#shra-rows');
+      stage  = $('#shra-f-stage').val() || '';
+      source = $('#shra-f-source').val() || '';
+      q      = $.trim($('#shra-q').val() || '').toLowerCase();
 
-      $tabs.on('click', function () {
+      // A link may name the tab (dashboard "overdue", "open leads"); otherwise the
+      // all-leads scope opens on everything and the personal queue on what is late.
+      var c = counts();
+      bucket = $f.data('bucket') || ($f.data('scope') === 'all' ? 'all'
+             : (c.overdue ? 'overdue' : (c.today ? 'today' : (c.unset ? 'unset' : 'all'))));
+      drawTabs();
+      apply();
+
+      $('#shra-tabs').on('click', '.shra-tab', function () {
         $tabs.removeClass('on'); $(this).addClass('on');
         bucket = $(this).data('bucket'); apply();
       });
@@ -307,17 +346,14 @@
       $('#shra-f-source').on('change', function () { source = this.value; apply(); });
       $('#shra-f-clear').on('click', function () {
         q = stage = source = ''; $('#shra-q').val(''); $('#shra-f-stage,#shra-f-source').val('');
-        $tabs.removeClass('on').filter('[data-bucket=all]').addClass('on'); bucket = 'all';
-        apply();
+        bucket = 'all'; drawTabs(); apply();
       });
 
-      // "/" focuses search, Esc clears it — agents live on the keyboard here.
+      // "/" focuses search, Esc closes the row menu — agents live on the keyboard here.
       $(document).on('keydown', function (e) {
         if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ''))) { e.preventDefault(); $('#shra-q').focus(); }
         if (e.key === 'Escape') { closeMenu(); }
       });
-
-      refresh();
     }
 
     /* Row overflow menu — rendered at body level so the table never clips it. */

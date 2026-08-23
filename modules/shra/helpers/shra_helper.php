@@ -292,6 +292,40 @@ function shra_lead_stage_defs()
     ];
 }
 
+/**
+ * Allowed stage moves, keyed by the stage you are leaving. Single source of truth —
+ * Shra_leads_model enforces it and the Log-call modal builds its status picker from it.
+ */
+function shra_lead_transitions($from = null)
+{
+    $t = [
+        'new'              => ['prospect', 'enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'prospect'         => ['enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'enquired'         => ['prospect', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'contacted'        => ['no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'no_response'      => ['contacted', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'callback_request' => ['contacted', 'no_response', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'followup'         => ['contacted', 'no_response', 'callback_request', 'visit_scheduled', 'lost', 'junk'],
+        'visit_scheduled'  => ['visited', 'followup', 'visit_scheduled', 'no_response', 'callback_request', 'lost'],
+        'visited'          => ['confirmed', 'followup', 'visit_scheduled', 'lost'],
+        'confirmed'        => ['won', 'followup', 'visit_scheduled', 'lost'],
+        'won'              => [],
+        'lost'             => ['followup'],
+        'junk'             => ['followup'],
+    ];
+
+    return $from === null ? $t : ($t[$from] ?? []);
+}
+
+/**
+ * Stages the Log-call modal can set on its own. Everything else (a visit, a confirmation,
+ * a loss) needs extra details, so it keeps its own dialog.
+ */
+function shra_lead_quick_stages()
+{
+    return ['prospect', 'enquired', 'contacted', 'no_response', 'callback_request', 'followup'];
+}
+
 function shra_lead_open_stages()
 {
     return ['new', 'prospect', 'enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'visited', 'confirmed'];

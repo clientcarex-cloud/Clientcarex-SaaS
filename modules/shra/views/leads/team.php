@@ -78,7 +78,7 @@
                 <div class="shra-card-head"><h4><i class="fa fa-filter" style="color:var(--gold)"></i> Funnel (now)</h4></div>
                 <div class="shra-card-body">
                     <?php $max = max(1, max($funnel)); foreach (shra_lead_stage_defs() as $k => $d) { $n = (int) ($funnel[$k] ?? 0); ?>
-                    <a href="<?php echo admin_url('shra/shra_leads/pipeline?stage=' . $k); ?>" class="shra-funnel-row"><span><?php echo $d[0]; ?></span><div class="shra-progress" style="flex:1"><span style="width:<?php echo round($n / $max * 100); ?>%;background:<?php echo $d[2]; ?>"></span></div><b><?php echo $n; ?></b></a>
+                    <a href="<?php echo admin_url('shra/shra_leads?scope=all&stage=' . $k); ?>" class="shra-funnel-row"><span><?php echo $d[0]; ?></span><div class="shra-progress" style="flex:1"><span style="width:<?php echo round($n / $max * 100); ?>%;background:<?php echo $d[2]; ?>"></span></div><b><?php echo $n; ?></b></a>
                     <?php } ?>
                 </div>
             </div>
