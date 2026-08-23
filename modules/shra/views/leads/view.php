@@ -4,7 +4,7 @@
 <div class="content">
     <?php $shra_active = 'leads'; include __DIR__ . '/../_nav.php'; $l = $lead; ?>
 
-    <div id="shra-lead-title" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . $l->visit_slot)); ?>"></div>
+    <div id="shra-lead-title" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>"></div>
     <div class="shra-toolbar" style="justify-content:space-between;align-items:flex-start">
         <div>
             <a href="<?php echo admin_url('shra/shra_leads'); ?>" class="shra-muted" style="font-size:12px"><i class="fa fa-arrow-left"></i> Leads</a>
@@ -15,7 +15,7 @@
                 <?php if ($l->city) { ?><span><i class="fa fa-location-dot"></i> <?php echo html_escape($l->city); ?></span><?php } ?>
                 <span><i class="fa fa-bullhorn"></i> <?php echo html_escape($l->source_name ?: 'Unknown source'); ?></span>
                 <span><i class="fa fa-headset"></i> <?php echo html_escape($l->agent_name ?: 'Unassigned'); ?></span>
-                <span class="shra-muted">added <?php echo date('d M Y H:i', strtotime($l->dateadded)); ?> by <?php echo html_escape($l->added_by_name ?: 'system'); ?> · <?php echo $l->age_days; ?> d old</span>
+                <span class="shra-muted">added <?php echo shra_datetime($l->dateadded); ?> by <?php echo html_escape($l->added_by_name ?: 'system'); ?> · <?php echo $l->age_days; ?> d old</span>
             </div>
         </div>
         <div class="shra-lead-actions" style="margin:0">
@@ -40,9 +40,9 @@
     <?php if ($l->is_open) { ?>
     <div class="shra-alert <?php echo $l->is_overdue ? 'shra-alert-bad' : 'shra-alert-ok'; ?>" style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <b>Next action:</b> <?php echo ucfirst($l->next_action_type); ?> · <?php echo shra_lead_due_text($l->next_action_at); ?>
-        <?php if ($l->visit_date) { ?><span class="shra-pill"><i class="fa fa-calendar-check"></i> Visit <?php echo date('D d M', strtotime($l->visit_date)); ?> · <?php echo html_escape($l->visit_slot); ?></span><?php } ?>
+        <?php if ($l->visit_date) { ?><span class="shra-pill"><i class="fa fa-calendar-check"></i> Visit <?php echo date('D d M', strtotime($l->visit_date)); ?> · <?php echo html_escape(shra_slot($l->visit_slot)); ?></span><?php } ?>
         <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red"><?php echo (int) $l->no_show_count; ?> no-show<?php echo $l->no_show_count > 1 ? 's' : ''; ?></span><?php } ?>
-        <span class="shra-muted" style="margin-left:auto"><?php echo (int) $l->call_attempts; ?> call attempt<?php echo $l->call_attempts == 1 ? '' : 's'; ?><?php echo $l->lastcontact ? ' · last ' . date('d M H:i', strtotime($l->lastcontact)) : ''; ?></span>
+        <span class="shra-muted" style="margin-left:auto"><?php echo (int) $l->call_attempts; ?> call attempt<?php echo $l->call_attempts == 1 ? '' : 's'; ?><?php echo $l->lastcontact ? ' · last ' . shra_datetime($l->lastcontact, false) : ''; ?></span>
     </div>
     <?php } elseif ($l->stage === 'won') { ?>
     <div class="shra-alert shra-alert-ok" style="margin-bottom:16px"><i class="fa fa-trophy"></i> <b>Joined</b> on <?php echo date('d M Y', strtotime($l->won_at)); ?><?php if ($rider) { ?> · rider <a href="<?php echo admin_url('shra/rider/' . $rider->id); ?>"><?php echo html_escape($rider->rider_no); ?></a><?php } ?> · revenue credited to <b><?php echo html_escape($l->agent_name ?: '—'); ?></b></div>
@@ -115,7 +115,7 @@
                     $ic  = $icons[$e->event_type] ?? 'fa-circle';
                     $txt = '';
                     switch ($e->event_type) {
-                        case 'call': case 'whatsapp': $txt = ($e->event_type === 'whatsapp' ? 'WhatsApp' : 'Call') . ' · <b>' . html_escape($outs[$e->outcome][0] ?? $e->outcome) . '</b>' . ($e->to_value ? ' · next ' . date('d M H:i', strtotime($e->to_value)) : ''); break;
+                        case 'call': case 'whatsapp': $txt = ($e->event_type === 'whatsapp' ? 'WhatsApp' : 'Call') . ' · <b>' . html_escape($outs[$e->outcome][0] ?? $e->outcome) . '</b>' . ($e->to_value ? ' · next ' . shra_datetime($e->to_value, false) : ''); break;
                         case 'stage': $txt = shra_lead_stage_label($e->from_value) . ' → <b>' . shra_lead_stage_label($e->to_value) . '</b>'; break;
                         case 'assigned': case 'reassigned': $txt = ucfirst($e->event_type) . ' to <b>' . html_escape(get_staff_full_name($e->to_value)) . '</b>'; break;
                         case 'visit_scheduled': case 'visit_rescheduled': $txt = ($e->event_type === 'visit_rescheduled' ? 'Visit rescheduled → ' : 'Visit scheduled → ') . '<b>' . html_escape($e->to_value) . '</b>'; break;
@@ -130,7 +130,7 @@
                         <div class="shra-tl-body">
                             <div><?php echo $txt; ?></div>
                             <?php if ($e->note) { ?><div class="shra-tl-note"><?php echo nl2br(html_escape($e->note)); ?></div><?php } ?>
-                            <div class="shra-tl-meta"><?php echo html_escape($e->staff_name ?: 'System'); ?> · <?php echo date('d M Y H:i', strtotime($e->created_at)); ?></div>
+                            <div class="shra-tl-meta"><?php echo html_escape($e->staff_name ?: 'System'); ?> · <?php echo shra_datetime($e->created_at); ?></div>
                         </div>
                     </div>
                 <?php } ?>
@@ -140,7 +140,7 @@
             <div class="shra-card shra-mt">
                 <div class="shra-card-head"><h4><i class="fa fa-note-sticky" style="color:var(--gold)"></i> Notes</h4></div>
                 <div class="shra-card-body">
-                <?php foreach ($notes as $n) { ?><div style="padding:8px 0;border-bottom:1px solid var(--line)"><?php echo nl2br(html_escape($n->description)); ?><div class="shra-muted" style="font-size:11px;margin-top:3px"><?php echo html_escape(get_staff_full_name($n->addedfrom)); ?> · <?php echo date('d M Y H:i', strtotime($n->dateadded)); ?></div></div><?php } ?>
+                <?php foreach ($notes as $n) { ?><div style="padding:8px 0;border-bottom:1px solid var(--line)"><?php echo nl2br(html_escape($n->description)); ?><div class="shra-muted" style="font-size:11px;margin-top:3px"><?php echo html_escape(get_staff_full_name($n->addedfrom)); ?> · <?php echo shra_datetime($n->dateadded); ?></div></div><?php } ?>
                 </div>
             </div>
             <?php } ?>

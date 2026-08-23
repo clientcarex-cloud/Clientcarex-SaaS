@@ -72,7 +72,7 @@
                         <tbody>
                         <?php foreach ($recent as $e) { ?>
                             <tr>
-                                <td><a href="<?php echo admin_url('shra/rider/' . $e->rider_id); ?>" class="strong"><?php echo html_escape($e->full_name); ?></a><span class="sub"><?php echo html_escape($e->package_name); ?> · <?php echo _dt($e->created_at); ?></span></td>
+                                <td><a href="<?php echo admin_url('shra/rider/' . $e->rider_id); ?>" class="strong"><?php echo html_escape($e->full_name); ?></a><span class="sub"><?php echo html_escape($e->package_name); ?> · <?php echo shra_datetime($e->created_at); ?></span></td>
                                 <td class="num strong"><?php echo shra_money($e->total); ?><span class="sub"><?php echo shra_status_badge($e->status); ?></span></td>
                             </tr>
                         <?php } ?>

@@ -51,7 +51,7 @@
                     <?php if ($can_all) { ?><td><?php echo html_escape($l->agent_name ?: '—'); ?></td><?php } ?>
                     <td><?php echo shra_lead_stage_badge($l->stage); ?></td>
                     <td><?php echo $l->is_open ? shra_lead_due_text($l->next_action_at) : '—'; ?></td>
-                    <td><?php echo $l->visit_date ? date('D d M', strtotime($l->visit_date)) . ' · ' . html_escape($l->visit_slot) : '—'; ?></td>
+                    <td><?php echo $l->visit_date ? date('D d M', strtotime($l->visit_date)) . ' · ' . html_escape(shra_slot($l->visit_slot)) : '—'; ?></td>
                     <td class="num"><?php echo (int) $l->call_attempts; ?></td>
                     <td class="num"><?php echo $l->expected_value > 0 ? shra_money($l->expected_value) : '—'; ?></td>
                     <td class="shra-muted" style="font-size:12px"><?php echo date('d M', strtotime($l->dateadded)); ?></td>

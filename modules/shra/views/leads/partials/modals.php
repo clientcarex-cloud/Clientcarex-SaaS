@@ -49,8 +49,8 @@ $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
             <label style="margin-top:14px">Next follow-up *</label>
             <div class="shra-chips">
                 <button type="button" class="shra-chip" data-plus="2 hours">In 2 h</button>
-                <button type="button" class="shra-chip" data-plus="tomorrow 10:00">Tomorrow 10am</button>
-                <button type="button" class="shra-chip" data-plus="tomorrow 18:00">Tomorrow 6pm</button>
+                <button type="button" class="shra-chip" data-plus="tomorrow 10:00">Tomorrow 10 AM</button>
+                <button type="button" class="shra-chip" data-plus="tomorrow 18:00">Tomorrow 6 PM</button>
                 <button type="button" class="shra-chip" data-plus="+3 days 11:00">+3 days</button>
                 <button type="button" class="shra-chip" data-plus="<?php echo $weekend['sat']; ?> 09:00">Sat</button>
                 <button type="button" class="shra-chip" data-plus="<?php echo $weekend['sun']; ?> 09:00">Sun</button>
@@ -80,7 +80,7 @@ $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
         </div>
         <input type="date" name="visit_date" class="form-control" min="<?php echo date('Y-m-d'); ?>" value="<?php echo $weekend['sat']; ?>" required>
         <label style="margin-top:12px">Slot</label>
-        <select name="visit_slot" class="form-control" required><?php foreach ($slots as $s) { ?><option value="<?php echo html_escape($s); ?>"><?php echo html_escape($s); ?></option><?php } ?></select>
+        <select name="visit_slot" class="form-control" required><?php foreach ($slots as $s) { ?><option value="<?php echo html_escape($s); ?>"><?php echo html_escape(shra_slot($s)); ?></option><?php } ?></select>
         <div class="form-group" style="margin-top:12px"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Optional"></div>
         <div class="help">The agent gets a reminder an hour before. Front desk sees it on the Visits board.</div>
     </div>

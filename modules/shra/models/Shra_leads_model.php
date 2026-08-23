@@ -597,7 +597,7 @@ class Shra_leads_model extends App_Model
         }
         $this->update_lead($lead_id, $core, $ext);
         $this->event($lead_id, $channel === 'whatsapp' ? 'whatsapp' : 'call', ['outcome' => $outcome, 'note' => $note, 'to' => $next_at,
-            'log' => ucfirst($channel) . ': ' . $label . ($note ? ' — ' . $note : '') . ($next_at ? ' · next ' . date('d M H:i', strtotime($next_at)) : '')]);
+            'log' => ucfirst($channel) . ': ' . $label . ($note ? ' — ' . $note : '') . ($next_at ? ' · next ' . shra_datetime($next_at, false) : '')]);
 
         // New → Contacted on first real contact; Visit scheduled stays as is
         if ($is_contact && in_array($l->stage, ['new'])) {

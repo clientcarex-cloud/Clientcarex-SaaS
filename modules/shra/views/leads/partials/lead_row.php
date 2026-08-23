@@ -35,7 +35,7 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
 <tr class="<?php echo $cls; ?>" data-lead="<?php echo $l->id; ?>" data-stage="<?php echo $l->stage; ?>" data-bucket="<?php echo $bucket; ?>"
     data-agent="<?php echo (int) $l->assigned; ?>" data-source="<?php echo (int) $l->source; ?>" data-stale="<?php echo $l->is_stale ? 1 : 0; ?>"
     data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>"
-    data-visit="<?php echo html_escape(trim($l->visit_date . ' ' . $l->visit_slot)); ?>" data-s="<?php echo html_escape($hay); ?>">
+    data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>" data-s="<?php echo html_escape($hay); ?>">
     <td class="shra-r-name">
         <a href="<?php echo shra_lead_url($l->id); ?>"><?php echo html_escape($l->name); ?></a>
         <span class="shra-r-sub">
@@ -58,7 +58,7 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     </td>
     <td class="shra-r-visit">
         <?php if ($l->visit_date) { ?>
-            <?php echo date('D d M', strtotime($l->visit_date)); ?><span class="shra-r-sub"><?php echo html_escape($l->visit_slot ?: 'Any time'); ?></span>
+            <?php echo date('D d M', strtotime($l->visit_date)); ?><span class="shra-r-sub"><?php echo html_escape(shra_slot($l->visit_slot) ?: 'Any time'); ?></span>
         <?php } else { ?><span class="shra-muted">—</span><?php } ?>
     </td>
     <td class="shra-r-calls num">

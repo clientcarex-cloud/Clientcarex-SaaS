@@ -66,6 +66,63 @@ function shra_money($amount)
     return $out;
 }
 
+/* ══════════════ Time display ══════════════
+ * Every time SHRA puts on screen is 12-hour with AM/PM, whatever the global
+ * Perfex "time_format" option says. Storage stays 24-hour (Y-m-d H:i:s).
+ */
+
+/** A time as "04:30 PM". Accepts a timestamp, "H:i(:s)" or any datetime string. */
+function shra_time($t)
+{
+    if ($t === null || $t === '' || $t === '0000-00-00 00:00:00') {
+        return '';
+    }
+    $ts = is_numeric($t) ? (int) $t : strtotime((string) $t);
+
+    return $ts ? date('h:i A', $ts) : (string) $t;
+}
+
+/** A datetime as "23 Aug 2026, 04:30 PM" (or "23 Aug, 04:30 PM" without the year). */
+function shra_datetime($dt, $with_year = true)
+{
+    if ($dt === null || $dt === '' || $dt === '0000-00-00 00:00:00') {
+        return '';
+    }
+    $ts = is_numeric($dt) ? (int) $dt : strtotime((string) $dt);
+
+    return $ts ? date($with_year ? 'd M Y, h:i A' : 'd M, h:i A', $ts) : (string) $dt;
+}
+
+/**
+ * Visit-slot labels are free text set in settings ("Sat 16:00-17:00", "Weekday (any time)").
+ * Rewrite any 24-hour clock times in them for display; the stored value never changes.
+ */
+function shra_slot($slot)
+{
+    $slot = trim((string) $slot);
+    if ($slot === '' || preg_match('/\d\s*[ap]\.?m\b/i', $slot)) {
+        return $slot; // already written in 12-hour form
+    }
+    // "16:00-17:00" → "04:00-05:00 PM" (one meridiem when both ends share it)
+    $slot = preg_replace_callback('/\b([01]?\d|2[0-3]):([0-5]\d)\s*(?:-|–|to)\s*([01]?\d|2[0-3]):([0-5]\d)\b/i', function ($m) {
+        $a = mktime((int) $m[1], (int) $m[2], 0, 1, 1, 2000);
+        $b = mktime((int) $m[3], (int) $m[4], 0, 1, 1, 2000);
+
+        return date('A', $a) === date('A', $b)
+            ? date('h:i', $a) . '-' . date('h:i A', $b)
+            : date('h:i A', $a) . '-' . date('h:i A', $b);
+    }, $slot, -1, $ranges);
+
+    if ($ranges) {
+        return $slot; // ranges are done — a second pass would re-convert what we just wrote
+    }
+
+    // a bare 24-hour time on its own
+    return preg_replace_callback('/\b([01]?\d|2[0-3]):([0-5]\d)\b/', function ($m) {
+        return date('h:i A', mktime((int) $m[1], (int) $m[2], 0, 1, 1, 2000));
+    }, $slot);
+}
+
 /** Public self-registration URL. */
 function shra_join_url()
 {
@@ -374,7 +431,7 @@ function shra_lead_fill_template($text, $lead)
 {
     $visit = '';
     if (!empty($lead->visit_date)) {
-        $visit = date('D d M', strtotime($lead->visit_date)) . (!empty($lead->visit_slot) ? ' (' . $lead->visit_slot . ')' : '');
+        $visit = date('D d M', strtotime($lead->visit_date)) . (!empty($lead->visit_slot) ? ' (' . shra_slot($lead->visit_slot) . ')' : '');
     }
 
     return strtr((string) $text, [
@@ -405,7 +462,7 @@ function shra_lead_due_text($datetime)
         return '<span class="shra-due shra-due-over"><i class="fa fa-exclamation-circle"></i> ' . $t . ' overdue</span>';
     }
     if (date('Y-m-d', $ts) === date('Y-m-d')) {
-        return '<span class="shra-due shra-due-today"><i class="fa fa-clock"></i> today ' . date('H:i', $ts) . '</span>';
+        return '<span class="shra-due shra-due-today"><i class="fa fa-clock"></i> today ' . shra_time($ts) . '</span>';
     }
 
     return '<span class="shra-due"><i class="fa fa-calendar"></i> ' . date('D d M', $ts) . '</span>';

@@ -29,7 +29,7 @@
         <div class="shra-card"><div class="shra-empty"><i class="fa fa-calendar-check"></i>No visits scheduled for this day.<br>Agents book visits from the Log-call / <i class="fa fa-calendar-plus"></i> button on a lead.</div></div>
     <?php } else { foreach ($groups as $slot => $rows) { ?>
         <div class="shra-card" style="margin-bottom:14px">
-            <div class="shra-card-head"><h4><i class="fa fa-clock" style="color:var(--gold)"></i> <?php echo html_escape($slot); ?></h4><span class="shra-pill"><?php echo count($rows); ?></span></div>
+            <div class="shra-card-head"><h4><i class="fa fa-clock" style="color:var(--gold)"></i> <?php echo html_escape(shra_slot($slot)); ?></h4><span class="shra-pill"><?php echo count($rows); ?></span></div>
             <div class="shra-lead-list"><?php foreach ($rows as $l) { include __DIR__ . '/partials/lead_card.php'; } ?></div>
         </div>
     <?php } } ?>

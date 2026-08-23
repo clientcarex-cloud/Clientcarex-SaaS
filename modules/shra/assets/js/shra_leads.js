@@ -120,7 +120,7 @@
       case 'call':
         var $m = openModal('#shra-lead-call', id);
         $m.find('[name=outcome]').val(''); $m.find('.shra-oc').removeClass('on'); $m.find('[name=note]').val('');
-        $m.find('[name=next_action_at]').val(localDT('tomorrow 10:00')); $('#shra-call-next').show();
+        $m.find('[name=next_action_at]').val(localDT('tomorrow 10:00')).trigger('change'); $('#shra-call-next').show();
         break;
       case 'visit': openModal('#shra-lead-visit', id); break;
       case 'lost': openModal('#shra-lead-lost', id).find('[name=reason]').val(''); break;
@@ -146,7 +146,7 @@
     $m.find('[name=outcome]').val($(this).data('outcome'));
     $('#shra-call-next').toggle(+$(this).data('next') === 1);
   });
-  $('#shra-lead-call').on('click', '.shra-chip', function () { $('#shra-lead-call [name=next_action_at]').val(localDT($(this).data('plus'))); $(this).addClass('on').siblings().removeClass('on'); });
+  $('#shra-lead-call').on('click', '.shra-chip', function () { $('#shra-lead-call [name=next_action_at]').val(localDT($(this).data('plus'))).trigger('change'); $(this).addClass('on').siblings().removeClass('on'); });
   $('#shra-lead-call-form').on('submit', function (e) {
     e.preventDefault();
     var $f = $(this);
@@ -232,6 +232,21 @@
   /* ───────── Lead page: details & notes ───────── */
   $('#shra-lead-details-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.details, formObj($(this)), function () { location.reload(); }); });
   $('#shra-lead-note-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.note, formObj($(this)), function () { location.reload(); }); });
+
+  /* ───────── datetime-local fields echo the picked time in 12-hour form ─────────
+     The native picker renders in the browser's locale (24h on many of them), so SHRA
+     spells the chosen moment out underneath it. */
+  function dtHint($i) {
+    var $h = $i.next('.shra-dt-hint');
+    if (!$h.length) { $h = $('<div class="help shra-dt-hint"></div>').insertAfter($i); }
+    var v = $i.val(), d = v ? new Date(v) : null;
+    $h.text(!d || isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, {
+      weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true
+    }));
+  }
+  $(document).on('input change', 'input[type=datetime-local]', function () { dtHint($(this)); });
+  $(document).on('shown.bs.modal', '.modal.shra', function () { $(this).find('input[type=datetime-local]').each(function () { dtHint($(this)); }); });
+  $(function () { $('.shra input[type=datetime-local]').each(function () { dtHint($(this)); }); });
 
   /* ───────── Dense work list: tabs, instant search, row menu ───────── */
   var W = (function () {

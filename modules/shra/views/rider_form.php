@@ -48,7 +48,7 @@ $v = function ($k, $d = '') use ($r) { return html_escape($r && isset($r->$k) &&
                     <input type="checkbox" id="terms_accepted" name="terms_accepted" value="1" <?php echo $r && $r->terms_accepted ? 'checked' : ''; ?>>
                     <label for="terms_accepted">Terms accepted by rider / guardian</label>
                 </div>
-                <?php if ($r && $r->terms_accepted_at) { ?><div class="help">Accepted by <?php echo html_escape($r->terms_accepted_by); ?> on <?php echo _dt($r->terms_accepted_at); ?></div><?php } ?>
+                <?php if ($r && $r->terms_accepted_at) { ?><div class="help">Accepted by <?php echo html_escape($r->terms_accepted_by); ?> on <?php echo shra_datetime($r->terms_accepted_at); ?></div><?php } ?>
                 <div class="form-group" style="margin-top:10px"><label>Accepted by (name)</label><input type="text" name="terms_accepted_by" class="form-control" value="<?php echo $v('terms_accepted_by'); ?>" placeholder="Guardian name when rider is a minor"></div>
                 <?php if ($r) { ?>
                 <div class="form-group"><label>Rider status</label><select name="status" class="form-control"><option value="active" <?php echo $r->status === 'active' ? 'selected' : ''; ?>>Active</option><option value="inactive" <?php echo $r->status === 'inactive' ? 'selected' : ''; ?>>Inactive</option></select></div>
