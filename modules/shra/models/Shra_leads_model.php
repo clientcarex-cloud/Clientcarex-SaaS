@@ -156,10 +156,12 @@ class Shra_leads_model extends App_Model
     }
 
     /** Agent home: overdue / today / upcoming (7 days) / no next action (safety net). */
-    public function queues_for($staff_id)
+    public function queues_for($staff_id, $include_unassigned = false)
     {
         $p    = db_prefix();
-        $rows = $this->db->query($this->base_select() . " WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won'
+        // Managers also see unassigned leads (public form with an empty agent pool) so nothing is invisible
+        $who  = $include_unassigned ? '(l.assigned = ? OR l.assigned = 0 OR l.assigned IS NULL)' : 'l.assigned = ?';
+        $rows = $this->db->query($this->base_select() . " WHERE $who AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won'
             ORDER BY x.next_action_at IS NULL DESC, x.next_action_at ASC LIMIT 800", [(int) $staff_id])->result();
         $out  = ['overdue' => [], 'today' => [], 'upcoming' => [], 'later' => [], 'unset' => []];
         $now  = time();

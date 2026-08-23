@@ -284,7 +284,7 @@ section{padding:52px 0}
                     <?php foreach (['c', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'] as $k) { ?><input type="hidden" name="<?php echo $k; ?>" value="<?php echo html_escape($track[$k]); ?>"><?php } ?>
                     <div style="position:absolute;left:-5000px" aria-hidden="true"><input type="text" name="website" tabindex="-1" autocomplete="off"></div>
                     <div class="f"><label>Your name <span class="req">*</span></label><input type="text" name="name" value="<?php echo $v('name'); ?>" required autocomplete="name" placeholder="Full name"></div>
-                    <div class="f"><label>Mobile number <span class="req">*</span></label><input type="tel" name="phone" value="<?php echo $v('phone'); ?>" required inputmode="tel" autocomplete="tel" placeholder="10-digit mobile number"></div>
+                    <div class="f"><label>Mobile number <span class="req">*</span></label><input type="tel" name="phone" id="phone" value="<?php echo $v('phone'); ?>" required inputmode="numeric" autocomplete="tel-national" maxlength="10" pattern="[6-9][0-9]{9}" title="Enter a 10-digit Indian mobile number" placeholder="10-digit mobile number"></div>
                     <div class="f"><label>Who will ride?</label><div class="chips">
                         <label><input type="radio" name="rider_for" value="child" <?php echo $v('rider_for', 'child') === 'child' ? 'checked' : ''; ?>><span>My child</span></label>
                         <label><input type="radio" name="rider_for" value="self" <?php echo $v('rider_for') === 'self' ? 'checked' : ''; ?>><span>Myself</span></label>
@@ -500,6 +500,9 @@ section{padding:52px 0}
     if(first&&!first.querySelector('img')&&'IntersectionObserver' in window){
         new IntersectionObserver(function(en,io){en.forEach(function(e){if(e.isIntersecting){loadReel(first);io.disconnect();}});},{rootMargin:'200px'}).observe(first);
     }
+    // Mobile: digits only, strip a pasted +91 / 0 prefix, cap at 10
+    var ph=document.getElementById('phone');
+    if(ph){ph.addEventListener('input',function(){var d=ph.value.replace(/\D+/g,'');if(d.length>10&&d.indexOf('91')===0){d=d.slice(2);}d=d.replace(/^0+/,'');ph.value=d.slice(0,10);});}
     // Submit state + tracking
     var form=document.getElementById('leadform'),btn=document.getElementById('subbtn');
     if(form){form.addEventListener('submit',function(){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i> Sending…';shraTrack('InitiateCheckout',{content_name:'inquire_form'});});}
