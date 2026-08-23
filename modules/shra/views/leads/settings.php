@@ -35,6 +35,30 @@
                     <div class="form-group"><label>WhatsApp templates <span class="help" style="display:inline">Title|Message — {name} {agent} {academy} {visit}</span></label><textarea name="shra_lead_wa_templates" class="form-control" rows="5"><?php echo html_escape(get_option('shra_lead_wa_templates')); ?></textarea></div>
                 </div>
             </div>
+            <div class="shra-card shra-mt">
+                <div class="shra-card-head"><h4><i class="fa fa-rocket" style="color:var(--gold)"></i> Ad landing page <span class="help" style="display:inline;font-weight:400">&nbsp;<a href="<?php echo site_url('inquire'); ?>" target="_blank"><?php echo site_url('inquire'); ?> <i class="fa fa-external-link"></i></a></span></h4></div>
+                <div class="shra-card-body">
+                    <div class="row">
+                        <div class="col-sm-4"><div class="form-group"><label>Call / WhatsApp number</label><input type="text" name="shra_lead_landing_phone" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_phone')); ?>" placeholder="9908480010"></div></div>
+                        <div class="col-sm-5"><div class="form-group"><label>Location line</label><input type="text" name="shra_lead_landing_location" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_location')); ?>" placeholder="The Wilderness Retreat, Kokapet"></div></div>
+                        <div class="col-sm-3"><div class="form-group"><label>Minimum rider age</label><input type="number" name="shra_lead_landing_min_age" class="form-control" value="<?php echo (int) get_option('shra_lead_landing_min_age'); ?>" min="1"></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6"><div class="form-group"><label>Google Maps link</label><input type="url" name="shra_lead_landing_maps_url" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_maps_url')); ?>" placeholder="https://maps.app.goo.gl/…"></div></div>
+                        <div class="col-sm-6"><div class="form-group"><label>Instagram profile URL</label><input type="url" name="shra_lead_landing_instagram" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_instagram')); ?>"></div></div>
+                    </div>
+                    <div class="form-group"><label>Instagram reels to show <span class="help" style="display:inline">(one per line — reel URL or ID; first one is the hero video)</span></label><textarea name="shra_lead_landing_reels" class="form-control" rows="4"><?php echo html_escape(get_option('shra_lead_landing_reels')); ?></textarea></div>
+                    <div class="row">
+                        <div class="col-sm-4"><div class="form-group"><label>Meta Pixel ID</label><input type="text" name="shra_lead_meta_pixel_id" class="form-control" value="<?php echo html_escape(get_option('shra_lead_meta_pixel_id')); ?>" placeholder="1234567890"><div class="help">Fires PageView, Contact (call / WhatsApp taps) and Lead (form sent)</div></div></div>
+                        <div class="col-sm-4"><div class="form-group"><label>Google Ads tag ID</label><input type="text" name="shra_lead_gads_id" class="form-control" value="<?php echo html_escape(get_option('shra_lead_gads_id')); ?>" placeholder="AW-123456789"></div></div>
+                        <div class="col-sm-4"><div class="form-group"><label>Google Ads conversion label</label><input type="text" name="shra_lead_gads_label" class="form-control" value="<?php echo html_escape(get_option('shra_lead_gads_label')); ?>" placeholder="AbC-D_efG-h12_34-567"></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4"><div class="form-group"><label>GA4 measurement ID <span class="help" style="display:inline">(optional)</span></label><input type="text" name="shra_lead_ga4_id" class="form-control" value="<?php echo html_escape(get_option('shra_lead_ga4_id')); ?>" placeholder="G-XXXXXXX"></div></div>
+                        <div class="col-sm-8"><div class="form-group"><label>Ad URL format</label><div class="help" style="margin-top:8px;line-height:1.7">Meta: <code><?php echo site_url('inquire'); ?>?utm_source=facebook&amp;utm_medium=cpc&amp;utm_campaign=aug-kids</code><br>Google: <code><?php echo site_url('inquire'); ?>?utm_source=google&amp;utm_medium=cpc&amp;utm_campaign=search-brand</code><br>Lead source is set automatically (Google / Facebook / Instagram); add <code>&amp;pkg=ID</code> to pre-select a package.</div></div></div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div>
             <div class="shra-card">

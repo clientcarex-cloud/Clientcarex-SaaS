@@ -488,6 +488,17 @@ $lead_defaults = [
     'shra_lead_last_digest'          => '',
     'shra_lead_public_enabled'       => '1',
     'shra_lead_import_map'           => '{}',
+    // Ad landing page (/inquire)
+    'shra_lead_landing_phone'        => '9908480010',
+    'shra_lead_landing_location'     => 'The Wilderness Retreat, Kokapet, Hyderabad',
+    'shra_lead_landing_maps_url'     => '',
+    'shra_lead_landing_instagram'    => 'https://www.instagram.com/stallionhorseriding/',
+    'shra_lead_landing_reels'        => "DUs_7fKk4kE\nDUVtHcEEnZR\nDcOWWidzl0q\nDcJTWs0smrv\nDcBUVBvhifG\nDbqKR3ZTrzr",
+    'shra_lead_landing_min_age'      => '4',
+    'shra_lead_meta_pixel_id'        => '',
+    'shra_lead_gads_id'              => '',
+    'shra_lead_gads_label'           => '',
+    'shra_lead_ga4_id'               => '',
 ];
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);

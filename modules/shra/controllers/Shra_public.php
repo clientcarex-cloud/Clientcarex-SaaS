@@ -114,8 +114,13 @@ class Shra_public extends App_Controller
     /* ═══════════════════════ Public inquiry (leads) ═══════════════════════ */
 
     /**
-     *   /inquire            short interest form → lead (source "Website QR", round-robin assigned)
-     *   /inquire/done       thank-you page
+     * Ad landing page (Meta Ads / Google Ads) + public inquiry form.
+     *
+     *   /inquire            landing page → lead (source from utm_source, round-robin assigned)
+     *   /inquire/done       thank-you page — fires the Meta Pixel "Lead" + Google Ads conversion
+     *
+     * Query params carried through the form: c (campaign short code), utm_source, utm_medium,
+     * utm_campaign, utm_content, gclid, fbclid, pkg (pre-select a package id).
      */
     public function inquire($action = '')
     {
@@ -123,18 +128,45 @@ class Shra_public extends App_Controller
             return $this->error('Inquiries closed', 'Please call the academy directly.');
         }
         if ($action === 'done') {
-            return $this->load->view('public_inquire_success', ['title' => 'Thank you — ' . get_option('shra_academy_name')]);
+            return $this->load->view('public_inquire_success', [
+                'title'   => 'Thank you — ' . get_option('shra_academy_name'),
+                'landing' => $this->landing(),
+            ]);
         }
 
         $this->load->model('shra/shra_leads_model');
         $packages = $this->shra_model->get_packages(true);
-        $data     = [
-            'title'    => 'Inquire — ' . get_option('shra_academy_name'),
+        $plans    = [];
+        foreach ($packages as $pk) {
+            $q       = $this->shra_model->quote($pk);
+            $plans[] = [
+                'id'           => (int) $pk->id,
+                'name'         => $pk->name,
+                'audience'     => $pk->audience,
+                'sessions'     => (int) $pk->sessions,
+                'duration_min' => (int) $pk->duration_min,
+                'is_guest'     => (int) $pk->is_guest,
+                'is_featured'  => (int) $pk->is_featured,
+                'per_session'  => shra_money($pk->per_session),
+                'per_session_now' => shra_money($pk->sessions > 0 ? $q['total'] / $pk->sessions : $q['total']),
+                'price'        => shra_money($pk->price),
+                'total'        => shra_money($q['total']),
+                'total_raw'    => (float) $q['total'],
+                'discount'     => $q['discount_percent'] + 0,
+            ];
+        }
+
+        $get  = $this->input->get(null, true) ?: [];
+        $data = [
+            'title'    => 'Learn Horse Riding in Hyderabad — ' . get_option('shra_academy_name'),
             'packages' => $packages,
+            'plans'    => $plans,
             'offer'    => shra_offer(),
+            'landing'  => $this->landing(),
             'errors'   => [],
-            'old'      => [],
+            'old'      => ['package_id' => (int) ($get['pkg'] ?? 0)],
             'ts'       => time(),
+            'track'    => $this->tracking_from($get),
         ];
         $data['sig'] = shra_sign('inquire|' . $data['ts']);
 
@@ -162,7 +194,11 @@ class Shra_public extends App_Controller
             }
 
             if (!count($errors)) {
-                $src = $this->db->where('name', 'Website QR')->get(db_prefix() . 'leads_sources')->row();
+                $track = $this->tracking_from($post);
+                $desc  = trim((string) ($post['message'] ?? ''));
+                if ($track['line'] !== '') {
+                    $desc .= ($desc !== '' ? "\n\n" : '') . 'Ad tracking: ' . $track['line'];
+                }
                 $res = $this->shra_leads_model->capture([
                     'name'                => $post['name'],
                     'phone'               => $post['phone'],
@@ -170,9 +206,9 @@ class Shra_public extends App_Controller
                     'rider_age'           => $post['rider_age'] ?? '',
                     'interest_package_id' => (int) ($post['package_id'] ?? 0),
                     'city'                => $post['city'] ?? '',
-                    'source'              => $src ? $src->id : 0,
-                    'description'         => trim((string) ($post['message'] ?? '')),
-                    'campaign'            => substr((string) ($post['c'] ?? $this->input->get('c')), 0, 80),
+                    'source'              => $this->lead_source_id($track),
+                    'description'         => $desc,
+                    'campaign'            => $track['campaign'],
                 ], 'public_form');
                 // Duplicates are attached to the original lead silently — the visitor still sees a thank-you
                 if (!is_string($res)) {
@@ -182,9 +218,88 @@ class Shra_public extends App_Controller
             }
             $data['errors'] = $errors;
             $data['old']    = $post;
+            $data['track']  = $this->tracking_from($post);
         }
 
         $this->load->view('public_inquire', $data);
+    }
+
+    /** Landing-page settings (phone, reels, pixels) with sensible fallbacks. */
+    private function landing()
+    {
+        $phone = trim((string) get_option('shra_lead_landing_phone'));
+        if ($phone === '' && preg_match('/(\+?\d[\d\s-]{7,}\d)/', (string) get_option('shra_contact_line'), $m)) {
+            $phone = $m[1];
+        }
+        $reels = array_values(array_filter(array_map(function ($l) {
+            $l = trim($l);
+            if (preg_match('~instagram\.com/(?:[^/]+/)?(?:reel|p)/([A-Za-z0-9_-]+)~', $l, $m)) {
+                return $m[1];
+            }
+
+            return preg_match('/^[A-Za-z0-9_-]{5,}$/', $l) ? $l : null;
+        }, preg_split('/[\r\n,]+/', (string) get_option('shra_lead_landing_reels')))));
+
+        return [
+            'phone'       => $phone,
+            'phone_digits' => preg_replace('/\D+/', '', $phone),
+            'wa_link'     => $phone !== '' ? shra_wa_link($phone, 'Hi! I saw your ad and I\'m interested in horse riding lessons at ' . get_option('shra_academy_name') . '. Please share the packages and visit timings.') : '',
+            'location'    => trim((string) get_option('shra_lead_landing_location')),
+            'maps_url'    => trim((string) get_option('shra_lead_landing_maps_url')),
+            'instagram'   => trim((string) get_option('shra_lead_landing_instagram')),
+            'reels'       => $reels,
+            'meta_pixel'  => preg_replace('/\D+/', '', (string) get_option('shra_lead_meta_pixel_id')),
+            'gads_id'     => trim((string) get_option('shra_lead_gads_id')),
+            'gads_label'  => trim((string) get_option('shra_lead_gads_label')),
+            'ga4_id'      => trim((string) get_option('shra_lead_ga4_id')),
+            'min_age'     => (int) (get_option('shra_lead_landing_min_age') ?: 4),
+        ];
+    }
+
+    /** Normalise the ad-tracking params from GET (landing) or POST (hidden fields). */
+    private function tracking_from(array $in)
+    {
+        $t = [];
+        foreach (['c', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'] as $k) {
+            $t[$k] = substr(trim((string) ($in[$k] ?? '')), 0, 120);
+        }
+        $t['campaign'] = substr($t['c'] !== '' ? $t['c'] : $t['utm_campaign'], 0, 80);
+
+        $parts = [];
+        foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as $k) {
+            if ($t[$k] !== '') {
+                $parts[] = substr($k, 4) . '=' . $t[$k];
+            }
+        }
+        if ($t['gclid'] !== '') {
+            $parts[] = 'gclid=' . $t['gclid'];
+        }
+        if ($t['fbclid'] !== '') {
+            $parts[] = 'fbclid';
+        }
+        $t['line'] = implode(' · ', $parts);
+
+        return $t;
+    }
+
+    /** Map utm_source / click ids onto the Perfex lead sources seeded by the module. */
+    private function lead_source_id(array $t)
+    {
+        $src  = strtolower($t['utm_source'] . ' ' . $t['utm_medium']);
+        $name = 'Website QR';
+        if ($t['gclid'] !== '' || strpos($src, 'google') !== false || strpos($src, 'adwords') !== false) {
+            $name = 'Google';
+        } elseif (strpos($src, 'ig') === 0 || strpos($src, 'instagram') !== false) {
+            $name = 'Instagram';
+        } elseif ($t['fbclid'] !== '' || strpos($src, 'fb') !== false || strpos($src, 'facebook') !== false || strpos($src, 'meta') !== false) {
+            $name = 'Facebook';
+        }
+        $row = $this->db->where('name', $name)->get(db_prefix() . 'leads_sources')->row();
+        if (!$row && $name !== 'Website QR') {
+            $row = $this->db->where('name', 'Website QR')->get(db_prefix() . 'leads_sources')->row();
+        }
+
+        return $row ? (int) $row->id : 0;
     }
 
     private function validate(array $p, $type = 'learner')

@@ -507,7 +507,8 @@ class Shra_leads extends AdminController
         $this->need('manage');
         if ($this->input->post()) {
             $post = $this->input->post(null, false);
-            foreach (['shra_lead_sla_minutes', 'shra_lead_stale_days', 'shra_lead_phone_country', 'shra_lead_repeat_credit_months', 'shra_lead_visit_slots', 'shra_lead_lost_reasons', 'shra_lead_wa_templates'] as $k) {
+            foreach (['shra_lead_sla_minutes', 'shra_lead_stale_days', 'shra_lead_phone_country', 'shra_lead_repeat_credit_months', 'shra_lead_visit_slots', 'shra_lead_lost_reasons', 'shra_lead_wa_templates',
+                'shra_lead_landing_phone', 'shra_lead_landing_location', 'shra_lead_landing_maps_url', 'shra_lead_landing_instagram', 'shra_lead_landing_reels', 'shra_lead_landing_min_age', 'shra_lead_meta_pixel_id', 'shra_lead_gads_id', 'shra_lead_gads_label', 'shra_lead_ga4_id'] as $k) {
                 if (isset($post[$k])) {
                     update_option($k, trim((string) $post[$k]));
                 }
