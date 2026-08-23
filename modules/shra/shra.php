@@ -78,7 +78,7 @@ function shra_module_init_menu_items()
         'name'     => _l('shra'),
         'href'     => admin_url('shra'),
         'icon'     => 'fa-solid fa-horse-head',
-        'position' => 28,
+        'position' => 1,
     ]);
 
     // Single sidebar entry — the module's own tab bar handles in-page navigation.
@@ -91,6 +91,8 @@ function shra_module_init_menu_items()
 function shra_hide_customers_menu($items)
 {
     unset($items['customers']);
+    // SHRA is the home screen (see shra_default_landing), so the core Dashboard entry is redundant
+    unset($items['dashboard']);
 
     return $items;
 }
