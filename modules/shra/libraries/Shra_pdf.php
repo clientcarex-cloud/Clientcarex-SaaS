@@ -280,59 +280,147 @@ class Shra_pdf extends TCPDF
     {
         $this->SetTitle('Certificate ' . ($cert['certificate_no'] ?? ''));
         $this->AddPage('L');
-        $this->page_frame();
 
         $w  = $this->getPageWidth();
         $h  = $this->getPageHeight();
         $cx = $w / 2;
 
-        // Watermark horseshoe
-        $this->SetAlpha(0.04);
-        $this->SetLineStyle(['width' => 9, 'color' => self::INK]);
-        $this->Circle($cx, $h / 2 + 6, 52, 305, 235, 'D');
+        // ── Paper + luxury frame ──
+        $this->SetFillColor(...self::CREAM);
+        $this->Rect(0, 0, $w, $h, 'F');
+        // soft inner panel
+        $this->SetFillColor(250, 246, 236);
+        $this->RoundedRect(14, 14, $w - 28, $h - 28, 2, '1111', 'F');
+        // outer thick gold, inner hairline, ink hairline
+        $this->SetLineStyle(['width' => 1.6, 'color' => self::GOLD]);
+        $this->Rect(8, 8, $w - 16, $h - 16, 'D');
+        $this->SetLineStyle(['width' => 0.3, 'color' => self::GOLD]);
+        $this->Rect(10.5, 10.5, $w - 21, $h - 21, 'D');
+        $this->SetLineStyle(['width' => 0.25, 'color' => self::INK]);
+        $this->Rect(14, 14, $w - 28, $h - 28, 'D');
+        // corner flourishes
+        foreach ([[14, 14, 1, 1], [$w - 14, 14, -1, 1], [14, $h - 14, 1, -1], [$w - 14, $h - 14, -1, -1]] as $c) {
+            [$x, $y, $dx, $dy] = $c;
+            $this->SetLineStyle(['width' => 0.6, 'color' => self::GOLD]);
+            $this->Line($x, $y + $dy * 14, $x + $dx * 14, $y);                 // diagonal
+            $this->Line($x + $dx * 3, $y + $dy * 3, $x + $dx * 3, $y + $dy * 22); // vertical tick
+            $this->Line($x + $dx * 3, $y + $dy * 3, $x + $dx * 22, $y + $dy * 3); // horizontal tick
+            $this->SetFillColor(...self::GOLD);
+            $this->Polygon([$x + $dx * 7, $y + $dy * 7 - 2.2, $x + $dx * 7 + 2.2, $y + $dy * 7, $x + $dx * 7, $y + $dy * 7 + 2.2, $x + $dx * 7 - 2.2, $y + $dy * 7], 'F');
+            $this->Circle($x + $dx * 22, $y + $dy * 3, 0.9, 0, 360, 'F');
+            $this->Circle($x + $dx * 3, $y + $dy * 22, 0.9, 0, 360, 'F');
+        }
+
+        // Watermark horseshoe (very faint, centred behind the body)
+        $this->SetAlpha(0.035);
+        $this->SetLineStyle(['width' => 10, 'color' => self::INK]);
+        $this->Circle($cx, 106, 46, 305, 235, 'D');
         $this->SetAlpha(1);
 
-        $this->brand_logo($cx, 36, 30);
-        $this->txt(20, 52, $w - 40, mb_strtoupper($this->brand['name']), 'times', 'B', 15, self::INK, 'C');
-        $this->divider(62, $cx, 40);
+        // ── Header ──
+        $this->brand_logo($cx, 34, 26);
+        $this->setFontSpacing(1.2);
+        $this->txt(20, 49.5, $w - 40, mb_strtoupper($this->brand['name']), 'times', 'B', 13.5, self::INK, 'C');
+        $this->setFontSpacing(0);
+        if ($this->brand['tagline']) {
+            $this->txt(20, 55.5, $w - 40, $this->brand['tagline'], 'times', 'I', 9, self::MUTED, 'C');
+        }
+        $this->divider(61.5, $cx, 46);
 
-        $this->txt(20, 66, $w - 40, 'CERTIFICATE OF COMPLETION', 'times', 'B', 30, self::INK, 'C', 14);
-        $this->txt(20, 81, $w - 40, 'This certificate is proudly presented to', 'times', 'I', 12, self::MUTED, 'C');
+        $this->setFontSpacing(0.6);
+        $this->txt(20, 64.5, $w - 40, 'CERTIFICATE', 'times', 'B', 38, self::INK, 'C', 16);
+        $this->setFontSpacing(3.2);
+        $this->txt(20, 81, $w - 40, 'OF COMPLETION', 'helvetica', '', 9.5, self::GOLD, 'C');
+        $this->setFontSpacing(0);
 
-        $this->txt(20, 89, $w - 40, $cert['full_name'], 'times', 'B', 36, self::BROWN, 'C', 17);
-        $this->SetLineStyle(['width' => 0.4, 'color' => self::GOLD]);
-        $this->Line($cx - 70, 108, $cx + 70, 108);
+        $this->txt(20, 89.5, $w - 40, 'This certificate is proudly presented to', 'times', 'I', 11.5, self::MUTED, 'C');
 
+        // Name with diamond-tipped rule
+        $this->txt(20, 95.5, $w - 40, $cert['full_name'], 'times', 'B', 34, self::BROWN, 'C', 16);
+        $this->SetFont('times', 'B', 34);
+        $nw = min($w - 80, max(90, $this->GetStringWidth($cert['full_name']) + 24));
+        $this->SetLineStyle(['width' => 0.45, 'color' => self::GOLD]);
+        $this->Line($cx - $nw / 2, 114, $cx + $nw / 2, 114);
+        $this->SetFillColor(...self::GOLD);
+        foreach ([$cx - $nw / 2, $cx + $nw / 2] as $dxp) {
+            $this->Polygon([$dxp, 114 - 1.5, $dxp + 1.5, 114, $dxp, 114 + 1.5, $dxp - 1.5, 114], 'F');
+        }
+
+        // ── Body ──
         $n    = (int) $cert['sessions_total'];
         $body = 'for successfully completing the ' . $cert['package_name'] . ' riding course of ' . $n . ' class session' . ($n > 1 ? 's' : '')
             . ' (' . (int) $cert['duration_min'] . ' minutes each)' . ($cert['riding_level'] ? ' at ' . $cert['riding_level'] . ' level' : '')
             . ' with ' . $this->brand['name'] . ', demonstrating discipline, balance and a true partnership with the horse.';
-        $this->multitext(40, 113, $w - 80, $body, 'times', '', 12.5, self::INK, 'C', 1.5);
+        $this->multitext(52, 119, $w - 104, $body, 'times', '', 12, self::INK, 'C', 1.5);
 
+        // ── Details row (4 columns, centred) ──
         $from = !empty($cert['start_date']) ? date('d M Y', strtotime($cert['start_date'])) : '';
         $to   = !empty($cert['completed_at']) ? date('d M Y', strtotime($cert['completed_at'])) : date('d M Y');
-        $this->txt(20, 136, $w - 40, ($from ? $from . '  —  ' : '') . $to, 'helvetica', '', 9, self::MUTED, 'C');
+        $cols = [
+            ['COURSE', $cert['package_name'] . ' · ' . ucfirst((string) $cert['audience'])],
+            ['SESSIONS', $n . ' × ' . (int) $cert['duration_min'] . ' min'],
+            ['LEVEL', $cert['riding_level'] ?: 'Beginner'],
+            ['COMPLETED', $to],
+        ];
+        $rw = 200;
+        $cw = $rw / 4;
+        $rx = $cx - $rw / 2;
+        $ry = 139;
+        $this->SetLineStyle(['width' => 0.2, 'color' => self::SAND]);
+        $this->Line($rx, $ry - 2, $rx + $rw, $ry - 2);
+        foreach ($cols as $i => $c) {
+            $x = $rx + $i * $cw;
+            $this->setFontSpacing(0.9);
+            $this->txt($x, $ry + 0.5, $cw, $c[0], 'helvetica', '', 6, self::GOLD, 'C');
+            $this->setFontSpacing(0);
+            $this->txt($x, $ry + 4.5, $cw, $c[1], 'helvetica', 'B', 8.5, self::INK, 'C');
+            if ($i > 0) {
+                $this->Line($x, $ry, $x, $ry + 9);
+            }
+        }
+        $this->Line($rx, $ry + 11, $rx + $rw, $ry + 11);
 
-        // Seal
+        // ── Seal with ribbons ──
+        $sy = 163;
+        $this->SetFillColor(...self::BROWN);
+        $this->Polygon([$cx - 7, $sy + 4, $cx - 13, $sy + 22, $cx - 8, $sy + 19, $cx - 4, $sy + 24, $cx + 1, $sy + 6], 'F');
+        $this->Polygon([$cx + 7, $sy + 4, $cx + 13, $sy + 22, $cx + 8, $sy + 19, $cx + 4, $sy + 24, $cx - 1, $sy + 6], 'F');
+        // scalloped edge
         $this->SetFillColor(...self::GOLD);
-        $this->Circle($cx, 158, 11, 0, 360, 'F');
+        for ($a = 0; $a < 360; $a += 15) {
+            $this->Circle($cx + 12.2 * cos(deg2rad($a)), $sy + 12.2 * sin(deg2rad($a)), 1.6, 0, 360, 'F');
+        }
+        $this->Circle($cx, $sy, 12.4, 0, 360, 'F');
         $this->SetFillColor(...self::CREAM);
-        $this->Circle($cx, 158, 9.6, 0, 360, 'F');
+        $this->Circle($cx, $sy, 10.6, 0, 360, 'F');
         $this->SetFillColor(...self::GOLD);
-        $this->Circle($cx, 158, 8.6, 0, 360, 'F');
-        $this->txt($cx - 11, 154.4, 22, 'SHRA', 'helvetica', 'B', 7, self::CREAM, 'C');
-        $this->txt($cx - 11, 158.2, 22, 'CERTIFIED', 'helvetica', '', 4.5, self::CREAM, 'C');
+        $this->Circle($cx, $sy, 9.4, 0, 360, 'F');
+        $this->SetLineStyle(['width' => 0.25, 'color' => self::CREAM]);
+        $this->Circle($cx, $sy, 8.2, 0, 360, 'D');
+        $this->txt($cx - 12, $sy - 5.2, 24, 'SHRA', 'times', 'B', 9, self::CREAM, 'C');
+        $this->setFontSpacing(0.5);
+        $this->txt($cx - 12, $sy - 0.6, 24, 'CERTIFIED', 'helvetica', '', 4.2, self::CREAM, 'C');
+        $this->setFontSpacing(0);
+        $this->txt($cx - 12, $sy + 2.8, 24, date('Y', strtotime($to)), 'helvetica', 'B', 5, self::CREAM, 'C');
 
-        // Signatures
-        $this->signature_line(72, 176, 58, $this->brand['chief_instructor']);
-        $this->signature_line($w - 130, 176, 58, $this->brand['director']);
+        // ── Signatures (symmetric about the seal) ──
+        $sw = 62;
+        $this->signature_line($cx - 44 - $sw, $sy + 1, $sw, $this->brand['chief_instructor']);
+        $this->signature_line($cx + 44, $sy + 1, $sw, $this->brand['director']);
 
-        // Certificate meta + QR
-        $this->qrcode($cert['qr_text'] ?? $cert['certificate_no'], 16, $h - 36, 19);
-        $this->txt(37, $h - 35, 80, 'CERTIFICATE NO.', 'helvetica', '', 6, self::MUTED);
-        $this->txt(37, $h - 31.5, 80, (string) $cert['certificate_no'], 'helvetica', 'B', 9, self::INK);
-        $this->txt(37, $h - 26, 80, 'RIDER NO.', 'helvetica', '', 6, self::MUTED);
-        $this->txt(37, $h - 22.5, 80, (string) $cert['rider_no'], 'helvetica', 'B', 9, self::INK);
+        // ── Meta: QR + numbers (bottom-left), verify hint (bottom-right) ──
+        $qy = $h - 37;
+        $this->qrcode($cert['qr_text'] ?? $cert['certificate_no'], 29, $qy, 18);
+        $this->setFontSpacing(0.8);
+        $this->txt(50, $qy + 1, 80, 'CERTIFICATE NO.', 'helvetica', '', 5.5, self::MUTED);
+        $this->txt(50, $qy + 9.5, 80, 'RIDER NO.', 'helvetica', '', 5.5, self::MUTED);
+        $this->setFontSpacing(0);
+        $this->txt(50, $qy + 4, 80, (string) $cert['certificate_no'], 'helvetica', 'B', 8.5, self::INK);
+        $this->txt(50, $qy + 12.5, 80, (string) $cert['rider_no'], 'helvetica', 'B', 8.5, self::INK);
+        $this->txt($w - 109, $qy + 4, 80, 'Scan the code to verify this certificate', 'helvetica', 'I', 6.5, self::MUTED, 'R');
+        if ($from) {
+            $this->txt($w - 109, $qy + 8.5, 80, 'Course period ' . $from . ' – ' . $to, 'helvetica', '', 6.5, self::MUTED, 'R');
+        }
 
         $this->footer_line();
 

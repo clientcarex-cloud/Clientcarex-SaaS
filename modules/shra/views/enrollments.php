@@ -18,13 +18,14 @@
             <div class="shra-empty"><i class="fa-solid fa-ticket"></i>No enrollments found.</div>
         <?php } else { $sum = 0; ?>
         <div class="shra-table-wrap"><table class="shra-table">
-            <thead><tr><th>Date</th><th>Rider</th><th>Package</th><th>Progress</th><th class="num">Payment</th><th>Invoice</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Rider</th><th>Type</th><th>Package</th><th>Progress</th><th class="num">Payment</th><th>Invoice</th><th>Status</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($enrollments as $e) { $sum += $e->paid_real; $due_sum = ($due_sum ?? 0) + $e->due; $pct = $e->sessions_total ? round($e->sessions_used / $e->sessions_total * 100) : 0; ?>
                 <tr>
                     <td><?php echo _d($e->created_at); ?><span class="sub"><?php echo html_escape($e->enrollment_no); ?></span></td>
                     <td><a href="<?php echo admin_url('shra/rider/' . $e->rider_id); ?>" class="strong"><?php echo html_escape($e->full_name); ?></a><span class="sub"><?php echo html_escape($e->rider_no); ?> · <?php echo html_escape($e->mobile); ?></span></td>
-                    <td><?php echo html_escape($e->package_name); ?><span class="sub"><?php echo $e->audience; ?><?php echo $e->is_guest ? ' · guest' : ''; ?></span></td>
+                    <td><?php echo $e->rider_type === 'guest' ? '<span class="shra-badge shra-badge-gold">Guest</span>' : '<span class="shra-badge shra-badge-ink">Learner</span>'; ?></td>
+                    <td><?php echo html_escape($e->package_name); ?><span class="sub"><?php echo $e->audience; ?><?php echo $e->is_guest ? ' · guest ride' : ''; ?></span></td>
                     <td style="min-width:130px"><?php echo (int) $e->sessions_used; ?> / <?php echo (int) $e->sessions_total; ?><div class="shra-progress" style="margin-top:5px"><span style="width:<?php echo $pct; ?>%"></span></div></td>
                     <td class="num"><?php echo shra_pay_badge($e); ?><span class="sub"><?php echo shra_money($e->paid_real); ?> of <?php echo shra_money($e->total); ?><?php echo $e->discount_percent > 0 ? ' · ' . ($e->discount_percent + 0) . '% off' : ''; ?></span></td>
                     <td><?php echo $e->invoice_id ? '<a href="' . admin_url('invoices/list_invoices/' . $e->invoice_id) . '">' . html_escape(format_invoice_number($e->invoice_id)) . '</a>' : '—'; ?></td>
@@ -40,7 +41,7 @@
                 </tr>
             <?php } ?>
             </tbody>
-            <tfoot><tr><th colspan="4" style="border-radius:0">Total (<?php echo count($enrollments); ?>)</th><th class="num" style="border-radius:0"><?php echo shra_money($sum); ?> paid<?php echo ($due_sum ?? 0) > 0.009 ? '<span class="sub" style="color:var(--red)">' . shra_money($due_sum) . ' due</span>' : ''; ?></th><th colspan="3" style="border-radius:0"></th></tr></tfoot>
+            <tfoot><tr><th colspan="5" style="border-radius:0">Total (<?php echo count($enrollments); ?>)</th><th class="num" style="border-radius:0"><?php echo shra_money($sum); ?> paid<?php echo ($due_sum ?? 0) > 0.009 ? '<span class="sub" style="color:var(--red)">' . shra_money($due_sum) . ' due</span>' : ''; ?></th><th colspan="3" style="border-radius:0"></th></tr></tfoot>
         </table></div>
         <?php } ?>
     </div>
