@@ -422,7 +422,7 @@ class Shra_pdf extends TCPDF
             $this->txt($w - 109, $qy + 8.5, 80, 'Course period ' . $from . ' – ' . $to, 'helvetica', '', 6.5, self::MUTED, 'R');
         }
 
-        $this->footer_line();
+        $this->footer_line(17);
 
         return $this;
     }
@@ -610,24 +610,30 @@ class Shra_pdf extends TCPDF
         return $this;
     }
 
-    protected function footer_line()
+    /**
+     * Academy line + "Powered by" mark, centred above the bottom frame.
+     * $bottom = distance from the page bottom to the baseline of the block
+     * (documents with a deeper frame pass a larger value).
+     */
+    protected function footer_line($bottom = 11)
     {
         $w = $this->getPageWidth();
         $h = $this->getPageHeight();
         $txt = trim($this->brand['name'] . ($this->brand['contact'] ? '  ·  ' . $this->brand['contact'] : ''));
-        $this->txt(20, $h - 19, $w - 40, $txt, 'helvetica', '', 7, self::MUTED, 'C');
+        $this->txt(20, $h - $bottom - 8, $w - 40, $txt, 'helvetica', '', 7, self::MUTED, 'C');
 
-        // Powered by ClientcareX
+        // Powered by ClientcareX — text and logo share one baseline-centred row
         $logo = $this->brand['powered_by_logo'] ?? null;
+        $y    = $h - $bottom - 3.6;
         if ($logo && is_file($logo)) {
-            $lw = 15; $lh = $lw * 120 / 500;
+            $lw = 14; $lh = $lw * 120 / 500;
             $this->SetFont('helvetica', '', 5.5);
-            $tw = $this->GetStringWidth('Powered by') + 1.5;
+            $tw = $this->GetStringWidth('Powered by') + 1.2;
             $x  = ($w - ($tw + $lw)) / 2;
-            $this->txt($x, $h - 15, $tw, 'Powered by', 'helvetica', '', 5.5, [126, 140, 157], 'L', $lh);
-            $this->Image($logo, $x + $tw, $h - 15, $lw, $lh, 'PNG', 'https://clientcarex.com', '', true, 300);
+            $this->txt($x, $y, $tw, 'Powered by', 'helvetica', '', 5.5, [126, 140, 157], 'L', $lh);
+            $this->Image($logo, $x + $tw, $y, $lw, $lh, 'PNG', 'https://clientcarex.com', '', true, 300);
         } else {
-            $this->txt(20, $h - 13, $w - 40, 'Powered by ClientcareX', 'helvetica', '', 5.5, [126, 140, 157], 'C');
+            $this->txt(20, $y, $w - 40, 'Powered by ClientcareX', 'helvetica', '', 5.5, [126, 140, 157], 'C', 3.4);
         }
     }
 }
