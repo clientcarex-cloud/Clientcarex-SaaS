@@ -55,7 +55,7 @@
 
         <div class="col-md-5">
             <div class="shra-card">
-                <div class="shra-card-head"><h4>Recent bills</h4><a href="<?php echo admin_url('shra/enrollments'); ?>" class="shra-btn shra-btn-outline shra-btn-sm">All</a></div>
+                <div class="shra-card-head"><h4>Recent bills</h4><a href="<?php echo admin_url('shra/membership'); ?>" class="shra-btn shra-btn-outline shra-btn-sm">Membership</a></div>
                 <?php if (!count($recent)) { ?>
                     <div class="shra-empty" style="padding:30px"><i class="fa-solid fa-receipt"></i>No bills yet.</div>
                 <?php } else { ?>

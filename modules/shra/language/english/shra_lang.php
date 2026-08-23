@@ -7,7 +7,6 @@ $lang['shra_dashboard']             = 'Dashboard';
 $lang['shra_riders']                = 'Riders';
 $lang['shra_billing']               = 'Billing';
 $lang['shra_attendance']            = 'Attendance';
-$lang['shra_enrollments']           = 'Enrollments';
 $lang['shra_packages']              = 'Packages';
 $lang['shra_settings']              = 'Settings';
 $lang['shra_permission_billing']    = 'Billing (counter)';

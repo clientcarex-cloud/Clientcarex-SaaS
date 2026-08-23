@@ -429,31 +429,12 @@ class Shra extends AdminController
 
     /* ═══════════════════════ Enrollments ═══════════════════════ */
 
-    public function enrollments()
-    {
-        $this->need('view');
-
-        $filters = [
-            'q'      => $this->input->get('q'),
-            'status' => $this->input->get('status'),
-            'from'   => $this->input->get('from'),
-            'to'     => $this->input->get('to'),
-            'due'    => $this->input->get('due'),
-        ];
-        $data['title']         = _l('shra_enrollments');
-        $data['filters']       = $filters;
-        $data['enrollments']   = $this->shra_model->get_enrollments($filters);
-        $data['payment_modes'] = $this->payment_modes();
-
-        $this->load->view('enrollments', $data);
-    }
-
     public function complete($id)
     {
         $this->need('edit');
         $this->shra_model->complete_enrollment($id, true);
         set_alert('success', _l('shra_course_completed'));
-        redirect($_SERVER['HTTP_REFERER'] ?? admin_url('shra/enrollments'));
+        redirect($_SERVER['HTTP_REFERER'] ?? admin_url('shra/membership'));
     }
 
     public function cancel_enrollment($id)
@@ -461,7 +442,7 @@ class Shra extends AdminController
         $this->need('delete');
         $this->shra_model->cancel_enrollment($id);
         set_alert('success', 'Enrollment cancelled. The invoice was left untouched — cancel it from Sales if needed.');
-        redirect($_SERVER['HTTP_REFERER'] ?? admin_url('shra/enrollments'));
+        redirect($_SERVER['HTTP_REFERER'] ?? admin_url('shra/membership'));
     }
 
     public function certificate($id)
@@ -470,7 +451,7 @@ class Shra extends AdminController
         $no = $this->shra_model->issue_certificate($id);
         if (!$no) {
             set_alert('danger', 'Certificates are only issued for learner packages.');
-            redirect($_SERVER['HTTP_REFERER'] ?? admin_url('shra/enrollments'));
+            redirect($_SERVER['HTTP_REFERER'] ?? admin_url('shra/membership'));
         }
         redirect(admin_url('shra/certificate_pdf/' . $id));
     }
