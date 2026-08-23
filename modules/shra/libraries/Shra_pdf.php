@@ -94,7 +94,7 @@ class Shra_pdf extends TCPDF
     {
         $path = $this->brand['logo_path'];
         if ($path && is_file($path)) {
-            $this->Image($path, $cx - $d / 2, $cy - $d / 2, $d, $d, '', '', '', true, 300, '', false, false, 0, 'CM');
+            $this->Image($path, $cx - $d / 2, $cy - $d / 2, $d, $d, '', '', '', false, 300, '', false, false, 0, 'CM');
 
             return;
         }
@@ -631,7 +631,7 @@ class Shra_pdf extends TCPDF
             $tw = $this->GetStringWidth('Powered by') + 1.2;
             $x  = ($w - ($tw + $lw)) / 2;
             $this->txt($x, $y, $tw, 'Powered by', 'helvetica', '', 5.5, [126, 140, 157], 'L', $lh);
-            $this->Image($logo, $x + $tw, $y, $lw, $lh, 'PNG', 'https://clientcarex.com', '', true, 300);
+            $this->Image($logo, $x + $tw, $y, $lw, $lh, 'PNG', 'https://clientcarex.com', '', false, 300);
         } else {
             $this->txt(20, $y, $w - 40, 'Powered by ClientcareX', 'helvetica', '', 5.5, [126, 140, 157], 'C', 3.4);
         }
