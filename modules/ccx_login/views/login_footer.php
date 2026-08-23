@@ -125,11 +125,11 @@
     </div>
     <div class="ccx-branding-container" id="ccxBrandingTrigger">
         <span>Powered by</span>
-        <img src="<?php echo base_url('modules/ccx_login/assets/images/healtho_logo.png'); ?>" alt="HealthO">
+        <img src="<?php echo base_url('modules/ccx_login/assets/images/healtho_logo.png'); ?>" alt="ClientcareX">
 
         <div class="ccx-healtho-card" id="ccxHealthoCard">
             <h5>Get our service for your Healthcare Brand</h5>
-            <a href="tel:+919700730044" class="ccx-healtho-card-item">
+            <a href="tel:+919390893024" class="ccx-healtho-card-item">
                 <i class="fas fa-phone-alt"></i> +91 9700730044
             </a>
             <a href="mailto:Sales@healtho.in" class="ccx-healtho-card-item">

@@ -555,7 +555,7 @@ function perfex_saas_default_base_url($path = '')
     // This function must always return the MASTER (super) base URL.
     // On production master: APP_BASE_URL_DEFAULT is correct.
     // On staging/dev master: APP_BASE_URL may differ (dynamically resolved to current host).
-    // On tenants: APP_BASE_URL is the TENANT URL (e.g., celabs.healtho.pro),
+    // On tenants: APP_BASE_URL is the TENANT URL (e.g., celabs.clientcarex.com),
     //   so we must NOT use it here — always use APP_BASE_URL_DEFAULT for the master URL.
     $base = APP_BASE_URL_DEFAULT;
     if (!perfex_saas_is_tenant() && defined('APP_BASE_URL') && APP_BASE_URL !== APP_BASE_URL_DEFAULT) {

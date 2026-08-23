@@ -73,7 +73,7 @@ function ccx_security_is_tenant()
  *
  * In a multi-tenant SaaS setup the master console embeds each tenant's admin panel in an
  * iframe (the "instance preview" / client viewer — see perfex_saas client themes). On
- * production the master (e.g. healtho.pro) and the tenant (e.g. mmch.healtho.pro) live on
+ * production the master (e.g. clientcarex.com) and the tenant (e.g. mmch.clientcarex.com) live on
  * different subdomains, so a blanket `frame-ancestors 'self'` / `X-Frame-Options: SAMEORIGIN`
  * blocks that cross-origin embed and the browser shows "This content is blocked. Contact the
  * site owner to fix the issue." (On path-based dev like healtho.tech/<slug>/ everything is
@@ -84,7 +84,7 @@ function ccx_security_is_tenant()
  * perfex_saas configuration, so nothing is hardcoded and the allowlist stays correct across
  * production, staging and dev. Arbitrary third-party framing remains blocked.
  *
- * @return string Space-separated CSP source list, e.g. "'self' healtho.pro"
+ * @return string Space-separated CSP source list, e.g. "'self' clientcarex.com"
  */
 function ccx_security_frame_ancestors()
 {
@@ -112,7 +112,7 @@ function ccx_security_frame_ancestors()
         }
         $push($host);
 
-        // Tenants live on subdomains of the master host (e.g. <slug>.healtho.pro). The embed
+        // Tenants live on subdomains of the master host (e.g. <slug>.clientcarex.com). The embed
         // works both ways — the master console frames a tenant's admin panel AND a tenant's
         // billing/my_account page frames the master client portal back (client_portal_bridge /
         // client_portal_framer). For the latter the master must accept framing from the tenant

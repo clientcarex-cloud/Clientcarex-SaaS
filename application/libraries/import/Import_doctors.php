@@ -272,7 +272,7 @@ class Import_doctors extends App_import
                 if (empty($cleanPhone)) {
                     $cleanPhone = time() . rand(10, 99);
                 }
-                $email = $cleanPhone . '@healtho.pro';
+                $email = $cleanPhone . '@clientcarex.com';
             }
 
             // Ensure Email Uniqueness
@@ -285,7 +285,7 @@ class Import_doctors extends App_import
                     break;
                 }
                 $emailParts = explode('@', $baseEmail);
-                $email = $emailParts[0] . '_' . $counter . '@' . (isset($emailParts[1]) ? $emailParts[1] : 'healtho.pro');
+                $email = $emailParts[0] . '_' . $counter . '@' . (isset($emailParts[1]) ? $emailParts[1] : 'clientcarex.com');
                 $counter++;
             }
 
@@ -448,7 +448,7 @@ class Import_doctors extends App_import
     {
         $this->addImportGuidelinesInfo('Upload any CSV file. The system will detect your columns and let you map them to the correct fields.');
         $this->addImportGuidelinesInfo('System will split Full Name into First/Last name if mapped. e.g. "John Doe" => First: John, Last: Doe.');
-        $this->addImportGuidelinesInfo('Email will be auto-generated as <b>[PhoneNumber]@healtho.pro</b> if not mapped from CSV.');
+        $this->addImportGuidelinesInfo('Email will be auto-generated as <b>[PhoneNumber]@clientcarex.com</b> if not mapped from CSV.');
     }
 
     protected function failureRedirectURL()

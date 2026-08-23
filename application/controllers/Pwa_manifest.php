@@ -13,7 +13,7 @@ class Pwa_manifest extends App_Controller
 {
     public function index()
     {
-        $companyName = get_option('companyname') ?: 'HealthO Pro';
+        $companyName = get_option('companyname') ?: 'ClientcareX';
         $shortName   = mb_substr($companyName, 0, 12);
 
         $manifest = [

@@ -1,5 +1,5 @@
 /**
- * HealthO Pro — PWA Service Worker Registration
+ * ClientcareX — PWA Service Worker Registration
  * ===============================================
  * This script registers the service worker, handles updates,
  * and manages the lifecycle for background cache refreshes.

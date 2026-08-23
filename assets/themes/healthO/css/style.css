@@ -1818,7 +1818,7 @@ body[dir="rtl"].safari .table-responsive .table {
 }
 
 /* ═══════════════════════════════════════════════════
-   HealthO theme — Pro AI Chat brand palette
+   ClientcareX theme — Pro AI Chat brand palette
    (navy #1E3D7B → deep #122B5C → cyan #00B4D8)
    ═══════════════════════════════════════════════════ */
 :root {
@@ -1914,7 +1914,7 @@ footer {
   border-top: 1px solid var(--hpt-border);
 }
 
-/* ── HealthO signature navbar — Ask AI header gradient ── */
+/* ── ClientcareX signature navbar — Ask AI header gradient ── */
 .navbar-default {
   background: linear-gradient(130deg, #0C1F45 0%, #122B5C 50%, #0096B7 120%);
   border-bottom: none;

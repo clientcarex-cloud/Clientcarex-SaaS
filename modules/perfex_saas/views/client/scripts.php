@@ -35,7 +35,7 @@ const appFormatMoney = new AppFormatMoney({
 </script>
 <link rel="stylesheet" type="text/css" href="<?= perfex_saas_asset_url('css/client.css'); ?>" />
 
-<!-- HealthO Pro AI theme for all client portal pages (matches Pro AI Chat "Ask AI") -->
+<!-- ClientcareX AI theme for all client portal pages (matches Pro AI Chat "Ask AI") -->
 <style>
 :root {
     --hp-primary: #1E3D7B;
@@ -243,7 +243,7 @@ h4.section-heading .view-account-statement:hover {
 }
 
 <?php if (get_option('clients_default_theme') !== 'healthO') : ?>
-/* Top navbar (skipped for the HealthO theme, which ships its own gradient navbar) */
+/* Top navbar (skipped for the ClientcareX theme, which ships its own gradient navbar) */
 nav.navbar.header {
     background: #fff;
     border: none;

@@ -1,7 +1,7 @@
 /*!
  * Internal App Plugin for validation that extends jQuery Validation plugin.
  *
- * https://healtho.pro/
+ * https://clientcarex.com/
  *
  * Copyright (c) 2019 Marjan Stojanov
  */

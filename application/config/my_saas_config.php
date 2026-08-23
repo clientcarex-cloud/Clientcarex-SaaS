@@ -4,7 +4,7 @@
  * Staging Host → Master Recognition
  *
  * When the current request comes from a staging host (e.g. healtho.tech) and
- * APP_BASE_URL_DEFAULT still points to production (healtho.pro), the SaaS
+ * APP_BASE_URL_DEFAULT still points to production (clientcarex.com), the SaaS
  * module's host detection doesn't recognise the staging host as "master" and
  * falls through to a custom-domain lookup. If the staging hostname happens to
  * exist in the perfex_saas_companies.custom_domain column, the request is
@@ -51,9 +51,9 @@ if (!defined('PERFEX_SAAS_ALTERNATIVE_HOST')) {
  * Custom Admin URL for Master Account Security
  * 
  * This changes the admin panel URL from /admin/ to a unique hard-to-guess path.
- * Only affects the master account (healtho.pro). Tenants continue using /admin/.
+ * Only affects the master account (clientcarex.com). Tenants continue using /admin/.
  * 
- * Master Admin URL: https://healtho.pro/dfwenhj34jh5E-h3jh28dhgdsu2/admin/
+ * Master Admin URL: https://clientcarex.com/dfwenhj34jh5E-h3jh28dhgdsu2/admin/
  * 
  * NOTE: The '&' from the original URL was replaced with '-' because CodeIgniter
  * does not allow '&' in URI paths (permitted_uri_chars security filter).

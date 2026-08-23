@@ -57,7 +57,7 @@
     display: inline-flex;
     padding: 2px;
     border-radius: 50%;
-    /* HealthO brand ring: navy → cyan → green (logo palette) */
+    /* ClientcareX brand ring: navy → cyan → green (logo palette) */
     background: linear-gradient(135deg, #122B5C, #00B4D8, #2ECC71);
     flex-shrink: 0;
 }

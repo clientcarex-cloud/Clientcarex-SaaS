@@ -65,7 +65,7 @@ hooks()->add_action('app_admin_footer', function () {
 
     $pac_endpoint       = admin_url('billing/ai_chat');
     $pac_assistant_name = $pac_settings['pro_ai_chat_assistant_name'] !== ''
-        ? $pac_settings['pro_ai_chat_assistant_name'] : 'HealthO AI Agent';
+        ? $pac_settings['pro_ai_chat_assistant_name'] : 'ClientcareX AI Agent';
     $pac_welcome        = $pac_settings['pro_ai_chat_welcome'];
     $pac_suggestions    = array_slice(array_values(array_filter(array_map(
         'trim',

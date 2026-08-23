@@ -227,7 +227,7 @@
                             <?php echo render_input('email_subject_tpl', 'Subject Template', isset($api) && isset($api->email_subject_tpl) ? $api->email_subject_tpl : '', 'text', ['placeholder' => 'e.g. Appointment for {patient_name}', 'id' => 'email_subject_tpl']); ?>
                         </div>
                         <div class="col-md-4">
-                            <?php echo render_input('email_from_name_tpl', 'From Name', isset($api) && isset($api->email_from_name_tpl) ? $api->email_from_name_tpl : '', 'text', ['placeholder' => 'e.g. HealthO Pro', 'id' => 'email_from_name_tpl']); ?>
+                            <?php echo render_input('email_from_name_tpl', 'From Name', isset($api) && isset($api->email_from_name_tpl) ? $api->email_from_name_tpl : '', 'text', ['placeholder' => 'e.g. ClientcareX', 'id' => 'email_from_name_tpl']); ?>
                         </div>
                     </div>
                     <div class="form-group" app-field-wrapper="email_body_tpl">

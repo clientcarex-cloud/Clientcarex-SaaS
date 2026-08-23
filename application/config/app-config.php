@@ -130,7 +130,7 @@ if (!function_exists('app_env_bool')) {
 * environments.
 *
 */
-define('APP_BASE_URL_DEFAULT', app_env_value('APP_BASE_URL_DEFAULT', app_env_value('APP_BASE_URL', 'https://healtho.pro/')));
+define('APP_BASE_URL_DEFAULT', app_env_value('APP_BASE_URL_DEFAULT', app_env_value('APP_BASE_URL', 'https://clientcarex.com/')));
 
 /*
 * --------------------------------------------------------------------------

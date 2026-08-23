@@ -1,7 +1,7 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
 <style>
-/* ── HealthO Profile Page ── */
+/* ── ClientcareXfile Page ── */
 .hpf-wrap {
     max-width: 1080px;
     margin: 0 auto;
@@ -16,7 +16,7 @@
 }
 .hpf-hero-banner {
     height: 96px;
-    /* HealthO brand: navy → cyan → green */
+    /* ClientcareX brand: navy → cyan → green */
     background: linear-gradient(135deg, #122B5C 0%, #00B4D8 55%, #2ECC71 100%);
 }
 .hpf-hero-body {

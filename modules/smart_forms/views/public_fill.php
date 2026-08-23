@@ -323,7 +323,7 @@ textarea{min-height:96px;resize:vertical}
             </div>
         </form>
     </div>
-    <div class="footer">Powered by <?php echo html_escape($company ?: 'HealthO'); ?> · Smart Forms</div>
+    <div class="footer">Powered by <?php echo html_escape($company ?: 'ClientcareX'); ?> · Smart Forms</div>
 </div>
 
 <div class="toast" id="sf-toast"></div>

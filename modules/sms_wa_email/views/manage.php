@@ -1461,7 +1461,7 @@
                     <div class="form-group" style="margin-bottom: 18px;">
                         <label for="template_from_name_input" class="form-label">From Name <span
                                 style="color:#ef4444;">*</span></label>
-                        <input type="text" id="template_from_name_input" class="ccx-input" placeholder="e.g. HealthO Pro">
+                        <input type="text" id="template_from_name_input" class="ccx-input" placeholder="e.g. ClientcareX">
                     </div>
                     <?php
                     $email_sender_trans = isset($email_sender['transactional']) ? $email_sender['transactional'] : '';
