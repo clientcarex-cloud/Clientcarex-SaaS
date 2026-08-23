@@ -61,7 +61,30 @@ function shra_money($amount)
 /** Public self-registration URL. */
 function shra_join_url()
 {
-    return site_url('join/' . get_option('shra_public_token'));
+    return site_url('join');
+}
+
+/** Public verification URL encoded in membership / certificate QR codes. */
+function shra_verify_url($rider_no, $certificate_no = '')
+{
+    return site_url('join/verify/' . $rider_no . ($certificate_no !== '' ? '/' . $certificate_no : ''));
+}
+
+/** "Powered by ClientcareX" badge (same branding as the login footer). */
+function shra_powered_by($class = '')
+{
+    $logo = module_dir_url(SHRA_MODULE_NAME, 'assets/img/clientcarex_logo.png');
+
+    return '<a class="shra-powered ' . $class . '" href="https://clientcarex.com" target="_blank" rel="noopener" title="ClientcareX">'
+        . '<span>Powered by</span><img src="' . $logo . '" alt="ClientcareX"></a>';
+}
+
+/** Absolute path of the ClientcareX logo for PDFs. */
+function shra_powered_by_logo_path()
+{
+    $path = module_dir_path(SHRA_MODULE_NAME, 'assets/img/clientcarex_logo.png');
+
+    return is_file($path) ? $path : null;
 }
 
 /** Logo URL — uploaded raster first, bundled SVG fallback. */
@@ -112,8 +135,14 @@ function shra_qr_svg($text, $size = 5, $color = '#1c1a17')
 {
     require_once(APPPATH . 'vendor/tecnickcom/tcpdf/tcpdf_barcodes_2d.php');
     $barcode = new TCPDF2DBarcode($text, 'QRCODE,M');
+    $svg     = $barcode->getBarcodeSVGcode($size, $size, $color);
 
-    return $barcode->getBarcodeSVGcode($size, $size, $color);
+    // TCPDF emits fixed px width/height without a viewBox; make it scale and centre cleanly.
+    if (preg_match('/<svg width="([\d.]+)" height="([\d.]+)"/', $svg, $m)) {
+        $svg = preg_replace('/<svg width="[\d.]+" height="[\d.]+"/', '<svg width="100%" height="100%" viewBox="0 0 ' . $m[1] . ' ' . $m[2] . '" preserveAspectRatio="xMidYMid meet"', $svg, 1);
+    }
+
+    return $svg;
 }
 
 /** Signed token for a public PDF download (membership card). */

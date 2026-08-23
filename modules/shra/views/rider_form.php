@@ -61,6 +61,7 @@ $v = function ($k, $d = '') use ($r) { return html_escape($r && isset($r->$k) &&
         </div>
     </div>
     <?php echo form_close(); ?>
+    <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
 <?php init_tail(); ?>

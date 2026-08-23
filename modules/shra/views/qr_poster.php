@@ -10,7 +10,7 @@
 .shra-poster .div i{color:#b8922e;font-size:9px}
 .shra-poster h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:700;margin:0 0 6px;color:#1c1a17}
 .shra-poster p{color:#3a3530;font-size:13.5px;margin:0 0 16px;line-height:1.5}
-.shra-poster .qr{display:inline-block;background:#fff;padding:14px;border-radius:14px;border:1px solid #e3d6b8}
+.shra-poster .qr{width:248px;height:248px;margin:0 auto;background:#fff;padding:14px;border-radius:14px;border:1px solid #e3d6b8;display:flex;align-items:center;justify-content:center}
 .shra-poster .qr svg{width:220px;height:220px;display:block}
 .shra-poster .url{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#7a6f5e;margin-top:14px;word-break:break-all}
 .shra-poster .steps{display:flex;gap:10px;justify-content:center;margin-top:18px}
@@ -36,7 +36,9 @@
         <div class="qr"><?php echo $svg; ?></div>
         <div class="url"><?php echo html_escape($url); ?></div>
         <div class="steps"><span><b>1</b>Scan &amp; register</span><span><b>2</b>Pick a riding plan at the desk</span><span><b>3</b>Ride — first come, first served</span></div>
+        <div style="margin-top:22px"><?php echo shra_powered_by(); ?></div>
     </div>
+    <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
 <?php init_tail(); ?>

@@ -33,6 +33,7 @@
         </table></div>
     </div>
     <?php } ?>
+    <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
 

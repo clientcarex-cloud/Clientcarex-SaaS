@@ -190,13 +190,14 @@ $route['fb/(:any)'] = 'feedback/feedback_public/public_form/$1';
 // Short URL for public Smart Forms (smart_forms module)
 $route['form/(:any)'] = 'smart_forms/smart_forms_public/fill/$1';
 
-// Short URLs for SHRA rider self-registration (shra module)
-// /join/{token}                              membership form
-// /join/{token}/verify/{rider_no}[/{cert}]   QR verification
-// /join/{token}/done|pdf/{rider_no}/{sig}    success page / membership PDF
-$route['join/(:any)']                         = 'shra/shra_public/register/$1';
-$route['join/(:any)/(:any)/(:any)']           = 'shra/shra_public/register/$1/$2/$3';
-$route['join/(:any)/(:any)/(:any)/(:any)']    = 'shra/shra_public/register/$1/$2/$3/$4';
+// Short static URLs for SHRA rider self-registration (shra module)
+// /join                               membership form (printed on the QR poster — never changes)
+// /join/verify/{rider_no}[/{cert}]    QR verification
+// /join/done|pdf/{rider_no}/{sig}     success page / membership PDF
+$route['join']                         = 'shra/shra_public/register';
+$route['join/(:any)']                  = 'shra/shra_public/register/$1';
+$route['join/(:any)/(:any)']           = 'shra/shra_public/register/$1/$2';
+$route['join/(:any)/(:any)/(:any)']    = 'shra/shra_public/register/$1/$2/$3';
 
 // Short URLs for public live voting (voting module)
 // /vote/{code} = telecast screen (question + QR + live results)

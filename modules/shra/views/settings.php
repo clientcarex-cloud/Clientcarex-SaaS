@@ -51,13 +51,14 @@
 
             <div class="shra-card shra-mt"><div class="shra-card-head"><h4>Self-registration link</h4><a href="<?php echo admin_url('shra/qr'); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa-solid fa-qrcode"></i> Poster</a></div><div class="shra-card-body">
                 <div class="shra-qr-url"><?php echo html_escape(shra_join_url()); ?></div>
-                <label style="font-weight:500;margin-top:10px;display:flex;gap:8px;align-items:center;color:var(--red)"><input type="checkbox" name="regenerate_token" value="1"> Regenerate link (old QR posters stop working)</label>
+                <div class="help" style="margin-top:8px">Static link — print it once, it never changes.</div>
             </div></div>
 
             <button type="submit" class="shra-btn shra-btn-primary shra-btn-block shra-mt"><i class="fa fa-check"></i> Save settings</button>
         </div>
     </div>
     <?php echo form_close(); ?>
+    <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
 <?php init_tail(); ?>

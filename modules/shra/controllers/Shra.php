@@ -37,6 +37,7 @@ class Shra extends AdminController
             'contact'          => get_option('shra_contact_line'),
             'chief_instructor' => get_option('shra_chief_instructor') ?: 'Chief Instructor',
             'director'         => get_option('shra_director') ?: 'Director',
+            'powered_by_logo'  => shra_powered_by_logo_path(),
         ];
     }
 
@@ -144,6 +145,55 @@ class Shra extends AdminController
         redirect(admin_url('shra/riders'));
     }
 
+    /**
+     * AJAX quick-add from the billing screen: name + mobile is enough.
+     * Reuses an existing rider when the same mobile + name is already on file.
+     */
+    public function quick_rider()
+    {
+        if (!shra_can_billing() && !shra_can('create')) {
+            $this->json(['success' => false, 'message' => 'Not allowed.']);
+
+            return;
+        }
+
+        $name   = trim((string) $this->input->post('full_name'));
+        $mobile = trim((string) $this->input->post('mobile'));
+        $type   = $this->input->post('rider_type') === 'learner' ? 'learner' : 'guest';
+        $dob    = (string) $this->input->post('dob');
+
+        if ($name === '' || strlen(preg_replace('/\D+/', '', $mobile)) < 8) {
+            $this->json(['success' => false, 'message' => 'Name and a valid mobile number are required.']);
+
+            return;
+        }
+
+        $existing = $this->shra_model->find_rider_by_mobile($mobile);
+        if ($existing && mb_strtolower(trim($existing->full_name)) === mb_strtolower($name)) {
+            $this->json(['success' => true, 'rider' => $this->shra_model->search_riders($existing->rider_no, 1)[0] ?? $existing, 'existing' => true]);
+
+            return;
+        }
+
+        $id = $this->shra_model->add_rider([
+            'rider_type'   => $type,
+            'full_name'    => $name,
+            'mobile'       => $mobile,
+            'dob'          => $dob,
+            'riding_level' => shra_riding_levels()[0],
+            'status'       => 'active',
+        ], 'staff');
+
+        if (!$id) {
+            $this->json(['success' => false, 'message' => 'Could not create the rider.']);
+
+            return;
+        }
+
+        $rider = $this->shra_model->get_rider($id);
+        $this->json(['success' => true, 'rider' => $this->shra_model->search_riders($rider->rider_no, 1)[0] ?? $rider, 'existing' => false]);
+    }
+
     /** AJAX rider search (billing + attendance pickers). */
     public function search()
     {
@@ -166,7 +216,7 @@ class Shra extends AdminController
         require_once(module_dir_path(SHRA_MODULE_NAME, 'libraries/Shra_pdf.php'));
         $pdf = new Shra_pdf($this->brand(), 'P');
         $arr = (array) $rider;
-        $arr['qr_text'] = site_url('join/' . get_option('shra_public_token') . '/verify/' . $rider->rider_no);
+        $arr['qr_text'] = shra_verify_url($rider->rider_no);
         $pdf->membership($arr);
         $pdf->Output('Membership-' . ($rider->membership_no ?: $rider->rider_no) . '.pdf', 'I');
     }
@@ -289,7 +339,7 @@ class Shra extends AdminController
         $pdf = new Shra_pdf($this->brand(), 'L');
         $arr = (array) $e;
         $arr['issued_at'] = $e->certificate_issued_at;
-        $arr['qr_text']   = site_url('join/' . get_option('shra_public_token') . '/verify/' . $e->rider_no . '/' . $e->certificate_no);
+        $arr['qr_text']   = shra_verify_url($e->rider_no, $e->certificate_no);
         $pdf->certificate($arr);
         $pdf->Output('Certificate-' . $e->certificate_no . '.pdf', 'I');
     }
@@ -448,10 +498,6 @@ class Shra extends AdminController
             }
             update_option('shra_offer_active', !empty($post['shra_offer_active']) ? '1' : '0');
             update_option('shra_auto_certificate', !empty($post['shra_auto_certificate']) ? '1' : '0');
-
-            if (!empty($post['regenerate_token'])) {
-                update_option('shra_public_token', bin2hex(random_bytes(6)));
-            }
 
             if (!empty($_FILES['logo']['name'])) {
                 $ext = strtolower(pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION));

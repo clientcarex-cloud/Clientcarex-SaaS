@@ -30,7 +30,7 @@ class Shra_pdf extends TCPDF
     public function __construct(array $brand, $orientation = 'P')
     {
         parent::__construct($orientation, 'mm', 'A4', true, 'UTF-8', false);
-        $this->brand = $brand + ['name' => 'Stallion Horse Riding Academy', 'tagline' => '', 'logo_path' => null, 'contact' => '', 'chief_instructor' => 'Chief Instructor', 'director' => 'Director'];
+        $this->brand = $brand + ['name' => 'Stallion Horse Riding Academy', 'tagline' => '', 'logo_path' => null, 'contact' => '', 'chief_instructor' => 'Chief Instructor', 'director' => 'Director', 'powered_by_logo' => null];
         $this->setPrintHeader(false);
         $this->setPrintFooter(false);
         $this->SetAutoPageBreak(false, 0);
@@ -344,6 +344,19 @@ class Shra_pdf extends TCPDF
         $w = $this->getPageWidth();
         $h = $this->getPageHeight();
         $txt = trim($this->brand['name'] . ($this->brand['contact'] ? '  ·  ' . $this->brand['contact'] : ''));
-        $this->txt(20, $h - 16, $w - 40, $txt, 'helvetica', '', 7, self::MUTED, 'C');
+        $this->txt(20, $h - 19, $w - 40, $txt, 'helvetica', '', 7, self::MUTED, 'C');
+
+        // Powered by ClientcareX
+        $logo = $this->brand['powered_by_logo'] ?? null;
+        if ($logo && is_file($logo)) {
+            $lw = 15; $lh = $lw * 120 / 500;
+            $this->SetFont('helvetica', '', 5.5);
+            $tw = $this->GetStringWidth('Powered by') + 1.5;
+            $x  = ($w - ($tw + $lw)) / 2;
+            $this->txt($x, $h - 15, $tw, 'Powered by', 'helvetica', '', 5.5, [126, 140, 157], 'L', $lh);
+            $this->Image($logo, $x + $tw, $h - 15, $lw, $lh, 'PNG', 'https://clientcarex.com', '', true, 300);
+        } else {
+            $this->txt(20, $h - 13, $w - 40, 'Powered by ClientcareX', 'helvetica', '', 5.5, [126, 140, 157], 'C');
+        }
     }
 }

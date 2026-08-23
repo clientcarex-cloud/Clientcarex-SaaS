@@ -63,6 +63,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:radial-gradient(120% 80
 .badge.ok{background:#e7efe0;color:var(--green)}
 .badge.bad{background:#f8e3e2;color:var(--red)}
 .badge.gold{background:#f6ecd2;color:var(--brown)}
+.shra-powered{display:inline-flex;align-items:center;gap:6px;text-decoration:none;opacity:.85}.shra-powered span{font-size:11px;color:#7e8c9d;font-weight:500;letter-spacing:.3px}.shra-powered img{height:18px;width:auto}
 </style>
 </head>
 <body>

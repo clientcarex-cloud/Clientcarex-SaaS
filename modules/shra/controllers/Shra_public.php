@@ -5,10 +5,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /**
  * Public rider self-registration (QR) — no authentication.
  *
- *   /join/{token}                         membership form (learners)
- *   /join/{token}/done/{rider_no}/{sig}   success + membership PDF
- *   /join/{token}/pdf/{rider_no}/{sig}    membership PDF download
- *   /join/{token}/verify/{rider_no}[/{certificate_no}]   QR verification
+ *   /join                                 membership form (learners) — static, printed on the QR poster
+ *   /join/done/{rider_no}/{sig}           success + membership PDF
+ *   /join/pdf/{rider_no}/{sig}            membership PDF download
+ *   /join/verify/{rider_no}[/{certificate_no}]   QR verification
+ *
+ * The private option shra_public_token is only used to sign links.
  */
 class Shra_public extends App_Controller
 {
@@ -17,18 +19,6 @@ class Shra_public extends App_Controller
         parent::__construct();
         $this->load->model('shra/shra_model');
         $this->load->helper('shra/shra');
-    }
-
-    private function check_token($token)
-    {
-        $real = (string) get_option('shra_public_token');
-        if ($real === '' || !hash_equals($real, (string) $token)) {
-            $this->error('Link not valid', 'This registration link is not valid any more. Please scan the QR code at the academy again.');
-
-            return false;
-        }
-
-        return true;
     }
 
     private function error($title, $message)
@@ -45,17 +35,14 @@ class Shra_public extends App_Controller
             'contact'          => get_option('shra_contact_line'),
             'chief_instructor' => get_option('shra_chief_instructor') ?: 'Chief Instructor',
             'director'         => get_option('shra_director') ?: 'Director',
+            'powered_by_logo'  => shra_powered_by_logo_path(),
         ];
     }
 
-    public function register($token = '', $action = '', $a = '', $b = '')
+    public function register($action = '', $a = '', $b = '')
     {
-        if (!$this->check_token($token)) {
-            return;
-        }
-
         if ($action === 'done') {
-            return $this->done($token, $a, $b);
+            return $this->done($a, $b);
         }
         if ($action === 'pdf') {
             return $this->pdf($a, $b);
@@ -66,7 +53,6 @@ class Shra_public extends App_Controller
 
         $data = [
             'title'  => 'Rider membership — ' . get_option('shra_academy_name'),
-            'token'  => $token,
             'levels' => shra_riding_levels(),
             'terms'  => get_option('shra_terms'),
             'errors' => [],
@@ -86,7 +72,7 @@ class Shra_public extends App_Controller
                 $id = $this->shra_model->add_rider($post, 'self');
                 if ($id) {
                     $rider = $this->shra_model->get_rider($id);
-                    redirect(site_url('join/' . $token . '/done/' . $rider->rider_no . '/' . shra_sign($rider->rider_no)));
+                    redirect(site_url('join/done/' . $rider->rider_no . '/' . shra_sign($rider->rider_no)));
                 }
                 $errors[] = 'We could not save your registration. Please try again.';
             }
@@ -142,7 +128,7 @@ class Shra_public extends App_Controller
         return $e;
     }
 
-    private function done($token, $rider_no, $sig)
+    private function done($rider_no, $sig)
     {
         $rider = $this->shra_model->get_rider_by_no($rider_no);
         if (!$rider || !shra_verify_sign($rider_no, $sig)) {
@@ -152,7 +138,7 @@ class Shra_public extends App_Controller
         $this->load->view('public_success', [
             'title'   => 'Welcome to the academy',
             'rider'   => $rider,
-            'pdf_url' => site_url('join/' . $token . '/pdf/' . $rider->rider_no . '/' . $sig),
+            'pdf_url' => site_url('join/pdf/' . $rider->rider_no . '/' . $sig),
         ]);
     }
 
@@ -166,7 +152,7 @@ class Shra_public extends App_Controller
         require_once(module_dir_path(SHRA_MODULE_NAME, 'libraries/Shra_pdf.php'));
         $pdf = new Shra_pdf($this->brand(), 'P');
         $arr = (array) $rider;
-        $arr['qr_text'] = site_url('join/' . get_option('shra_public_token') . '/verify/' . $rider->rider_no);
+        $arr['qr_text'] = shra_verify_url($rider->rider_no);
         $pdf->membership($arr);
         $pdf->Output('Membership-' . ($rider->membership_no ?: $rider->rider_no) . '.pdf', 'D');
     }

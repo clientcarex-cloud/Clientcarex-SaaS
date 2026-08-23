@@ -12,7 +12,7 @@ include __DIR__ . '/_public_head.php';
             <?php if (count($errors)) { ?>
                 <div class="err"><strong>Please check the form:</strong><ul><?php foreach ($errors as $e) { ?><li><?php echo html_escape($e); ?></li><?php } ?></ul></div>
             <?php } ?>
-            <?php echo form_open(site_url('join/' . $token), ['id' => 'shra-join', 'novalidate' => 'novalidate']); ?>
+            <?php echo form_open(site_url('join'), ['id' => 'shra-join', 'novalidate' => 'novalidate']); ?>
 
             <div class="sec">Rider</div>
             <div class="f"><label>Rider full name <span class="req">*</span></label><input type="text" name="full_name" value="<?php echo $v('full_name'); ?>" required autocomplete="name"></div>

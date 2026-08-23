@@ -32,7 +32,8 @@
     function render(list) {
       items = list; hl = -1;
       if (!list.length) {
-        $results.html('<div class="none">No rider found. <a href="' + S.urls.newRider + '" target="_blank">Register a new rider</a></div>').addClass('open');
+        var q = $.trim($input.val());
+        $results.html('<div class="none">No rider found. ' + ($('#shra-quick').length ? '<a href="#" class="shra-quick-open" data-q="' + S.esc(q) + '">Quick add "' + S.esc(q) + '"</a> · ' : '') + '<a href="' + S.urls.newRider + '" target="_blank">Full form</a></div>').addClass('open');
         return;
       }
       var html = list.map(function (r, i) {
@@ -102,6 +103,28 @@
       renderPkgs();
       pkg = null; summary();
     }
+
+    // Quick add (name + mobile)
+    var $quick = $('#shra-quick');
+    $('#shra-quick-toggle').on('click', function (e) { e.preventDefault(); $quick.slideToggle(120); $('#shra-quick-name').focus(); });
+    $(document).on('click', '.shra-quick-open', function (e) {
+      e.preventDefault();
+      var q = $(this).data('q') || '';
+      $quick.show();
+      if (/^[\d+ -]+$/.test(q)) { $('#shra-quick-mobile').val(q); $('#shra-quick-name').focus(); } else { $('#shra-quick-name').val(q); $('#shra-quick-mobile').focus(); }
+      $('#shra-rider-results').removeClass('open');
+    });
+    $('#shra-quick-save').on('click', function () {
+      var $b = $(this).prop('disabled', true);
+      $.post(cfg.urls.quick, { full_name: $('#shra-quick-name').val(), mobile: $('#shra-quick-mobile').val(), dob: $('#shra-quick-dob').val(), rider_type: $('#shra-quick-type').val() }, function (res) {
+        $b.prop('disabled', false);
+        if (!res.success) { alert_float('danger', res.message || 'Could not add the rider.'); return; }
+        alert_float('success', res.existing ? 'Existing rider selected.' : 'Rider added.');
+        $('#shra-quick-name, #shra-quick-mobile, #shra-quick-dob').val('');
+        $quick.hide();
+        setRider(res.rider);
+      }, 'json').fail(function () { $b.prop('disabled', false); alert_float('danger', 'Request failed.'); });
+    });
 
     $picked.on('click', '.x', function () {
       rider = null; pkg = null;

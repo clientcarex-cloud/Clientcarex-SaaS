@@ -16,7 +16,16 @@
                 <div id="shra-rider-wrap" style="position:relative">
                     <div class="shra-search"><i class="fa fa-search"></i><input type="text" id="shra-rider-q" class="form-control" placeholder="Type name, mobile or rider no. — or scan the membership card" autocomplete="off" autofocus></div>
                     <div id="shra-rider-results" class="shra-results"></div>
-                    <div class="help" style="margin-top:8px">Walk-in guest? <a href="<?php echo admin_url('shra/rider_form'); ?>">Add a guest rider</a> with just name &amp; mobile, then bill a Guest ride.</div>
+                    <div class="help" style="margin-top:8px">Walk-in? <a href="#" id="shra-quick-toggle">Quick add with name &amp; mobile</a> — no form needed.</div>
+                    <div id="shra-quick" class="shra-quick" style="display:none">
+                        <div class="row">
+                            <div class="col-sm-4"><div class="form-group"><label>Name *</label><input type="text" id="shra-quick-name" class="form-control" placeholder="Rider name"></div></div>
+                            <div class="col-sm-3"><div class="form-group"><label>Mobile *</label><input type="tel" id="shra-quick-mobile" class="form-control" placeholder="Mobile"></div></div>
+                            <div class="col-sm-2"><div class="form-group"><label>DOB</label><input type="date" id="shra-quick-dob" class="form-control" max="<?php echo date('Y-m-d'); ?>"></div></div>
+                            <div class="col-sm-3"><div class="form-group"><label>Type</label><select id="shra-quick-type" class="form-control"><option value="guest">Guest rider</option><option value="learner">Learner (member)</option></select></div></div>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center"><button type="button" id="shra-quick-save" class="shra-btn shra-btn-primary shra-btn-sm"><i class="fa fa-user-plus"></i> Add &amp; select</button><span class="help" style="margin:0">DOB picks Children/Adult pricing; leave blank for adults. Learners get a membership number.</span></div>
+                    </div>
                 </div>
                 <div id="shra-picked" class="shra-picked" style="display:none"></div>
             </div></div>
@@ -80,6 +89,7 @@
         </div>
     </div>
     <?php echo form_close(); ?>
+    <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
 <?php init_tail(); ?>
@@ -92,7 +102,7 @@ $(function () {
         offer: <?php echo json_encode($offer); ?>,
         minorAge: <?php echo (int) get_option('shra_minor_age'); ?>,
         preselect: <?php echo $preselect ? json_encode($preselect) : 'null'; ?>,
-        urls: { bill: <?php echo json_encode(admin_url('shra/bill')); ?> }
+        urls: { bill: <?php echo json_encode(admin_url('shra/bill')); ?>, quick: <?php echo json_encode(admin_url('shra/quick_rider')); ?> }
     });
 });
 </script>
