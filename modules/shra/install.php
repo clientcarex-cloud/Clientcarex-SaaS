@@ -415,13 +415,17 @@ if (!$CI->db->table_exists($p . 'shra_lead_sources_meta')) {
 
 // ── Funnel stages → core tblleads_status (keeps native Perfex leads working) ──
 $stage_defs = [
-    'new'             => ['New', 10, '#5b8def'],
-    'contacted'       => ['Contacted', 20, '#8e7cc3'],
-    'followup'        => ['Follow-up', 30, '#d4a017'],
-    'visit_scheduled' => ['Visit Scheduled', 40, '#e67e22'],
-    'visited'         => ['Visited', 50, '#2e86c1'],
-    'confirmed'       => ['Visited & Confirmed', 60, '#1e8449'],
-    'won'             => ['Customer', 1000, '#7cb342'],
+    'new'              => ['New', 10, '#5b8def'],
+    'prospect'         => ['Prospect', 12, '#6b7a99'],
+    'enquired'         => ['Enquired', 14, '#17a2b8'],
+    'contacted'        => ['Contacted', 20, '#8e7cc3'],
+    'no_response'      => ['No Response', 24, '#8d6e63'],
+    'callback_request' => ['Call back Request', 26, '#d1477a'],
+    'followup'         => ['Follow-up', 30, '#d4a017'],
+    'visit_scheduled'  => ['Visit Scheduled', 40, '#e67e22'],
+    'visited'          => ['Visited', 50, '#2e86c1'],
+    'confirmed'        => ['Visited & Confirmed', 60, '#1e8449'],
+    'won'              => ['Customer', 1000, '#7cb342'],
 ];
 $stage_map = json_decode((string) get_option('shra_lead_stage_map'), true) ?: [];
 foreach ($stage_defs as $key => $d) {

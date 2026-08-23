@@ -14,15 +14,19 @@ class Shra_leads_model extends App_Model
 {
     /** Allowed stage transitions (server-side, regardless of UI). */
     private $transitions = [
-        'new'             => ['contacted', 'followup', 'visit_scheduled', 'lost', 'junk'],
-        'contacted'       => ['followup', 'visit_scheduled', 'lost', 'junk'],
-        'followup'        => ['contacted', 'visit_scheduled', 'lost', 'junk'],
-        'visit_scheduled' => ['visited', 'followup', 'visit_scheduled', 'lost'],
-        'visited'         => ['confirmed', 'followup', 'visit_scheduled', 'lost'],
-        'confirmed'       => ['won', 'followup', 'visit_scheduled', 'lost'],
-        'won'             => [],
-        'lost'            => ['followup'],
-        'junk'            => ['followup'],
+        'new'              => ['prospect', 'enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'prospect'         => ['enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'enquired'         => ['prospect', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'contacted'        => ['no_response', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'no_response'      => ['contacted', 'callback_request', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'callback_request' => ['contacted', 'no_response', 'followup', 'visit_scheduled', 'lost', 'junk'],
+        'followup'         => ['contacted', 'no_response', 'callback_request', 'visit_scheduled', 'lost', 'junk'],
+        'visit_scheduled'  => ['visited', 'followup', 'visit_scheduled', 'no_response', 'callback_request', 'lost'],
+        'visited'          => ['confirmed', 'followup', 'visit_scheduled', 'lost'],
+        'confirmed'        => ['won', 'followup', 'visit_scheduled', 'lost'],
+        'won'              => [],
+        'lost'             => ['followup'],
+        'junk'             => ['followup'],
     ];
 
     public function __construct()

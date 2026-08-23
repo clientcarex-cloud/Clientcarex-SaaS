@@ -219,21 +219,25 @@ function shra_leads_can($what = 'own')
 function shra_lead_stage_defs()
 {
     return [
-        'new'             => ['New', 10, '#5b8def'],
-        'contacted'       => ['Contacted', 20, '#8e7cc3'],
-        'followup'        => ['Follow-up', 30, '#d4a017'],
-        'visit_scheduled' => ['Visit Scheduled', 40, '#e67e22'],
-        'visited'         => ['Visited', 50, '#2e86c1'],
-        'confirmed'       => ['Visited & Confirmed', 60, '#1e8449'],
-        'won'             => ['Customer', 1000, '#7cb342'],
-        'lost'            => ['Lost', 2000, '#a8322d'],
-        'junk'            => ['Junk', 3000, '#9e9e9e'],
+        'new'              => ['New', 10, '#5b8def'],
+        'prospect'         => ['Prospect', 12, '#6b7a99'],
+        'enquired'         => ['Enquired', 14, '#17a2b8'],
+        'contacted'        => ['Contacted', 20, '#8e7cc3'],
+        'no_response'      => ['No Response', 24, '#8d6e63'],
+        'callback_request' => ['Call back Request', 26, '#d1477a'],
+        'followup'         => ['Follow-up', 30, '#d4a017'],
+        'visit_scheduled'  => ['Visit Scheduled', 40, '#e67e22'],
+        'visited'          => ['Visited', 50, '#2e86c1'],
+        'confirmed'        => ['Visited & Confirmed', 60, '#1e8449'],
+        'won'              => ['Customer', 1000, '#7cb342'],
+        'lost'             => ['Lost', 2000, '#a8322d'],
+        'junk'             => ['Junk', 3000, '#9e9e9e'],
     ];
 }
 
 function shra_lead_open_stages()
 {
-    return ['new', 'contacted', 'followup', 'visit_scheduled', 'visited', 'confirmed'];
+    return ['new', 'prospect', 'enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'visited', 'confirmed'];
 }
 
 /** key => tblleads_status.id */

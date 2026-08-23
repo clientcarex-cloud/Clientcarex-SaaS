@@ -13,6 +13,17 @@
     return cur.placement === 'after' ? s + cur.symbol : cur.symbol + s;
   };
 
+  /**
+   * jQuery's $.ajaxSetup CSRF data (an object) is overwritten whenever a call passes
+   * its own `data`, and a serialized string cannot be merged into it — so every
+   * $.post that sends form.serialize() must append the token itself or it gets a 419.
+   */
+  S.csrf = function (serialized) {
+    if (typeof csrfData === 'undefined' || !csrfData.token_name) { return serialized; }
+    var t = encodeURIComponent(csrfData.token_name) + '=' + encodeURIComponent(csrfData.hash);
+    return serialized ? serialized + '&' + t : t;
+  };
+
   S.initials = function (name) {
     return (name || '').split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0); }).join('').toUpperCase();
   };
@@ -205,7 +216,7 @@
       inflight = true;
       $btn.prop('disabled', true).addClass('disabled');
       var $form = $(this);
-      $.post(cfg.urls.bill, $form.serialize(), function (res) {
+      $.post(cfg.urls.bill, S.csrf($form.serialize()), function (res) {
         inflight = false;
         if (res.success) {
           $('#shra-bill-done').html(res.html).show();
@@ -281,7 +292,7 @@
       marking = true;
       $mark.prop('disabled', true);
       var $form = $(this);
-      $.post(cfg.urls.mark, $form.serialize(), function (res) {
+      $.post(cfg.urls.mark, S.csrf($form.serialize()), function (res) {
         marking = false;
         if (res.success) {
           alert_float('success', res.message);
@@ -333,7 +344,7 @@
       if (amt <= 0) { alert_float('danger', 'Enter an amount.'); return; }
       if (amt > max + 0.009) { alert_float('danger', 'Amount exceeds the balance due (' + S.money(max) + ').'); return; }
       busy = true; $('#sc-save').prop('disabled', true);
-      $.post(cfg.url, $(this).serialize(), function (res) {
+      $.post(cfg.url, S.csrf($(this).serialize()), function (res) {
         busy = false; $('#sc-save').prop('disabled', false);
         if (!res.success) { alert_float('danger', res.message || 'Could not record the payment.'); return; }
         $m.modal('hide');

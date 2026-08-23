@@ -6,6 +6,12 @@
   var S = window.SHRA = window.SHRA || {};
   var esc = S.esc || function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
+  var csrf = S.csrf || function (serialized) {
+    if (typeof csrfData === 'undefined' || !csrfData.token_name) { return serialized; }
+    var t = encodeURIComponent(csrfData.token_name) + '=' + encodeURIComponent(csrfData.hash);
+    return serialized ? serialized + '&' + t : t;
+  };
+
   function toast(type, msg) { if (window.alert_float) { alert_float(type, msg); } else { alert(msg); } }
 
   function cardOf(id) { return $('.shra-lead[data-lead="' + id + '"]'); }
@@ -91,7 +97,7 @@
   $('#shra-lead-add-form').on('submit', function (e) {
     e.preventDefault();
     var $b = $(this).find('[type=submit]').prop('disabled', true);
-    $.post(cfg().urls.add, $(this).serialize(), function (res) {
+    $.post(cfg().urls.add, csrf($(this).serialize()), function (res) {
       $b.prop('disabled', false);
       if (!res.success) {
         toast(res.duplicate ? 'warning' : 'danger', res.message);
