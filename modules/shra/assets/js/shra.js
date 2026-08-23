@@ -176,17 +176,20 @@
       }
       var d = Math.max(0, Math.min(100, parseFloat($discount.val()) || 0));
       var list = parseFloat(pkg.price), disc = Math.round(list * d) / 100, total = Math.round((list - disc) * 100) / 100;
-      if (!$paid.data('touched')) { $paid.val(total.toFixed(2)); }
-      var paid = Math.max(0, Math.min(total, parseFloat($paid.val()) || 0));
+      $paid.attr('max', total.toFixed(2)).attr('placeholder', 'Enter amount (max ' + S.money(total) + ')');
+      var raw = $.trim($paid.val());
+      var entered = raw !== '';
+      var paid = entered ? Math.max(0, Math.min(total, parseFloat(raw) || 0)) : 0;
       var due = Math.round((total - paid) * 100) / 100;
       $sum.html(
         '<div class="row-line"><span>' + S.esc(pkg.name) + ' <span class="shra-muted">(' + S.esc(pkg.audience) + ')</span></span><span>' + S.money(list) + '</span></div>' +
         '<div class="row-line"><span>' + pkg.sessions + ' session' + (pkg.sessions > 1 ? 's' : '') + ' × ' + pkg.duration_min + ' min</span><span class="shra-muted">' + S.money(pkg.per_session) + ' / session</span></div>' +
         (d > 0 ? '<div class="row-line" style="color:#a8322d"><span>Discount ' + d + '%</span><span>− ' + S.money(disc) + '</span></div>' : '') +
         '<div class="row-line total"><span>You pay</span><span class="amt">' + S.money(total) + '</span></div>' +
-        (due > 0 ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Partial payment — ' + S.money(due) + ' will stay due on the invoice.</div>' : '')
+        (!entered ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Enter the amount received to continue.</div>' :
+          (due > 0 ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Partial payment — ' + S.money(due) + ' will stay due on the invoice.</div>' : ''))
       );
-      $btn.prop('disabled', !rider).find('.amt').text(S.money(paid));
+      $btn.prop('disabled', !rider || !entered).find('.amt').text(entered ? S.money(paid) : '');
     }
 
     var inflight = false;

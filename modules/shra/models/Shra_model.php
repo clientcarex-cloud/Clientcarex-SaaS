@@ -463,7 +463,10 @@ class Shra_model extends App_Model
 
         $quote        = $this->quote($package, $opts['discount_percent'] ?? null);
         $payment_mode = (string) ($opts['payment_mode'] ?? '');
-        $paid_amount  = isset($opts['paid_amount']) && $opts['paid_amount'] !== '' ? (float) $opts['paid_amount'] : $quote['total'];
+        if (!isset($opts['paid_amount']) || trim((string) $opts['paid_amount']) === '' || !is_numeric($opts['paid_amount'])) {
+            return 'Enter the amount received (0 is allowed for an unpaid bill).';
+        }
+        $paid_amount  = (float) $opts['paid_amount'];
         $paid_amount  = max(0, min($quote['total'], $paid_amount));
 
         // Ensure a core customer exists (riders created before linking)
