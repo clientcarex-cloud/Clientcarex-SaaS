@@ -5,7 +5,7 @@
     <?php $shra_active = 'leads'; include __DIR__ . '/../_nav.php'; ?>
     <div class="shra-toolbar" style="justify-content:space-between">
         <h4 class="shra-title" style="margin:0">Lead settings</h4>
-        <div><a href="<?php echo admin_url('shra/shra_leads/import'); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa fa-upload"></i> Import CSV</a> <a href="<?php echo admin_url('shra/shra_leads/team'); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa fa-ranking-star"></i> Team</a></div>
+        <div><a href="<?php echo admin_url('shra/shra_leads/import'); ?>" class="shra-btn shra-btn-gold shra-btn-sm"><i class="fa fa-file-arrow-up"></i> Import leads</a> <a href="<?php echo admin_url('shra/shra_leads/team'); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa fa-ranking-star"></i> Team</a></div>
     </div>
 
     <?php echo form_open(admin_url('shra/shra_leads/settings')); ?>
@@ -57,6 +57,13 @@
                             <td><input type="number" name="t[<?php echo $a->staffid; ?>][revenue]" class="form-control" style="width:120px" value="<?php echo $t ? $t->revenue_target + 0 : ''; ?>"></td></tr>
                     <?php } ?></tbody>
                 </table></div>
+            </div>
+            <div class="shra-card shra-mt">
+                <div class="shra-card-head"><h4><i class="fa fa-file-arrow-up" style="color:var(--gold)"></i> Import leads</h4></div>
+                <div class="shra-card-body shra-qr">
+                    <div style="flex:1;min-width:200px"><div class="help" style="margin-top:0">Upload a Facebook / Instagram lead export, a Google Form sheet or any CSV. The importer works out what each column is, shows you a preview, skips numbers you already have, and remembers the layout for next time.</div></div>
+                    <a href="<?php echo admin_url('shra/shra_leads/import'); ?>" class="shra-btn shra-btn-gold"><i class="fa fa-file-arrow-up"></i> Import leads</a>
+                </div>
             </div>
             <div class="shra-card shra-mt">
                 <div class="shra-card-head"><h4><i class="fa fa-qrcode" style="color:var(--gold)"></i> Public inquiry QR</h4></div>

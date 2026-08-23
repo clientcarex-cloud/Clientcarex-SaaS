@@ -5,12 +5,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: SHRA
 Description: Stallion Horse Riding Academy — rider self-registration via QR, premium membership & course-completion PDFs, one-screen package billing, trainer attendance and a leakage-proof leads desk for calling agents.
-Version: 1.3.1
+Version: 1.3.2
 Requires at least: 2.3.*
 */
 
 define('SHRA_MODULE_NAME', 'shra');
-define('SHRA_MODULE_VERSION', '1.3.1');
+define('SHRA_MODULE_VERSION', '1.3.2');
 
 register_language_files(SHRA_MODULE_NAME, [SHRA_MODULE_NAME]);
 

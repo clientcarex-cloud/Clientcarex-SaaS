@@ -487,6 +487,7 @@ $lead_defaults = [
     'shra_lead_last_cron'            => '0',
     'shra_lead_last_digest'          => '',
     'shra_lead_public_enabled'       => '1',
+    'shra_lead_import_map'           => '{}',
 ];
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);

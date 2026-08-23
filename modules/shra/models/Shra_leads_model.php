@@ -357,6 +357,8 @@ class Shra_leads_model extends App_Model
         }
 
         $sla    = max(5, (int) get_option('shra_lead_sla_minutes'));
+        // Imports may carry the date the lead really came in; never in the future
+        $added  = !empty($in['dateadded']) ? min(date('Y-m-d H:i:s'), date('Y-m-d H:i:s', strtotime($in['dateadded']))) : date('Y-m-d H:i:s');
         $next   = !empty($in['next_action_at']) ? date('Y-m-d H:i:s', strtotime($in['next_action_at'])) : date('Y-m-d H:i:s', time() + $sla * 60);
         $expect = round((float) ($in['expected_value'] ?? 0), 2);
         $pkg_id = (int) ($in['interest_package_id'] ?? 0) ?: null;
@@ -380,12 +382,12 @@ class Shra_leads_model extends App_Model
             'state'            => '',
             'address'          => substr(trim((string) ($in['address'] ?? '')), 0, 100),
             'assigned'         => $assigned,
-            'dateadded'        => date('Y-m-d H:i:s'),
+            'dateadded'        => $added,
             'status'           => shra_lead_stage_id('new'),
             'source'           => (int) ($in['source'] ?? 0),
             'lastcontact'      => null,
             'dateassigned'     => $assigned ? date('Y-m-d') : null,
-            'last_status_change' => date('Y-m-d H:i:s'),
+            'last_status_change' => $added,
             'addedfrom'        => (int) $this->staff_id(),
             'email'            => substr(trim((string) ($in['email'] ?? '')), 0, 100),
             'website'          => '',
@@ -422,7 +424,7 @@ class Shra_leads_model extends App_Model
             'campaign'            => substr(trim((string) ($in['campaign'] ?? '')), 0, 80) ?: null,
             'referrer_rider_id'   => (int) ($in['referrer_rider_id'] ?? 0) ?: null,
             'ip_address'          => $this->input->ip_address(),
-            'created_at'          => date('Y-m-d H:i:s'),
+            'created_at'          => $added,
         ]);
 
         $this->event($lead_id, 'created', ['note' => 'Captured via ' . $ctx, 'meta' => ['ctx' => $ctx], 'log' => 'Lead captured via ' . $ctx]);
@@ -1260,54 +1262,166 @@ class Shra_leads_model extends App_Model
     /* ═══════════════════════ Import ═══════════════════════ */
 
     /**
-     * Parse CSV rows (name, phone, email, city, source, agent, notes). Returns
-     * ['rows'=>[{...,status:new|duplicate|invalid,message}], 'counts'=>[...]]; inserts when $commit.
+     * Read an uploaded sheet (any encoding, any separator, any column order)
+     * and decide what every column is. Returns the parsed sheet plus 'map'
+     * (column index → target) and 'auto' (what the guesser proposed, so the
+     * screen can show which columns were changed by hand).
+     *
+     * @param string     $text       raw file contents
+     * @param array|null $override   column index → target chosen on screen
+     * @param bool|null  $has_header null = decide from the first row
      */
-    public function import_csv($csv_text, $commit = false, $default_source = 0, $default_agent = 0)
+    public function import_read($text, $override = null, $has_header = null)
     {
-        $lines   = preg_split('/\r\n|\r|\n/', trim((string) $csv_text));
-        $out     = [];
-        $counts  = ['new' => 0, 'duplicate' => 0, 'invalid' => 0];
-        $sources = [];
+        require_once module_dir_path(SHRA_MODULE_NAME, 'libraries/Shra_import.php');
+        $sheet = Shra_import::parse($text, $has_header);
+        $auto  = Shra_import::guess_map($sheet['headers'], $sheet['rows'], $this->import_learned(), $sheet['has_header']);
+        $map   = $auto;
+        if (is_array($override)) {
+            $valid = array_keys(Shra_import::targets());
+            foreach ($sheet['headers'] as $i => $h) {
+                if (isset($override[$i]) && in_array($override[$i], $valid, true)) {
+                    $map[$i] = $override[$i];
+                }
+            }
+        }
+        $sheet['map']  = $map;
+        $sheet['auto'] = $auto;
+
+        return $sheet;
+    }
+
+    /** Header wording this academy has already mapped by hand: normalised header → target. */
+    public function import_learned()
+    {
+        $m = json_decode((string) get_option('shra_lead_import_map'), true);
+
+        return is_array($m) ? $m : [];
+    }
+
+    /** Remember a confirmed mapping so the same sheet shape maps itself next time. */
+    public function import_learn(array $headers, array $map)
+    {
+        require_once module_dir_path(SHRA_MODULE_NAME, 'libraries/Shra_import.php');
+        $learned = $this->import_learned();
+        foreach ($headers as $i => $h) {
+            $n = Shra_import::norm_header($h);
+            if ($n !== '' && !preg_match('/^column \d+$/', $n) && isset($map[$i])) {
+                $learned[$n] = $map[$i];
+            }
+        }
+        if (count($learned) > 400) {
+            $learned = array_slice($learned, -400, null, true);
+        }
+        update_option('shra_lead_import_map', json_encode($learned));
+    }
+
+    /**
+     * Preview — or run, when $commit — an import of a sheet read by import_read().
+     * $opts: default_source, default_agent, create_sources.
+     * Returns ['rows' => [… status new|duplicate|invalid …], 'counts' => […]].
+     */
+    public function import_run(array $sheet, array $opts = [], $commit = false)
+    {
+        require_once module_dir_path(SHRA_MODULE_NAME, 'libraries/Shra_import.php');
+        $headers = $sheet['headers'];
+        $map     = $sheet['map'];
+        $def_src = (int) ($opts['default_source'] ?? 0);
+        $def_agt = (int) ($opts['default_agent'] ?? 0);
+        $make    = !empty($opts['create_sources']);
+
+        $sources = $source_names = [];
         foreach ($this->sources() as $s) {
             $sources[mb_strtolower($s->name)] = (int) $s->id;
+            $source_names[(int) $s->id]       = $s->name;
         }
-        $agents = [];
+        $agents = $agent_names = [];
         foreach (shra_lead_agents(false) as $a) {
             $agents[mb_strtolower($a->email)]     = (int) $a->staffid;
             $agents[mb_strtolower($a->full_name)] = (int) $a->staffid;
+            $agent_names[(int) $a->staffid]       = $a->full_name;
         }
-        $seen = [];
-        foreach ($lines as $i => $line) {
-            if (trim($line) === '') {
-                continue;
+        $this->load->model('shra/shra_model');
+        $packages = $this->shra_model->get_packages(false);
+        $auto_rr  = get_option('shra_lead_auto_assign') == '1';
+
+        $counts = ['new' => 0, 'duplicate' => 0, 'invalid' => 0];
+        $seen   = [];
+        $out    = [];
+        $offset = $sheet['has_header'] ? 2 : 1;
+
+        foreach ($sheet['rows'] as $n => $r) {
+            $f     = array_fill_keys(Shra_import::single_targets(), '');
+            $notes = [];
+            foreach ($map as $i => $t) {
+                $v = trim((string) ($r[$i] ?? ''));
+                if ($v === '' || $t === 'ignore') {
+                    continue;
+                }
+                if ($t === 'extra') {
+                    $label   = Shra_import::label($headers[$i]);
+                    $notes[] = ($label !== '' ? $label . ': ' : '') . Shra_import::humanize($v);
+                } elseif ($t === 'notes') {
+                    $notes[] = Shra_import::humanize($v);
+                } elseif ($f[$t] === '') {
+                    $f[$t] = $v;
+                }
             }
-            $c = array_map('trim', str_getcsv($line));
-            if ($i === 0 && preg_match('/name/i', $c[0] ?? '') && preg_match('/phone|mobile/i', $c[1] ?? '')) {
-                continue; // header
+
+            $name = $f['name'] !== '' ? $f['name'] : trim($f['first_name'] . ' ' . $f['last_name']);
+            if ($name === '' && $f['email'] !== '') {
+                $name = Shra_import::humanize(str_replace(['.', '_', '-'], ' ', explode('@', $f['email'])[0]));
             }
-            $row = ['line' => $i + 1, 'name' => $c[0] ?? '', 'phone' => $c[1] ?? '', 'email' => $c[2] ?? '', 'city' => $c[3] ?? '', 'source' => $c[4] ?? '', 'agent' => $c[5] ?? '', 'notes' => $c[6] ?? ''];
-            $norm = shra_phone_norm($row['phone']);
-            if ($row['name'] === '' || !shra_phone_valid($row['phone'])) {
+            if ($f['interest'] !== '') {
+                array_unshift($notes, 'Interested in: ' . Shra_import::humanize($f['interest']));
+            }
+            [$src_id, $src_label, $src_new] = $this->import_source($f['source'], $sources, $source_names, $def_src, $make, $commit);
+            $agent_id = $agents[mb_strtolower($f['agent'])] ?? $def_agt;
+            $created  = Shra_import::parse_date($f['created_at']);
+
+            $row = [
+                'line'    => $n + $offset,
+                'name'    => $name,
+                'phone'   => $f['phone'],
+                'email'   => $f['email'],
+                'city'    => $f['city'],
+                'source'  => $src_label . ($src_new ? ' (new)' : ''),
+                'agent'   => $agent_id ? ($agent_names[$agent_id] ?? get_staff_full_name($agent_id)) : ($auto_rr ? 'Auto' : '—'),
+                'created' => $created,
+                'notes'   => implode("\n", $notes),
+                'status'  => 'new',
+                'message' => '',
+            ];
+
+            $norm = shra_phone_norm($f['phone']);
+            if ($name === '' || !shra_phone_valid($f['phone'])) {
                 $row['status']  = 'invalid';
-                $row['message'] = 'Name or phone invalid';
+                $row['message'] = $name === '' ? 'No name in this row' : 'Phone missing or invalid';
             } elseif (isset($seen[$norm])) {
                 $row['status']  = 'duplicate';
-                $row['message'] = 'Repeated in file (line ' . $seen[$norm] . ')';
+                $row['message'] = 'Repeated in this file (line ' . $seen[$norm] . ')';
             } elseif ($dup = $this->find_by_phone($norm)) {
                 $row['status']  = 'duplicate';
                 $row['message'] = 'Exists: lead #' . $dup->id . ' (' . ($dup->agent_name ?: 'unassigned') . ', ' . shra_lead_stage_label($dup->stage) . ')';
             } else {
-                $row['status']  = 'new';
-                $row['message'] = '';
-                $seen[$norm]    = $i + 1;
+                $seen[$norm] = $n + $offset;
             }
+
             if ($row['status'] === 'new' && $commit) {
                 $res = $this->capture([
-                    'name' => $row['name'], 'phone' => $row['phone'], 'email' => $row['email'], 'city' => $row['city'],
-                    'source' => $sources[mb_strtolower($row['source'])] ?? (int) $default_source,
-                    'assigned' => $agents[mb_strtolower($row['agent'])] ?? (int) $default_agent,
-                    'description' => $row['notes'],
+                    'name'                => $name,
+                    'phone'               => $f['phone'],
+                    'email'               => $f['email'],
+                    'city'                => $f['city'],
+                    'address'             => $f['address'],
+                    'source'              => $src_id,
+                    'assigned'            => $agent_id,
+                    'campaign'            => $f['campaign'],
+                    'rider_for'           => $this->import_rider_for($f['rider_for']),
+                    'rider_age'           => is_numeric($f['age']) ? (int) $f['age'] : '',
+                    'interest_package_id' => $this->import_match_package($f['interest'], $packages),
+                    'description'         => $row['notes'],
+                    'dateadded'           => $created,
                 ], 'import');
                 if (is_string($res)) {
                     $row['status']  = 'invalid';
@@ -1324,6 +1438,97 @@ class Shra_leads_model extends App_Model
         }
 
         return ['rows' => $out, 'counts' => $counts];
+    }
+
+    /**
+     * Sheet value → lead source id. Known shorthands (ig, fb, gads…) are spelled
+     * out, an unknown name is created when the manager asked for it.
+     * Returns [id, label, was_created].
+     */
+    private function import_source($raw, array &$sources, array &$names, $default, $create, $commit)
+    {
+        $fallback = [(int) $default, $names[(int) $default] ?? '—', false];
+        $raw      = trim((string) $raw);
+        if ($raw === '') {
+            return $fallback;
+        }
+        $aliases = [
+            'ig' => 'Instagram', 'insta' => 'Instagram', 'instagram' => 'Instagram',
+            'fb' => 'Facebook', 'facebook' => 'Facebook', 'messenger' => 'Facebook',
+            'meta' => 'Meta Ads', 'an' => 'Meta Ads', 'audience network' => 'Meta Ads',
+            'google' => 'Google', 'adwords' => 'Google', 'gads' => 'Google', 'google ads' => 'Google',
+            'wa' => 'WhatsApp', 'whatsapp' => 'WhatsApp', 'walk in' => 'Walk-in', 'walkin' => 'Walk-in',
+            'web' => 'Website', 'website' => 'Website', 'referral' => 'Referral', 'ref' => 'Referral',
+        ];
+        $key   = mb_strtolower($raw);
+        $label = $aliases[$key] ?? $raw;
+        foreach ([$key, mb_strtolower($label)] as $k) {
+            if (isset($sources[$k])) {
+                return [$sources[$k], $names[$sources[$k]], false];
+            }
+        }
+        if (!$create) {
+            return $fallback;
+        }
+        if (!$commit) {
+            return [(int) $default, $label, true];
+        }
+        $label = substr($label, 0, 100);
+        $this->db->insert(db_prefix() . 'leads_sources', ['name' => $label]);
+        $id = (int) $this->db->insert_id();
+        if (!$id) {
+            return $fallback;
+        }
+        $sources[$key] = $sources[mb_strtolower($label)] = $id;
+        $names[$id]    = $label;
+
+        return [$id, $label, true];
+    }
+
+    /** "my_child" / "both myself & my child" → the rider_for value the lead page uses. */
+    private function import_rider_for($raw)
+    {
+        $v = mb_strtolower(str_replace('_', ' ', trim((string) $raw)));
+        if ($v === '') {
+            return 'self';
+        }
+        $child = preg_match('/child|kid|son|daughter|ward/', $v);
+        $self  = preg_match('/myself|my self|self|adult/', $v);
+        if (strpos($v, 'both') !== false || ($child && $self)) {
+            return 'both';
+        }
+
+        return $child ? 'child' : 'self';
+    }
+
+    /** Free-text interest → package id, only when the wording clearly points at one. */
+    private function import_match_package($raw, array $packages)
+    {
+        $v = $this->import_slug($raw);
+        if ($v === '' || !count($packages)) {
+            return 0;
+        }
+        $best = [0, 0];
+        foreach ($packages as $p) {
+            $n = $this->import_slug($p->name);
+            if ($n === '') {
+                continue;
+            }
+            if ($n === $v) {
+                return (int) $p->id;
+            }
+            similar_text($n, $v, $pct);
+            if ($pct > $best[1]) {
+                $best = [(int) $p->id, $pct];
+            }
+        }
+
+        return $best[1] >= 85 ? $best[0] : 0;
+    }
+
+    private function import_slug($v)
+    {
+        return trim(mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', ' ', str_replace('_', ' ', (string) $v))));
     }
 
     /* ═══════════════════════ Cron ═══════════════════════ */

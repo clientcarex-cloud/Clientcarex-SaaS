@@ -179,7 +179,7 @@ Header (stage, agent, source, SLA/age), contact actions, timeline (merged `tblsh
 ### 4.5 **Leads → Team** (`shra/leads/team`) — manager leaderboard
 Per agent for selected period: leads assigned · calls · contact rate · visits booked · visited · show rate · confirmed · won · **revenue (billed / collected)** · conversion % · avg days-to-win · overdue count · stale count · target attainment bar. Click agent → drill-down list. Also **Source ROI** table (leads, visits, won, revenue, cost, CPL, ROAS) and **Lost reasons** pie.
 
-### 4.6 **Leads → Settings** (admin) — sources, visit slots, SLA, stale days, lost reasons, outcomes, WhatsApp templates, round-robin agent pool (toggle per staff), targets grid (agent × month), import CSV (phone dedupe report before commit).
+### 4.6 **Leads → Settings** (admin) — sources, visit slots, SLA, stale days, lost reasons, outcomes, WhatsApp templates, round-robin agent pool (toggle per staff), targets grid (agent × month), **Import leads** (any sheet: column mapping + dedupe report before commit).
 
 ### 4.7 Existing **Dashboard**: add tiles — Open leads, Overdue follow-ups, Visits this weekend, Leads→Revenue this month, top agent.
 
@@ -192,7 +192,7 @@ Per agent for selected period: leads assigned · calls · contact rate · visits
 1. **Manual** (agent/front desk) — `Shra_leads_model::capture()`.
 2. **Public QR / web form** — extend existing `/join` flow: add `/inquire` (name, phone, rider-for, interest) → lead, source = *Website QR*, round-robin assigned, agent notified. Reuse `shra_sign()` HMAC pattern for anti-spam + honeypot + rate-limit per IP.
 3. **Native Perfex web-to-lead / email integration** — hook `lead_created` → `shra_leads_on_core_lead_created()` creates the `_ext` row, normalises phone, applies round-robin if unassigned, sets `next_action_at = now + SLA`.
-4. **CSV import** (manager) — preview: new / duplicate (shows owner) / invalid phone; commit only clean rows.
+4. **Sheet import** (manager, v1.3.2) — any CSV/TSV in any encoding (Meta/Instagram lead exports are UTF-16 tab separated), separator and header row detected, columns mapped by wording and by their values, mapping editable on screen and remembered for next time (`shra_lead_import_map`); unmapped columns are kept as *Question: answer* notes; preview: new / duplicate (shows owner) / invalid phone; commit only clean rows. Parser lives in `libraries/Shra_import.php`, the rest in `Shra_leads_model::import_*`.
 5. **Walk-in** — from Visits board or Billing screen phone match.
 6. **Referral** — when `referrer_rider_id` set, rider profile shows "Referred N leads / M joined" (future loyalty credit).
 

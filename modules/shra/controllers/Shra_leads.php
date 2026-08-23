@@ -516,26 +516,113 @@ class Shra_leads extends AdminController
         $this->load->view('leads/settings', $data);
     }
 
+    /**
+     * Import leads from any spreadsheet a manager has: upload, check the
+     * columns the importer detected (change any of them), preview, commit.
+     * The uploaded sheet is parked in the temp folder between the steps so a
+     * large file is not carried back and forth through the browser.
+     */
     public function import()
     {
         $this->need('manage');
-        $data            = $this->common();
-        $data['title']   = 'Leads · Import';
-        $data['result']  = null;
-        $data['csv']     = '';
-        $data['commit']  = false;
+        require_once module_dir_path(SHRA_MODULE_NAME, 'libraries/Shra_import.php');
+        $data             = $this->common();
+        $data['title']    = 'Leads · Import';
+        $data['targets']  = Shra_import::targets();
+        $data['sheet']    = null;
+        $data['result']   = null;
+        $data['commit']   = false;
+        $data['token']    = '';
+        $data['filename'] = '';
+        $data['encoding'] = '';
+        $data['opts']     = ['default_source' => 0, 'default_agent' => 0, 'create_sources' => 1, 'remember' => 1, 'has_header' => ''];
+
         if ($this->input->post()) {
-            $csv = (string) $this->input->post('csv', false);
+            $post = $this->input->post(null, false);
+            $opts = [
+                'default_source' => (int) ($post['default_source'] ?? 0),
+                'default_agent'  => (int) ($post['default_agent'] ?? 0),
+                'create_sources' => !empty($post['create_sources']) ? 1 : 0,
+                'remember'       => !empty($post['remember']) ? 1 : 0,
+                'has_header'     => isset($post['has_header']) && in_array($post['has_header'], ['0', '1'], true) ? $post['has_header'] : '',
+            ];
+            $data['opts']     = $opts;
+            $data['filename'] = substr(preg_replace('/[^\w \.\-]/u', '', (string) ($post['filename'] ?? '')), 0, 120);
+            $data['encoding'] = substr(preg_replace('/[^\w\-]/', '', (string) ($post['encoding'] ?? '')), 0, 20);
+
+            $text     = null;
+            $uploaded = false;
             if (!empty($_FILES['file']['tmp_name']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
-                $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+                if ($_FILES['file']['size'] > 12 * 1024 * 1024) {
+                    set_alert('warning', 'That file is larger than 12 MB — split it and import in parts.');
+                } else {
+                    $dec              = Shra_import::decode((string) file_get_contents($_FILES['file']['tmp_name']));
+                    $text             = $dec['text'];
+                    $data['filename'] = substr(preg_replace('/[^\w \.\-]/u', '', $_FILES['file']['name']), 0, 120);
+                    $data['token']    = $this->import_stash($text);
+                    $data['encoding'] = $dec['encoding'];
+                    $uploaded         = true;
+                }
+            } elseif (preg_match('/^[a-f0-9]{32}$/', (string) ($post['token'] ?? ''))) {
+                $text          = $this->import_stash_read($post['token']);
+                $data['token'] = $post['token'];
+                if ($text === null) {
+                    set_alert('warning', 'The uploaded file has expired — please upload it again.');
+                }
             }
-            $commit = (int) $this->input->post('commit') === 1;
-            $data['result'] = $this->leads->import_csv($csv, $commit, (int) $this->input->post('default_source'), (int) $this->input->post('default_agent'));
-            $data['csv']    = $csv;
-            $data['commit'] = $commit;
-            $data['default_source'] = (int) $this->input->post('default_source');
-            $data['default_agent']  = (int) $this->input->post('default_agent');
+
+            if ($text !== null && trim($text) !== '') {
+                $commit = (int) ($post['commit'] ?? 0) === 1;
+                $sheet  = $this->leads->import_read(
+                    $text,
+                    // A freshly uploaded file gets a fresh guess — the posted map belongs to the previous sheet
+                    !$uploaded && isset($post['map']) && is_array($post['map']) ? $post['map'] : null,
+                    $opts['has_header'] === '' ? null : (bool) (int) $opts['has_header']
+                );
+                $data['sheet']  = $sheet;
+                $data['result'] = $this->leads->import_run($sheet, $opts, $commit);
+                $data['commit'] = $commit;
+                if ($commit) {
+                    if ($opts['remember']) {
+                        $this->leads->import_learn($sheet['headers'], $sheet['map']);
+                    }
+                    $this->import_stash_drop($data['token']);
+                    $data['token'] = '';
+                    log_activity('SHRA leads imported [' . (int) $data['result']['counts']['new'] . ' from ' . ($data['filename'] ?: 'sheet') . ']');
+                }
+            } elseif ($text !== null) {
+                set_alert('warning', 'That file had no readable rows.');
+            }
         }
         $this->load->view('leads/import', $data);
+    }
+
+    /** Park a decoded sheet in the temp folder between the upload and the import. */
+    private function import_stash($text)
+    {
+        $token = bin2hex(random_bytes(16));
+        $dir   = app_temp_dir();
+        foreach ((array) glob($dir . 'shra-import-*.csv') as $old) {
+            if (is_file($old) && filemtime($old) < time() - 6 * 3600) {
+                @unlink($old);
+            }
+        }
+        file_put_contents($dir . 'shra-import-' . $token . '.csv', $text);
+
+        return $token;
+    }
+
+    private function import_stash_read($token)
+    {
+        $file = app_temp_dir() . 'shra-import-' . $token . '.csv';
+
+        return is_file($file) ? (string) file_get_contents($file) : null;
+    }
+
+    private function import_stash_drop($token)
+    {
+        if (preg_match('/^[a-f0-9]{32}$/', (string) $token)) {
+            @unlink(app_temp_dir() . 'shra-import-' . $token . '.csv');
+        }
     }
 }
