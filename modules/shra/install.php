@@ -500,6 +500,8 @@ $lead_defaults = [
     'shra_lead_gads_label'           => '',
     'shra_lead_ga4_id'               => '',
     'shra_lead_ig_cache'             => '',
+    'shra_lead_landing_map_query'    => 'The Wilderness Retreat, Kokapet, Hyderabad',
+    'shra_lead_landing_map_embed'    => '',
 ];
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);

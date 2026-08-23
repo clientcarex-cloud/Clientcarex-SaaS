@@ -184,6 +184,18 @@ section{padding:52px 0}
 .faq summary:after{content:'+';font-size:22px;color:var(--gold);font-weight:400;line-height:1}
 .faq details[open] summary:after{content:'–'}
 .faq details p{padding:0 18px 16px;font-size:14px;color:var(--ink-2)}
+/* map */
+.map-sec{background:#fff;border-top:1px solid var(--line)}
+.map{display:grid;grid-template-columns:1fr 1.4fr;gap:24px;align-items:stretch}
+.map .info{background:var(--cream-2);border:1px solid var(--line);border-radius:18px;padding:26px 24px;display:flex;flex-direction:column}
+.map .info h3{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:26px;line-height:1.1}
+.map .info .addr{font-size:15px;color:var(--ink-2);margin-top:8px;line-height:1.5}
+.map .info ul{list-style:none;margin:18px 0 22px;display:grid;gap:10px;font-size:14px;color:var(--ink-2)}
+.map .info li{display:flex;gap:10px;align-items:flex-start}
+.map .info li i{color:var(--gold);width:18px;text-align:center;margin-top:3px}
+.map .info .btn{margin-top:auto}
+.map .frame{border-radius:18px;overflow:hidden;border:1px solid var(--line);min-height:340px;background:var(--cream);position:relative}
+.map .frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 /* final cta */
 .final{background:var(--ink);color:var(--cream);text-align:center;padding:56px 0}
 .final h2{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:clamp(30px,4vw,44px);line-height:1.05;color:#fff}
@@ -203,6 +215,8 @@ section{padding:52px 0}
   .grid{grid-template-columns:1fr 1fr}
   .plans{grid-template-columns:1fr 1fr}
   .steps{grid-template-columns:1fr}
+  .map{grid-template-columns:1fr}
+  .map .frame{min-height:280px}
   .bar{display:flex}
   .top .call span{display:none}
   .top .call{padding:10px 12px}
@@ -387,7 +401,34 @@ section{padding:52px 0}
     </div>
 </section>
 
-<section style="padding-top:0">
+<?php if ($landing['map_embed'] !== '') { ?>
+<section class="map-sec" id="location">
+    <div class="wrap">
+        <div class="sec-h">
+            <div class="eyebrow">Find us</div>
+            <h2>Just outside the city, easy to reach</h2>
+            <p>A green, open-air academy <?php echo $landing['location'] ? 'at ' . html_escape($landing['location']) : 'in Hyderabad'; ?>.</p>
+        </div>
+        <div class="map">
+            <div class="info">
+                <h3><?php echo html_escape($academy); ?></h3>
+                <?php if ($landing['location']) { ?><div class="addr"><i class="fa-solid fa-location-dot" style="color:var(--gold)"></i> <?php echo html_escape($landing['location']); ?></div><?php } ?>
+                <ul>
+                    <li><i class="fa-solid fa-clock"></i><span><b>Visits:</b> Saturday &amp; Sunday mornings and evenings — book a slot and we confirm on WhatsApp.</span></li>
+                    <?php if ($landing['phone']) { ?><li><i class="fa-solid fa-phone"></i><span><b>Call:</b> <a href="<?php echo $phone_href; ?>" onclick="shraTrack('Contact',{method:'call'})" style="color:var(--brown);font-weight:600"><?php echo html_escape($landing['phone']); ?></a></span></li><?php } ?>
+                    <li><i class="fa-solid fa-car"></i><span>Share your location with us on WhatsApp and we'll send the easiest route.</span></li>
+                </ul>
+                <a class="btn btn-dark" href="<?php echo html_escape($landing['maps_url']); ?>" target="_blank" rel="noopener" onclick="shraTrack('FindLocation')"><i class="fa-solid fa-diamond-turn-right"></i> Get directions</a>
+            </div>
+            <div class="frame">
+                <iframe src="<?php echo html_escape($landing['map_embed']); ?>" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Map to <?php echo html_escape($academy); ?>"></iframe>
+            </div>
+        </div>
+    </div>
+</section>
+<?php } ?>
+
+<section>
     <div class="wrap">
         <div class="sec-h"><div class="eyebrow">Good to know</div><h2>Questions parents ask us</h2></div>
         <div class="faq">

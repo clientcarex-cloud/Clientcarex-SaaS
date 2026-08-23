@@ -254,6 +254,19 @@ class Shra_public extends App_Controller
             'ga4_id'      => trim((string) get_option('shra_lead_ga4_id')),
             'min_age'     => (int) (get_option('shra_lead_landing_min_age') ?: 4),
         ];
+        // Map: a pasted "Share → Embed a map" URL wins; otherwise a keyless search embed of the location line
+        $embed = trim((string) get_option('shra_lead_landing_map_embed'));
+        if (preg_match('/<iframe[^>]+src="([^"]+)"/i', $embed, $m)) {
+            $embed = html_entity_decode($m[1]);
+        }
+        if ($embed !== '' && !preg_match('~^https://(www\.)?google\.[a-z.]+/maps~i', $embed)) {
+            $embed = '';
+        }
+        $query = trim((string) get_option('shra_lead_landing_map_query')) ?: $out['location'];
+        $out['map_embed'] = $embed !== '' ? $embed : ($query !== '' ? 'https://www.google.com/maps?q=' . rawurlencode($query) . '&z=14&output=embed' : '');
+        if ($out['maps_url'] === '' && $query !== '') {
+            $out['maps_url'] = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($query);
+        }
         $ig = $this->instagram_feed($out['instagram']);
         $out['ig_handle']    = $ig['handle'];
         $out['ig_followers'] = $ig['followers'];
