@@ -1,0 +1,187 @@
+/* SHRA — Stallion Horse Riding Academy · logo theme */
+.shra{
+  --cream:#f6efe0;--cream-2:#fbf7ee;--sand:#e9d9b6;--sand-2:#f0e4c8;--ink:#1c1a17;--ink-2:#3a3530;
+  --gold:#b8922e;--gold-2:#d4b45c;--brown:#5a3e22;--muted:#7a6f5e;--line:#e3d6b8;--red:#a8322d;--green:#2f4a1f;
+  --r:14px;--shadow:0 1px 2px rgba(28,26,23,.05),0 8px 24px rgba(90,62,34,.08);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--ink);
+}
+.shra .serif{font-family:'Cormorant Garamond',Georgia,serif}
+.shra *{box-sizing:border-box}
+.shra a{color:var(--brown)}
+.shra a:hover{color:var(--gold)}
+
+/* header */
+.shra-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.shra-brand{display:flex;align-items:center;gap:14px}
+.shra-brand img{width:52px;height:52px;border-radius:50%;box-shadow:0 0 0 3px var(--cream),0 0 0 4px var(--sand)}
+.shra-brand h3{margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:26px;letter-spacing:.2px;line-height:1.1}
+.shra-brand small{display:block;color:var(--muted);font-size:12px;margin-top:2px;letter-spacing:.3px}
+.shra-title{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:24px;margin:0 0 14px}
+.shra-title .thin{font-weight:500;color:var(--muted)}
+
+/* nav */
+.shra-nav{display:flex;gap:4px;flex-wrap:wrap;background:var(--cream);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:22px}
+.shra-nav a{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-2)!important;text-decoration:none!important;transition:.15s}
+.shra-nav a:hover{background:var(--sand-2)}
+.shra-nav a.active{background:var(--ink);color:var(--cream)!important}
+.shra-nav a i{font-size:12px;opacity:.8}
+
+/* buttons */
+.shra-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid transparent;cursor:pointer;text-decoration:none!important;transition:.15s;line-height:1.2;white-space:nowrap}
+.shra-btn-primary{background:var(--ink);color:var(--cream)!important;box-shadow:0 6px 16px rgba(28,26,23,.18)}
+.shra-btn-primary:hover{background:#000;transform:translateY(-1px)}
+.shra-btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:#fff!important;box-shadow:0 6px 16px rgba(184,146,46,.3)}
+.shra-btn-gold:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.shra-btn-outline{background:#fff;border-color:var(--line);color:var(--ink)!important}
+.shra-btn-outline:hover{border-color:var(--gold);color:var(--brown)!important}
+.shra-btn-danger{background:#fff;border-color:#f0d2d0;color:var(--red)!important}
+.shra-btn-danger:hover{background:#fdf3f2}
+.shra-btn-sm{padding:6px 11px;font-size:12px;border-radius:8px}
+.shra-btn-lg{padding:13px 22px;font-size:15px;border-radius:12px}
+.shra-btn[disabled],.shra-btn.disabled{opacity:.5;pointer-events:none}
+.shra-btn-block{width:100%;justify-content:center}
+
+/* cards */
+.shra-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);min-width:0}
+.shra-card-body{padding:20px 22px}
+.shra-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid var(--line)}
+.shra-card-head h4{margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:20px}
+.shra-card-cream{background:var(--cream)}
+
+/* stats */
+.shra-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+@media(max-width:1199px){.shra-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:575px){.shra-stats{grid-template-columns:1fr}}
+.shra-stat{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.shra-stat:after{content:'';position:absolute;right:-22px;top:-22px;width:80px;height:80px;border-radius:50%;background:var(--cream)}
+.shra-stat-label{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.shra-stat-value{font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:700;line-height:1.05;margin-top:6px;position:relative}
+.shra-stat-sub{font-size:12px;color:var(--muted);margin-top:6px;position:relative}
+.shra-stat-icon{position:absolute;right:16px;top:16px;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--sand-2);color:var(--brown);font-size:14px;z-index:1}
+
+/* forms */
+.shra .form-control,.shra select.form-control,.shra textarea.form-control{border:1px solid var(--line);border-radius:10px;box-shadow:none;height:auto;padding:9px 12px;font-size:13px;color:var(--ink);background:#fff}
+.shra .form-control:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,146,46,.15)}
+.shra label{font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+.shra .form-group{margin-bottom:14px}
+.shra .help{font-size:11.5px;color:var(--muted);margin-top:4px}
+.shra-search{position:relative}
+.shra-search input{padding-left:38px!important}
+.shra-search i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.shra-seg{display:inline-flex;background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:3px}
+.shra-seg label{margin:0;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.shra-seg input{display:none}
+.shra-seg input:checked+span{display:block;margin:-7px -14px;padding:7px 14px;border-radius:8px;background:var(--ink);color:var(--cream)}
+.shra-seg label span{display:block}
+
+/* badges */
+.shra-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;line-height:1.4}
+.shra-badge-green{background:#e7efe0;color:var(--green)}
+.shra-badge-gold{background:#f6ecd2;color:var(--brown)}
+.shra-badge-red{background:#f8e3e2;color:var(--red)}
+.shra-badge-muted{background:#eeeae0;color:var(--muted)}
+.shra-badge-ink{background:var(--ink);color:var(--cream)}
+.shra-pill{display:inline-flex;align-items:center;gap:6px;background:var(--cream);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--ink-2)}
+
+/* tables */
+.shra-table{width:100%;border-collapse:separate;border-spacing:0}
+.shra-table th{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;padding:12px 14px;background:var(--cream);border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.shra-table th:first-child{border-top-left-radius:12px}.shra-table th:last-child{border-top-right-radius:12px}
+.shra-table td{padding:12px 14px;border-bottom:1px solid #f0e9d8;font-size:13px;vertical-align:middle}
+.shra-table tr:last-child td{border-bottom:0}
+.shra-table tr:hover td{background:#fdfaf3}
+.shra-table .num{font-variant-numeric:tabular-nums;text-align:right}
+.shra-table .strong{font-weight:600}
+.shra-table .sub{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.shra-table-wrap{overflow-x:auto}
+.shra-empty{text-align:center;padding:56px 20px;color:var(--muted)}
+.shra-empty i{font-size:40px;color:var(--sand);display:block;margin-bottom:12px}
+
+/* avatar */
+.shra-avatar{width:36px;height:36px;border-radius:50%;background:var(--sand-2);color:var(--brown);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:16px}
+.shra-person{display:flex;align-items:center;gap:10px}
+.shra-person .name{font-weight:600;line-height:1.2}
+.shra-person .meta{font-size:11.5px;color:var(--muted)}
+
+/* progress */
+.shra-progress{height:6px;background:var(--cream);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.shra-progress span{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-2));border-radius:6px}
+
+/* billing */
+.shra-bill{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:18px}
+@media(max-width:991px){.shra-bill{grid-template-columns:1fr}}
+.shra-step{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.shra-step .n{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--cream);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.shra-step h5{margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:19px;font-weight:700}
+.shra-pkgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.shra-pkg{position:relative;border:1.5px solid var(--line);border-radius:12px;padding:14px 14px 12px;background:#fff;cursor:pointer;transition:.15s}
+.shra-pkg:hover{border-color:var(--gold-2);transform:translateY(-1px)}
+.shra-pkg.selected{border-color:var(--ink);box-shadow:0 0 0 3px rgba(28,26,23,.08)}
+.shra-pkg.featured{background:linear-gradient(160deg,#fff,var(--cream-2))}
+.shra-pkg .pk-name{font-weight:700;font-size:14px}
+.shra-pkg .pk-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
+.shra-pkg .pk-price{margin-top:10px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.shra-pkg .pk-now{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:700;color:var(--red)}
+.shra-pkg .pk-was{font-size:12px;color:var(--muted);text-decoration:line-through}
+.shra-pkg .pk-per{font-size:11px;color:var(--muted);width:100%}
+.shra-pkg .pk-tag{position:absolute;top:-9px;right:10px;background:var(--green);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.6px;padding:3px 8px;border-radius:999px;text-transform:uppercase}
+.shra-pkg .pk-guest{position:absolute;top:-9px;left:10px;background:var(--gold);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.6px;padding:3px 8px;border-radius:999px;text-transform:uppercase}
+.shra-pkg .pk-check{position:absolute;right:10px;bottom:10px;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--cream);font-size:10px;display:none;align-items:center;justify-content:center}
+.shra-pkg.selected .pk-check{display:inline-flex}
+.shra-summary{position:sticky;top:70px}
+.shra-summary .row-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.shra-summary .row-line.total{border:0;padding-top:14px;font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:700}
+.shra-summary .row-line.total .amt{color:var(--red)}
+.shra-offer{display:flex;align-items:center;gap:10px;background:#fbeeee;border:1px dashed #e8b9b6;color:var(--red);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600}
+.shra-offer .stamp{background:var(--red);color:#fff;border-radius:6px;padding:2px 7px;font-size:11px;transform:rotate(-4deg)}
+.shra-picked{display:flex;align-items:center;gap:12px;background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.shra-picked .x{margin-left:auto;color:var(--muted);cursor:pointer}
+.shra-results{position:absolute;left:0;right:0;top:100%;z-index:20;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px rgba(28,26,23,.14);max-height:320px;overflow:auto;margin-top:6px;display:none}
+.shra-results.open{display:block}
+.shra-results .item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid #f3eee0}
+.shra-results .item:hover,.shra-results .item.hl{background:var(--cream)}
+.shra-results .item:last-child{border-bottom:0}
+.shra-results .none{padding:16px;color:var(--muted);font-size:13px;text-align:center}
+
+/* attendance */
+.shra-att{display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);gap:18px}
+@media(max-width:991px){.shra-att{grid-template-columns:1fr}}
+.shra-enr{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.shra-enr:hover{border-color:var(--gold-2)}
+.shra-enr.selected{border-color:var(--ink);background:var(--cream-2)}
+.shra-enr .t{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13.5px}
+.shra-enr .s{font-size:12px;color:var(--muted);margin-top:3px}
+.shra-big-mark{font-size:16px;padding:16px 20px;border-radius:14px}
+
+/* QR panel */
+.shra-qr{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.shra-qr svg{width:150px;height:150px;background:#fff;padding:8px;border:1px solid var(--line);border-radius:12px}
+.shra-qr-url{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:8px 10px;word-break:break-all}
+
+/* rider profile */
+.shra-profile{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);gap:18px}
+@media(max-width:991px){.shra-profile{grid-template-columns:1fr}}
+.shra-kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.shra-kv .k{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.shra-kv .v{font-size:13.5px;font-weight:600;margin-top:2px;word-break:break-word}
+.shra-kv .full{grid-column:1/-1}
+
+/* sparkline */
+.shra-spark{display:flex;align-items:flex-end;gap:4px;height:54px}
+.shra-spark span{flex:1;background:var(--sand);border-radius:3px 3px 0 0;min-height:3px;position:relative}
+.shra-spark span.today{background:var(--gold)}
+.shra-spark span:hover:after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--cream);font-size:10px;padding:2px 6px;border-radius:4px;white-space:nowrap;margin-bottom:4px}
+
+.shra-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.shra-toolbar .form-control{margin:0}
+.shra-toolbar .grow{flex:1;min-width:220px}
+.shra-alert{border-radius:12px;padding:12px 16px;font-size:13px;border:1px solid}
+.shra-alert-ok{background:#eef4e8;border-color:#cfe0c0;color:var(--green)}
+.shra-alert-warn{background:#fdf6e3;border-color:#ecd9a3;color:var(--brown)}
+.shra-alert-bad{background:#fbeeee;border-color:#e8b9b6;color:var(--red)}
+.shra-mt{margin-top:18px}
+.shra-muted{color:var(--muted)}
+.shra-hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+.shra .modal-content{border-radius:16px;border:1px solid var(--line)}
+.shra .modal-header{border-bottom:1px solid var(--line)}
+.shra .modal-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:700}

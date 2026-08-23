@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#f6efe0"/>
+      <stop offset="70%" stop-color="#ecdcb9"/>
+      <stop offset="100%" stop-color="#e0c896"/>
+    </radialGradient>
+    <path id="arc" d="M 200,200 m -150,0 a 150,150 0 1,1 300,0 a 150,150 0 1,1 -300,0"/>
+  </defs>
+  <circle cx="200" cy="200" r="196" fill="url(#paper)"/>
+  <circle cx="200" cy="200" r="186" fill="none" stroke="#b8922e" stroke-width="1.5" opacity=".55"/>
+  <!-- horseshoe -->
+  <path d="M 118,250 A 92,92 0 1,1 282,250" fill="none" stroke="#1c1a17" stroke-width="26" stroke-linecap="butt"/>
+  <path d="M 104,236 l 24,-8 M 296,236 l -24,-8" stroke="#1c1a17" stroke-width="14" stroke-linecap="square"/>
+  <g fill="#ecdcb9">
+    <circle cx="127" cy="214" r="4"/><circle cx="129" cy="178" r="4"/><circle cx="146" cy="145" r="4"/><circle cx="175" cy="122" r="4"/>
+    <circle cx="225" cy="122" r="4"/><circle cx="254" cy="145" r="4"/><circle cx="271" cy="178" r="4"/><circle cx="273" cy="214" r="4"/>
+  </g>
+  <!-- horse head -->
+  <g transform="translate(200,192) scale(0.78) translate(-195,-166)">
+  <path fill="#1c1a17" d="M 194,96 Q 206,112 208,122 Q 226,110 244,126 Q 258,142 260,170 Q 262,200 256,236 L 212,236 Q 200,214 190,204 Q 172,200 154,192 Q 136,186 130,172 Q 128,160 140,152 Q 152,140 164,130 Q 176,118 184,108 Q 188,100 194,96 Z"/>
+  <path fill="#ecdcb9" d="M 210,124 Q 230,120 244,134 Q 250,150 248,170 Q 240,150 224,142 Q 214,138 210,124 Z"/>
+  <circle cx="182" cy="146" r="5" fill="#ecdcb9"/>
+  <path d="M 136,166 q 6,0 8,4" stroke="#ecdcb9" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- circular text -->
+  <text font-family="Inter, Helvetica, Arial, sans-serif" font-size="27" font-weight="700" letter-spacing="5" fill="#1c1a17">
+    <textPath href="#arc" startOffset="52%" text-anchor="middle">STALLION HORSE RIDING ACADEMY</textPath>
+  </text>
+</svg>
