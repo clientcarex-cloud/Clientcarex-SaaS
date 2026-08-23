@@ -280,18 +280,18 @@ class Shra_public extends App_Controller
         }
 
         $cache = json_decode((string) get_option('shra_lead_ig_cache'), true);
-        $fresh = is_array($cache) && ($cache['handle'] ?? '') === $handle && time() - (int) ($cache['ts'] ?? 0) < $ttl;
+        $fresh = is_array($cache) && ($cache['handle'] ?? '') === $handle && (int) ($cache['v'] ?? 0) === 2 && time() - (int) ($cache['ts'] ?? 0) < $ttl;
         if ($fresh) {
             return $cache['data'] + $empty;
         }
 
         $data = $this->instagram_fetch($handle);
         if ($data !== null) {
-            update_option('shra_lead_ig_cache', json_encode(['handle' => $handle, 'ts' => time(), 'data' => $data]));
+            update_option('shra_lead_ig_cache', json_encode(['handle' => $handle, 'v' => 2, 'ts' => time(), 'data' => $data]));
 
             return $data + $empty;
         }
-        if (is_array($cache) && ($cache['handle'] ?? '') === $handle) {
+        if (is_array($cache) && ($cache['handle'] ?? '') === $handle && (int) ($cache['v'] ?? 0) === 2) {
             // Instagram unreachable — serve the stale copy, but retry again in 15 min rather than hammering
             $cache['ts'] = time() - $ttl + 900;
             update_option('shra_lead_ig_cache', json_encode($cache));
@@ -349,13 +349,58 @@ class Shra_public extends App_Controller
             ];
         }
         usort($reels, function ($a, $b) { return $b['taken'] - $a['taken']; });
+        $reels = array_slice($reels, 0, 12);
+
+        // fbcdn thumbnail URLs are signed + short-lived and often refuse browser hotlinks,
+        // so copy them into uploads/shra/ig/ and serve them from our own domain.
+        $dir = FCPATH . 'uploads/shra/ig/';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        $keep = [];
+        foreach ($reels as &$r) {
+            $file   = preg_replace('/[^A-Za-z0-9_-]/', '', $r['id']) . '.jpg';
+            $keep[] = $file;
+            if (!is_file($dir . $file) && $r['thumb'] !== '') {
+                $img = $this->instagram_get($r['thumb']);
+                if ($img !== null && strlen($img) > 1000 && @imagecreatefromstring($img) !== false) {
+                    file_put_contents($dir . $file, $img);
+                }
+            }
+            $r['thumb'] = is_file($dir . $file) ? base_url('uploads/shra/ig/' . $file) . '?v=' . filemtime($dir . $file) : '';
+        }
+        unset($r);
+        // Drop thumbnails of reels that are no longer in the latest set
+        foreach ((array) glob($dir . '*.jpg') as $f) {
+            if (!in_array(basename($f), $keep, true)) {
+                @unlink($f);
+            }
+        }
 
         return [
             'handle'    => $handle,
             'followers' => (int) ($user['edge_followed_by']['count'] ?? 0),
             'posts'     => (int) ($user['edge_owner_to_timeline_media']['count'] ?? 0),
-            'reels'     => array_slice($reels, 0, 12),
+            'reels'     => $reels,
         ];
+    }
+
+    /** Small GET helper for Instagram CDN assets. */
+    private function instagram_get($url)
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 6,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        ]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        return $code === 200 && $body ? $body : null;
     }
 
     /** Normalise the ad-tracking params from GET (landing) or POST (hidden fields). */
