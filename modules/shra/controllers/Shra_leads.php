@@ -1,0 +1,494 @@
+<?php
+
+defined('BASEPATH') or exit('No direct script access allowed');
+
+/**
+ * SHRA Leads — My Day (agent queue), pipeline, visits board, lead page,
+ * team leaderboard, settings & import.
+ */
+class Shra_leads extends AdminController
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->model('shra/shra_model');
+        $this->load->model('shra/shra_leads_model', 'leads');
+        $this->load->helper('shra/shra');
+
+        if (!shra_leads_can('own')) {
+            access_denied('shra leads');
+        }
+    }
+
+    private function json($data)
+    {
+        header('Content-Type: application/json');
+        echo json_encode($data);
+    }
+
+    private function need($what)
+    {
+        if (!shra_leads_can($what)) {
+            if ($this->input->method() === 'post' || $this->input->is_ajax_request()) {
+                $this->json(['success' => false, 'message' => 'You do not have permission for this action.']);
+                exit;
+            }
+            access_denied('shra leads');
+        }
+    }
+
+    /** Load a lead the current user may access, or fail (JSON or 404). */
+    private function lead_or_fail($id, $json = false)
+    {
+        $l = $this->leads->get((int) $id);
+        if (!$l || !$this->leads->can_access($l)) {
+            if ($json) {
+                $this->json(['success' => false, 'message' => 'Lead not found or not yours.']);
+                exit;
+            }
+            show_404();
+        }
+
+        return $l;
+    }
+
+    private function result($res, $ok_message = 'Saved.', $extra = [])
+    {
+        if ($res === true || is_int($res)) {
+            $this->json(array_merge(['success' => true, 'message' => $ok_message], $extra));
+        } else {
+            $this->json(['success' => false, 'message' => is_string($res) ? $res : 'Could not save.']);
+        }
+    }
+
+    private function common()
+    {
+        return [
+            'agents'     => shra_lead_agents(),
+            'sources'    => $this->leads->sources(),
+            'packages'   => $this->shra_model->get_packages(true),
+            'slots'      => shra_lead_visit_slots(),
+            'reasons'    => shra_lead_lost_reasons(),
+            'outcomes'   => shra_lead_outcomes(),
+            'templates'  => shra_lead_wa_templates(),
+            'weekend'    => shra_lead_weekend_dates(),
+            'can_all'    => shra_leads_can('all'),
+            'can_manage' => shra_leads_can('manage'),
+        ];
+    }
+
+    /* ═══════════════════════ My Day ═══════════════════════ */
+
+    public function index()
+    {
+        $me    = get_staff_user_id();
+        $agent = (int) $this->input->get('agent') ?: $me;
+        if ($agent !== (int) $me && !shra_leads_can('all')) {
+            $agent = $me;
+        }
+        $data            = $this->common();
+        $data['title']   = 'Leads · My Day';
+        $data['agent']   = $agent;
+        $data['queues']  = $this->leads->queues_for($agent);
+        $data['month']   = $this->leads->my_month($agent);
+        $data['funnel']  = $this->leads->funnel_counts(!shra_leads_can('all'));
+        $data['no_shows'] = shra_leads_can('all') ? $this->leads->no_shows(20) : [];
+        $this->load->view('leads/myday', $data);
+    }
+
+    /* ═══════════════════════ Pipeline ═══════════════════════ */
+
+    public function pipeline()
+    {
+        $f = [
+            'agent'    => (int) $this->input->get('agent'),
+            'source'   => (int) $this->input->get('source'),
+            'q'        => trim((string) $this->input->get('q')),
+            'from'     => (string) $this->input->get('from'),
+            'to'       => (string) $this->input->get('to'),
+            'audience' => (string) $this->input->get('audience'),
+            'stage'    => (string) $this->input->get('stage'),
+            'overdue'  => (int) $this->input->get('overdue'),
+            'stale'    => (int) $this->input->get('stale'),
+        ];
+        $view = $this->input->get('view') === 'list' ? 'list' : 'board';
+        $list = $this->leads->get_list(array_filter($f), 1500);
+        $cols = [];
+        foreach (array_keys(shra_lead_stage_defs()) as $k) {
+            $cols[$k] = [];
+        }
+        foreach ($list as $l) {
+            $cols[$l->stage][] = $l;
+        }
+        $data            = $this->common();
+        $data['title']   = 'Leads · Pipeline';
+        $data['filters'] = $f;
+        $data['view']    = $view;
+        $data['list']    = $list;
+        $data['cols']    = $cols;
+        $this->load->view('leads/pipeline', $data);
+    }
+
+    public function export()
+    {
+        $this->need('manage');
+        $list = $this->leads->get_list(array_filter(['stage' => (string) $this->input->get('stage'), 'agent' => (int) $this->input->get('agent'), 'source' => (int) $this->input->get('source'),
+            'from' => (string) $this->input->get('from'), 'to' => (string) $this->input->get('to')]), 5000);
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="shra-leads-' . date('Ymd') . '.csv"');
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['ID', 'Name', 'Phone', 'Email', 'City', 'Source', 'Agent', 'Stage', 'Rider for', 'Age', 'Interest', 'Expected', 'Next action', 'Visit', 'Calls', 'Lost reason', 'Added', 'Won at']);
+        foreach ($list as $l) {
+            fputcsv($out, [$l->id, $l->name, $l->phonenumber, $l->email, $l->city, $l->source_name, $l->agent_name, shra_lead_stage_label($l->stage), $l->rider_for, $l->rider_age, $l->package_name,
+                $l->expected_value, $l->next_action_at, trim($l->visit_date . ' ' . $l->visit_slot), $l->call_attempts, $l->lost_reason, $l->dateadded, $l->won_at]);
+        }
+        fclose($out);
+    }
+
+    /* ═══════════════════════ Visits board ═══════════════════════ */
+
+    public function visits()
+    {
+        $wk   = shra_lead_weekend_dates();
+        $date = (string) $this->input->get('date');
+        if (!$date || !strtotime($date)) {
+            $date = date('Y-m-d');
+        }
+        $date = date('Y-m-d', strtotime($date));
+        $data              = $this->common();
+        $data['title']     = 'Leads · Visits';
+        $data['date']      = $date;
+        $data['groups']    = $this->leads->visits_for($date);
+        $data['no_shows']  = $this->leads->no_shows(50);
+        $data['counts']    = [];
+        foreach (array_unique([date('Y-m-d'), $wk['sat'], $wk['sun'], $date]) as $d) {
+            $n = 0;
+            foreach ($this->leads->visits_for($d) as $g) {
+                $n += count($g);
+            }
+            $data['counts'][$d] = $n;
+        }
+        $this->load->view('leads/visits', $data);
+    }
+
+    /* ═══════════════════════ Lead page ═══════════════════════ */
+
+    public function view($id)
+    {
+        $l = $this->lead_or_fail($id);
+        $data                = $this->common();
+        $data['title']       = 'Lead · ' . $l->name;
+        $data['lead']        = $l;
+        $data['events']      = $this->leads->events($l->id);
+        $data['attribution'] = $this->leads->attribution_for_lead($l->id);
+        $data['notes']       = $this->db->where('rel_type', 'lead')->where('rel_id', $l->id)->order_by('dateadded', 'DESC')->get(db_prefix() . 'notes')->result();
+        $data['rider']       = $l->rider_id ? $this->shra_model->get_rider($l->rider_id) : null;
+        $data['enrollments'] = $l->rider_id ? $this->shra_model->get_enrollments(['rider_id' => $l->rider_id], 20) : [];
+        $this->load->view('leads/view', $data);
+    }
+
+    /* ═══════════════════════ AJAX actions ═══════════════════════ */
+
+    public function check_phone()
+    {
+        $l = $this->leads->find_by_phone((string) $this->input->get('phone'));
+        if (!$l) {
+            $this->json(['exists' => false]);
+
+            return;
+        }
+        $this->json(['exists' => true, 'id' => $l->id, 'name' => $l->name, 'agent' => $l->agent_name ?: 'Unassigned', 'stage' => shra_lead_stage_label($l->stage),
+            'url' => shra_lead_url($l->id), 'mine' => $this->leads->can_access($l)]);
+    }
+
+    public function add()
+    {
+        $in = [
+            'name'                => $this->input->post('name'),
+            'phone'               => $this->input->post('phone'),
+            'email'               => $this->input->post('email'),
+            'city'                => $this->input->post('city'),
+            'source'              => (int) $this->input->post('source'),
+            'assigned'            => shra_leads_can('all') ? (int) $this->input->post('assigned') : get_staff_user_id(),
+            'rider_for'           => $this->input->post('rider_for'),
+            'rider_age'           => $this->input->post('rider_age'),
+            'interest_package_id' => (int) $this->input->post('interest_package_id'),
+            'expected_value'      => $this->input->post('expected_value'),
+            'description'         => $this->input->post('description'),
+            'next_action_at'      => $this->input->post('next_action_at'),
+            'campaign'            => $this->input->post('campaign'),
+        ];
+        if (!shra_leads_can('all') && !$in['assigned']) {
+            $in['assigned'] = get_staff_user_id();
+        }
+        $res = $this->leads->capture($in, 'manual');
+        if (is_string($res)) {
+            $this->json(['success' => false, 'message' => $res]);
+
+            return;
+        }
+        if (!empty($res['duplicate'])) {
+            $d = $res['lead'];
+            $this->json(['success' => false, 'duplicate' => true, 'message' => 'This number already belongs to "' . $d->name . '" (' . ($d->agent_name ?: 'unassigned') . ', ' . shra_lead_stage_label($d->stage) . '). Your attempt was logged on that lead.',
+                'url' => shra_lead_url($d->id), 'mine' => $this->leads->can_access($d)]);
+
+            return;
+        }
+        if ((int) $this->input->post('mark_visited') === 1 && shra_leads_can('all')) {
+            $this->leads->mark_visited($res['lead_id'], 'Walk-in');
+        }
+        $this->json(['success' => true, 'message' => 'Lead added.', 'id' => $res['lead_id'], 'url' => shra_lead_url($res['lead_id'])]);
+    }
+
+    public function log_call()
+    {
+        $l = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->log_call($l->id, (string) $this->input->post('outcome'), (string) $this->input->post('next_action_at'), trim((string) $this->input->post('note')), (string) $this->input->post('channel') ?: 'call');
+        $this->result($res, 'Call logged.', ['card' => $this->card($l->id)]);
+    }
+
+    public function schedule_visit()
+    {
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->schedule_visit($l->id, (string) $this->input->post('visit_date'), (string) $this->input->post('visit_slot'), trim((string) $this->input->post('note')));
+        $this->result($res, 'Visit scheduled.', ['card' => $this->card($l->id)]);
+    }
+
+    public function visited()
+    {
+        $this->need('all');
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->mark_visited($l->id, trim((string) $this->input->post('note')));
+        $this->result($res, 'Marked as visited.', ['card' => $this->card($l->id)]);
+    }
+
+    public function no_show()
+    {
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->mark_no_show($l->id, trim((string) $this->input->post('note')));
+        $this->result($res, 'No-show recorded — follow up today.', ['card' => $this->card($l->id)]);
+    }
+
+    public function confirm()
+    {
+        $this->need('all');
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->confirm($l->id, (int) $this->input->post('package_id'), $this->input->post('expected_value'), trim((string) $this->input->post('note')));
+        $this->result($res, 'Confirmed. Bill now to convert.', ['card' => $this->card($l->id), 'bill_url' => admin_url('shra/shra_leads/bill_now/' . $l->id)]);
+    }
+
+    public function lost()
+    {
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->mark_lost($l->id, (string) $this->input->post('reason'), trim((string) $this->input->post('note')));
+        $this->result($res, 'Marked lost.', ['card' => $this->card($l->id)]);
+    }
+
+    public function junk()
+    {
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->mark_junk($l->id, trim((string) $this->input->post('note')));
+        $this->result($res, 'Marked junk.', ['card' => $this->card($l->id)]);
+    }
+
+    public function reopen()
+    {
+        $this->need('manage');
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->reopen($l->id, trim((string) $this->input->post('note')));
+        $this->result($res, 'Reopened.', ['card' => $this->card($l->id)]);
+    }
+
+    public function stage()
+    {
+        $l  = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $to = (string) $this->input->post('to');
+        if (in_array($to, ['visited', 'confirmed']) && !shra_leads_can('all')) {
+            $this->json(['success' => false, 'message' => 'Only the front desk / manager can mark visits.']);
+
+            return;
+        }
+        if (in_array($to, ['followup']) && !$l->is_open && !shra_leads_can('manage')) {
+            $this->json(['success' => false, 'message' => 'Only a manager can reopen a closed lead.']);
+
+            return;
+        }
+        $res = $this->leads->set_stage($l->id, $to, [
+            'next_action_at' => (string) $this->input->post('next_action_at'),
+            'visit_date'     => (string) $this->input->post('visit_date'),
+            'visit_slot'     => (string) $this->input->post('visit_slot'),
+            'package_id'     => (int) $this->input->post('package_id'),
+            'expected_value' => $this->input->post('expected_value'),
+            'reason'         => (string) $this->input->post('reason'),
+            'note'           => trim((string) $this->input->post('note')),
+        ]);
+        $this->result($res, 'Moved.', ['card' => $this->card($l->id)]);
+    }
+
+    public function reassign()
+    {
+        $this->need('manage');
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->assign($l->id, (int) $this->input->post('staff_id'), trim((string) $this->input->post('note')));
+        $this->result($res, 'Reassigned.', ['card' => $this->card($l->id)]);
+    }
+
+    public function update_details()
+    {
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->update_details($l->id, $this->input->post());
+        $this->result($res, 'Details saved.');
+    }
+
+    public function note()
+    {
+        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $res = $this->leads->add_note($l->id, (string) $this->input->post('text'));
+        $this->result($res, 'Note added.');
+    }
+
+    /** Create/link the rider and open the counter pre-filled. */
+    public function bill_now($id)
+    {
+        if (!shra_can_billing() && !shra_leads_can('all')) {
+            access_denied('shra billing');
+        }
+        $l   = $this->lead_or_fail($id);
+        $res = $this->leads->convert_to_rider($l->id);
+        if (is_string($res)) {
+            set_alert('danger', $res);
+            redirect(shra_lead_url($l->id));
+        }
+        if (!shra_can_billing()) {
+            set_alert('success', 'Rider created. Ask the counter to bill rider #' . $res . '.');
+            redirect(shra_lead_url($l->id));
+        }
+        redirect(admin_url('shra/billing?rider=' . (int) $res . '&lead=' . (int) $l->id));
+    }
+
+    /** Lead matched to a phone for the billing screen banner. */
+    public function match()
+    {
+        $l = $this->leads->find_creditable_by_phone((string) $this->input->get('phone'));
+        if (!$l || !$l->is_open && $l->stage !== 'won') {
+            $this->json(['match' => false]);
+
+            return;
+        }
+        $this->json(['match' => true, 'id' => $l->id, 'name' => $l->name, 'agent' => $l->agent_name ?: 'Unassigned', 'stage' => shra_lead_stage_label($l->stage), 'url' => shra_lead_url($l->id), 'won' => $l->stage === 'won']);
+    }
+
+    /** Re-rendered card HTML after an action (queues / pipeline update in place). */
+    private function card($lead_id)
+    {
+        $l = $this->leads->get($lead_id);
+
+        return $this->load->view('leads/partials/lead_card', ['l' => $l, 'can_all' => shra_leads_can('all')], true);
+    }
+
+    /* ═══════════════════════ Team & reports ═══════════════════════ */
+
+    public function team()
+    {
+        $this->need('reports');
+        [$from, $to, $preset] = $this->range();
+        $data             = $this->common();
+        $data['title']    = 'Leads · Team';
+        $data['from']     = $from;
+        $data['to']       = $to;
+        $data['preset']   = $preset;
+        $data['rows']     = $this->leads->team_stats($from, $to);
+        $data['sources_stats'] = $this->leads->source_stats($from, $to);
+        $data['lost']     = $this->leads->lost_reasons($from, $to);
+        $data['funnel']   = $this->leads->funnel_counts(false);
+        $this->load->view('leads/team', $data);
+    }
+
+    private function range()
+    {
+        $preset = (string) ($this->input->get('range') ?: 'month');
+        $from   = (string) $this->input->get('from');
+        $to     = (string) $this->input->get('to');
+        switch ($preset) {
+            case 'today':      $from = $to = date('Y-m-d'); break;
+            case 'week':       $from = date('Y-m-d', strtotime('monday this week')); $to = date('Y-m-d'); break;
+            case 'last_month': $from = date('Y-m-01', strtotime('first day of last month')); $to = date('Y-m-t', strtotime('last day of last month')); break;
+            case 'quarter':    $from = date('Y-m-d', strtotime('-3 months')); $to = date('Y-m-d'); break;
+            case 'year':       $from = date('Y-01-01'); $to = date('Y-m-d'); break;
+            case 'all':        $from = '2000-01-01'; $to = date('Y-m-d'); break;
+            case 'custom':
+                $from = $from && strtotime($from) ? date('Y-m-d', strtotime($from)) : date('Y-m-01');
+                $to   = $to && strtotime($to) ? date('Y-m-d', strtotime($to)) : date('Y-m-d');
+                break;
+            default:           $preset = 'month'; $from = date('Y-m-01'); $to = date('Y-m-t');
+        }
+
+        return [$from, $to, $preset];
+    }
+
+    /* ═══════════════════════ Settings / import ═══════════════════════ */
+
+    public function settings()
+    {
+        $this->need('manage');
+        if ($this->input->post()) {
+            $post = $this->input->post(null, false);
+            foreach (['shra_lead_sla_minutes', 'shra_lead_stale_days', 'shra_lead_phone_country', 'shra_lead_repeat_credit_months', 'shra_lead_visit_slots', 'shra_lead_lost_reasons', 'shra_lead_wa_templates'] as $k) {
+                if (isset($post[$k])) {
+                    update_option($k, trim((string) $post[$k]));
+                }
+            }
+            update_option('shra_lead_auto_assign', !empty($post['shra_lead_auto_assign']) ? '1' : '0');
+            update_option('shra_lead_manager_digest', !empty($post['shra_lead_manager_digest']) ? '1' : '0');
+            update_option('shra_lead_public_enabled', !empty($post['shra_lead_public_enabled']) ? '1' : '0');
+            update_option('shra_lead_agent_pool', json_encode(array_map('intval', (array) ($post['pool'] ?? []))));
+            if (!empty($post['new_source'])) {
+                $n = trim($post['new_source']);
+                if ($n !== '' && !$this->db->where('name', $n)->get(db_prefix() . 'leads_sources')->row()) {
+                    $this->db->insert(db_prefix() . 'leads_sources', ['name' => $n]);
+                }
+            }
+            foreach ((array) ($post['source_cost'] ?? []) as $sid => $cost) {
+                $this->leads->save_source_cost((int) $sid, $cost);
+            }
+            if (!empty($post['targets_month']) && isset($post['t'])) {
+                $this->leads->save_targets(substr($post['targets_month'], 0, 7), (array) $post['t']);
+            }
+            set_alert('success', 'Lead settings saved.');
+            redirect(admin_url('shra/shra_leads/settings?month=' . ($post['targets_month'] ?? date('Y-m'))));
+        }
+        $month              = preg_match('/^\d{4}-\d{2}$/', (string) $this->input->get('month')) ? $this->input->get('month') : date('Y-m');
+        $data               = $this->common();
+        $data['title']      = 'Leads · Settings';
+        $data['pool']       = array_map('intval', json_decode((string) get_option('shra_lead_agent_pool'), true) ?: []);
+        $data['all_agents'] = shra_lead_agents(false);
+        $data['month']      = $month;
+        $data['targets']    = $this->leads->get_targets($month);
+        $data['inquire_url'] = site_url('inquire');
+        $data['inquire_qr']  = shra_qr_svg(site_url('inquire'), 5);
+        $this->load->view('leads/settings', $data);
+    }
+
+    public function import()
+    {
+        $this->need('manage');
+        $data            = $this->common();
+        $data['title']   = 'Leads · Import';
+        $data['result']  = null;
+        $data['csv']     = '';
+        $data['commit']  = false;
+        if ($this->input->post()) {
+            $csv = (string) $this->input->post('csv', false);
+            if (!empty($_FILES['file']['tmp_name']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
+                $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+            }
+            $commit = (int) $this->input->post('commit') === 1;
+            $data['result'] = $this->leads->import_csv($csv, $commit, (int) $this->input->post('default_source'), (int) $this->input->post('default_agent'));
+            $data['csv']    = $csv;
+            $data['commit'] = $commit;
+            $data['default_source'] = (int) $this->input->post('default_source');
+            $data['default_agent']  = (int) $this->input->post('default_agent');
+        }
+        $this->load->view('leads/import', $data);
+    }
+}

@@ -192,3 +192,264 @@ function shra_pay_badge($e)
 
     return '<span class="shra-badge ' . $cls . '">' . $txt . '</span>';
 }
+
+/* ═══════════════════════ Leads (v1.3) ═══════════════════════ */
+
+/** Capability check for the leads sub-system: own | all | manage | reports. */
+function shra_leads_can($what = 'own')
+{
+    if (is_admin()) {
+        return true;
+    }
+    switch ($what) {
+        case 'own':
+            return has_permission('shra', '', 'leads_own') || has_permission('shra', '', 'leads_all') || has_permission('shra', '', 'leads_manage');
+        case 'all':
+            return has_permission('shra', '', 'leads_all') || has_permission('shra', '', 'leads_manage');
+        case 'manage':
+            return has_permission('shra', '', 'leads_manage');
+        case 'reports':
+            return has_permission('shra', '', 'leads_reports') || has_permission('shra', '', 'leads_manage');
+    }
+
+    return false;
+}
+
+/** Ordered funnel definition: key => [label, order, color]. */
+function shra_lead_stage_defs()
+{
+    return [
+        'new'             => ['New', 10, '#5b8def'],
+        'contacted'       => ['Contacted', 20, '#8e7cc3'],
+        'followup'        => ['Follow-up', 30, '#d4a017'],
+        'visit_scheduled' => ['Visit Scheduled', 40, '#e67e22'],
+        'visited'         => ['Visited', 50, '#2e86c1'],
+        'confirmed'       => ['Visited & Confirmed', 60, '#1e8449'],
+        'won'             => ['Customer', 1000, '#7cb342'],
+        'lost'            => ['Lost', 2000, '#a8322d'],
+        'junk'            => ['Junk', 3000, '#9e9e9e'],
+    ];
+}
+
+function shra_lead_open_stages()
+{
+    return ['new', 'contacted', 'followup', 'visit_scheduled', 'visited', 'confirmed'];
+}
+
+/** key => tblleads_status.id */
+function shra_lead_stage_ids()
+{
+    static $map = null;
+    if ($map === null) {
+        $map = json_decode((string) get_option('shra_lead_stage_map'), true) ?: [];
+    }
+
+    return $map;
+}
+
+function shra_lead_stage_id($key)
+{
+    $map = shra_lead_stage_ids();
+
+    return isset($map[$key]) ? (int) $map[$key] : 0;
+}
+
+function shra_lead_stage_key_from_status($status_id)
+{
+    foreach (shra_lead_stage_ids() as $k => $id) {
+        if ((int) $id === (int) $status_id) {
+            return $k;
+        }
+    }
+
+    return 'new';
+}
+
+function shra_lead_stage_label($key)
+{
+    $d = shra_lead_stage_defs();
+
+    return isset($d[$key]) ? $d[$key][0] : ucfirst($key);
+}
+
+function shra_lead_stage_badge($key)
+{
+    $d     = shra_lead_stage_defs();
+    $color = isset($d[$key]) ? $d[$key][2] : '#7a6f5e';
+
+    return '<span class="shra-badge shra-stage" style="background:' . $color . '1a;color:' . $color . '">' . html_escape(shra_lead_stage_label($key)) . '</span>';
+}
+
+/** Call outcomes: key => [label, counts as contact?, needs next action?] */
+function shra_lead_outcomes()
+{
+    return [
+        'interested'         => ['Interested', true, true],
+        'callback_requested' => ['Call back later', true, true],
+        'whatsapp_sent'      => ['WhatsApp sent', false, true],
+        'no_answer'          => ['No answer', false, true],
+        'busy'               => ['Busy', false, true],
+        'switched_off'       => ['Switched off', false, true],
+        'not_interested'     => ['Not interested', true, false],
+        'wrong_number'       => ['Wrong number', false, false],
+    ];
+}
+
+function shra_lead_lines_option($key)
+{
+    $raw = (string) get_option($key);
+
+    return array_values(array_filter(array_map('trim', preg_split('/\r?\n/', $raw)), 'strlen'));
+}
+
+function shra_lead_visit_slots()
+{
+    $s = shra_lead_lines_option('shra_lead_visit_slots');
+
+    return count($s) ? $s : ['Sat 07:00-08:00', 'Sun 07:00-08:00', 'Weekday (any time)'];
+}
+
+function shra_lead_lost_reasons()
+{
+    $s = shra_lead_lines_option('shra_lead_lost_reasons');
+
+    return count($s) ? $s : ['Price too high', 'Not interested', 'Other'];
+}
+
+/** [['title'=>..,'text'=>..], ...] */
+function shra_lead_wa_templates()
+{
+    $out = [];
+    foreach (shra_lead_lines_option('shra_lead_wa_templates') as $line) {
+        $parts = explode('|', $line, 2);
+        if (count($parts) === 2) {
+            $out[] = ['title' => trim($parts[0]), 'text' => trim($parts[1])];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Digits-only phone used as the duplicate key. Strips the country code
+ * (option shra_lead_phone_country, default 91) and a leading trunk 0.
+ */
+function shra_phone_norm($raw)
+{
+    $d  = preg_replace('/\D+/', '', (string) $raw);
+    $cc = preg_replace('/\D+/', '', (string) get_option('shra_lead_phone_country'));
+    if ($cc !== '' && strlen($d) > 10 && strpos($d, $cc) === 0) {
+        $d = substr($d, strlen($cc));
+    }
+    $d = ltrim($d, '0');
+
+    return $d;
+}
+
+function shra_phone_valid($raw)
+{
+    $n = shra_phone_norm($raw);
+
+    return strlen($n) >= 8 && strlen($n) <= 13;
+}
+
+/** wa.me link with an optional prefilled message. */
+function shra_wa_link($phone, $text = '')
+{
+    $cc = preg_replace('/\D+/', '', (string) get_option('shra_lead_phone_country'));
+    $n  = shra_phone_norm($phone);
+    if ($n === '') {
+        return '#';
+    }
+
+    return 'https://wa.me/' . $cc . $n . ($text !== '' ? '?text=' . rawurlencode($text) : '');
+}
+
+/** Fill {name} {agent} {academy} {visit} placeholders. */
+function shra_lead_fill_template($text, $lead)
+{
+    $visit = '';
+    if (!empty($lead->visit_date)) {
+        $visit = date('D d M', strtotime($lead->visit_date)) . (!empty($lead->visit_slot) ? ' (' . $lead->visit_slot . ')' : '');
+    }
+
+    return strtr((string) $text, [
+        '{name}'    => trim((string) ($lead->name ?? '')),
+        '{agent}'   => is_staff_logged_in() ? get_staff_full_name(get_staff_user_id()) : '',
+        '{academy}' => get_option('shra_academy_name') ?: 'SHRA',
+        '{visit}'   => $visit,
+    ]);
+}
+
+/** Humanised "in 2 h" / "3 d overdue". */
+function shra_lead_due_text($datetime)
+{
+    if (empty($datetime)) {
+        return '<span class="shra-muted">no follow-up set</span>';
+    }
+    $ts   = strtotime($datetime);
+    $diff = $ts - time();
+    $abs  = abs($diff);
+    if ($abs < 3600) {
+        $t = max(1, round($abs / 60)) . ' min';
+    } elseif ($abs < 86400) {
+        $t = round($abs / 3600) . ' h';
+    } else {
+        $t = round($abs / 86400) . ' d';
+    }
+    if ($diff < 0) {
+        return '<span class="shra-due shra-due-over"><i class="fa fa-exclamation-circle"></i> ' . $t . ' overdue</span>';
+    }
+    if (date('Y-m-d', $ts) === date('Y-m-d')) {
+        return '<span class="shra-due shra-due-today"><i class="fa fa-clock"></i> today ' . date('H:i', $ts) . '</span>';
+    }
+
+    return '<span class="shra-due"><i class="fa fa-calendar"></i> ' . date('D d M', $ts) . '</span>';
+}
+
+/** Staff who can work leads (have leads_own / leads_all / leads_manage or are admins). */
+function shra_lead_agents($active_only = true)
+{
+    $CI = &get_instance();
+    $p  = db_prefix();
+    $q  = "SELECT s.staffid, s.firstname, s.lastname, s.email, s.admin, s.active, s.profile_image,
+              CONCAT(s.firstname,' ',s.lastname) AS full_name
+           FROM {$p}staff s
+           WHERE " . ($active_only ? 's.active = 1 AND ' : '') . "(s.admin = 1 OR EXISTS (
+              SELECT 1 FROM {$p}staff_permissions sp WHERE sp.staff_id = s.staffid AND sp.feature = 'shra'
+                AND sp.capability IN ('leads_own','leads_all','leads_manage')))
+           ORDER BY s.admin ASC, s.firstname ASC";
+
+    return $CI->db->query($q)->result();
+}
+
+/** Managers: staff with leads_manage (or admins). */
+function shra_lead_manager_ids()
+{
+    $CI = &get_instance();
+    $p  = db_prefix();
+    $q  = "SELECT s.staffid FROM {$p}staff s WHERE s.active = 1 AND (s.admin = 1 OR EXISTS (
+              SELECT 1 FROM {$p}staff_permissions sp WHERE sp.staff_id = s.staffid AND sp.feature = 'shra' AND sp.capability = 'leads_manage'))";
+
+    return array_map(function ($r) { return (int) $r->staffid; }, $CI->db->query($q)->result());
+}
+
+function shra_lead_url($lead_id)
+{
+    return admin_url('shra/shra_leads/view/' . (int) $lead_id);
+}
+
+/** Next Saturday / Sunday dates (today if today is that day). */
+function shra_lead_weekend_dates()
+{
+    $sat = date('Y-m-d', strtotime('saturday this week'));
+    $sun = date('Y-m-d', strtotime('sunday this week'));
+    if ($sat < date('Y-m-d')) {
+        $sat = date('Y-m-d', strtotime('next saturday'));
+    }
+    if ($sun < date('Y-m-d')) {
+        $sun = date('Y-m-d', strtotime('next sunday'));
+    }
+
+    return ['sat' => $sat, 'sun' => $sun];
+}

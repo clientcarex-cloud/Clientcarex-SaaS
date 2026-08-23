@@ -586,7 +586,17 @@ class Shra_model extends App_Model
 
         log_activity('SHRA bill created [Invoice #' . $invoice_id . ', ' . $rider->rider_no . ', ' . $package->name . ', ' . shra_money($quote['total']) . ']');
 
-        return ['enrollment_id' => $enrollment_id, 'invoice_id' => $invoice_id, 'quote' => $quote];
+        // Leads desk: freeze revenue credit to the agent who brought this rider (never blocks billing)
+        $lead_id = null;
+        if ($enrollment_id && $this->db->table_exists(db_prefix() . 'shra_lead_attribution')) {
+            $this->load->model('shra/shra_leads_model');
+            $lead_id = $this->shra_leads_model->credit_revenue($enrollment_id, $invoice_id, $rider, [
+                'lead_id'     => (int) ($opts['lead_id'] ?? 0),
+                'credit_lead' => isset($opts['credit_lead']) ? (string) $opts['credit_lead'] : '1',
+            ]);
+        }
+
+        return ['enrollment_id' => $enrollment_id, 'invoice_id' => $invoice_id, 'quote' => $quote, 'lead_id' => $lead_id];
     }
 
     /* ═══════════════════════ Payments ═══════════════════════ */
@@ -701,6 +711,11 @@ class Shra_model extends App_Model
             $upd['payment_mode'] = $e->payment_mode && stripos($e->payment_mode, $name) === false ? $e->payment_mode . ', ' . $name : $name;
         }
         $this->db->where('id', $e->id)->update($p . 'shra_enrollments', $upd);
+
+        if ($this->db->table_exists($p . 'shra_lead_attribution')) {
+            $this->load->model('shra/shra_leads_model');
+            $this->shra_leads_model->sync_attribution_paid($e->id);
+        }
     }
 
     public function get_enrollment($id)

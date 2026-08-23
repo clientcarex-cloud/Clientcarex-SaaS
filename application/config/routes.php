@@ -198,6 +198,9 @@ $route['join']                         = 'shra/shra_public/register';
 $route['join/(:any)']                  = 'shra/shra_public/register/$1';
 $route['join/(:any)/(:any)']           = 'shra/shra_public/register/$1/$2';
 $route['join/(:any)/(:any)/(:any)']    = 'shra/shra_public/register/$1/$2/$3';
+// /inquire[/done]                    public lead inquiry form (SHRA leads desk)
+$route['inquire']                      = 'shra/shra_public/inquire';
+$route['inquire/(:any)']               = 'shra/shra_public/inquire/$1';
 
 // Short URLs for public live voting (voting module)
 // /vote/{code} = telecast screen (question + QR + live results)

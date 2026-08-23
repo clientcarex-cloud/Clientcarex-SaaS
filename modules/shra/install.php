@@ -3,7 +3,7 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * SHRA module — schema + seed data.
+ * SHRA module — schema + seed data (riders, billing, attendance, leads).
  * Safe to run repeatedly (activation + schema self-heal on admin_init).
  */
 
@@ -293,4 +293,197 @@ $shra_dir = FCPATH . 'uploads/shra/';
 if (!is_dir($shra_dir)) {
     @mkdir($shra_dir, 0755, true);
     @file_put_contents($shra_dir . 'index.html', '');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * v1.3.0 — Leads management (calling agents, visits, revenue attribution)
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+// ── Lead extension (1:1 with tblleads) ──
+if (!$CI->db->table_exists($p . 'shra_lead_ext')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_lead_ext` (
+        `lead_id` INT(11) NOT NULL COMMENT 'tblleads.id',
+        `phone_norm` VARCHAR(20) NOT NULL COMMENT 'digits only, dedupe key',
+        `stage_key` VARCHAR(30) NOT NULL DEFAULT 'new',
+        `rider_for` VARCHAR(10) NOT NULL DEFAULT 'self' COMMENT 'self | child | both',
+        `rider_age` TINYINT(3) UNSIGNED DEFAULT NULL,
+        `audience` VARCHAR(10) DEFAULT NULL COMMENT 'children | adults',
+        `interest_package_id` INT(11) UNSIGNED DEFAULT NULL,
+        `expected_value` DECIMAL(15,2) NOT NULL DEFAULT 0,
+        `next_action_at` DATETIME DEFAULT NULL COMMENT 'required while open',
+        `next_action_type` VARCHAR(12) NOT NULL DEFAULT 'call' COMMENT 'call | whatsapp | visit | other',
+        `visit_date` DATE DEFAULT NULL,
+        `visit_slot` VARCHAR(40) DEFAULT NULL,
+        `visit_reminder_id` INT(11) DEFAULT NULL,
+        `visited_at` DATETIME DEFAULT NULL,
+        `visited_by` INT(11) DEFAULT NULL,
+        `confirmed_at` DATETIME DEFAULT NULL,
+        `first_contact_at` DATETIME DEFAULT NULL,
+        `no_show_count` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+        `call_attempts` SMALLINT(5) UNSIGNED NOT NULL DEFAULT 0,
+        `last_outcome` VARCHAR(30) DEFAULT NULL,
+        `lost_reason` VARCHAR(40) DEFAULT NULL,
+        `lost_note` VARCHAR(255) DEFAULT NULL,
+        `is_stale` TINYINT(1) NOT NULL DEFAULT 0,
+        `sla_notified` TINYINT(1) NOT NULL DEFAULT 0,
+        `rider_id` INT(11) UNSIGNED DEFAULT NULL,
+        `first_enrollment_id` INT(11) UNSIGNED DEFAULT NULL,
+        `won_at` DATETIME DEFAULT NULL,
+        `campaign` VARCHAR(80) DEFAULT NULL,
+        `referrer_rider_id` INT(11) UNSIGNED DEFAULT NULL,
+        `ip_address` VARCHAR(45) DEFAULT NULL,
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`lead_id`),
+        UNIQUE KEY `phone_norm` (`phone_norm`),
+        KEY `stage_key` (`stage_key`),
+        KEY `next_action_at` (`next_action_at`),
+        KEY `visit_date` (`visit_date`),
+        KEY `rider_id` (`rider_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Append-only lead audit ──
+if (!$CI->db->table_exists($p . 'shra_lead_events')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_lead_events` (
+        `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `lead_id` INT(11) NOT NULL,
+        `staff_id` INT(11) DEFAULT NULL,
+        `event_type` VARCHAR(30) NOT NULL,
+        `outcome` VARCHAR(30) DEFAULT NULL,
+        `from_value` VARCHAR(60) DEFAULT NULL,
+        `to_value` VARCHAR(60) DEFAULT NULL,
+        `note` TEXT DEFAULT NULL,
+        `meta` TEXT DEFAULT NULL COMMENT 'json',
+        `ip` VARCHAR(45) DEFAULT NULL,
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `lead_created` (`lead_id`, `created_at`),
+        KEY `staff_created` (`staff_id`, `created_at`),
+        KEY `type_created` (`event_type`, `created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Frozen revenue credit ──
+if (!$CI->db->table_exists($p . 'shra_lead_attribution')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_lead_attribution` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `lead_id` INT(11) NOT NULL,
+        `agent_id` INT(11) NOT NULL COMMENT 'tblstaff.staffid credited',
+        `rider_id` INT(11) UNSIGNED DEFAULT NULL,
+        `enrollment_id` INT(11) UNSIGNED NOT NULL,
+        `invoice_id` INT(11) DEFAULT NULL,
+        `kind` VARCHAR(10) NOT NULL DEFAULT 'first' COMMENT 'first | repeat',
+        `amount_billed` DECIMAL(15,2) NOT NULL DEFAULT 0,
+        `amount_paid` DECIMAL(15,2) NOT NULL DEFAULT 0,
+        `source_id` INT(11) DEFAULT NULL,
+        `credited_by` INT(11) DEFAULT NULL,
+        `credited_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `locked` TINYINT(1) NOT NULL DEFAULT 1,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `enrollment_id` (`enrollment_id`),
+        KEY `agent_credited` (`agent_id`, `credited_at`),
+        KEY `lead_id` (`lead_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Monthly targets per agent ──
+if (!$CI->db->table_exists($p . 'shra_lead_targets')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_lead_targets` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `staff_id` INT(11) NOT NULL,
+        `month` CHAR(7) NOT NULL COMMENT 'YYYY-MM',
+        `calls_target` INT(11) NOT NULL DEFAULT 0,
+        `visits_target` INT(11) NOT NULL DEFAULT 0,
+        `revenue_target` DECIMAL(15,2) NOT NULL DEFAULT 0,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `staff_month` (`staff_id`, `month`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Per-source spend (CPL / ROI) ──
+if (!$CI->db->table_exists($p . 'shra_lead_sources_meta')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_lead_sources_meta` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `source_id` INT(11) NOT NULL,
+        `monthly_cost` DECIMAL(15,2) NOT NULL DEFAULT 0,
+        `active` TINYINT(1) NOT NULL DEFAULT 1,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `source_id` (`source_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Funnel stages → core tblleads_status (keeps native Perfex leads working) ──
+$stage_defs = [
+    'new'             => ['New', 10, '#5b8def'],
+    'contacted'       => ['Contacted', 20, '#8e7cc3'],
+    'followup'        => ['Follow-up', 30, '#d4a017'],
+    'visit_scheduled' => ['Visit Scheduled', 40, '#e67e22'],
+    'visited'         => ['Visited', 50, '#2e86c1'],
+    'confirmed'       => ['Visited & Confirmed', 60, '#1e8449'],
+    'won'             => ['Customer', 1000, '#7cb342'],
+];
+$stage_map = json_decode((string) get_option('shra_lead_stage_map'), true) ?: [];
+foreach ($stage_defs as $key => $d) {
+    $row = null;
+    if (!empty($stage_map[$key])) {
+        $row = $CI->db->where('id', (int) $stage_map[$key])->get($p . 'leads_status')->row();
+    }
+    if (!$row && $key === 'won') {
+        $row = $CI->db->where('isdefault', 1)->get($p . 'leads_status')->row();
+    }
+    if (!$row) {
+        $row = $CI->db->where('name', $d[0])->get($p . 'leads_status')->row();
+    }
+    if (!$row) {
+        $CI->db->insert($p . 'leads_status', ['name' => $d[0], 'statusorder' => $d[1], 'color' => $d[2], 'isdefault' => $key === 'won' ? 1 : 0]);
+        $id = $CI->db->insert_id();
+    } else {
+        $id = $row->id;
+        if ($key !== 'won') {
+            $CI->db->where('id', $id)->update($p . 'leads_status', ['statusorder' => $d[1]]);
+        }
+    }
+    $stage_map[$key] = (int) $id;
+}
+update_option('shra_lead_stage_map', json_encode($stage_map));
+
+// ── Lead sources ──
+foreach (['Walk-in', 'Phone Inquiry', 'Instagram', 'Facebook', 'Google', 'WhatsApp', 'Referral', 'School Tie-up', 'Event / Camp', 'Justdial', 'Website QR', 'Other'] as $src) {
+    $exists = $CI->db->where('name', $src)->get($p . 'leads_sources')->row();
+    if (!$exists) {
+        $CI->db->insert($p . 'leads_sources', ['name' => $src]);
+    }
+}
+
+// ── Roles (only created when missing; admins can edit them under Setup → Roles) ──
+$role_defs = [
+    'SHRA Calling Agent' => ['shra' => ['leads_own']],
+    'SHRA Sales Manager' => ['shra' => ['view', 'leads_own', 'leads_all', 'leads_manage', 'leads_reports', 'billing']],
+];
+foreach ($role_defs as $rname => $perms) {
+    $exists = $CI->db->where('name', $rname)->get($p . 'roles')->row();
+    if (!$exists) {
+        $CI->db->insert($p . 'roles', ['name' => $rname, 'permissions' => serialize($perms)]);
+    }
+}
+
+// ── Lead options ──
+$lead_defaults = [
+    'shra_lead_sla_minutes'          => '120',
+    'shra_lead_stale_days'           => '7',
+    'shra_lead_auto_assign'          => '1',
+    'shra_lead_agent_pool'           => '[]',
+    'shra_lead_phone_country'        => '91',
+    'shra_lead_repeat_credit_months' => '12',
+    'shra_lead_manager_digest'       => '1',
+    'shra_lead_visit_slots'          => "Sat 07:00-08:00\nSat 08:00-09:00\nSat 16:00-17:00\nSat 17:00-18:00\nSun 07:00-08:00\nSun 08:00-09:00\nSun 16:00-17:00\nSun 17:00-18:00\nWeekday (any time)",
+    'shra_lead_lost_reasons'         => "Price too high\nDistance / location\nTiming doesn't suit\nChild too young\nJoined a competitor\nNo response after 5+ calls\nNot interested anymore\nOther",
+    'shra_lead_wa_templates'         => "Intro|Hello {name}, this is {agent} from {academy}. Thank you for your interest in horse riding! May I share our packages and a good time for a visit?\nVisit reminder|Hi {name}, reminder of your visit to {academy} on {visit}. Please wear full-length trousers and closed shoes. See you there!\nOffer|Hi {name}, {academy} has a limited-time offer on packages this month. Shall I reserve a slot for you?",
+    'shra_lead_last_cron'            => '0',
+    'shra_lead_last_digest'          => '',
+    'shra_lead_public_enabled'       => '1',
+];
+foreach ($lead_defaults as $k => $v) {
+    add_option($k, $v);
 }

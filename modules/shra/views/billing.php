@@ -11,6 +11,8 @@
     <input type="hidden" name="package_id" id="shra-package-id">
     <input type="hidden" name="bill_token" id="shra-bill-token" value="<?php echo $bill_token; ?>">
     <input type="hidden" name="force" id="shra-bill-force" value="0">
+    <input type="hidden" name="lead_id" id="shra-lead-id" value="<?php echo $lead ? (int) $lead->id : ''; ?>" <?php echo $lead ? 'data-fixed="1"' : ''; ?>>
+    <input type="hidden" name="credit_lead" id="shra-credit-lead" value="1">
     <div class="shra-bill">
         <div>
             <div class="shra-card"><div class="shra-card-body">
@@ -31,6 +33,9 @@
                 </div>
                 <div id="shra-picked" class="shra-picked" style="display:none"></div>
                 <div id="shra-rider-flags" style="margin-top:10px"></div>
+                <div id="shra-lead-banner" style="margin-top:10px;<?php echo $lead ? '' : 'display:none'; ?>">
+                    <?php if ($lead) { ?><div class="shra-alert shra-alert-warn"><i class="fa-solid fa-headset"></i> Billing lead <a href="<?php echo shra_lead_url($lead->id); ?>" target="_blank"><b><?php echo html_escape($lead->name); ?></b></a> · <?php echo shra_lead_stage_label($lead->stage); ?> · revenue will be credited to <b><?php echo html_escape($lead->agent_name ?: 'Unassigned'); ?></b>.</div><?php } ?>
+                </div>
             </div></div>
 
             <div class="shra-card shra-mt"><div class="shra-card-body">
@@ -107,6 +112,10 @@ $(function () {
         preselect: <?php echo $preselect ? json_encode($preselect) : 'null'; ?>,
         urls: { bill: <?php echo json_encode(admin_url('shra/bill')); ?>, quick: <?php echo json_encode(admin_url('shra/quick_rider')); ?>, collect: <?php echo json_encode(admin_url('shra/collect')); ?>, attendance: <?php echo json_encode(admin_url('shra/attendance')); ?> }
     });
+    <?php if (shra_leads_can('own') || shra_can_billing()) { ?>
+    window.SHRA_LEADS_CFG = window.SHRA_LEADS_CFG || { urls: {}, templates: [], canAll: <?php echo shra_leads_can('all') ? 'true' : 'false'; ?> };
+    if (SHRA.leadMatch) { SHRA.leadMatch(<?php echo json_encode(admin_url('shra/shra_leads/match')); ?>); }
+    <?php } ?>
 });
 </script>
 </body>

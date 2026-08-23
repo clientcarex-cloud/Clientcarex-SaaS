@@ -100,6 +100,7 @@
       $('input[name=audience][value=' + aud + ']').prop('checked', true);
       $('#shra-rider-id').val(r.id);
       $('#shra-bill-force').val(0);
+      $(document).trigger('shra:riderPicked', [r]);
       var flags = [];
       if (+r.attended_today > 0) { flags.push('<span class="shra-badge shra-badge-green"><i class="fa fa-check"></i> Attended today</span>'); }
       if (+r.sessions_left > 0) { flags.push('<span class="shra-badge shra-badge-gold">' + r.sessions_left + ' session' + (+r.sessions_left === 1 ? '' : 's') + ' still unused</span>'); }

@@ -106,6 +106,14 @@ $hours = []; foreach ($R['by_hour'] as $r) { $hours[] = (object) ['k' => date('g
         <div class="shra-card"><div class="shra-card-head"><h4>Learner packages vs guest rides</h4></div><div class="shra-card-body"><?php $typ = array_map(function ($r) { $r->k = ucfirst($r->k) . ' (' . (int) $r->n . ')'; return $r; }, $R['by_type']); echo $hbars($typ, 'k', 'billed', $money, 'var(--brown)'); ?></div></div>
     </div>
 
+    <?php if (!empty($lead_agents)) { ?>
+    <div class="shra-rep-title">Revenue by calling agent <span class="thin" style="font-weight:500;font-size:12px">· credited at billing to the agent who owned the lead · <a href="<?php echo admin_url('shra/shra_leads/team?range=custom&from=' . $from . '&to=' . $to); ?>">full team report</a></span></div>
+    <div class="shra-rep-grid">
+        <div class="shra-card"><div class="shra-card-head"><h4>By agent</h4></div><div class="shra-card-body"><?php $ag = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->won . ' joined)'; return $r; }, array_values(array_filter($lead_agents, function ($r) { return $r->revenue > 0; }))); echo count($ag) ? $hbars($ag, 'k', 'revenue', $money, 'var(--green)') : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>By lead source</h4></div><div class="shra-card-body"><?php $sr = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->leads . ' leads)'; return $r; }, array_values(array_filter($lead_sources, function ($r) { return $r->revenue > 0; }))); echo count($sr) ? $hbars($sr, 'k', 'revenue', $money, 'var(--brown)') : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
+    </div>
+    <?php } ?>
+
     <div class="shra-rep-title">Academy activity</div>
     <div class="shra-kpis">
         <div class="shra-kpi"><div class="l">Sessions held</div><div class="v"><?php echo (int) $k['sessions_held']; ?></div><div class="s"><?php echo $k['riding_days'] ? round($k['sessions_held'] / $k['riding_days'], 1) : 0; ?> per riding day · <?php echo (int) $k['riding_days']; ?> day<?php echo $k['riding_days'] == 1 ? '' : 's'; ?> with rides</div></div>

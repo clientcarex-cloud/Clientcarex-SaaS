@@ -12,6 +12,16 @@ if (shra_can_billing()) {
 if (shra_can_attendance()) {
     $shra_tabs[] = ['attendance', 'shra/attendance', 'fa-solid fa-clipboard-check', _l('shra_attendance')];
 }
+if (shra_leads_can('own')) {
+    $shra_tabs[] = ['leads', 'shra_leads', 'fa-solid fa-phone-volume', 'Leads'];
+    $shra_tabs[] = ['pipeline', 'shra_leads/pipeline', 'fa-solid fa-diagram-project', 'Pipeline'];
+}
+if (shra_leads_can('all') || shra_can_billing()) {
+    $shra_tabs[] = ['visits', 'shra_leads/visits', 'fa-solid fa-calendar-check', 'Visits'];
+}
+if (shra_leads_can('reports')) {
+    $shra_tabs[] = ['team', 'shra_leads/team', 'fa-solid fa-ranking-star', 'Team'];
+}
 if (shra_can('view')) {
     $shra_tabs[] = ['reports', 'shra/reports', 'fa-solid fa-chart-column', 'Reports'];
 }
@@ -35,6 +45,9 @@ if (is_admin()) {
         <?php } ?>
         <?php if (shra_can('create')) { ?>
             <a href="<?php echo admin_url('shra/rider_form'); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa fa-user-plus"></i> New rider</a>
+        <?php } ?>
+        <?php if (shra_leads_can('own')) { ?>
+            <button type="button" class="shra-btn shra-btn-gold shra-btn-sm" data-shra-lead-add><i class="fa fa-plus"></i> New lead</button>
         <?php } ?>
         <?php if (shra_can_billing()) { ?>
             <a href="<?php echo admin_url('shra/billing'); ?>" class="shra-btn shra-btn-primary shra-btn-sm"><i class="fa-solid fa-cash-register"></i> New bill</a>

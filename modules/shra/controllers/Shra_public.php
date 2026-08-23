@@ -111,6 +111,82 @@ class Shra_public extends App_Controller
         $this->load->view('public_register', $data);
     }
 
+    /* ═══════════════════════ Public inquiry (leads) ═══════════════════════ */
+
+    /**
+     *   /inquire            short interest form → lead (source "Website QR", round-robin assigned)
+     *   /inquire/done       thank-you page
+     */
+    public function inquire($action = '')
+    {
+        if (get_option('shra_lead_public_enabled') !== '1') {
+            return $this->error('Inquiries closed', 'Please call the academy directly.');
+        }
+        if ($action === 'done') {
+            return $this->load->view('public_inquire_success', ['title' => 'Thank you — ' . get_option('shra_academy_name')]);
+        }
+
+        $this->load->model('shra/shra_leads_model');
+        $packages = $this->shra_model->get_packages(true);
+        $data     = [
+            'title'    => 'Inquire — ' . get_option('shra_academy_name'),
+            'packages' => $packages,
+            'offer'    => shra_offer(),
+            'errors'   => [],
+            'old'      => [],
+            'ts'       => time(),
+        ];
+        $data['sig'] = shra_sign('inquire|' . $data['ts']);
+
+        if ($this->input->post()) {
+            $post   = $this->input->post(null, true);
+            $errors = [];
+            // Anti-spam: honeypot, signed timestamp (3 s .. 3 h), per-IP rate limit
+            if (!empty($post['website'])) {
+                $errors[] = 'Submission rejected.';
+            }
+            $ts = (int) ($post['ts'] ?? 0);
+            if (!shra_verify_sign('inquire|' . $ts, (string) ($post['sig'] ?? '')) || time() - $ts < 3 || time() - $ts > 10800) {
+                $errors[] = 'The form expired — please try again.';
+            }
+            $ip    = $this->input->ip_address();
+            $count = $this->db->where('ip', $ip)->where('event_type', 'created')->where('created_at >=', date('Y-m-d H:i:s', time() - 3600))->count_all_results(db_prefix() . 'shra_lead_events');
+            if ($count >= 5) {
+                $errors[] = 'Too many inquiries from this connection. Please call us instead.';
+            }
+            if (trim((string) ($post['name'] ?? '')) === '') {
+                $errors[] = 'Please enter your name.';
+            }
+            if (!shra_phone_valid((string) ($post['phone'] ?? ''))) {
+                $errors[] = 'Please enter a valid mobile number.';
+            }
+
+            if (!count($errors)) {
+                $src = $this->db->where('name', 'Website QR')->get(db_prefix() . 'leads_sources')->row();
+                $res = $this->shra_leads_model->capture([
+                    'name'                => $post['name'],
+                    'phone'               => $post['phone'],
+                    'rider_for'           => $post['rider_for'] ?? 'self',
+                    'rider_age'           => $post['rider_age'] ?? '',
+                    'interest_package_id' => (int) ($post['package_id'] ?? 0),
+                    'city'                => $post['city'] ?? '',
+                    'source'              => $src ? $src->id : 0,
+                    'description'         => trim((string) ($post['message'] ?? '')),
+                    'campaign'            => substr((string) ($post['c'] ?? $this->input->get('c')), 0, 80),
+                ], 'public_form');
+                // Duplicates are attached to the original lead silently — the visitor still sees a thank-you
+                if (!is_string($res)) {
+                    redirect(site_url('inquire/done'));
+                }
+                $errors[] = $res;
+            }
+            $data['errors'] = $errors;
+            $data['old']    = $post;
+        }
+
+        $this->load->view('public_inquire', $data);
+    }
+
     private function validate(array $p, $type = 'learner')
     {
         $e = [];

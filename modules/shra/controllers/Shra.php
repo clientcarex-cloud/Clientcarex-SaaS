@@ -60,10 +60,15 @@ class Shra extends AdminController
     public function index()
     {
         if (!shra_can('view')) {
-            redirect(admin_url(shra_can_billing() ? 'shra/billing' : 'shra/attendance'));
+            redirect(shra_home_url());
         }
 
         $data['title']      = _l('shra');
+        $data['leads']      = null;
+        if (shra_leads_can('all') && $this->db->table_exists(db_prefix() . 'shra_lead_ext')) {
+            $this->load->model('shra/shra_leads_model');
+            $data['leads'] = $this->shra_leads_model->summary();
+        }
         $data['summary']    = $this->shra_model->get_summary();
         $data['spark']      = $this->shra_model->sessions_by_day(14);
         $data['recent']     = $this->shra_model->get_enrollments([], 8);
@@ -334,6 +339,12 @@ class Shra extends AdminController
         }
         $data['bill_token']    = bin2hex(random_bytes(12));
         $data['currency']      = get_base_currency();
+        $data['lead_id']       = (int) $this->input->get('lead');
+        $data['lead']          = null;
+        if ($data['lead_id']) {
+            $this->load->model('shra/shra_leads_model');
+            $data['lead'] = $this->shra_leads_model->get($data['lead_id']);
+        }
 
         $this->load->view('billing', $data);
     }
@@ -359,6 +370,8 @@ class Shra extends AdminController
             'trainer_id'       => (int) $this->input->post('trainer_id') ?: null,
             'bill_token'       => (string) $this->input->post('bill_token'),
             'force'            => (int) $this->input->post('force') === 1,
+            'lead_id'          => (int) $this->input->post('lead_id'),
+            'credit_lead'      => $this->input->post('credit_lead') !== null ? (string) $this->input->post('credit_lead') : '1',
         ];
 
         $res = $this->shra_model->create_bill($rider_id, $package_id, $opts);
@@ -655,6 +668,13 @@ class Shra extends AdminController
         $data['to']     = $to;
         $data['report'] = $this->shra_model->report($from, $to);
 
+        $data['lead_agents']  = [];
+        $data['lead_sources'] = [];
+        if (shra_leads_can('reports') && $this->db->table_exists(db_prefix() . 'shra_lead_attribution')) {
+            $this->load->model('shra/shra_leads_model');
+            $data['lead_agents']  = $this->shra_leads_model->team_stats($from, $to);
+            $data['lead_sources'] = $this->shra_leads_model->source_stats($from, $to);
+        }
         $this->load->view('reports', $data);
     }
 
