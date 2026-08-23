@@ -1753,13 +1753,37 @@ function perfex_saas_redirect_unknown_tenant_host($tenancy_access_mode)
         return;
     }
 
+    perfex_saas_redirect_to_master_site();
+}
+
+/**
+ * Send the visitor to the master (marketing) site.
+ *
+ * Used wherever a tenant host would otherwise answer with a dead end: an
+ * unresolvable subdomain, or a tenant root URL that maps to no controller.
+ *
+ * The 302 is deliberate. What lives at these URLs can change - a slug may be
+ * provisioned as a real tenant, a root route may gain a real destination - and a
+ * 301 would stay cached in browsers and at Cloudflare long after that.
+ *
+ * @return bool False when the redirect was skipped; otherwise it exits.
+ */
+function perfex_saas_redirect_to_master_site()
+{
     $target      = rtrim((string) perfex_saas_default_base_url(), '/') . '/';
     $target_host = strtolower((string) parse_url($target, PHP_URL_HOST));
-    $current_host = strtolower(explode(':', (string) ($_SERVER['HTTP_HOST'] ?? ''), 2)[0]);
+    $target_path = (string) parse_url($target, PHP_URL_PATH);
+    $target_path = $target_path === '' ? '/' : $target_path;
 
-    // Never bounce a host onto itself - that is an infinite redirect loop.
-    if ($target_host === '' || $target_host === $current_host) {
-        return;
+    $current_host = strtolower(explode(':', (string) ($_SERVER['HTTP_HOST'] ?? ''), 2)[0]);
+    $current_path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+    $current_path = $current_path === '' ? '/' : $current_path;
+
+    // Never bounce a URL onto itself - that is an infinite redirect loop. Host
+    // alone is not enough to decide: a path-mode tenant shares the master host,
+    // and /slug/ps/ -> / is a legitimate redirect on that same host.
+    if ($target_host === '' || ($target_host === $current_host && $target_path === $current_path)) {
+        return false;
     }
 
     header('Cache-Control: no-store');

@@ -9,12 +9,46 @@ if (perfex_saas_is_tenant()) {
     $tenant = perfex_saas_tenant();
 
     /**
-     * Redirect tenant root URL to admin dashboard.
-     * When users visit surya.clientcarex.com, they should land on surya.clientcarex.com/admin
-     * instead of the default clients portal (clientcarex.com website).
+     * Tenant root URL -> the ClientcareX marketing site.
+     *
+     * A tenant host has nothing meaningful to serve at "/": the CRM lives under
+     * /admin and the customer portal under /clients, both of which redirect to
+     * their own login. So bounce the bare URL to the master site rather than
+     * leaving it on a dead end.
+     *
+     * This replaces an earlier attempt that set:
+     *
+     *     $route['default_controller'] = 'admin/dashboard';
+     *
+     * That never worked. CodeIgniter reads default_controller as class/method,
+     * NOT directory/class - see CI_Router::_set_default_controller(), which does
+     * sscanf($this->default_controller, '%[^/]/%s', $class, $method) and then
+     * looks for application/controllers/Admin.php. No such file exists (admin is
+     * a directory), so the router gave up and every tenant root URL answered 404.
+     * The companion $route['/'] line was dead too: _parse_routes() only runs for
+     * a non-empty URI, so an empty one goes straight to the default controller.
+     *
+     * default_controller is restored to the app-wide 'clients' so that any other
+     * code path falling back to it resolves to a real controller instead of 404.
      */
-    $route['default_controller'] = 'admin/dashboard';
-    $route['/'] = 'admin/dashboard';
+    $route['default_controller'] = 'clients';
+
+    if (isset($_SERVER['REQUEST_URI'])) {
+        $request_path = trim((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+
+        // Path-mode tenants are reached at /{slug}/ps, so that prefix - and
+        // nothing after it - is their root.
+        if ($tenant->http_identification_type === PERFEX_SAAS_TENANT_MODE_PATH) {
+            $tenant_root = perfex_saas_tenant_url_signature(perfex_saas_clean_slug($tenant->slug, 'url'));
+            if (strcasecmp($request_path, $tenant_root) === 0) {
+                $request_path = '';
+            }
+        }
+
+        if ($request_path === '') {
+            perfex_saas_redirect_to_master_site();
+        }
+    }
 
     $route['admin/billing/my_account'] = 'perfex_saas/admin/companies/client_portal_bridge';
 
