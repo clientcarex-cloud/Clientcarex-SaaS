@@ -52,6 +52,39 @@ include __DIR__ . '/_public_head.php';
 .safety-btn{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 14px;border:1.5px solid var(--gold-2);border-radius:999px;background:#fff;color:var(--brown);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none}
 .safety-btn:hover{background:var(--cream-2);border-color:var(--gold)}
 .safety-btn i{color:var(--gold)}
+.safety-btn .arr{width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--cream);display:inline-flex;align-items:center;justify-content:center;margin-left:2px;transition:.2s}
+.safety-btn .arr i{color:var(--cream);font-size:10px}
+.safety-btn:hover .arr{transform:translateX(4px)}
+.sf-intro{display:flex;gap:12px;align-items:center;background:var(--cream-2);border:1px dashed var(--gold-2);border-radius:14px;padding:12px 14px;margin-top:14px}
+.sf-intro .big{font-size:40px;line-height:1}
+.sf-intro p{font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.sf-intro b{color:var(--ink)}
+.sf-title{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+.sf-title .em{font-size:30px;line-height:1}
+.sf-title h4{font-family:'Cormorant Garamond',Georgia,serif;font-size:21px;font-weight:700;color:var(--ink)}
+.sf-title small{display:block;font-size:12px;color:var(--muted);font-weight:500;font-family:'Inter',system-ui,sans-serif}
+.sf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.sf-grid{grid-template-columns:1fr}}
+.sf-card{border:1.5px solid var(--line);border-radius:14px;padding:12px;background:#fff;display:flex;gap:10px;align-items:flex-start}
+.sf-card .em{font-size:30px;line-height:1;flex-shrink:0;width:38px;text-align:center}
+.sf-card b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:2px}
+.sf-card span{font-size:12.5px;line-height:1.45;color:var(--ink-2);display:block}
+.sf-card.do{border-color:#cfe0c4;background:#f3f8ef}
+.sf-card.dont{border-color:#eac7c4;background:#fdf2f1}
+.sf-card.do b:before{content:'✅ ';}
+.sf-card.dont b:before{content:'🚫 ';}
+.sf-steps{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.sf-step{flex:1;min-width:120px;text-align:center;border:1.5px solid var(--line);border-radius:14px;padding:12px 8px;background:#fff;position:relative}
+.sf-step .n{position:absolute;top:-9px;left:10px;background:var(--gold);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px}
+.sf-step .em{font-size:34px;line-height:1;display:block;margin:6px 0 6px}
+.sf-step b{font-size:12.5px;display:block;color:var(--ink)}
+.sf-step span{font-size:11.5px;color:var(--muted);display:block;margin-top:2px;line-height:1.4}
+.sf-promise{margin-top:18px;border:2px solid var(--gold);border-radius:16px;padding:14px;background:linear-gradient(180deg,#fff,var(--cream-2));text-align:center}
+.sf-promise .em{font-size:34px}
+.sf-promise h4{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:700;margin-top:4px}
+.sf-promise p{font-size:13px;color:var(--ink-2);line-height:1.5;margin-top:4px}
+.sf-cheat{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+.sf-cheat span{background:var(--ink);color:var(--cream);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600}
 .safety-link{font-size:12.5px;color:var(--brown);font-weight:600;text-decoration:underline;cursor:pointer;background:none;border:0;padding:0;font-family:inherit}
 .sf-modal{position:fixed;inset:0;z-index:1000;display:none;align-items:flex-end;justify-content:center;background:rgba(28,26,23,.55);padding:0}
 .sf-modal.open{display:flex}
@@ -79,7 +112,7 @@ include __DIR__ . '/_public_head.php';
             <div class="steps"><span class="on" data-s="1">Choose</span><span data-s="2">Plan</span><span data-s="3">Details</span><span data-s="4">Done</span></div>
             <h2 id="pane-title">How would you like to ride?</h2>
             <p id="pane-sub">No fixed time slots — sessions are first-come, first-served. Pay at the desk when you arrive.</p>
-            <button type="button" class="safety-btn" data-safety><i class="fa-solid fa-shield-heart"></i> Horse riding safety guidelines</button>
+            <button type="button" class="safety-btn" data-safety><i class="fa-solid fa-shield-heart"></i> Horse riding safety guidelines <span class="arr"><i class="fa fa-arrow-right"></i></span></button>
         </div>
         <div class="card-body">
             <?php if (count($errors)) { ?>
@@ -172,74 +205,81 @@ include __DIR__ . '/_public_head.php';
             <button type="button" class="sf-close" data-safety-close aria-label="Close"><i class="fa fa-times"></i></button>
         </div>
         <div class="sf-body">
-            <div class="sec">1. Before you arrive</div>
-            <ul>
-                <li><b>Health check.</b> Do not ride if you are unwell, pregnant, recovering from surgery, or have back, neck, heart or balance conditions without a doctor's clearance. Tell the trainer about any medical condition, allergy or medication.</li>
-                <li><b>Under-18 riders</b> must be accompanied by a parent / guardian who stays at the academy for the whole session.</li>
-                <li><b>No alcohol or drugs.</b> Riders under the influence will not be allowed near the horses.</li>
-                <li><b>Arrive on time</b> and well rested. Eat a light meal — never ride on an empty stomach or straight after a heavy one.</li>
-            </ul>
+            <div class="sf-intro">
+                <div class="big">🐴</div>
+                <p><b>Hi, future rider!</b> Horses are big, gentle friends — but they get scared easily. These simple rules keep <b>you</b> and <b>your horse</b> safe and happy. Read them with your family!</p>
+            </div>
 
-            <div class="sec">2. What to wear</div>
-            <ul>
-                <li><b>Helmet — always.</b> A properly fitted, certified riding helmet with the chin strap fastened is mandatory for every rider, every time. The academy provides helmets; no helmet, no ride.</li>
-                <li><b>Long trousers</b> (jeans, jodhpurs or leggings) — no shorts or skirts.</li>
-                <li><b>Closed shoes with a small heel</b> (riding boots or sturdy shoes). No sandals, slippers, flip-flops, crocs or wide-soled trainers that can get caught in the stirrup.</li>
-                <li><b>Fitted clothing.</b> Avoid loose scarves, dupattas, dangling jewellery, hoodie strings or anything that can flap, snag or spook a horse.</li>
-                <li><b>Tie back long hair</b> and remove rings, bangles and watches. Keep mobile phones, keys and loose items out of your pockets.</li>
-                <li>Body protectors are recommended for learners and available on request.</li>
-            </ul>
+            <div class="sf-title"><span class="em">🎒</span><div><h4>1. Get ready like a pro</h4><small>What to wear before you come</small></div></div>
+            <div class="sf-grid">
+                <div class="sf-card do"><span class="em">⛑️</span><div><b>Helmet — always!</b><span>A helmet is your superhero shield. Strap it under your chin every single time. The academy gives you one. <b>No helmet = no ride.</b></span></div></div>
+                <div class="sf-card do"><span class="em">👖</span><div><b>Long pants</b><span>Jeans, jodhpurs or leggings. They stop the saddle from rubbing your legs.</span></div></div>
+                <div class="sf-card do"><span class="em">👢</span><div><b>Closed shoes with a little heel</b><span>Boots or sturdy shoes so your foot never slips through the stirrup.</span></div></div>
+                <div class="sf-card dont"><span class="em">🩴</span><div><b>No sandals, slippers or crocs</b><span>They can get stuck in the stirrup or fall off.</span></div></div>
+                <div class="sf-card dont"><span class="em">🧣</span><div><b>No loose scarves, jewellery or strings</b><span>Flappy things can scare the horse or get caught. Tie long hair back too!</span></div></div>
+                <div class="sf-card dont"><span class="em">📱</span><div><b>No phone in your pocket</b><span>Leave phones, keys and toys with your family at the desk.</span></div></div>
+            </div>
 
-            <div class="sec">3. Around the horses</div>
-            <ul>
-                <li><b>Approach from the front-side</b>, at the shoulder, speaking calmly so the horse knows you are there. Never approach from directly behind — a horse cannot see you there and may kick.</li>
-                <li><b>Move slowly, speak softly.</b> No running, shouting, screaming, sudden movements, waving arms or flash photography near the horses.</li>
-                <li><b>Never feed the horses</b> unless a trainer hands you the feed and shows you how — feed from a flat, open palm.</li>
-                <li><b>Do not stand directly behind or directly in front</b> of a horse, and never walk under its neck or between two tied horses.</li>
-                <li><b>Do not enter any stable, paddock or arena</b> without a trainer's permission. Keep the gates closed behind you.</li>
-                <li>Keep children within arm's reach at all times in the stable area. Pets are not allowed on the premises.</li>
-            </ul>
+            <div class="sf-title"><span class="em">🍎</span><div><h4>2. Feel good, ride good</h4><small>Before you arrive</small></div></div>
+            <div class="sf-grid">
+                <div class="sf-card do"><span class="em">😴</span><div><b>Sleep well &amp; eat a light snack</b><span>Not too hungry, not too full — just right.</span></div></div>
+                <div class="sf-card do"><span class="em">💧</span><div><b>Drink water</b><span>Especially on hot days. Sunscreen helps too!</span></div></div>
+                <div class="sf-card do"><span class="em">🩺</span><div><b>Tell us if you are unwell</b><span>Fever, tummy ache, dizziness, allergies or medicine — tell the trainer. Grown-ups: no riding when pregnant or after surgery without a doctor's OK.</span></div></div>
+                <div class="sf-card do"><span class="em">👨‍👩‍👧</span><div><b>Under 18? Bring a grown-up</b><span>Your parent or guardian stays with you for the whole session.</span></div></div>
+            </div>
 
-            <div class="sec">4. Mounting &amp; dismounting</div>
-            <ul>
-                <li>Mount and dismount <b>only with a trainer present</b>, in the place the trainer shows you, after the girth has been checked.</li>
-                <li>Check stirrup length before moving off — the trainer will adjust it for you.</li>
-                <li>Keep both feet out of the stirrups and the reins in hand when dismounting. Never step down while the horse is moving.</li>
-            </ul>
+            <div class="sf-title"><span class="em">🐎</span><div><h4>3. Saying hello to a horse</h4><small>How to be around horses</small></div></div>
+            <div class="sf-steps">
+                <div class="sf-step"><span class="n">Step 1</span><span class="em">👀</span><b>Let the horse see you</b><span>Walk up from the front-side, near the shoulder.</span></div>
+                <div class="sf-step"><span class="n">Step 2</span><span class="em">🗣️</span><b>Say hello softly</b><span>"Hi horsey!" — calm and gentle, so it's not surprised.</span></div>
+                <div class="sf-step"><span class="n">Step 3</span><span class="em">✋</span><b>Ask before touching</b><span>Wait for the trainer to say yes, then stroke the neck slowly.</span></div>
+            </div>
+            <div class="sf-grid" style="margin-top:10px">
+                <div class="sf-card dont"><span class="em">🦵</span><div><b>Never go behind a horse</b><span>A horse can't see behind itself and might kick. Stay away from the back legs.</span></div></div>
+                <div class="sf-card dont"><span class="em">🏃</span><div><b>No running or shouting</b><span>Loud noises and fast moves scare horses. Walk slowly, talk quietly, no flash photos.</span></div></div>
+                <div class="sf-card dont"><span class="em">🥕</span><div><b>No feeding without permission</b><span>If the trainer says yes, hold the treat on a flat open hand like a plate.</span></div></div>
+                <div class="sf-card dont"><span class="em">🚪</span><div><b>No going into stables alone</b><span>Only enter stables, paddocks or the arena with a trainer. Close gates behind you.</span></div></div>
+            </div>
 
-            <div class="sec">5. While riding</div>
-            <ul>
-                <li><b>Follow the trainer's instructions at all times.</b> Your trainer's word is final on what you may and may not do in the arena.</li>
-                <li><b>Stay in your lane.</b> Keep at least one horse-length between you and the horse ahead, and never overtake or cut across another rider unless told to.</li>
-                <li>Ride at the pace set by the trainer — no galloping, racing, jumping or stunts unless it is part of your supervised lesson.</li>
-                <li><b>Keep your heels down, eyes up and hold the reins</b> with both hands. Do not wrap reins, lead ropes or straps around your hand, wrist or body.</li>
-                <li>Do not use a mobile phone, take selfies, or wear earphones while on the horse.</li>
-                <li>Beginners ride on a lead or lunge line until the trainer decides otherwise. Do not remove the lead rope yourself.</li>
-                <li>If you feel unsafe, dizzy or tired, say so immediately — the trainer will stop the session.</li>
-            </ul>
+            <div class="sf-title"><span class="em">🪜</span><div><h4>4. Getting on &amp; off</h4><small>Mounting and dismounting</small></div></div>
+            <div class="sf-grid">
+                <div class="sf-card do"><span class="em">🧑‍🏫</span><div><b>Only with your trainer</b><span>Climb on and get off only where and when the trainer says — after the saddle strap is checked.</span></div></div>
+                <div class="sf-card do"><span class="em">🦶</span><div><b>Stirrups the right length</b><span>The trainer will adjust them for you before you move.</span></div></div>
+                <div class="sf-card dont"><span class="em">🏇</span><div><b>Never jump off a moving horse</b><span>Wait until the horse stops completely.</span></div></div>
+            </div>
 
-            <div class="sec">6. If something goes wrong</div>
-            <ul>
-                <li><b>If the horse spooks:</b> stay calm, sit deep, keep your heels down, hold the reins (not the saddle) and speak softly. Do not scream or kick.</li>
-                <li><b>If you fall:</b> let go of the reins, try to roll away from the horse's legs, and stay down until a trainer reaches you. Do not stand up quickly or chase the horse.</li>
-                <li><b>If another rider falls:</b> halt your horse, stay mounted, and wait for the trainer's instruction.</li>
-                <li>Report every fall, kick, bite or injury — however minor — to the reception before leaving. A first-aid kit and trained staff are available on site.</li>
-            </ul>
+            <div class="sf-title"><span class="em">🎠</span><div><h4>5. While you are riding</h4><small>In the arena</small></div></div>
+            <div class="sf-grid">
+                <div class="sf-card do"><span class="em">👂</span><div><b>Listen to your trainer</b><span>The trainer is the captain. What they say goes — always.</span></div></div>
+                <div class="sf-card do"><span class="em">🙌</span><div><b>Heels down, eyes up, two hands</b><span>Hold the reins with both hands. Look where you want to go, not at the ground.</span></div></div>
+                <div class="sf-card do"><span class="em">↔️</span><div><b>Keep a horse-length gap</b><span>Stay one horse behind the rider in front. No overtaking unless told.</span></div></div>
+                <div class="sf-card do"><span class="em">🪢</span><div><b>Beginners stay on the lead rope</b><span>The trainer holds a rope to help you. Don't take it off yourself.</span></div></div>
+                <div class="sf-card dont"><span class="em">🚀</span><div><b>No racing, stunts or jumping</b><span>Go at the speed the trainer sets — slow and steady wins.</span></div></div>
+                <div class="sf-card dont"><span class="em">🤳</span><div><b>No selfies or earphones on the horse</b><span>Both hands on the reins, ears open for the trainer.</span></div></div>
+                <div class="sf-card dont"><span class="em">🧵</span><div><b>Never wrap reins around your hand</b><span>Hold them — don't tie them to yourself.</span></div></div>
+                <div class="sf-card do"><span class="em">🙋</span><div><b>Feeling scared, dizzy or tired? Say it!</b><span>It's always OK to say "please stop". The trainer will help right away.</span></div></div>
+            </div>
 
-            <div class="sec">7. Weather &amp; arena conditions</div>
-            <ul>
-                <li>Sessions may be paused or cancelled by the academy in heavy rain, lightning, extreme heat or poor footing. Safety comes before schedule.</li>
-                <li>In hot weather drink water before and after your ride, and wear sunscreen.</li>
-            </ul>
+            <div class="sf-title"><span class="em">🆘</span><div><h4>6. If something goes wrong</h4><small>Stay calm — here's what to do</small></div></div>
+            <div class="sf-grid">
+                <div class="sf-card"><span class="em">😱</span><div><b>Horse gets scared?</b><span>Sit deep, heels down, hold the reins (not the saddle), and talk softly. Don't scream or kick.</span></div></div>
+                <div class="sf-card"><span class="em">🤸</span><div><b>If you fall</b><span>Let go of the reins, roll away from the horse's legs, and stay lying down until the trainer comes. Never chase the horse.</span></div></div>
+                <div class="sf-card"><span class="em">🛑</span><div><b>If a friend falls</b><span>Stop your horse, stay sitting, and wait for the trainer.</span></div></div>
+                <div class="sf-card"><span class="em">🩹</span><div><b>Any bump or scratch?</b><span>Tell the reception before you go home — even small ones. We have first aid here.</span></div></div>
+            </div>
 
-            <div class="sec">8. Rider responsibility</div>
-            <ul>
-                <li>Horse riding is an activity with inherent risk. By registering you confirm that you (or your guardian) understand these guidelines and will follow them.</li>
-                <li>Riders who ignore safety instructions, mistreat a horse or endanger others may be removed from the session without refund.</li>
-                <li>Treat the horses with kindness and respect — no hitting, kicking or pulling on the reins in anger.</li>
-            </ul>
+            <div class="sf-title"><span class="em">🌦️</span><div><h4>7. Weather days</h4><small>Sometimes we have to wait</small></div></div>
+            <div class="sf-grid">
+                <div class="sf-card"><span class="em">⛈️</span><div><b>Rain, lightning or very hot sun</b><span>The academy may pause or cancel a session. Safety first, riding second — we'll ride another day!</span></div></div>
+                <div class="sf-card"><span class="em">💚</span><div><b>Be kind to your horse</b><span>Never hit, kick or yank the reins in anger. Horses remember kindness.</span></div></div>
+            </div>
 
-            <div class="sf-alert"><i class="fa-solid fa-triangle-exclamation"></i><span>Helmet on, chin strap fastened, closed shoes, and always listen to your trainer. When in doubt — ask before you act.</span></div>
+            <div class="sf-promise">
+                <div class="em">🤝</div>
+                <h4>The Rider's Promise</h4>
+                <p>Horse riding is fun, but it has real risks — like any sport. By registering, you and your family promise to follow these rules. Riders who break the safety rules or hurt a horse may be asked to stop, without a refund.</p>
+                <div class="sf-cheat"><span>⛑️ Helmet on</span><span>👢 Closed shoes</span><span>🤫 Slow &amp; quiet</span><span>👂 Listen to trainer</span><span>❓ Ask before you act</span></div>
+            </div>
         </div>
         <div class="sf-foot"><button type="button" class="btn dark" data-safety-close><i class="fa fa-check"></i> I've read the guidelines</button></div>
     </div>
