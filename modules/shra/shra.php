@@ -20,6 +20,7 @@ hooks()->add_action('app_admin_head', 'shra_add_head_components');
 hooks()->add_action('app_admin_footer', 'shra_add_footer_components');
 hooks()->add_filter('module_shra_action_links', 'shra_module_action_links');
 hooks()->add_filter('sidebar_menu_items', 'shra_hide_customers_menu');
+hooks()->add_action('admin_init', 'shra_default_landing');
 
 register_activation_hook(SHRA_MODULE_NAME, 'shra_module_activation_hook');
 
@@ -92,6 +93,23 @@ function shra_hide_customers_menu($items)
     unset($items['customers']);
 
     return $items;
+}
+
+/**
+ * The academy desk is the home screen: the core dashboard (admin/) sends
+ * staff who can use SHRA straight to the module. Any other page is untouched,
+ * and the core dashboard stays reachable at admin/dashboard?core=1.
+ */
+function shra_default_landing()
+{
+    $CI = &get_instance();
+    if ($CI->router->fetch_class() !== 'dashboard' || $CI->router->fetch_method() !== 'index') {
+        return;
+    }
+    if ($CI->input->get('core') || $CI->input->is_ajax_request() || !shra_can_access()) {
+        return;
+    }
+    redirect(admin_url('shra'));
 }
 
 /* ───────────────────────────── Permissions ───────────────────────────── */
