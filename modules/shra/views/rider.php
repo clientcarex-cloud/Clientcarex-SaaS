@@ -18,8 +18,11 @@
                         <?php if ($r->is_minor) { ?><span class="shra-badge shra-badge-gold">Minor</span><?php } ?>
                     </div>
                     <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap">
-                        <?php if (shra_can_billing()) { ?><a href="<?php echo admin_url('shra/billing?rider=' . $r->id); ?>" class="shra-btn shra-btn-primary shra-btn-sm"><i class="fa-solid fa-cash-register"></i> Bill</a><?php } ?>
-                        <?php if (shra_can_attendance()) { ?><a href="<?php echo admin_url('shra/attendance?rider=' . $r->id); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa-solid fa-clipboard-check"></i> Session</a><?php } ?>
+                        <?php $left = 0; $due_enr = null; foreach ($enrollments as $e0) { if ($e0->status === 'active') { $left += $e0->sessions_total - $e0->sessions_used; } if (!$due_enr && $e0->due > 0.009 && $e0->invoice_id && $e0->status !== 'cancelled') { $due_enr = $e0; } } ?>
+                        <?php if ($attended_today) { ?><span class="shra-badge shra-badge-green" style="padding:8px 12px"><i class="fa fa-check"></i> Attended today</span>
+                        <?php } elseif ($left > 0 && shra_can_attendance()) { ?><a href="<?php echo admin_url('shra/attendance?rider=' . $r->id); ?>" class="shra-btn shra-btn-primary shra-btn-sm"><i class="fa-solid fa-clipboard-check"></i> Mark session</a><?php } ?>
+                        <?php if ($due_enr && shra_can_billing()) { ?><button type="button" class="shra-btn shra-btn-gold shra-btn-sm shra-collect" data-id="<?php echo $due_enr->id; ?>" data-due="<?php echo $due; ?>" data-name="<?php echo html_escape($r->full_name); ?>"><i class="fa-solid fa-hand-holding-dollar"></i> Collect <?php echo shra_money($due); ?></button><?php } ?>
+                        <?php if (shra_can_billing()) { ?><a href="<?php echo admin_url('shra/billing?rider=' . $r->id); ?>" class="shra-btn <?php echo $left > 0 || $due_enr ? 'shra-btn-outline' : 'shra-btn-primary'; ?> shra-btn-sm" title="<?php echo $left > 0 ? 'Rider still has ' . $left . ' sessions — only bill if they want another package' : 'Bill a package'; ?>"><i class="fa-solid fa-cash-register"></i> <?php echo $left > 0 ? 'New package' : 'Bill'; ?></a><?php } ?>
                         <?php if ($r->rider_type === 'learner') { ?><a href="<?php echo admin_url('shra/membership_pdf/' . $r->id); ?>" target="_blank" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa-solid fa-id-card"></i> Membership PDF</a><?php } ?>
                         <?php if (shra_can('edit')) { ?><a href="<?php echo admin_url('shra/rider_form/' . $r->id); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa fa-pen"></i></a><?php } ?>
                         <?php if (shra_can('delete')) { ?><a href="<?php echo admin_url('shra/delete_rider/' . $r->id); ?>" data-shra-confirm="Delete this rider and all their enrollments & attendance? Invoices are kept." class="shra-btn shra-btn-danger shra-btn-sm"><i class="fa fa-trash"></i></a><?php } ?>
@@ -48,22 +51,25 @@
         </div>
 
         <div>
+            <?php if ($due > 0.009) { ?><div class="shra-alert shra-alert-warn" style="margin-bottom:14px;display:flex;align-items:center;gap:10px"><i class="fa-solid fa-triangle-exclamation"></i><span style="flex:1"><b><?php echo shra_money($due); ?></b> is still due on this rider's bills.</span><?php if ($due_enr && shra_can_billing()) { ?><button type="button" class="shra-btn shra-btn-gold shra-btn-sm shra-collect" data-id="<?php echo $due_enr->id; ?>" data-due="<?php echo $due; ?>" data-name="<?php echo html_escape($r->full_name); ?>">Collect now</button><?php } ?></div><?php } ?>
             <div class="shra-card">
-                <div class="shra-card-head"><h4>Packages &amp; bills</h4></div>
+                <div class="shra-card-head"><h4>Packages &amp; bills</h4><?php if (count($enrollments)) { ?><span class="shra-pill"><?php echo $due > 0.009 ? 'Due ' . shra_money($due) : 'All paid'; ?></span><?php } ?></div>
                 <?php if (!count($enrollments)) { ?>
                     <div class="shra-empty" style="padding:30px"><i class="fa-solid fa-ticket"></i>No package billed yet.</div>
                 <?php } else { ?>
                 <div class="shra-table-wrap"><table class="shra-table">
-                    <thead><tr><th>Package</th><th>Progress</th><th>Paid</th><th>Invoice</th><th>Status</th><th></th></tr></thead>
+                    <thead><tr><th>Package</th><th>Progress</th><th>Payment</th><th>Invoice</th><th>Status</th><th></th></tr></thead>
                     <tbody>
                     <?php foreach ($enrollments as $e) { $pct = $e->sessions_total ? round($e->sessions_used / $e->sessions_total * 100) : 0; ?>
                         <tr>
                             <td class="strong"><?php echo html_escape($e->package_name); ?> <span class="shra-muted" style="font-weight:400">· <?php echo $e->audience; ?></span><span class="sub"><?php echo html_escape($e->enrollment_no); ?> · <?php echo _d($e->created_at); ?><?php echo $e->expires_at ? ' · valid till ' . _d($e->expires_at) : ''; ?></span></td>
                             <td style="min-width:140px"><?php echo (int) $e->sessions_used; ?> / <?php echo (int) $e->sessions_total; ?><div class="shra-progress" style="margin-top:5px"><span style="width:<?php echo $pct; ?>%"></span></div></td>
-                            <td class="num"><?php echo shra_money($e->paid_amount); ?><?php echo $e->discount_percent > 0 ? '<span class="sub">' . ($e->discount_percent + 0) . '% off</span>' : ''; ?></td>
+                            <td class="num"><?php echo shra_pay_badge($e); ?><span class="sub"><?php echo shra_money($e->paid_real); ?> of <?php echo shra_money($e->total); ?><?php echo $e->discount_percent > 0 ? ' · ' . ($e->discount_percent + 0) . '% off' : ''; ?><?php echo $e->payment_mode ? ' · ' . html_escape($e->payment_mode) : ''; ?></span></td>
                             <td><?php echo $e->invoice_id ? '<a href="' . admin_url('invoices/list_invoices/' . $e->invoice_id) . '">' . html_escape(format_invoice_number($e->invoice_id)) . '</a>' : '—'; ?></td>
                             <td><?php echo shra_status_badge($e->status); ?><?php echo $e->certificate_no ? '<span class="sub">' . html_escape($e->certificate_no) . '</span>' : ''; ?></td>
                             <td style="white-space:nowrap;text-align:right">
+                                <?php if ($e->due > 0.009 && $e->invoice_id && $e->status !== 'cancelled' && shra_can_billing()) { ?><button type="button" class="shra-btn shra-btn-gold shra-btn-sm shra-collect" data-id="<?php echo $e->id; ?>" data-due="<?php echo $e->due; ?>" data-name="<?php echo html_escape($r->full_name); ?>" title="Collect balance"><i class="fa-solid fa-hand-holding-dollar"></i></button><?php } ?>
+                                <a href="<?php echo admin_url('shra/receipt_pdf/' . $e->id); ?>" target="_blank" class="shra-btn shra-btn-outline shra-btn-sm" title="Receipt PDF"><i class="fa-solid fa-receipt"></i></a>
                                 <?php if ($e->certificate_no) { ?><a href="<?php echo admin_url('shra/certificate_pdf/' . $e->id); ?>" target="_blank" class="shra-btn shra-btn-gold shra-btn-sm"><i class="fa-solid fa-award"></i> Certificate</a>
                                 <?php } elseif (!$e->is_guest && $e->status === 'completed' && shra_can('edit')) { ?><a href="<?php echo admin_url('shra/certificate/' . $e->id); ?>" class="shra-btn shra-btn-gold shra-btn-sm"><i class="fa-solid fa-award"></i> Issue certificate</a>
                                 <?php } elseif (!$e->is_guest && $e->status === 'active' && shra_can('edit')) { ?><a href="<?php echo admin_url('shra/complete/' . $e->id); ?>" data-shra-confirm="Mark this course as completed and issue the certificate?" class="shra-btn shra-btn-outline shra-btn-sm">Complete course</a><?php } ?>
@@ -102,6 +108,8 @@
     <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
+<?php include __DIR__ . '/partials/collect_modal.php'; ?>
 <?php init_tail(); ?>
+<script>$(function () { SHRA.collectInit({ url: <?php echo json_encode(admin_url('shra/collect')); ?> }); });</script>
 </body>
 </html>

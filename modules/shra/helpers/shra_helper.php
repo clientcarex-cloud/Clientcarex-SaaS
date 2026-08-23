@@ -169,3 +169,18 @@ function shra_status_badge($status)
 
     return '<span class="shra-badge ' . $cls . '">' . ucfirst($status) . '</span>';
 }
+
+/** Paid / Partial / Unpaid badge for a decorated enrollment. */
+function shra_pay_badge($e)
+{
+    $st = isset($e->pay_status) ? $e->pay_status : 'paid';
+    $map = [
+        'paid'      => ['shra-badge-green', '<i class="fa fa-check"></i> Paid'],
+        'partial'   => ['shra-badge-red', 'Due ' . shra_money($e->due)],
+        'unpaid'    => ['shra-badge-red', 'Unpaid · ' . shra_money($e->due)],
+        'cancelled' => ['shra-badge-muted', 'Cancelled'],
+    ];
+    [$cls, $txt] = $map[$st] ?? $map['paid'];
+
+    return '<span class="shra-badge ' . $cls . '">' . $txt . '</span>';
+}

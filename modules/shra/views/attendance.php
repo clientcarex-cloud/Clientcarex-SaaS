@@ -20,10 +20,11 @@
                     <?php echo form_open(admin_url('shra/mark'), ['id' => 'shra-att-form']); ?>
                     <input type="hidden" name="enrollment_id" id="shra-enrollment-id">
                     <input type="hidden" name="session_date" value="<?php echo html_escape($date); ?>">
+                    <input type="hidden" name="force" id="shra-att-force" value="0">
                     <div style="margin:14px 0 6px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase">Active package</div>
                     <div id="shra-enr-list"></div>
                     <div class="row" style="margin-top:10px">
-                        <div class="col-xs-6"><div class="form-group"><label>Trainer</label><select name="trainer_id" class="form-control"><?php foreach ($trainers as $t) { ?><option value="<?php echo $t->staffid; ?>" <?php echo $t->staffid == get_staff_user_id() ? 'selected' : ''; ?>><?php echo html_escape($t->firstname . ' ' . $t->lastname); ?></option><?php } ?></select></div></div>
+                        <div class="col-xs-6"><div class="form-group"><label>Trainer</label><select name="trainer_id" class="form-control"><?php if (!count($trainers)) { ?><option value="">No trainers yet<?php echo is_admin() ? ' — add under Trainers' : ''; ?></option><?php } ?><?php foreach ($trainers as $t) { ?><option value="<?php echo $t->id; ?>" <?php echo $t->staff_id == get_staff_user_id() ? 'selected' : ''; ?>><?php echo html_escape($t->name); ?></option><?php } ?></select></div></div>
                         <div class="col-xs-6"><div class="form-group"><label>Horse</label><input type="text" name="horse_name" id="shra-horse" class="form-control" placeholder="optional"></div></div>
                     </div>
                     <div class="form-group"><label>Note for this session</label><input type="text" name="notes" id="shra-note" class="form-control" placeholder="e.g. first canter, balance improving"></div>

@@ -98,6 +98,12 @@
       $('#shra-rider-wrap').hide();
       $('input[name=audience][value=' + aud + ']').prop('checked', true);
       $('#shra-rider-id').val(r.id);
+      $('#shra-bill-force').val(0);
+      var flags = [];
+      if (+r.attended_today > 0) { flags.push('<span class="shra-badge shra-badge-green"><i class="fa fa-check"></i> Attended today</span>'); }
+      if (+r.sessions_left > 0) { flags.push('<span class="shra-badge shra-badge-gold">' + r.sessions_left + ' session' + (+r.sessions_left === 1 ? '' : 's') + ' still unused</span>'); }
+      if (parseFloat(r.total_due) > 0.009) { flags.push('<span class="shra-badge shra-badge-red">Owes ' + S.money(r.total_due) + '</span>'); }
+      $('#shra-rider-flags').html(flags.length ? '<div class="shra-alert shra-alert-warn" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-weight:600">Heads-up:</span>' + flags.join(' ') + (+r.sessions_left > 0 ? '<a href="' + cfg.urls.attendance + '?rider=' + r.id + '" style="margin-left:auto">Mark a session instead →</a>' : '') + '</div>' : '');
       renderPkgs();
       pkg = null; summary();
       // Plan chosen on the self-registration form → preselect it
@@ -135,6 +141,7 @@
 
     $picked.on('click', '.x', function () {
       rider = null; pkg = null;
+      $('#shra-rider-flags').empty(); $('#shra-bill-force').val(0);
       $picked.hide(); $('#shra-rider-wrap').show(); $('#shra-rider-q').focus();
       $pkgs.find('.shra-pkg').removeClass('selected');
       summary();
@@ -182,25 +189,39 @@
       $btn.prop('disabled', !rider).find('.amt').text(S.money(paid));
     }
 
+    var inflight = false;
+    function newToken() {
+      var t = ''; for (var i = 0; i < 24; i++) { t += 'abcdefghijklmnopqrstuvwxyz0123456789'.charAt(Math.floor(Math.random() * 36)); }
+      $('#shra-bill-token').val(t);
+    }
     $('#shra-bill-form').on('submit', function (e) {
       e.preventDefault();
-      if (!rider || !pkg) return;
+      if (!rider || !pkg || inflight) return;
+      inflight = true;
       $btn.prop('disabled', true).addClass('disabled');
-      $.post(cfg.urls.bill, $(this).serialize(), function (res) {
+      var $form = $(this);
+      $.post(cfg.urls.bill, $form.serialize(), function (res) {
+        inflight = false;
         if (res.success) {
           $('#shra-bill-done').html(res.html).show();
-          $('#shra-bill-form')[0].reset(); $discount.data('touched', false); $paid.data('touched', false);
+          if (res.duplicate) { alert_float('warning', 'That bill was already created — nothing was charged twice.'); }
+          $form[0].reset(); $discount.data('touched', false); $paid.data('touched', false);
+          newToken(); $('#shra-bill-force').val(0);
           rider = null; pkg = null;
-          $picked.hide(); $('#shra-rider-wrap').show();
+          $picked.hide(); $('#shra-rider-wrap').show(); $('#shra-rider-flags').empty();
           $pkgs.find('.shra-pkg').removeClass('selected');
           summary();
           $('html,body').animate({ scrollTop: $('#shra-bill-done').offset().top - 80 }, 200);
+        } else if (res.needs_confirm) {
+          $btn.removeClass('disabled').prop('disabled', false);
+          if (confirm(res.message)) { $('#shra-bill-force').val(1); $form.trigger('submit'); }
         } else {
           alert_float('danger', res.message || 'Could not create the bill.');
+          $btn.removeClass('disabled').prop('disabled', false);
         }
-        $btn.removeClass('disabled');
-      }, 'json').fail(function () { alert_float('danger', 'Request failed.'); $btn.removeClass('disabled').prop('disabled', false); });
+      }, 'json').fail(function () { inflight = false; alert_float('danger', 'Request failed.'); $btn.removeClass('disabled').prop('disabled', false); });
     });
+    S.collectInit({ url: cfg.urls.collect });
 
     summary();
     if (cfg.preselect) { setRider(cfg.preselect); }
@@ -248,21 +269,30 @@
 
     $('#shra-att-rider').on('click', '.x', function () { $panel.hide(); rider = null; $('#shra-att-q').focus(); });
 
+    var marking = false;
     $('#shra-att-form').on('submit', function (e) {
       e.preventDefault();
+      if (marking) return;
+      marking = true;
       $mark.prop('disabled', true);
-      $.post(cfg.urls.mark, $(this).serialize(), function (res) {
+      var $form = $(this);
+      $.post(cfg.urls.mark, $form.serialize(), function (res) {
+        marking = false;
         if (res.success) {
           alert_float('success', res.message);
           if (res.completed) { $('#shra-att-done').html(res.html).show(); }
           $('#shra-today').html(res.today_html);
+          $('#shra-att-force').val(0);
           load(rider);
           $('#shra-horse').val(''); $('#shra-note').val('');
+        } else if (res.needs_confirm) {
+          $mark.prop('disabled', false);
+          if (confirm(res.message)) { $('#shra-att-force').val(1); $form.trigger('submit'); } else { $('#shra-att-force').val(0); }
         } else {
           alert_float('danger', res.message || 'Could not mark the session.');
           $mark.prop('disabled', false);
         }
-      }, 'json').fail(function () { alert_float('danger', 'Request failed.'); $mark.prop('disabled', false); });
+      }, 'json').fail(function () { marking = false; alert_float('danger', 'Request failed.'); $mark.prop('disabled', false); });
     });
 
     $(document).on('click', '.shra-undo', function () {
@@ -272,6 +302,40 @@
         if (res.success) { $('#shra-today').html(res.today_html); if (rider) load(rider); alert_float('success', 'Session removed.'); }
         else { alert_float('danger', res.message || 'Could not undo.'); }
       }, 'json');
+    });
+  };
+
+  /* ───────── Collect balance (modal) ───────── */
+  S.collectInit = function (cfg) {
+    if (S._collectReady) return;
+    S._collectReady = true;
+    var $m = $('#shra-collect-modal');
+    if (!$m.length) return;
+    var busy = false;
+    $(document).on('click', '.shra-collect', function () {
+      var due = parseFloat($(this).data('due')) || 0;
+      $('#sc-id').val($(this).data('id'));
+      $('#sc-name').text($(this).data('name') || '');
+      $('#sc-due-label').text(S.money(due));
+      $('#sc-amount').val(due.toFixed(2)).attr('max', due.toFixed(2));
+      $m.modal('show');
+      setTimeout(function () { $('#sc-amount').focus().select(); }, 300);
+    });
+    $('#shra-collect-form').on('submit', function (e) {
+      e.preventDefault();
+      if (busy) return;
+      var max = parseFloat($('#sc-amount').attr('max')) || 0, amt = parseFloat($('#sc-amount').val()) || 0;
+      if (amt <= 0) { alert_float('danger', 'Enter an amount.'); return; }
+      if (amt > max + 0.009) { alert_float('danger', 'Amount exceeds the balance due (' + S.money(max) + ').'); return; }
+      busy = true; $('#sc-save').prop('disabled', true);
+      $.post(cfg.url, $(this).serialize(), function (res) {
+        busy = false; $('#sc-save').prop('disabled', false);
+        if (!res.success) { alert_float('danger', res.message || 'Could not record the payment.'); return; }
+        $m.modal('hide');
+        alert_float('success', res.message);
+        if (res.receipt) { window.open(res.receipt, '_blank'); }
+        setTimeout(function () { location.reload(); }, 600);
+      }, 'json').fail(function () { busy = false; $('#sc-save').prop('disabled', false); alert_float('danger', 'Request failed.'); });
     });
   };
 

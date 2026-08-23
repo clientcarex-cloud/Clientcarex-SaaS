@@ -132,6 +132,66 @@ if (!$CI->db->table_exists($p . 'shra_attendance')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
+// ── Trainers (academy instructors — not necessarily CRM staff) ──
+if (!$CI->db->table_exists($p . 'shra_trainers')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_trainers` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `name` VARCHAR(191) NOT NULL,
+        `mobile` VARCHAR(30) DEFAULT NULL,
+        `specialty` VARCHAR(191) DEFAULT NULL,
+        `staff_id` INT(11) DEFAULT NULL COMMENT 'optional link to tblstaff.staffid',
+        `active` TINYINT(1) NOT NULL DEFAULT 1,
+        `sort_order` INT(11) NOT NULL DEFAULT 0,
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `staff_id` (`staff_id`),
+        KEY `active` (`active`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+    // Migrate: attendance.trainer_id used to point at tblstaff.staffid. Create a
+    // trainer row for every staff member already referenced and repoint the rows.
+    $used = $CI->db->query("SELECT DISTINCT trainer_id FROM `{$p}shra_attendance` WHERE trainer_id IS NOT NULL")->result();
+    foreach ($used as $u) {
+        $st = $CI->db->select('staffid, firstname, lastname, phonenumber')->where('staffid', $u->trainer_id)->get($p . 'staff')->row();
+        $CI->db->insert($p . 'shra_trainers', [
+            'name'     => $st ? trim($st->firstname . ' ' . $st->lastname) : 'Trainer #' . $u->trainer_id,
+            'mobile'   => $st ? $st->phonenumber : null,
+            'staff_id' => (int) $u->trainer_id,
+            'active'   => 1,
+        ]);
+        $tid = $CI->db->insert_id();
+        $CI->db->where('trainer_id', $u->trainer_id)->update($p . 'shra_attendance', ['trainer_id' => $tid]);
+    }
+}
+
+// ── Self-heal: duplicate-bill guard token ──
+if (!$CI->db->field_exists('bill_token', $p . 'shra_enrollments')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_enrollments` ADD COLUMN `bill_token` VARCHAR(40) DEFAULT NULL AFTER `invoice_id`, ADD UNIQUE KEY `bill_token` (`bill_token`)");
+}
+
+// ── Self-heal: per-session guard — one rider should not be marked twice on a day by accident ──
+if (!$CI->db->field_exists('forced', $p . 'shra_attendance')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_attendance` ADD COLUMN `forced` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'second session on the same day, confirmed by staff' AFTER `notes`");
+}
+
+// ── Payment modes: make sure the counter has Cash and UPI ──
+foreach (['Cash', 'UPI'] as $pm_name) {
+    $exists = $CI->db->where('LOWER(name)', strtolower($pm_name))->get($p . 'payment_modes')->row();
+    if (!$exists) {
+        $CI->db->insert($p . 'payment_modes', [
+            'name'                => $pm_name,
+            'description'         => $pm_name === 'UPI' ? 'UPI / QR payment at the counter' : 'Cash at the counter',
+            'active'              => 1,
+            'expenses_only'       => 0,
+            'invoices_only'       => 0,
+            'show_on_pdf'         => 0,
+            'selected_by_default' => $pm_name === 'Cash' ? 1 : 0,
+        ]);
+    } elseif ((int) $exists->active !== 1) {
+        $CI->db->where('id', $exists->id)->update($p . 'payment_modes', ['active' => 1]);
+    }
+}
+
 // ── Self-heal: plan chosen on the public form ──
 if (!$CI->db->field_exists('preferred_package_id', $p . 'shra_riders')) {
     $CI->db->query("ALTER TABLE `{$p}shra_riders` ADD COLUMN `preferred_package_id` INT(11) UNSIGNED DEFAULT NULL AFTER `riding_level`");

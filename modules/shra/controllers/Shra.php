@@ -28,6 +28,20 @@ class Shra extends AdminController
         echo json_encode($data);
     }
 
+    /** Offline counter payment modes (cash / UPI / card). Self-heals Cash + UPI when the list is empty. */
+    private function payment_modes()
+    {
+        $modes = $this->db->where('active', 1)->where('expenses_only', 0)->order_by('id', 'ASC')->get(db_prefix() . 'payment_modes')->result();
+        if (!count($modes)) {
+            foreach (['Cash', 'UPI'] as $n) {
+                $this->db->insert(db_prefix() . 'payment_modes', ['name' => $n, 'description' => '', 'active' => 1, 'expenses_only' => 0, 'invoices_only' => 0, 'show_on_pdf' => 0, 'selected_by_default' => $n === 'Cash' ? 1 : 0]);
+            }
+            $modes = $this->db->where('active', 1)->where('expenses_only', 0)->order_by('id', 'ASC')->get(db_prefix() . 'payment_modes')->result();
+        }
+
+        return $modes;
+    }
+
     private function brand()
     {
         return [
@@ -72,11 +86,28 @@ class Shra extends AdminController
             'type'   => $this->input->get('type'),
             'status' => $this->input->get('status'),
             'level'  => $this->input->get('level'),
+            'view'   => $this->input->get('view'),
         ];
-        $data['title']   = _l('shra_riders');
-        $data['filters'] = $filters;
-        $data['riders']  = $this->shra_model->get_riders($filters);
-        $data['levels']  = shra_riding_levels();
+        // Default landing: today's riders + amount due. Any search / filter switches to the full list.
+        $has_filter = $filters['q'] !== null && $filters['q'] !== '' || $filters['type'] || $filters['status'] || $filters['level'];
+        if (!$filters['view']) {
+            $filters['view'] = $has_filter ? 'all' : 'home';
+        }
+
+        $data['title']         = _l('shra_riders');
+        $data['filters']       = $filters;
+        $data['levels']        = shra_riding_levels();
+        $data['payment_modes'] = $this->payment_modes();
+        if ($filters['view'] === 'home') {
+            $data['today'] = $this->shra_model->get_riders(['view' => 'today']);
+            $data['due']   = $this->shra_model->get_riders(['view' => 'due']);
+        } else {
+            $f = $filters;
+            if ($f['view'] === 'all') {
+                unset($f['view']);
+            }
+            $data['riders'] = $this->shra_model->get_riders($f);
+        }
 
         $this->load->view('riders', $data);
     }
@@ -132,6 +163,14 @@ class Shra extends AdminController
         $data['rider']       = $rider;
         $data['enrollments'] = $this->shra_model->get_enrollments(['rider_id' => $id]);
         $data['attendance']  = $this->shra_model->get_attendance(['rider_id' => $id], 100);
+        $data['due']         = $this->shra_model->rider_due($id);
+        $data['payment_modes'] = $this->payment_modes();
+        $data['attended_today'] = false;
+        foreach ($data['attendance'] as $a) {
+            if ($a->session_date === date('Y-m-d')) {
+                $data['attended_today'] = true;
+            }
+        }
 
         $this->load->view('rider', $data);
     }
@@ -239,9 +278,16 @@ class Shra extends AdminController
         $data['packages_map']  = $map;
         $data['offer']         = shra_offer();
         // Offline modes only (cash / UPI / card at the counter)
-        $data['payment_modes'] = $this->db->where('active', 1)->where('expenses_only', 0)->order_by('id', 'ASC')->get(db_prefix() . 'payment_modes')->result();
+        $data['payment_modes'] = $this->payment_modes();
         $data['trainers']      = $this->shra_model->get_trainers();
-        $data['preselect']     = $this->input->get('rider') ? $this->shra_model->get_rider((int) $this->input->get('rider')) : null;
+        $data['preselect']     = null;
+        if ($this->input->get('rider')) {
+            $pre = $this->shra_model->get_rider((int) $this->input->get('rider'));
+            if ($pre) {
+                $data['preselect'] = $this->shra_model->search_riders($pre->rider_no, 1)[0] ?? $pre;
+            }
+        }
+        $data['bill_token']    = bin2hex(random_bytes(12));
         $data['currency']      = get_base_currency();
 
         $this->load->view('billing', $data);
@@ -266,6 +312,8 @@ class Shra extends AdminController
             'notes'            => (string) $this->input->post('notes'),
             'mark_now'         => (int) $this->input->post('mark_now') === 1,
             'trainer_id'       => (int) $this->input->post('trainer_id') ?: null,
+            'bill_token'       => (string) $this->input->post('bill_token'),
+            'force'            => (int) $this->input->post('force') === 1,
         ];
 
         $res = $this->shra_model->create_bill($rider_id, $package_id, $opts);
@@ -274,11 +322,64 @@ class Shra extends AdminController
 
             return;
         }
+        if (!empty($res['needs_confirm'])) {
+            $this->json(['success' => false, 'needs_confirm' => true, 'reason' => $res['reason'], 'message' => $res['message']]);
+
+            return;
+        }
 
         $e    = $this->shra_model->get_enrollment($res['enrollment_id']);
-        $html = $this->load->view('partials/bill_done', ['e' => $e], true);
+        $html = $this->load->view('partials/bill_done', ['e' => $e, 'duplicate' => !empty($res['duplicate'])], true);
 
-        $this->json(['success' => true, 'html' => $html, 'invoice_id' => $res['invoice_id']]);
+        $this->json(['success' => true, 'html' => $html, 'invoice_id' => $res['invoice_id'], 'duplicate' => !empty($res['duplicate'])]);
+    }
+
+    /** AJAX: collect a balance payment on an existing bill. */
+    public function collect()
+    {
+        if (!shra_can_billing()) {
+            $this->json(['success' => false, 'message' => 'Not allowed.']);
+
+            return;
+        }
+        $id  = (int) $this->input->post('enrollment_id');
+        $res = $this->shra_model->collect_payment($id, $this->input->post('amount'), (string) $this->input->post('payment_mode'), (string) $this->input->post('reference'), (string) $this->input->post('note'));
+        if (is_string($res)) {
+            $this->json(['success' => false, 'message' => $res]);
+
+            return;
+        }
+        $e = $this->shra_model->get_enrollment($id);
+        $this->json([
+            'success'    => true,
+            'message'    => 'Payment recorded. ' . ($e->due > 0 ? shra_money($e->due) . ' still due.' : 'Bill fully paid.'),
+            'due'        => $e->due,
+            'receipt'    => admin_url('shra/receipt_pdf/' . $e->id),
+            'pay_status' => $e->pay_status,
+        ]);
+    }
+
+    /** Premium bill receipt (PDF). */
+    public function receipt_pdf($enrollment_id)
+    {
+        if (!shra_can_billing() && !shra_can('view')) {
+            access_denied('shra');
+        }
+        $e = $this->shra_model->get_enrollment($enrollment_id);
+        if (!$e) {
+            show_404();
+        }
+        require_once(module_dir_path(SHRA_MODULE_NAME, 'libraries/Shra_pdf.php'));
+        $pdf = new Shra_pdf($this->brand(), 'P');
+        $arr = (array) $e;
+        $arr['payments']       = $this->shra_model->get_payments($e->id);
+        $arr['invoice_label']  = $e->invoice_id ? format_invoice_number($e->invoice_id) : '';
+        $arr['qr_text']        = shra_verify_url($e->rider_no);
+        $arr['issued_by']      = get_staff_full_name(get_staff_user_id());
+        $arr['offer_label']    = get_option('shra_offer_label');
+        $arr['currency_symbol'] = get_base_currency()->symbol;
+        $pdf->receipt($arr);
+        $pdf->Output('Receipt-' . $e->enrollment_no . '.pdf', 'I');
     }
 
     /* ═══════════════════════ Enrollments ═══════════════════════ */
@@ -292,10 +393,12 @@ class Shra extends AdminController
             'status' => $this->input->get('status'),
             'from'   => $this->input->get('from'),
             'to'     => $this->input->get('to'),
+            'due'    => $this->input->get('due'),
         ];
-        $data['title']       = _l('shra_enrollments');
-        $data['filters']     = $filters;
-        $data['enrollments'] = $this->shra_model->get_enrollments($filters);
+        $data['title']         = _l('shra_enrollments');
+        $data['filters']       = $filters;
+        $data['enrollments']   = $this->shra_model->get_enrollments($filters);
+        $data['payment_modes'] = $this->payment_modes();
 
         $this->load->view('enrollments', $data);
     }
@@ -384,14 +487,20 @@ class Shra extends AdminController
 
         $enrollment_id = (int) $this->input->post('enrollment_id');
         $res           = $this->shra_model->mark_attendance($enrollment_id, [
-            'trainer_id'   => (int) $this->input->post('trainer_id') ?: get_staff_user_id(),
+            'trainer_id'   => (int) $this->input->post('trainer_id') ?: null,
             'horse_name'   => (string) $this->input->post('horse_name'),
             'notes'        => (string) $this->input->post('notes'),
             'session_date' => (string) $this->input->post('session_date'),
+            'force'        => (int) $this->input->post('force') === 1,
         ]);
 
         if (is_string($res)) {
             $this->json(['success' => false, 'message' => $res]);
+
+            return;
+        }
+        if (is_array($res) && !empty($res['needs_confirm'])) {
+            $this->json(['success' => false, 'needs_confirm' => true, 'message' => $res['message']]);
 
             return;
         }
@@ -477,6 +586,41 @@ class Shra extends AdminController
         $this->shra_model->delete_package($id);
         set_alert('success', _l('shra_deleted'));
         redirect(admin_url('shra/packages'));
+    }
+
+    /* ═══════════════════════ Trainers ═══════════════════════ */
+
+    public function trainers()
+    {
+        if (!is_admin()) {
+            access_denied('shra');
+        }
+
+        if ($this->input->post()) {
+            $id = (int) $this->input->post('id');
+            if ($this->shra_model->save_trainer($this->input->post(null, true), $id ?: null)) {
+                set_alert('success', 'Trainer saved.');
+            } else {
+                set_alert('danger', 'Trainer name is required.');
+            }
+            redirect(admin_url('shra/trainers'));
+        }
+
+        $data['title']    = 'Trainers';
+        $data['trainers'] = $this->shra_model->get_trainers(false);
+        $data['staff']    = $this->db->select('staffid, firstname, lastname')->where('active', 1)->order_by('firstname', 'ASC')->get(db_prefix() . 'staff')->result();
+
+        $this->load->view('trainers', $data);
+    }
+
+    public function delete_trainer($id)
+    {
+        if (!is_admin()) {
+            access_denied('shra');
+        }
+        $what = $this->shra_model->delete_trainer($id);
+        set_alert('success', $what === 'deactivated' ? 'Trainer has past sessions, so it was deactivated instead of deleted.' : _l('shra_deleted'));
+        redirect(admin_url('shra/trainers'));
     }
 
     /* ═══════════════════════ Settings / QR ═══════════════════════ */

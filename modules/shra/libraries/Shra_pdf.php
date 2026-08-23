@@ -339,6 +339,189 @@ class Shra_pdf extends TCPDF
         return $this;
     }
 
+    /**
+     * Premium bill receipt.
+     * $bill keys: enrollment_no, invoice_label, created_at, full_name, rider_no, membership_no, mobile, email, address,
+     *   rider_type, package_name, audience, sessions_total, sessions_used, duration_min, list_price, discount_percent,
+     *   discount_amount, total, paid_real, due, pay_status, payment_mode, payments[], notes, expires_at, qr_text,
+     *   issued_by, offer_label
+     */
+    public function receipt(array $bill)
+    {
+        $this->SetTitle('Receipt ' . ($bill['enrollment_no'] ?? ''));
+        $this->AddPage('P');
+        $this->page_frame();
+
+        $w   = $this->getPageWidth();
+        $cx  = $w / 2;
+        $m   = 22;              // side margin
+        $cw  = $w - $m * 2;     // content width
+        $sym = $bill['currency_symbol'] ?? '₹';
+        $cur = function ($n) use ($sym) { return $sym . number_format((float) $n, 2); };
+
+        // ── Header: logo left, academy name, receipt block right ──
+        $this->brand_logo($m + 13, 33, 26);
+        $this->txt($m + 30, 24, $cw - 90, mb_strtoupper($this->brand['name']), 'times', 'B', 15, self::INK);
+        if ($this->brand['tagline']) {
+            $this->txt($m + 30, 31, $cw - 90, $this->brand['tagline'], 'times', 'I', 9, self::MUTED);
+        }
+        if ($this->brand['contact']) {
+            $this->txt($m + 30, 36.5, $cw - 90, $this->brand['contact'], 'helvetica', '', 7.2, self::MUTED);
+        }
+
+        $this->txt($m, 22, $cw, 'PAYMENT RECEIPT', 'helvetica', 'B', 8, self::GOLD, 'R');
+        $this->txt($m, 27, $cw, $bill['enrollment_no'], 'times', 'B', 19, self::INK, 'R', 9);
+        $this->txt($m, 36, $cw, 'Date ' . date('d M Y, h:i A', strtotime($bill['created_at'])), 'helvetica', '', 7.5, self::MUTED, 'R');
+        if (!empty($bill['invoice_label'])) {
+            $this->txt($m, 40.5, $cw, 'Invoice ' . $bill['invoice_label'], 'helvetica', '', 7.5, self::MUTED, 'R');
+        }
+
+        $this->divider(50, $cx, $cw / 2);
+
+        // ── Status ribbon ──
+        $status = $bill['pay_status'] ?? 'paid';
+        $ribbon = ['paid' => ['PAID IN FULL', [47, 74, 31]], 'partial' => ['PARTIALLY PAID', [184, 146, 46]], 'unpaid' => ['PAYMENT DUE', [168, 50, 45]], 'cancelled' => ['CANCELLED', self::MUTED]];
+        [$rtxt, $rcol] = $ribbon[$status] ?? $ribbon['paid'];
+        $this->SetFont('helvetica', 'B', 8.5);
+        $rw = $this->GetStringWidth($rtxt) + 16;
+        $this->SetFillColor(...$rcol);
+        $this->RoundedRect($cx - $rw / 2, 54, $rw, 7.5, 3.75, '1111', 'F');
+        $this->txt($cx - $rw / 2, 54, $rw, $rtxt, 'helvetica', 'B', 8.5, self::WHITE, 'C', 7.5);
+
+        // ── Billed to ──
+        $y  = 70;
+        $hw = $cw / 2;
+        $this->txt($m, $y, $hw, 'BILLED TO', 'helvetica', '', 6.8, self::GOLD);
+        $this->txt($m, $y + 4.5, $hw, $bill['full_name'], 'times', 'B', 15, self::INK, 'L', 7);
+        $line2 = $bill['rider_no'] . (!empty($bill['membership_no']) ? '  ·  ' . $bill['membership_no'] : '') . '  ·  ' . ($bill['rider_type'] === 'guest' ? 'Guest rider' : 'Learner');
+        $this->txt($m, $y + 12.5, $hw, $line2, 'helvetica', '', 8, self::BROWN);
+        $this->txt($m, $y + 17, $hw, trim($bill['mobile'] . (!empty($bill['email']) ? '  ·  ' . $bill['email'] : '')), 'helvetica', '', 8, self::MUTED);
+        $ay = $y + 21.5;
+        if (!empty($bill['address'])) {
+            $ay = $this->multitext($m, $ay, $hw - 6, $bill['address'], 'helvetica', '', 7.5, self::MUTED, 'L', 1.35);
+        }
+
+        // Right: package card
+        $px = $m + $hw + 4;
+        $pw = $hw - 4;
+        $this->SetFillColor(240, 229, 204);
+        $this->RoundedRect($px, $y - 2, $pw, 30, 3, '1111', 'F');
+        $this->txt($px + 5, $y + 1, $pw - 10, 'PACKAGE', 'helvetica', '', 6.8, self::GOLD);
+        $this->txt($px + 5, $y + 5.5, $pw - 10, $bill['package_name'] . ' · ' . ucfirst($bill['audience']), 'times', 'B', 13, self::INK, 'L', 6.5);
+        $n = (int) $bill['sessions_total'];
+        $this->txt($px + 5, $y + 13, $pw - 10, $n . ' session' . ($n > 1 ? 's' : '') . ' × ' . (int) $bill['duration_min'] . ' min' . (!empty($bill['expires_at']) ? '  ·  valid till ' . date('d M Y', strtotime($bill['expires_at'])) : '  ·  no expiry'), 'helvetica', '', 8, self::BROWN);
+        $used = (int) $bill['sessions_used'];
+        $this->txt($px + 5, $y + 18, $pw - 10, 'Sessions used ' . $used . ' of ' . $n . '  ·  ' . max(0, $n - $used) . ' remaining', 'helvetica', '', 7.5, self::MUTED);
+        // progress bar
+        $this->SetFillColor(...self::SAND);
+        $this->RoundedRect($px + 5, $y + 23, $pw - 10, 2, 1, '1111', 'F');
+        if ($n > 0 && $used > 0) {
+            $this->SetFillColor(...self::GOLD);
+            $this->RoundedRect($px + 5, $y + 23, ($pw - 10) * min(1, $used / $n), 2, 1, '1111', 'F');
+        }
+
+        // ── Charges table ──
+        $ty = max($ay + 8, $y + 36);
+        $this->txt($m, $ty, $cw, 'CHARGES', 'helvetica', '', 6.8, self::GOLD);
+        $ty += 5;
+        $this->SetFillColor(...self::INK);
+        $this->RoundedRect($m, $ty, $cw, 7, 1.5, '1111', 'F');
+        $this->txt($m + 4, $ty, $cw * 0.6, 'Description', 'helvetica', 'B', 7.5, self::CREAM, 'L', 7);
+        $this->txt($m + $cw * 0.6, $ty, $cw * 0.15, 'Qty', 'helvetica', 'B', 7.5, self::CREAM, 'C', 7);
+        $this->txt($m + $cw * 0.75, $ty, $cw * 0.25 - 4, 'Amount', 'helvetica', 'B', 7.5, self::CREAM, 'R', 7);
+        $ty += 7;
+        $this->SetFillColor(...self::WHITE);
+        $this->Rect($m, $ty, $cw, 11, 'F');
+        $this->txt($m + 4, $ty + 1.5, $cw * 0.6, $bill['package_name'] . ' — ' . ucfirst($bill['audience']), 'helvetica', 'B', 9, self::INK);
+        $this->txt($m + 4, $ty + 6.5, $cw * 0.6, $n . ' × ' . (int) $bill['duration_min'] . ' min riding session' . ($n > 1 ? 's' : '') . ' with trainer', 'helvetica', '', 7.2, self::MUTED);
+        $this->txt($m + $cw * 0.6, $ty + 3, $cw * 0.15, '1', 'helvetica', '', 9, self::INK, 'C');
+        $this->txt($m + $cw * 0.75, $ty + 3, $cw * 0.25 - 4, $cur($bill['list_price']), 'dejavusans', '', 8.5, self::INK, 'R');
+        $ty += 11;
+        $this->SetLineStyle(['width' => 0.2, 'color' => self::SAND]);
+        $this->Line($m, $ty, $m + $cw, $ty);
+
+        // totals (right aligned block)
+        $tx = $m + $cw * 0.55;
+        $tw = $cw * 0.45;
+        $row = function ($label, $value, $bold = false, $color = null) use (&$ty, $tx, $tw) {
+            $ty += 6;
+            $this->txt($tx, $ty, $tw * 0.6, $label, 'helvetica', $bold ? 'B' : '', $bold ? 9 : 8, $color ?: ($bold ? self::INK : self::MUTED));
+            $this->txt($tx + $tw * 0.6, $ty, $tw * 0.4 - 4, $value, 'dejavusans', $bold ? 'B' : '', $bold ? 9.5 : 8, $color ?: self::INK, 'R');
+        };
+        $row('Subtotal', $cur($bill['list_price']));
+        if ((float) $bill['discount_amount'] > 0) {
+            $row('Discount ' . ($bill['discount_percent'] + 0) . '%' . (!empty($bill['offer_label']) ? ' · ' . $bill['offer_label'] : ''), '− ' . $cur($bill['discount_amount']), false, [168, 50, 45]);
+        }
+        $ty += 2;
+        $this->SetLineStyle(['width' => 0.4, 'color' => self::GOLD]);
+        $this->Line($tx, $ty + 4.5, $m + $cw, $ty + 4.5);
+        $row('Total', $cur($bill['total']), true);
+        $row('Paid', $cur($bill['paid_real']), false, [47, 74, 31]);
+        if ((float) $bill['due'] > 0.009) {
+            $row('Balance due', $cur($bill['due']), true, [168, 50, 45]);
+        }
+
+        // ── Payments ──
+        $py = $ty + 14;
+        $this->txt($m, $py, $cw, 'PAYMENTS RECEIVED', 'helvetica', '', 6.8, self::GOLD);
+        $py += 5;
+        $pays = $bill['payments'] ?? [];
+        if (!count($pays)) {
+            $this->txt($m, $py, $cw, 'No payment recorded yet.', 'helvetica', 'I', 8, self::MUTED);
+            $py += 6;
+        } else {
+            $cols = [0.22, 0.22, 0.36, 0.20];
+            $this->SetFillColor(240, 229, 204);
+            $this->Rect($m, $py, $cw, 6, 'F');
+            $x = $m;
+            foreach (['Date', 'Mode', 'Reference', 'Amount'] as $i => $h) {
+                $this->txt($x + 3, $py, $cw * $cols[$i] - 6, $h, 'helvetica', 'B', 7, self::BROWN, $i === 3 ? 'R' : 'L', 6);
+                $x += $cw * $cols[$i];
+            }
+            $py += 6;
+            foreach ($pays as $pr) {
+                $pr = (array) $pr;
+                $x  = $m;
+                $vals = [date('d M Y', strtotime($pr['date'])), $pr['mode_name'] ?: ($pr['paymentmode'] ?: '—'), $pr['transactionid'] ?: '—', $cur($pr['amount'])];
+                foreach ($vals as $i => $v) {
+                    $this->txt($x + 3, $py, $cw * $cols[$i] - 6, $v, $i === 3 ? 'dejavusans' : 'helvetica', $i === 3 ? 'B' : '', $i === 3 ? 7.5 : 8, self::INK, $i === 3 ? 'R' : 'L', 6);
+                    $x += $cw * $cols[$i];
+                }
+                $py += 6;
+                $this->SetLineStyle(['width' => 0.15, 'color' => self::SAND]);
+                $this->Line($m, $py, $m + $cw, $py);
+            }
+        }
+
+        // ── Notes / terms ──
+        $ny = $py + 8;
+        if (!empty($bill['notes'])) {
+            $this->txt($m, $ny, $cw, 'NOTE', 'helvetica', '', 6.8, self::GOLD);
+            $ny = $this->multitext($m, $ny + 4.5, $cw, $bill['notes'], 'helvetica', 'I', 8, self::BROWN, 'L', 1.4) + 4;
+        }
+        $terms = 'Sessions are first-come, first-served with no fixed time slots. Packages are personal, non-transferable and non-refundable. A riding helmet and closed shoes are mandatory for every session. Please keep this receipt for your records.';
+        $this->SetFillColor(240, 229, 204);
+        $this->RoundedRect($m, $ny, $cw - 34, 20, 2.5, '1111', 'F');
+        $this->multitext($m + 4, $ny + 3, $cw - 42, $terms, 'helvetica', 'I', 7.3, self::BROWN, 'L', 1.4);
+        $this->qrcode($bill['qr_text'] ?? $bill['rider_no'], $m + $cw - 28, $ny - 2, 26);
+        $this->txt($m + $cw - 30, $ny + 25, 30, 'Scan to verify rider', 'helvetica', '', 5.5, self::MUTED, 'C');
+
+        // ── Signatures ──
+        $sy = min($ny + 48, $this->getPageHeight() - 42);
+        $this->signature_line($m, $sy, 60, 'Received by');
+        if (!empty($bill['issued_by'])) {
+            $this->txt($m, $sy - 5, 60, $bill['issued_by'], 'times', 'I', 9, self::BROWN, 'C');
+        }
+        $this->signature_line($m + $cw - 60, $sy, 60, 'Rider / Guardian');
+
+        // Thank you
+        $this->txt($m, $sy + 14, $cw, 'Thank you for riding with us.', 'times', 'I', 11, self::GOLD, 'C');
+
+        $this->footer_line();
+
+        return $this;
+    }
+
     protected function footer_line()
     {
         $w = $this->getPageWidth();

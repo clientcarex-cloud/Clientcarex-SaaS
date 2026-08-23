@@ -16,6 +16,7 @@ if (shra_can('view')) {
 }
 if (is_admin()) {
     $shra_tabs[] = ['packages', 'shra/packages', 'fa-solid fa-tags', _l('shra_packages')];
+    $shra_tabs[] = ['trainers', 'shra/trainers', 'fa-solid fa-user-tie', 'Trainers'];
     $shra_tabs[] = ['settings', 'shra/settings', 'fa-solid fa-sliders', _l('shra_settings')];
 }
 ?>

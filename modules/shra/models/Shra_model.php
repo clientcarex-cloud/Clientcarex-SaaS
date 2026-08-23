@@ -58,11 +58,26 @@ class Shra_model extends App_Model
     public function get_riders($filters = [])
     {
         $p = db_prefix();
+        $today = date('Y-m-d');
         $this->db->select("r.*,
             (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND e.status = 'active') AS active_enrollments,
             (SELECT COALESCE(SUM(e.sessions_total - e.sessions_used),0) FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND e.status = 'active') AS sessions_left,
-            (SELECT MAX(a.session_date) FROM {$p}shra_attendance a WHERE a.rider_id = r.id) AS last_session")
+            (SELECT MAX(a.session_date) FROM {$p}shra_attendance a WHERE a.rider_id = r.id) AS last_session,
+            (SELECT COUNT(*) FROM {$p}shra_attendance a WHERE a.rider_id = r.id AND a.session_date = '{$today}') AS attended_today,
+            (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND DATE(e.created_at) = '{$today}' AND e.status <> 'cancelled') AS billed_today,
+            (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND e.status <> 'cancelled') AS bills,
+            (SELECT e.id FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND e.status <> 'cancelled' AND e.invoice_id IS NOT NULL
+                AND e.total - COALESCE((SELECT SUM(pr.amount) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = e.invoice_id), e.paid_amount) > 0.009 ORDER BY e.id ASC LIMIT 1) AS due_enrollment_id,
+            " . $this->due_sql('r.id') . " AS total_due")
             ->from($p . 'shra_riders r');
+
+        if (!empty($filters['view']) && $filters['view'] === 'today') {
+            $this->db->where("(EXISTS (SELECT 1 FROM {$p}shra_attendance a WHERE a.rider_id = r.id AND a.session_date = '{$today}')
+                OR EXISTS (SELECT 1 FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND DATE(e.created_at) = '{$today}' AND e.status <> 'cancelled'))", null, false);
+        }
+        if (!empty($filters['view']) && $filters['view'] === 'due') {
+            $this->db->where($this->due_sql('r.id') . ' > 0.009', null, false);
+        }
 
         if (!empty($filters['q'])) {
             $q = $this->db->escape_like_str($filters['q']);
@@ -86,14 +101,31 @@ class Shra_model extends App_Model
         return $rows;
     }
 
+    /**
+     * SQL expression: outstanding balance for a rider across all non-cancelled
+     * enrollments. The invoice's payment records are the source of truth (so
+     * payments recorded from Sales count too); enrollments without an invoice
+     * fall back to their own paid_amount.
+     */
+    private function due_sql($rider_col)
+    {
+        $p = db_prefix();
+
+        return "(SELECT COALESCE(SUM(GREATEST(0, e.total - COALESCE((SELECT SUM(pr.amount) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = e.invoice_id), e.paid_amount))),0)
+            FROM {$p}shra_enrollments e WHERE e.rider_id = {$rider_col} AND e.status <> 'cancelled')";
+    }
+
     /** Lightweight search for billing / attendance pickers. */
     public function search_riders($q, $limit = 12)
     {
         $p = db_prefix();
         $q = $this->db->escape_like_str(trim((string) $q));
 
+        $today = date('Y-m-d');
         $this->db->select("r.id, r.rider_no, r.full_name, r.mobile, r.dob, r.rider_type, r.riding_level, r.membership_no, r.status, r.preferred_package_id,
-            (SELECT COALESCE(SUM(e.sessions_total - e.sessions_used),0) FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND e.status = 'active') AS sessions_left")
+            (SELECT COALESCE(SUM(e.sessions_total - e.sessions_used),0) FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND e.status = 'active') AS sessions_left,
+            (SELECT COUNT(*) FROM {$p}shra_attendance a WHERE a.rider_id = r.id AND a.session_date = '{$today}') AS attended_today,
+            " . $this->due_sql('r.id') . " AS total_due")
             ->from($p . 'shra_riders r');
 
         if ($q !== '') {
@@ -400,6 +432,35 @@ class Shra_model extends App_Model
             return 'Rider or package not found.';
         }
 
+        // ── Duplicate guards ──
+        $token = isset($opts['bill_token']) ? substr(preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $opts['bill_token']), 0, 40) : '';
+        if ($token !== '') {
+            $dup = $this->db->where('bill_token', $token)->get(db_prefix() . 'shra_enrollments')->row();
+            if ($dup) {
+                // Same form submitted twice (double click / refresh) — return the first result instead of billing again.
+                return ['enrollment_id' => $dup->id, 'invoice_id' => $dup->invoice_id, 'duplicate' => true];
+            }
+        }
+        if (empty($opts['force'])) {
+            $recent = $this->db->where('rider_id', $rider->id)->where('package_id', $package->id)->where('status <>', 'cancelled')
+                ->where('created_at >=', date('Y-m-d H:i:s', time() - 180))->get(db_prefix() . 'shra_enrollments')->row();
+            if ($recent) {
+                return ['needs_confirm' => true, 'reason' => 'recent', 'message' => $rider->full_name . ' was billed for "' . $package->name . '" less than 3 minutes ago (' . $recent->enrollment_no . '). Bill again?'];
+            }
+            $open = $this->active_enrollments($rider->id);
+            if (count($open)) {
+                $left = 0;
+                foreach ($open as $o) {
+                    $left += $o->sessions_total - $o->sessions_used;
+                }
+                return ['needs_confirm' => true, 'reason' => 'open', 'message' => $rider->full_name . ' already has ' . $left . ' unused session' . ($left == 1 ? '' : 's') . ' on an active package. Add another package anyway?'];
+            }
+            $due = $this->rider_due($rider->id);
+            if ($due > 0.009) {
+                return ['needs_confirm' => true, 'reason' => 'due', 'message' => $rider->full_name . ' still owes ' . shra_money($due) . ' on a previous bill. Collect that first, or continue with a new bill?'];
+            }
+        }
+
         $quote        = $this->quote($package, $opts['discount_percent'] ?? null);
         $payment_mode = (string) ($opts['payment_mode'] ?? '');
         $paid_amount  = isset($opts['paid_amount']) && $opts['paid_amount'] !== '' ? (float) $opts['paid_amount'] : $quote['total'];
@@ -504,6 +565,7 @@ class Shra_model extends App_Model
             'paid_amount'      => $paid_amount,
             'payment_mode'     => $mode_name,
             'invoice_id'       => $invoice_id,
+            'bill_token'       => $token !== '' ? $token : null,
             'start_date'       => $start,
             'expires_at'       => $expires,
             'status'           => 'active',
@@ -524,21 +586,137 @@ class Shra_model extends App_Model
         return ['enrollment_id' => $enrollment_id, 'invoice_id' => $invoice_id, 'quote' => $quote];
     }
 
+    /* ═══════════════════════ Payments ═══════════════════════ */
+
+    /** Outstanding balance for a rider (all non-cancelled enrollments). */
+    public function rider_due($rider_id)
+    {
+        $row = $this->db->query('SELECT ' . $this->due_sql((int) $rider_id) . ' AS due')->row();
+
+        return round((float) ($row ? $row->due : 0), 2);
+    }
+
+    /** Decorate an enrollment row with paid_real / due / pay_status. */
+    private function decorate_enrollment($e)
+    {
+        if (!$e) {
+            return $e;
+        }
+        $paid = $e->invoice_id && isset($e->invoice_paid) ? (float) $e->invoice_paid : (float) $e->paid_amount;
+        $e->paid_real  = round($paid, 2);
+        $e->due        = round(max(0, (float) $e->total - $paid), 2);
+        $e->pay_status = $e->status === 'cancelled' ? 'cancelled' : ($e->due <= 0.009 ? 'paid' : ($paid > 0.009 ? 'partial' : 'unpaid'));
+
+        return $e;
+    }
+
+    /** Payment records behind an enrollment's invoice. */
+    public function get_payments($enrollment_id)
+    {
+        $p = db_prefix();
+        $e = $this->db->select('invoice_id')->where('id', (int) $enrollment_id)->get($p . 'shra_enrollments')->row();
+        if (!$e || !$e->invoice_id) {
+            return [];
+        }
+
+        return $this->db->select('pr.*, pm.name AS mode_name')
+            ->from($p . 'invoicepaymentrecords pr')
+            ->join($p . 'payment_modes pm', 'pm.id = pr.paymentmode', 'left')
+            ->where('pr.invoiceid', (int) $e->invoice_id)
+            ->order_by('pr.id', 'ASC')->get()->result();
+    }
+
+    /**
+     * Collect a further payment against an enrollment (partial bills).
+     * Never exceeds the outstanding balance. Returns the payment id or a string error.
+     */
+    public function collect_payment($enrollment_id, $amount, $payment_mode = '', $reference = '', $note = '')
+    {
+        $e = $this->get_enrollment($enrollment_id);
+        if (!$e) {
+            return 'Enrollment not found.';
+        }
+        if ($e->status === 'cancelled') {
+            return 'This enrollment is cancelled.';
+        }
+        if (!$e->invoice_id) {
+            return 'This enrollment has no invoice to record the payment against.';
+        }
+        $amount = round((float) $amount, 2);
+        if ($amount <= 0) {
+            return 'Enter an amount greater than zero.';
+        }
+        if ($e->due <= 0.009) {
+            return 'Nothing is due on this bill — it is already fully paid.';
+        }
+        if ($amount > $e->due + 0.009) {
+            return 'Amount exceeds the balance due (' . shra_money($e->due) . ').';
+        }
+        // Guard: identical payment recorded in the last 2 minutes = accidental double submit
+        $dup = $this->db->where('invoiceid', $e->invoice_id)->where('amount', $amount)
+            ->where('daterecorded >=', date('Y-m-d H:i:s', time() - 120))->get(db_prefix() . 'invoicepaymentrecords')->row();
+        if ($dup) {
+            return 'An identical payment of ' . shra_money($amount) . ' was recorded moments ago. Refresh to see it.';
+        }
+
+        $this->db->insert(db_prefix() . 'invoicepaymentrecords', [
+            'invoiceid'     => $e->invoice_id,
+            'amount'        => $amount,
+            'paymentmode'   => (string) $payment_mode,
+            'date'          => date('Y-m-d'),
+            'daterecorded'  => date('Y-m-d H:i:s'),
+            'transactionid' => substr(trim((string) $reference), 0, 100),
+            'note'          => 'SHRA counter · balance payment · ' . $e->package_name . ($note !== '' ? ' · ' . substr(trim((string) $note), 0, 200) : ''),
+        ]);
+        $pid = $this->db->insert_id();
+        update_invoice_status($e->invoice_id, true);
+        $this->load->model('invoices_model');
+        $this->invoices_model->save_formatted_number($e->invoice_id);
+        $this->sync_paid($e->id, $payment_mode);
+
+        log_activity('SHRA payment collected [' . shra_money($amount) . ' on ' . $e->enrollment_no . ' / Invoice #' . $e->invoice_id . ']');
+
+        return $pid;
+    }
+
+    /** Keep enrollment.paid_amount equal to the invoice's recorded payments. */
+    public function sync_paid($enrollment_id, $payment_mode = null)
+    {
+        $p = db_prefix();
+        $e = $this->db->where('id', (int) $enrollment_id)->get($p . 'shra_enrollments')->row();
+        if (!$e || !$e->invoice_id) {
+            return;
+        }
+        $sum = $this->db->select_sum('amount')->where('invoiceid', $e->invoice_id)->get($p . 'invoicepaymentrecords')->row()->amount;
+        $upd = ['paid_amount' => round((float) $sum, 2)];
+        if ($payment_mode !== null && $payment_mode !== '') {
+            $name = $payment_mode;
+            if (is_numeric($payment_mode)) {
+                $m    = $this->db->where('id', (int) $payment_mode)->get($p . 'payment_modes')->row();
+                $name = $m ? $m->name : $payment_mode;
+            }
+            $upd['payment_mode'] = $e->payment_mode && stripos($e->payment_mode, $name) === false ? $e->payment_mode . ', ' . $name : $name;
+        }
+        $this->db->where('id', $e->id)->update($p . 'shra_enrollments', $upd);
+    }
+
     public function get_enrollment($id)
     {
         $p = db_prefix();
 
-        return $this->db->select('e.*, r.full_name, r.rider_no, r.mobile, r.dob, r.rider_type, r.riding_level, r.membership_no, r.guardian_name, r.is_minor, i.number AS invoice_number, i.formatted_number AS invoice_formatted, i.hash AS invoice_hash, i.status AS invoice_status')
+        return $this->decorate_enrollment($this->db->select("e.*, r.full_name, r.rider_no, r.mobile, r.email, r.address, r.dob, r.rider_type, r.riding_level, r.membership_no, r.guardian_name, r.is_minor, i.number AS invoice_number, i.formatted_number AS invoice_formatted, i.hash AS invoice_hash, i.status AS invoice_status,
+            (SELECT COALESCE(SUM(pr.amount),0) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = e.invoice_id) AS invoice_paid")
             ->from($p . 'shra_enrollments e')
             ->join($p . 'shra_riders r', 'r.id = e.rider_id', 'left')
             ->join($p . 'invoices i', 'i.id = e.invoice_id', 'left')
-            ->where('e.id', (int) $id)->get()->row();
+            ->where('e.id', (int) $id)->get()->row());
     }
 
     public function get_enrollments($filters = [], $limit = 300)
     {
         $p = db_prefix();
-        $this->db->select('e.*, r.full_name, r.rider_no, r.mobile, r.rider_type, r.membership_no, i.status AS invoice_status, i.hash AS invoice_hash, i.formatted_number AS invoice_formatted')
+        $this->db->select("e.*, r.full_name, r.rider_no, r.mobile, r.rider_type, r.membership_no, i.status AS invoice_status, i.hash AS invoice_hash, i.formatted_number AS invoice_formatted,
+            (SELECT COALESCE(SUM(pr.amount),0) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = e.invoice_id) AS invoice_paid")
             ->from($p . 'shra_enrollments e')
             ->join($p . 'shra_riders r', 'r.id = e.rider_id', 'left')
             ->join($p . 'invoices i', 'i.id = e.invoice_id', 'left');
@@ -560,7 +738,16 @@ class Shra_model extends App_Model
             $this->db->where('DATE(e.created_at) <=', $filters['to']);
         }
 
-        return $this->db->order_by('e.id', 'DESC')->limit($limit)->get()->result();
+        if (!empty($filters['due'])) {
+            $this->db->where("e.status <> 'cancelled' AND e.total - COALESCE((SELECT SUM(pr.amount) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = e.invoice_id), e.paid_amount) > 0.009", null, false);
+        }
+
+        $rows = $this->db->order_by('e.id', 'DESC')->limit($limit)->get()->result();
+        foreach ($rows as $r) {
+            $this->decorate_enrollment($r);
+        }
+
+        return $rows;
     }
 
     /** Active enrollments with sessions remaining for a rider. */
@@ -643,15 +830,25 @@ class Shra_model extends App_Model
         $session_no = (int) $e->sessions_used + 1;
         $date       = !empty($data['session_date']) ? to_sql_date($data['session_date']) : date('Y-m-d');
 
+        if (empty($data['force'])) {
+            $same_day = $this->db->where('rider_id', $e->rider_id)->where('session_date', $date)->get(db_prefix() . 'shra_attendance')->row();
+            if ($same_day) {
+                return ['needs_confirm' => true, 'message' => 'This rider already has a session marked on ' . _d($date) . ' (session ' . $same_day->session_no . '). Mark a second session on the same day?'];
+            }
+        }
+
+        $trainer_id = !empty($data['trainer_id']) ? (int) $data['trainer_id'] : $this->default_trainer_id();
+
         $this->db->insert(db_prefix() . 'shra_attendance', [
             'enrollment_id' => $e->id,
             'rider_id'      => $e->rider_id,
             'session_no'    => $session_no,
             'session_date'  => $date,
             'session_time'  => !empty($data['session_time']) ? $data['session_time'] : date('H:i:s'),
-            'trainer_id'    => !empty($data['trainer_id']) ? (int) $data['trainer_id'] : (is_staff_logged_in() ? get_staff_user_id() : null),
+            'trainer_id'    => $trainer_id,
             'horse_name'    => isset($data['horse_name']) ? substr(trim((string) $data['horse_name']), 0, 100) : null,
             'notes'         => isset($data['notes']) ? substr(trim((string) $data['notes']), 0, 500) : null,
+            'forced'        => !empty($data['force']) ? 1 : 0,
             'marked_by'     => is_staff_logged_in() ? get_staff_user_id() : null,
             'created_at'    => date('Y-m-d H:i:s'),
         ]);
@@ -701,11 +898,11 @@ class Shra_model extends App_Model
     {
         $p = db_prefix();
         $this->db->select('a.*, r.full_name, r.rider_no, r.rider_type, e.package_name, e.sessions_total, e.enrollment_no,
-            CONCAT(s.firstname, " ", s.lastname) AS trainer_name, CONCAT(m.firstname, " ", m.lastname) AS marked_by_name')
+            t.name AS trainer_name, CONCAT(m.firstname, " ", m.lastname) AS marked_by_name')
             ->from($p . 'shra_attendance a')
             ->join($p . 'shra_riders r', 'r.id = a.rider_id', 'left')
             ->join($p . 'shra_enrollments e', 'e.id = a.enrollment_id', 'left')
-            ->join($p . 'staff s', 's.staffid = a.trainer_id', 'left')
+            ->join($p . 'shra_trainers t', 't.id = a.trainer_id', 'left')
             ->join($p . 'staff m', 'm.staffid = a.marked_by', 'left');
 
         if (!empty($filters['date'])) {
@@ -730,11 +927,73 @@ class Shra_model extends App_Model
         return $this->db->order_by('a.session_date', 'DESC')->order_by('a.id', 'DESC')->limit($limit)->get()->result();
     }
 
-    /** Staff list for the trainer picker (active staff). */
-    public function get_trainers()
+    /* ═══════════════════════ Trainers ═══════════════════════ */
+
+    public function get_trainers($active_only = true)
     {
-        return $this->db->select('staffid, firstname, lastname')->where('active', 1)
-            ->order_by('firstname', 'ASC')->get(db_prefix() . 'staff')->result();
+        $p = db_prefix();
+        $this->db->select("t.*, (SELECT COUNT(*) FROM {$p}shra_attendance a WHERE a.trainer_id = t.id) AS sessions,
+            (SELECT COUNT(*) FROM {$p}shra_attendance a WHERE a.trainer_id = t.id AND a.session_date = '" . date('Y-m-d') . "') AS sessions_today")
+            ->from($p . 'shra_trainers t');
+        if ($active_only) {
+            $this->db->where('t.active', 1);
+        }
+
+        return $this->db->order_by('t.sort_order', 'ASC')->order_by('t.name', 'ASC')->get()->result();
+    }
+
+    public function get_trainer($id)
+    {
+        return $this->db->where('id', (int) $id)->get(db_prefix() . 'shra_trainers')->row();
+    }
+
+    public function save_trainer(array $in, $id = null)
+    {
+        $name = trim((string) ($in['name'] ?? ''));
+        if ($name === '') {
+            return false;
+        }
+        $data = [
+            'name'       => substr($name, 0, 191),
+            'mobile'     => substr(trim((string) ($in['mobile'] ?? '')), 0, 30) ?: null,
+            'specialty'  => substr(trim((string) ($in['specialty'] ?? '')), 0, 191) ?: null,
+            'staff_id'   => !empty($in['staff_id']) ? (int) $in['staff_id'] : null,
+            'active'     => !empty($in['active']) ? 1 : 0,
+            'sort_order' => (int) ($in['sort_order'] ?? 0),
+        ];
+        if ($id) {
+            $this->db->where('id', (int) $id)->update(db_prefix() . 'shra_trainers', $data);
+
+            return (int) $id;
+        }
+        $this->db->insert(db_prefix() . 'shra_trainers', $data);
+
+        return $this->db->insert_id();
+    }
+
+    /** Deactivate when sessions reference the trainer, delete otherwise. */
+    public function delete_trainer($id)
+    {
+        $used = $this->db->where('trainer_id', (int) $id)->count_all_results(db_prefix() . 'shra_attendance');
+        if ($used > 0) {
+            $this->db->where('id', (int) $id)->update(db_prefix() . 'shra_trainers', ['active' => 0]);
+
+            return 'deactivated';
+        }
+        $this->db->where('id', (int) $id)->delete(db_prefix() . 'shra_trainers');
+
+        return 'deleted';
+    }
+
+    /** Trainer linked to the logged-in staff member, if any. */
+    public function default_trainer_id()
+    {
+        if (!is_staff_logged_in()) {
+            return null;
+        }
+        $t = $this->db->select('id')->where('staff_id', get_staff_user_id())->where('active', 1)->get(db_prefix() . 'shra_trainers')->row();
+
+        return $t ? (int) $t->id : null;
     }
 
     /* ═══════════════════════ Dashboard ═══════════════════════ */
@@ -755,7 +1014,8 @@ class Shra_model extends App_Model
             (SELECT COALESCE(SUM(paid_amount),0) FROM {$p}shra_enrollments WHERE DATE(created_at) = '{$today}' AND status <> 'cancelled') AS revenue_today,
             (SELECT COALESCE(SUM(paid_amount),0) FROM {$p}shra_enrollments WHERE DATE(created_at) >= '{$month}' AND status <> 'cancelled') AS revenue_month,
             (SELECT COUNT(*) FROM {$p}shra_enrollments WHERE certificate_no IS NOT NULL) AS certificates,
-            (SELECT COUNT(*) FROM {$p}shra_enrollments WHERE status = 'active' AND sessions_total - sessions_used <= 2 AND is_guest = 0) AS ending_soon
+            (SELECT COUNT(*) FROM {$p}shra_enrollments WHERE status = 'active' AND sessions_total - sessions_used <= 2 AND is_guest = 0) AS ending_soon,
+            (SELECT COALESCE(SUM(GREATEST(0, e.total - COALESCE((SELECT SUM(pr.amount) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = e.invoice_id), e.paid_amount))),0) FROM {$p}shra_enrollments e WHERE e.status <> 'cancelled') AS total_due
         ")->row();
 
         return (array) $row;

@@ -7,7 +7,7 @@
     <form method="get" class="shra-toolbar">
         <input type="date" name="from" class="form-control" style="width:auto" value="<?php echo html_escape($filters['from']); ?>">
         <input type="date" name="to" class="form-control" style="width:auto" value="<?php echo html_escape($filters['to']); ?>">
-        <select name="trainer_id" class="form-control" style="width:auto"><option value="">All trainers</option><?php foreach ($trainers as $t) { ?><option value="<?php echo $t->staffid; ?>" <?php echo $filters['trainer_id'] == $t->staffid ? 'selected' : ''; ?>><?php echo html_escape($t->firstname . ' ' . $t->lastname); ?></option><?php } ?></select>
+        <select name="trainer_id" class="form-control" style="width:auto"><option value="">All trainers</option><?php foreach ($trainers as $t) { ?><option value="<?php echo $t->id; ?>" <?php echo $filters['trainer_id'] == $t->id ? 'selected' : ''; ?>><?php echo html_escape($t->name); ?></option><?php } ?></select>
         <button class="shra-btn shra-btn-outline">Filter</button>
         <span class="shra-pill" style="margin-left:auto"><?php echo count($rows); ?> sessions</span>
     </form>

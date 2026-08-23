@@ -196,3 +196,9 @@
 .shra-powered span{font-size:11px;color:#7e8c9d;font-weight:500;letter-spacing:.3px}
 .shra-powered img{height:18px;width:auto}
 .shra-footer{display:flex;justify-content:center;align-items:center;gap:10px;padding:22px 0 6px;margin-top:18px;border-top:1px solid var(--line)}
+
+/* v1.2 — payments, smart actions */
+.shra-card-head .thin{font-weight:500;color:var(--muted);font-size:13px}
+.shra-row-attended td{background:#f7faf3}
+.shra-table td .shra-badge+.sub{margin-top:3px}
+#shra-collect-modal .modal-content{border-radius:16px;border:1px solid var(--line)}

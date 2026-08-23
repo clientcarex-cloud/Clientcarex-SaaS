@@ -9,6 +9,8 @@
     <?php echo form_open(admin_url('shra/bill'), ['id' => 'shra-bill-form']); ?>
     <input type="hidden" name="rider_id" id="shra-rider-id">
     <input type="hidden" name="package_id" id="shra-package-id">
+    <input type="hidden" name="bill_token" id="shra-bill-token" value="<?php echo $bill_token; ?>">
+    <input type="hidden" name="force" id="shra-bill-force" value="0">
     <div class="shra-bill">
         <div>
             <div class="shra-card"><div class="shra-card-body">
@@ -28,6 +30,7 @@
                     </div>
                 </div>
                 <div id="shra-picked" class="shra-picked" style="display:none"></div>
+                <div id="shra-rider-flags" style="margin-top:10px"></div>
             </div></div>
 
             <div class="shra-card shra-mt"><div class="shra-card-body">
@@ -63,15 +66,14 @@
                     <div class="col-md-3"><div class="form-group"><label>Discount %</label><input type="number" step="0.01" min="0" max="100" name="discount_percent" id="shra-discount" class="form-control" value="<?php echo $offer['active'] ? $offer['percent'] + 0 : 0; ?>"></div></div>
                     <div class="col-md-3"><div class="form-group"><label>Amount received</label><input type="number" step="0.01" min="0" name="paid_amount" id="shra-paid" class="form-control"></div></div>
                     <div class="col-md-3"><div class="form-group"><label>Payment mode</label><select name="payment_mode" class="form-control">
-                        <?php foreach ($payment_modes as $m) { ?><option value="<?php echo $m->id; ?>"><?php echo html_escape($m->name); ?></option><?php } ?>
-                        <?php if (!count($payment_modes)) { ?><option value="cash">Cash</option><?php } ?>
+                        <?php foreach ($payment_modes as $m) { ?><option value="<?php echo $m->id; ?>" <?php echo $m->selected_by_default ? 'selected' : ''; ?>><?php echo html_escape($m->name); ?></option><?php } ?>
                     </select></div></div>
                     <div class="col-md-3"><div class="form-group"><label>Reference / UPI txn</label><input type="text" name="reference" class="form-control" placeholder="optional"></div></div>
                 </div>
                 <div class="row">
                     <div class="col-md-6"><div class="form-group"><label>Note on this bill</label><input type="text" name="notes" class="form-control" placeholder="optional"></div></div>
                     <div class="col-md-6"><div class="form-group"><label>Trainer (if riding now)</label>
-                        <div style="display:flex;gap:8px"><select name="trainer_id" class="form-control"><option value="">—</option><?php foreach ($trainers as $t) { ?><option value="<?php echo $t->staffid; ?>" <?php echo $t->staffid == get_staff_user_id() ? 'selected' : ''; ?>><?php echo html_escape($t->firstname . ' ' . $t->lastname); ?></option><?php } ?></select>
+                        <div style="display:flex;gap:8px"><select name="trainer_id" class="form-control"><option value="">—</option><?php foreach ($trainers as $t) { ?><option value="<?php echo $t->id; ?>" <?php echo $t->staff_id == get_staff_user_id() ? 'selected' : ''; ?>><?php echo html_escape($t->name); ?></option><?php } ?></select>
                         <label class="shra-pill" style="white-space:nowrap;cursor:pointer;margin:0"><input type="checkbox" name="mark_now" value="1" style="margin:0"> Mark 1st session now</label></div></div></div>
                 </div>
             </div></div>
@@ -83,7 +85,7 @@
                 <div class="shra-card-body">
                     <div id="shra-summary"></div>
                     <button type="submit" id="shra-pay" class="shra-btn shra-btn-gold shra-btn-lg shra-btn-block" style="margin-top:16px" disabled><i class="fa-solid fa-check"></i> Collect <span class="amt"></span> &amp; bill</button>
-                    <div class="help" style="text-align:center;margin-top:10px">Creates a paid invoice in Sales and opens the rider's sessions wallet.</div>
+                    <div class="help" style="text-align:center;margin-top:10px">Creates an invoice in Sales, records the payment and opens the rider's sessions wallet. Double submits are ignored.</div>
                 </div>
             </div>
         </div>
@@ -92,6 +94,7 @@
     <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
+<?php include __DIR__ . '/partials/collect_modal.php'; ?>
 <?php init_tail(); ?>
 <script>
 $(function () {
@@ -102,7 +105,7 @@ $(function () {
         offer: <?php echo json_encode($offer); ?>,
         minorAge: <?php echo (int) get_option('shra_minor_age'); ?>,
         preselect: <?php echo $preselect ? json_encode($preselect) : 'null'; ?>,
-        urls: { bill: <?php echo json_encode(admin_url('shra/bill')); ?>, quick: <?php echo json_encode(admin_url('shra/quick_rider')); ?> }
+        urls: { bill: <?php echo json_encode(admin_url('shra/bill')); ?>, quick: <?php echo json_encode(admin_url('shra/quick_rider')); ?>, collect: <?php echo json_encode(admin_url('shra/collect')); ?>, attendance: <?php echo json_encode(admin_url('shra/attendance')); ?> }
     });
 });
 </script>
