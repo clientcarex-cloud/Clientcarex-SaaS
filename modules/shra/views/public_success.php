@@ -12,7 +12,7 @@ $pkg     = $rider->preferred_package;
             <?php if ($pkg) { ?>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--cream-2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:18px">
                 <div><div class="k" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600">Selected plan</div><div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:700"><?php echo html_escape($pkg->name); ?> · <?php echo ucfirst($pkg->audience); ?></div><div class="hint"><?php echo (int) $pkg->sessions; ?> session<?php echo $pkg->sessions > 1 ? 's' : ''; ?> × <?php echo (int) $pkg->duration_min; ?> min</div></div>
-                <div style="text-align:right"><div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:700;color:var(--red)"><?php echo shra_money($plan['total']); ?></div><?php if ($plan['discount_percent'] > 0) { ?><div class="hint"><s><?php echo shra_money($plan['list_price']); ?></s> · <?php echo $plan['discount_percent'] + 0; ?>% off</div><?php } ?><div class="hint">pay at the desk</div></div>
+                <div style="text-align:right"><div style="font-family:'Inter',system-ui,sans-serif;font-size:22px;font-weight:700;color:var(--red)"><?php echo shra_money($plan['total']); ?></div><?php if ($plan['discount_percent'] > 0) { ?><div class="hint"><s><?php echo shra_money($plan['list_price']); ?></s> · <?php echo $plan['discount_percent'] + 0; ?>% off</div><?php } ?><div class="hint">pay at the desk</div></div>
             </div>
             <?php } ?>
             <div class="kv">

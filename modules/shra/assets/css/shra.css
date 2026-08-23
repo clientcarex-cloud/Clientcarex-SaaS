@@ -121,7 +121,7 @@
 .shra-pkg .pk-name{font-weight:700;font-size:14px}
 .shra-pkg .pk-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
 .shra-pkg .pk-price{margin-top:10px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
-.shra-pkg .pk-now{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:700;color:var(--red)}
+.shra-pkg .pk-now{font-family:'Inter',system-ui,sans-serif;font-size:18px;font-weight:700;color:var(--red)}
 .shra-pkg .pk-was{font-size:12px;color:var(--muted);text-decoration:line-through}
 .shra-pkg .pk-per{font-size:11px;color:var(--muted);width:100%}
 .shra-pkg .pk-tag{position:absolute;top:-9px;right:10px;background:var(--green);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.6px;padding:3px 8px;border-radius:999px;text-transform:uppercase}
@@ -130,7 +130,7 @@
 .shra-pkg.selected .pk-check{display:inline-flex}
 .shra-summary{position:sticky;top:70px}
 .shra-summary .row-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}
-.shra-summary .row-line.total{border:0;padding-top:14px;font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:700}
+.shra-summary .row-line.total{border:0;padding-top:14px;font-family:'Inter',system-ui,sans-serif;font-size:22px;font-weight:700}
 .shra-summary .row-line.total .amt{color:var(--red)}
 .shra-offer{display:flex;align-items:center;gap:10px;background:#fbeeee;border:1px dashed #e8b9b6;color:var(--red);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600}
 .shra-offer .stamp{background:var(--red);color:#fff;border-radius:6px;padding:2px 7px;font-size:11px;transform:rotate(-4deg)}
