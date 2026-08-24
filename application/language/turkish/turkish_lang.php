@@ -3122,6 +3122,8 @@ $lang['total_files_deleted']                     = 'Toplam Silinen Dosya: %s';
 $lang['invalid_transaction']                     = 'Geçersiz İşlem. Lütfen Tekrar Deneyin.';
 $lang['payment_gateway_payu_money_key']          = 'PayU Ödeme Anahtarı';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Para Salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Panel Ödeme Açıklaması';
 
 # Version 1.9.3

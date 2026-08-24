@@ -3211,6 +3211,8 @@ $lang['total_files_deleted']                     = 'Numero di files cancellati: 
 $lang['invalid_transaction']                     = 'Transazione non valida. Riprova.';
 $lang['payment_gateway_payu_money_key']          = 'Chiave PayU Money';
 $lang['payment_gateway_payu_money_salt']         = 'Salt PayU Money';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Gateway Dashbord Descrizione Pagamento';
 
 # Version 1.9.3

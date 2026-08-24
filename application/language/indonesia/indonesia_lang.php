@@ -3178,6 +3178,8 @@ $lang['total_files_deleted']                     = 'Total berkas yang dihapus: %
 $lang['invalid_transaction']                     = 'Transaksi Tidak Valid. Mohon coba kembali.';
 $lang['payment_gateway_payu_money_key']          = 'PayU Money Key';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Money Salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Deskripsi Dasbor Gerbang Pembayaran';
 
 # Version 1.9.3

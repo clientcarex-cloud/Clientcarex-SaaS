@@ -2952,6 +2952,8 @@ $lang['total_files_deleted']                     = 'Archivos borrados en total: 
 $lang['invalid_transaction']                     = 'Transacción no válida. Por favor, inténtalo de nuevo.';
 $lang['payment_gateway_payu_money_key']          = 'PayU money key';
 $lang['payment_gateway_payu_money_salt']         = 'PayU money salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Gateway dashboard payment description';
 # version 1.9.3
 $lang['default_ticket_reply_status']          = 'Estado por defecto cuando se conteste un ticket';

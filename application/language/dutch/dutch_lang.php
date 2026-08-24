@@ -3158,6 +3158,8 @@ $lang['total_files_deleted']                     = 'Totaal aantal bestanden verw
 $lang['invalid_transaction']                     = 'Ongeldige transactie. Probeer het opnieuw.';
 $lang['payment_gateway_payu_money_key']          = 'PayU Money Key';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Money Salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Gateway Dashbord Betalingsbeschrijving';
 
 # Version 1.9.3

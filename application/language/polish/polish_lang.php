@@ -2983,6 +2983,8 @@ $lang['total_files_deleted']                     = 'Całkowita liczba usuniętyc
 $lang['invalid_transaction']                     = 'Nie udana transakcja. Proszę spróbuj ponownie.';
 $lang['payment_gateway_payu_money_key']          = 'PayU Money Key';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Money Salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Opis sposobu płatności';
 
 # Version 1.9.3

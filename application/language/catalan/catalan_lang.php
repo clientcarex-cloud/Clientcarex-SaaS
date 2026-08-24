@@ -3222,6 +3222,8 @@ $lang['total_files_deleted']                     = 'Total arxius esborrats: %s';
 $lang['invalid_transaction']                     = 'Transacció invàlida. Torneu a provar si us plau.';
 $lang['payment_gateway_payu_money_key']          = 'PayU Money Key';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Money Salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Descripció pagament panell porta entrada';
 
 # Version 1.9.3

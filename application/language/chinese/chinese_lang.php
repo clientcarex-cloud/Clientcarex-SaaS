@@ -3154,6 +3154,8 @@ $lang['total_files_deleted']                     = '已删除文件总数：%s';
 $lang['invalid_transaction']                     = '无效交易，请重试';
 $lang['payment_gateway_payu_money_key']          = 'PayU Money密钥';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Money盐值';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = '网关仪表盘付款描述';
 
 # 版本 1.9.3

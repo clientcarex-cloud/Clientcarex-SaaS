@@ -3135,6 +3135,8 @@ $lang['total_files_deleted']                     = 'Total fisiere sterse: %s';
 $lang['invalid_transaction']                     = 'Tranzactie invalida. Va rugam sa incercati din nou.';
 $lang['payment_gateway_payu_money_key']          = 'PayU Money Key';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Money Salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Descrierea platii pentru tabloul de bord al portalului';
 
 # Version 1.9.3

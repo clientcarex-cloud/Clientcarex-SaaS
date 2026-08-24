@@ -3135,6 +3135,8 @@ $lang['total_files_deleted']                     = 'Celkem odstraněno souborů:
 $lang['invalid_transaction']                     = 'Neplatná transakce. Zkuste to prosím znovu.';
 $lang['payment_gateway_payu_money_key']          = 'PayU Money Key';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Money Salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Popis platební brány';
 
 # Version 1.9.3

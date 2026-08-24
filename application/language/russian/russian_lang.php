@@ -3135,6 +3135,8 @@ $lang['total_files_deleted']                     = 'Всего удалено ф
 $lang['invalid_transaction']                     = 'Недействительная транзакция. Пожалуйста, попробуйте еще раз.';
 $lang['payment_gateway_payu_money_key']          = 'Ключ PayU';
 $lang['payment_gateway_payu_money_salt']         = 'Соль PayU';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Описание платежного метода';
 
 # Version 1.9.3

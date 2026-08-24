@@ -2961,6 +2961,8 @@ $lang['total_files_deleted'] = 'Tổng số tập tin đã bị xóa: %s';
 $lang['invalid_transaction'] = 'Giao dịch không hợp lệ. Vui lòng thử lại.';
 $lang['payment_gateway_payu_money_key'] = 'PayU key';
 $lang['payment_gateway_payu_money_salt'] = 'PayU salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description'] = 'Mô tả Cổng thanh toán';
 
 # Phiên bản 1.9.3

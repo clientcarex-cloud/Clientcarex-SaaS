@@ -3141,6 +3141,8 @@ $lang['total_files_deleted']                     = 'کل فایل‌های حذ�
 $lang['invalid_transaction']                     = 'تراکنش نامعتبر. لطفاً دوباره تلاش کنید.';
 $lang['payment_gateway_payu_money_key']          = 'کلید PayU Money';
 $lang['payment_gateway_payu_money_salt']         = 'نمک PayU Money';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'توضیحات پرداخت در داشبورد Gateway';
 
 # Version 1.9.3

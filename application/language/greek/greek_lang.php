@@ -3145,6 +3145,8 @@ $lang['total_files_deleted']                     = 'Διαγραφή Συνολ�
 $lang['invalid_transaction']                     = 'Ακυρη Συναλλαγή. Παρακαλώ προσπαθήστε ξανά.';
 $lang['payment_gateway_payu_money_key']          = 'PayU Money Key';
 $lang['payment_gateway_payu_money_salt']         = 'PayU Money Salt';
+$lang['payment_gateway_cashfree_app_id']         = 'Cashfree App ID (Client ID)';
+$lang['payment_gateway_cashfree_secret_key']     = 'Cashfree Secret Key';
 $lang['settings_paymentmethod_description']      = 'Περιγραφή πληρωμής Dashbord Gateway';
 
 # Version 1.9.3
