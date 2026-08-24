@@ -1140,4 +1140,194 @@ class Shra_model extends App_Model
 
         return $out;
     }
+
+    /* ═══════════════════════ Payments desk (admin only) ═══════════════════════
+     * One screen over every invoice and every receipt the academy has issued — the
+     * counter bills raised here plus anything created from Sales — so the owner can
+     * audit the money and remove a wrong entry. The controller gates all of it
+     * behind is_admin(); nothing below re-checks.
+     */
+
+    /** Shared range + search WHERE for the money lists. */
+    private function money_filters(array $f, $date_col, array $search_cols)
+    {
+        if (!empty($f['from'])) {
+            $this->db->where($date_col . ' >=', $f['from']);
+        }
+        if (!empty($f['to'])) {
+            $this->db->where($date_col . ' <=', $f['to']);
+        }
+        $q = trim((string) ($f['q'] ?? ''));
+        if ($q !== '') {
+            $like = $this->db->escape_like_str($q);
+            $or   = [];
+            foreach ($search_cols as $c) {
+                $or[] = $c . " LIKE '%{$like}%' ESCAPE '!'";
+            }
+            $this->db->where('(' . implode(' OR ', $or) . ')');
+        }
+        $scope = $f['scope'] ?? 'all';
+        if ($scope === 'shra') {
+            $this->db->where('e.id IS NOT NULL');
+        } elseif ($scope === 'other') {
+            $this->db->where('e.id IS NULL');
+        }
+    }
+
+    /**
+     * Every invoice, newest first, carrying the rider and enrollment behind it when the
+     * bill came from the SHRA counter. $filters: from, to, q, scope (all|shra|other), status.
+     */
+    public function all_invoices(array $filters = [], $limit = 500)
+    {
+        $p = db_prefix();
+        $this->db->select("i.id, i.number, i.prefix, i.number_format, i.formatted_number, i.date, i.duedate, i.total, i.status, i.hash, i.clientid, i.adminnote,
+            c.company,
+            e.id AS enrollment_id, e.enrollment_no, e.package_name, e.status AS enrollment_status,
+            r.id AS rider_id, r.full_name AS rider_name, r.rider_no, r.mobile,
+            (SELECT COALESCE(SUM(pr.amount),0) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = i.id) AS paid,
+            (SELECT COUNT(*) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = i.id) AS receipts", false)
+            ->from($p . 'invoices i')
+            ->join($p . 'shra_enrollments e', 'e.invoice_id = i.id', 'left')
+            ->join($p . 'shra_riders r', 'r.id = e.rider_id', 'left')
+            ->join($p . 'clients c', 'c.userid = i.clientid', 'left');
+
+        $this->money_filters($filters, 'i.date', ['i.formatted_number', 'i.number', 'r.full_name', 'r.rider_no', 'r.mobile', 'c.company', 'e.enrollment_no', 'e.package_name']);
+
+        if (isset($filters['status']) && $filters['status'] !== '' && is_numeric($filters['status'])) {
+            $this->db->where('i.status', (int) $filters['status']);
+        }
+
+        $rows = $this->db->order_by('i.date DESC, i.id DESC')->limit((int) $limit)->get()->result();
+        foreach ($rows as $row) {
+            $row->paid = round((float) $row->paid, 2);
+            $row->due  = round(max(0, (float) $row->total - $row->paid), 2);
+        }
+
+        return $rows;
+    }
+
+    /** Every receipt recorded against an invoice, newest first. Same filters as all_invoices(). */
+    public function all_receipts(array $filters = [], $limit = 500)
+    {
+        $p = db_prefix();
+        $this->db->select("pr.id, pr.invoiceid, pr.amount, pr.paymentmode, pr.date, pr.daterecorded, pr.transactionid, pr.note,
+            pm.name AS mode_name,
+            i.id AS inv_id, i.number, i.prefix, i.number_format, i.formatted_number, i.date AS invoice_date, i.status AS invoice_status, i.total AS invoice_total, i.hash AS invoice_hash, i.clientid,
+            c.company,
+            e.id AS enrollment_id, e.enrollment_no, e.package_name,
+            r.id AS rider_id, r.full_name AS rider_name, r.rider_no, r.mobile", false)
+            ->from($p . 'invoicepaymentrecords pr')
+            ->join($p . 'payment_modes pm', 'pm.id = pr.paymentmode', 'left')
+            ->join($p . 'invoices i', 'i.id = pr.invoiceid', 'left')
+            ->join($p . 'shra_enrollments e', 'e.invoice_id = i.id', 'left')
+            ->join($p . 'shra_riders r', 'r.id = e.rider_id', 'left')
+            ->join($p . 'clients c', 'c.userid = i.clientid', 'left');
+
+        $this->money_filters($filters, 'pr.date', ['i.formatted_number', 'i.number', 'pr.transactionid', 'pr.note', 'r.full_name', 'r.rider_no', 'r.mobile', 'c.company', 'e.enrollment_no']);
+
+        return $this->db->order_by('pr.date DESC, pr.id DESC')->limit((int) $limit)->get()->result();
+    }
+
+    /** Headline numbers for the range the lists are showing. */
+    public function money_summary($from, $to)
+    {
+        $p    = db_prefix();
+        $from = date('Y-m-d', strtotime($from));
+        $to   = date('Y-m-d', strtotime($to));
+        $adv  = '0';
+        if ($this->db->table_exists($p . 'shra_lead_payments')) {
+            $adv = "(SELECT COALESCE(SUM(lp.amount),0) FROM {$p}shra_lead_payments lp WHERE DATE(lp.created_at) BETWEEN '{$from}' AND '{$to}')";
+        }
+
+        $row = $this->db->query("SELECT
+            (SELECT COUNT(*) FROM {$p}invoices i WHERE i.date BETWEEN '{$from}' AND '{$to}') AS invoices,
+            (SELECT COALESCE(SUM(i.total),0) FROM {$p}invoices i WHERE i.date BETWEEN '{$from}' AND '{$to}' AND i.status <> 5) AS billed,
+            (SELECT COUNT(*) FROM {$p}invoicepaymentrecords pr WHERE pr.date BETWEEN '{$from}' AND '{$to}') AS receipts,
+            (SELECT COALESCE(SUM(pr.amount),0) FROM {$p}invoicepaymentrecords pr WHERE pr.date BETWEEN '{$from}' AND '{$to}') AS collected,
+            {$adv} AS advances,
+            (SELECT COALESCE(SUM(GREATEST(0, i.total - COALESCE((SELECT SUM(pr.amount) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = i.id),0))),0)
+                FROM {$p}invoices i WHERE i.date BETWEEN '{$from}' AND '{$to}' AND i.status <> 5) AS due
+        ")->row();
+
+        return (array) $row;
+    }
+
+    /**
+     * Remove an invoice for good, together with its receipts. Perfex normally refuses
+     * anything but the newest invoice (the delete_only_on_last_invoice setting); the
+     * academy owner asked to be able to remove any of them, so we unlink what a "simple"
+     * delete would leave dangling and let the core model do the rest.
+     *
+     * The enrollment billed on it keeps its row but loses the bill — detached and
+     * cancelled, so nobody is chased for a balance on an invoice that no longer exists.
+     * Returns true or a string error.
+     */
+    public function delete_invoice($id)
+    {
+        $p       = db_prefix();
+        $id      = (int) $id;
+        $invoice = $this->db->where('id', $id)->get($p . 'invoices')->row();
+        if (!$invoice) {
+            return 'Invoice not found.';
+        }
+        $label       = format_invoice_number($invoice);
+        $enrollments = $this->db->where('invoice_id', $id)->get($p . 'shra_enrollments')->result();
+
+        // Links the core model only clears on a full delete — cut them here so the simple
+        // delete below cannot strand a record on a missing invoice.
+        $this->db->where('invoiceid', $id)->update($p . 'expenses', ['invoiceid' => null]);
+        $this->db->where('invoice_id', $id)->update($p . 'proposals', ['invoice_id' => null, 'date_converted' => null]);
+        $this->db->where('invoiceid', $id)->update($p . 'estimates', ['invoiceid' => null]);
+
+        $this->load->model('invoices_model');
+        if (!$this->invoices_model->delete($id, true)) {
+            return 'The invoice could not be deleted.';
+        }
+
+        foreach ($enrollments as $e) {
+            $this->db->where('id', $e->id)->update($p . 'shra_enrollments', [
+                'invoice_id'  => null,
+                'paid_amount' => 0,
+                'status'      => 'cancelled',
+                'notes'       => substr(trim((string) $e->notes . ' [Invoice ' . $label . ' deleted ' . date('d M Y') . ']'), 0, 500),
+            ]);
+            if ($this->db->table_exists($p . 'shra_lead_attribution')) {
+                $this->db->where('enrollment_id', $e->id)->update($p . 'shra_lead_attribution', ['amount_paid' => 0, 'amount_billed' => 0, 'invoice_id' => null]);
+            }
+        }
+
+        log_activity('SHRA invoice deleted [' . $label . ' · ' . shra_money($invoice->total)
+            . (count($enrollments) ? ' · ' . count($enrollments) . ' enrollment(s) cancelled' : '') . ']');
+
+        return true;
+    }
+
+    /**
+     * Remove one payment receipt. The invoice falls back to partial / unpaid and the
+     * enrollment's paid_amount follows it. Returns true or a string error.
+     */
+    public function delete_receipt($id)
+    {
+        $p   = db_prefix();
+        $pay = $this->db->where('id', (int) $id)->get($p . 'invoicepaymentrecords')->row();
+        if (!$pay) {
+            return 'Payment receipt not found.';
+        }
+        $invoice_id = (int) $pay->invoiceid;
+        $label      = format_invoice_number($invoice_id);
+
+        $this->load->model('payments_model');
+        if (!$this->payments_model->delete($pay->id)) {
+            return 'The receipt could not be deleted.';
+        }
+
+        foreach ($this->db->where('invoice_id', $invoice_id)->get($p . 'shra_enrollments')->result() as $e) {
+            $this->sync_paid($e->id);
+        }
+
+        log_activity('SHRA payment receipt deleted [' . shra_money($pay->amount) . ' on invoice ' . $label . ']');
+
+        return true;
+    }
 }

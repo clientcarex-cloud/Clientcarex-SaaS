@@ -235,6 +235,22 @@ function shra_status_badge($status)
     return '<span class="shra-badge ' . $cls . '">' . ucfirst($status) . '</span>';
 }
 
+/** Core invoice status (Perfex ids 1-6) as a SHRA badge. */
+function shra_invoice_badge($status)
+{
+    $map = [
+        1 => ['shra-badge-red', 'Unpaid'],
+        2 => ['shra-badge-green', 'Paid'],
+        3 => ['shra-badge-gold', 'Partially paid'],
+        4 => ['shra-badge-red', 'Overdue'],
+        5 => ['shra-badge-muted', 'Cancelled'],
+        6 => ['shra-badge-muted', 'Draft'],
+    ];
+    [$cls, $txt] = $map[(int) $status] ?? ['shra-badge-muted', 'Unknown'];
+
+    return '<span class="shra-badge ' . $cls . '">' . $txt . '</span>';
+}
+
 /** Paid / Partial / Unpaid badge for a decorated enrollment. */
 function shra_pay_badge($e)
 {

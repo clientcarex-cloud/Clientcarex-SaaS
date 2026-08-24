@@ -260,6 +260,44 @@ class Shra_leads_model extends App_Model
             LEFT JOIN {$p}staff s ON s.staffid = pm.staff_id WHERE pm.lead_id = ? ORDER BY pm.id DESC", [(int) $lead_id])->result();
     }
 
+    /**
+     * Every advance taken on a call, across all leads — the Payments desk lists these
+     * next to the invoices. $filters: from, to (dates on created_at), q.
+     */
+    public function all_payments(array $filters = [], $limit = 500)
+    {
+        $p = db_prefix();
+        if (!$this->db->table_exists($p . 'shra_lead_payments')) {
+            return [];
+        }
+
+        $this->db->select("pm.*, l.name AS lead_name, l.phonenumber, l.email, x.stage_key,
+            CONCAT(s.firstname,' ',s.lastname) AS staff_name", false)
+            ->from($p . 'shra_lead_payments pm')
+            ->join($p . 'leads l', 'l.id = pm.lead_id', 'left')
+            ->join($p . 'shra_lead_ext x', 'x.lead_id = pm.lead_id', 'left')
+            ->join($p . 'staff s', 's.staffid = pm.staff_id', 'left');
+
+        if (!empty($filters['from'])) {
+            $this->db->where('pm.created_at >=', $filters['from'] . ' 00:00:00');
+        }
+        if (!empty($filters['to'])) {
+            $this->db->where('pm.created_at <=', $filters['to'] . ' 23:59:59');
+        }
+        $q = trim((string) ($filters['q'] ?? ''));
+        if ($q !== '') {
+            $like = $this->db->escape_like_str($q);
+            $cols = ['l.name', 'l.phonenumber', 'l.email', 'pm.reference', 'pm.note', 'pm.method', "CONCAT(s.firstname,' ',s.lastname)"];
+            $or   = [];
+            foreach ($cols as $c) {
+                $or[] = $c . " LIKE '%{$like}%' ESCAPE '!'";
+            }
+            $this->db->where('(' . implode(' OR ', $or) . ')');
+        }
+
+        return $this->db->order_by('pm.created_at DESC, pm.id DESC')->limit((int) $limit)->get()->result();
+    }
+
     public function payment($id)
     {
         return $this->db->where('id', (int) $id)->get(db_prefix() . 'shra_lead_payments')->row();

@@ -440,6 +440,162 @@ class Shra extends AdminController
         $pdf->Output('Receipt-' . $e->enrollment_no . '.pdf', 'I');
     }
 
+    /* ═══════════════════════ Payments desk ═══════════════════════
+     * Superadmin-only ledger of every invoice, every receipt and every advance
+     * taken on a call, with the power to remove a wrong entry. Guarded by
+     * is_admin() on the list and again on each delete.
+     */
+
+    private function admin_only()
+    {
+        if (!is_admin()) {
+            access_denied('shra');
+        }
+    }
+
+    /**
+     * Resolve the ?range / ?from / ?to query into [range, from, to].
+     * Shared by Reports and the Payments desk.
+     */
+    private function date_range($default = 'month')
+    {
+        $range   = $this->input->get('range') ?: $default;
+        $from    = $this->input->get('from');
+        $to      = $this->input->get('to');
+        $today   = date('Y-m-d');
+        $presets = [
+            'today'      => [$today, $today],
+            'yesterday'  => [date('Y-m-d', strtotime('-1 day')), date('Y-m-d', strtotime('-1 day'))],
+            'week'       => [date('Y-m-d', strtotime('monday this week')), $today],
+            'month'      => [date('Y-m-01'), $today],
+            'last_month' => [date('Y-m-01', strtotime('first day of last month')), date('Y-m-t', strtotime('last day of last month'))],
+            'quarter'    => [date('Y-m-d', strtotime('-3 months')), $today],
+            'year'       => [date('Y-01-01'), $today],
+            'all'        => ['2000-01-01', $today],
+        ];
+        if ($range === 'custom' && $from && $to) {
+            $from = date('Y-m-d', strtotime($from));
+            $to   = date('Y-m-d', strtotime($to));
+            if ($from > $to) {
+                [$from, $to] = [$to, $from];
+            }
+        } else {
+            if (!isset($presets[$range])) {
+                $range = $default;
+            }
+            [$from, $to] = $presets[$range];
+        }
+
+        return [$range, $from, $to];
+    }
+
+    /**
+     * Where a delete sends the user back to — the same tab, range and search they were on.
+     * The posted query is rebuilt from a whitelist, never echoed back as given.
+     */
+    private function payments_referrer()
+    {
+        parse_str(ltrim((string) $this->input->post('back'), '?'), $in);
+        $args = [];
+        foreach (['view', 'range', 'from', 'to', 'q', 'scope', 'status'] as $k) {
+            if (isset($in[$k]) && is_string($in[$k]) && $in[$k] !== '') {
+                $args[$k] = $in[$k];
+            }
+        }
+
+        return admin_url('shra/payments' . (count($args) ? '?' . http_build_query($args) : ''));
+    }
+
+    public function payments()
+    {
+        $this->admin_only();
+
+        [$range, $from, $to] = $this->date_range('month');
+
+        $view = $this->input->get('view');
+        if (!in_array($view, ['invoices', 'receipts', 'advances'], true)) {
+            $view = 'invoices';
+        }
+        $scope = $this->input->get('scope');
+        if (!in_array($scope, ['all', 'shra', 'other'], true)) {
+            $scope = 'all';
+        }
+
+        $filters = [
+            'from'   => $from,
+            'to'     => $to,
+            'q'      => (string) $this->input->get('q'),
+            'scope'  => $scope,
+            'status' => $this->input->get('status'),
+        ];
+
+        $data['title']    = 'Payments';
+        $data['range']    = $range;
+        $data['from']     = $from;
+        $data['to']       = $to;
+        $data['view']     = $view;
+        $data['filters']  = $filters;
+        $data['summary']  = $this->shra_model->money_summary($from, $to);
+        $data['invoices'] = $view === 'invoices' ? $this->shra_model->all_invoices($filters) : [];
+        $data['receipts'] = $view === 'receipts' ? $this->shra_model->all_receipts($filters) : [];
+        $data['advances'] = [];
+        if ($view === 'advances' && $this->db->table_exists(db_prefix() . 'shra_lead_payments')) {
+            $this->load->model('shra/shra_leads_model');
+            $data['advances'] = $this->shra_leads_model->all_payments($filters);
+        }
+
+        $this->load->view('payments', $data);
+    }
+
+    /** Delete an invoice and its receipts (POST only — a link must never destroy money). */
+    public function delete_invoice($id = '')
+    {
+        $this->admin_only();
+        if (!$this->input->post()) {
+            show_404();
+        }
+        $res = $this->shra_model->delete_invoice($id);
+        if ($res === true) {
+            set_alert('success', 'Invoice deleted along with its payment receipts.');
+        } else {
+            set_alert('danger', is_string($res) ? $res : 'The invoice could not be deleted.');
+        }
+        redirect($this->payments_referrer());
+    }
+
+    /** Delete a single payment receipt off an invoice. */
+    public function delete_receipt($id = '')
+    {
+        $this->admin_only();
+        if (!$this->input->post()) {
+            show_404();
+        }
+        $res = $this->shra_model->delete_receipt($id);
+        if ($res === true) {
+            set_alert('success', 'Payment receipt deleted. The invoice balance was recalculated.');
+        } else {
+            set_alert('danger', is_string($res) ? $res : 'The receipt could not be deleted.');
+        }
+        redirect($this->payments_referrer());
+    }
+
+    /** Delete an advance taken on a call (tblshra_lead_payments + its screenshot). */
+    public function delete_advance($id = '')
+    {
+        $this->admin_only();
+        if (!$this->input->post()) {
+            show_404();
+        }
+        $this->load->model('shra/shra_leads_model');
+        $res = $this->shra_leads_model->delete_payment($id);
+        if ($res === true) {
+            set_alert('success', 'Advance payment deleted and taken off the lead total.');
+        } else {
+            set_alert('danger', is_string($res) ? $res : 'The advance could not be deleted.');
+        }
+        redirect($this->payments_referrer());
+    }
+
     /* ═══════════════════════ Enrollments ═══════════════════════ */
 
     public function complete($id)
@@ -635,32 +791,7 @@ class Shra extends AdminController
             access_denied('shra');
         }
 
-        $range = $this->input->get('range') ?: 'month';
-        $from  = $this->input->get('from');
-        $to    = $this->input->get('to');
-        $today = date('Y-m-d');
-        $presets = [
-            'today'      => [$today, $today],
-            'yesterday'  => [date('Y-m-d', strtotime('-1 day')), date('Y-m-d', strtotime('-1 day'))],
-            'week'       => [date('Y-m-d', strtotime('monday this week')), $today],
-            'month'      => [date('Y-m-01'), $today],
-            'last_month' => [date('Y-m-01', strtotime('first day of last month')), date('Y-m-t', strtotime('last day of last month'))],
-            'quarter'    => [date('Y-m-d', strtotime('-3 months')), $today],
-            'year'       => [date('Y-01-01'), $today],
-            'all'        => ['2000-01-01', $today],
-        ];
-        if ($range === 'custom' && $from && $to) {
-            $from = date('Y-m-d', strtotime($from));
-            $to   = date('Y-m-d', strtotime($to));
-            if ($from > $to) {
-                [$from, $to] = [$to, $from];
-            }
-        } else {
-            if (!isset($presets[$range])) {
-                $range = 'month';
-            }
-            [$from, $to] = $presets[$range];
-        }
+        [$range, $from, $to] = $this->date_range('month');
 
         $data['title']  = 'Reports';
         $data['range']  = $range;
