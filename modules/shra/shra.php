@@ -10,7 +10,7 @@ Requires at least: 2.3.*
 */
 
 define('SHRA_MODULE_NAME', 'shra');
-define('SHRA_MODULE_VERSION', '1.4.0');
+define('SHRA_MODULE_VERSION', '1.4.1');
 
 register_language_files(SHRA_MODULE_NAME, [SHRA_MODULE_NAME]);
 
@@ -25,6 +25,11 @@ hooks()->add_action('lead_created', 'shra_leads_on_core_lead_created');
 hooks()->add_action('lead_status_changed', 'shra_leads_on_core_status_changed');
 hooks()->add_action('before_lead_deleted', 'shra_leads_before_core_delete');
 hooks()->add_action('after_cron_run', 'shra_leads_cron');
+
+// Online payments on /join — see the block at the bottom of this file.
+hooks()->add_filter('get_option', 'shra_master_gateway_option', 5, 2);
+hooks()->add_action('after_payment_added', 'shra_join_payment_added');
+hooks()->add_filter('before_client_view_invoice', 'shra_join_invoice_redirect');
 
 register_activation_hook(SHRA_MODULE_NAME, 'shra_module_activation_hook');
 
@@ -285,4 +290,142 @@ function shra_maybe_upgrade_schema()
 
     require(__DIR__ . '/install.php');
     update_option('shra_schema_version', SHRA_MODULE_VERSION);
+}
+
+/* ═══════════════════ Online payments on the public /join ═══════════════════ */
+
+/**
+ * Serve the MASTER account's gateway credentials to this tenant.
+ *
+ * The academy is a SaaS tenant; the gateways are configured once on the master
+ * (admin/settings?group=payment_gateways) and every tenant collects through
+ * them. Rather than copying the keys into the tenant options table, the value is
+ * swapped in at read time — so the SHRA checkout, the gateway callback and the
+ * gateway webhook (three separate requests, all going through get_option) see
+ * the same credentials, and nothing secret is ever written to the tenant.
+ *
+ * Only the gateways ticked in SHRA settings are redirected; every other option
+ * is returned untouched.
+ *
+ * @param  string $value Tenant value
+ * @param  string $name  Option name
+ * @return string
+ */
+function shra_master_gateway_option($value, $name)
+{
+    // The filter is registered before the module helper is loaded — a gateway option
+    // read in that window has to fall through untouched.
+    if (strncmp($name, 'paymentmethod_', 14) !== 0 || !function_exists('shra_pay_selected_ids')) {
+        return $value;
+    }
+
+    static $map = null;
+
+    if ($map === null) {
+        $map = [];
+
+        // Guard the bootstrap: options are read long before the module tables exist
+        // on a fresh install, and re-entering this filter must never recurse.
+        static $building = false;
+        if ($building) {
+            return $value;
+        }
+        $building = true;
+
+        // Nothing to bridge on the master itself (or on a plain, non-SaaS install) —
+        // there the gateway options already ARE the master's.
+        $is_tenant = function_exists('perfex_saas_is_tenant') && perfex_saas_is_tenant();
+
+        // None of these names start with paymentmethod_, so the filter short-circuits above.
+        if ($is_tenant && get_option('shra_pay_use_master') == '1') {
+            $ids = shra_pay_selected_ids();
+            if (count($ids)) {
+                $master = shra_master_options('paymentmethod');
+
+                // Gateway ids nest — `paypal` is a prefix of `paypal_checkout` and
+                // `paypal_braintree` — so an option belongs to the LONGEST id that
+                // matches it, never simply to the first. Every gateway writes a
+                // `_initialized` row, which is what makes the id list discoverable
+                // here without loading the gateway libraries (that would re-enter
+                // this filter).
+                $known = [];
+                foreach ($master as $key => $val) {
+                    if (preg_match('/^paymentmethod_(.+)_initialized$/', $key, $m)) {
+                        $known[] = $m[1];
+                    }
+                }
+                $known = array_unique(array_merge($known, $ids));
+                usort($known, function ($a, $b) { return strlen($b) - strlen($a); });
+
+                foreach ($master as $key => $val) {
+                    foreach ($known as $owner) {
+                        if (strncmp($key, 'paymentmethod_' . $owner . '_', strlen($owner) + 15) === 0) {
+                            if (in_array($owner, $ids, true)) {
+                                $map[$key] = $val;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        $building = false;
+    }
+
+    return array_key_exists($name, $map) ? $map[$name] : $value;
+}
+
+/**
+ * A payment landed on an invoice — if it belongs to a /join checkout, the rider
+ * has paid, so create the enrollment now (it is deliberately not created at
+ * checkout time, so abandoned checkouts leave no phantom sessions wallet).
+ */
+function shra_join_payment_added($payment_id)
+{
+    $CI = &get_instance();
+    if (!$CI->db->table_exists(db_prefix() . 'shra_join_checkouts')) {
+        return;
+    }
+
+    $payment = $CI->db->select('invoiceid')->where('id', (int) $payment_id)
+        ->get(db_prefix() . 'invoicepaymentrecords')->row();
+    if (!$payment) {
+        return;
+    }
+
+    $CI->load->model('shra/shra_model');
+    $CI->shra_model->fulfil_join_checkout((int) $payment->invoiceid);
+}
+
+/**
+ * Gateways send the rider back to the core invoice page when the checkout ends,
+ * whether it succeeded or not. For a /join checkout that page is the wrong
+ * ending — put the (logged-out) rider back on the academy's own pages: the
+ * success page once money has landed, the checkout again if it has not, so a
+ * cancelled or failed payment can simply be retried. Staff and signed-in
+ * clients still get the normal invoice view.
+ */
+function shra_join_invoice_redirect($invoice)
+{
+    $CI = &get_instance();
+    if (is_staff_logged_in() || is_client_logged_in() || !$CI->db->table_exists(db_prefix() . 'shra_join_checkouts')) {
+        return $invoice;
+    }
+
+    $checkout = $CI->db->where('invoice_id', (int) $invoice->id)->get(db_prefix() . 'shra_join_checkouts')->row();
+    if (!$checkout) {
+        return $invoice;
+    }
+
+    $rider = $CI->db->select('rider_no')->where('id', (int) $checkout->rider_id)->get(db_prefix() . 'shra_riders')->row();
+    if (!$rider) {
+        return $invoice;
+    }
+
+    $paid = (float) $CI->db->select_sum('amount')->where('invoiceid', (int) $invoice->id)
+        ->get(db_prefix() . 'invoicepaymentrecords')->row()->amount;
+
+    $step = $paid > 0 ? 'done' : 'pay';
+    redirect(site_url('join/' . $step . '/' . $rider->rider_no . '/' . shra_sign($rider->rider_no)));
 }

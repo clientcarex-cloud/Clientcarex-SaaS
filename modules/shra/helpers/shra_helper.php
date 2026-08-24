@@ -835,3 +835,181 @@ function shra_lead_weekend_dates()
 
     return ['sat' => $sat, 'sun' => $sun];
 }
+
+/* ═══════════════════════ Online payments (v1.4) ═══════════════════════
+ * The academy runs as a SaaS tenant; the payment gateways are configured once
+ * on the master account (admin/settings?group=payment_gateways) and the tenant
+ * collects through them. Nothing is copied into the tenant options table — the
+ * `get_option` filter in shra.php serves the master value at read time, so the
+ * checkout, the gateway callback and the webhook all see the same credentials.
+ */
+
+/**
+ * Raw read of the master account's options table, for names starting with $prefix.
+ *
+ * Tenants and the master share one database (tenant tables are prefixed
+ * `<slug>_tbl`), so the master row is reachable with a plain query on the master
+ * prefix. Cached per request and free of get_option(), so it is safe to call
+ * from inside the `get_option` filter.
+ *
+ * @return array name => value
+ */
+function shra_master_options($prefix = 'paymentmethod')
+{
+    static $cache = [];
+    if (isset($cache[$prefix])) {
+        return $cache[$prefix];
+    }
+
+    $rows = [];
+    $like = str_replace(["'", '%'], '', $prefix) . '%';
+
+    try {
+        if (function_exists('perfex_saas_is_tenant') && perfex_saas_is_tenant()) {
+            $sql  = 'SELECT `name`, `value` FROM `' . perfex_saas_master_db_prefix() . "options` WHERE `name` LIKE '" . $like . "'";
+            $res  = perfex_saas_raw_query($sql, [], true);
+        } else {
+            // Master instance (or a plain single-tenant install) — its own options are the master's.
+            $CI  = &get_instance();
+            $res = $CI->db->query('SELECT `name`, `value` FROM `' . db_prefix() . 'options` WHERE `name` LIKE ' . $CI->db->escape($like))->result();
+        }
+        // A failed statement yields [false] rather than rows, so check before reading
+        foreach ((array) $res as $r) {
+            if (is_object($r)) {
+                $rows[$r->name] = $r->value;
+            }
+        }
+    } catch (Exception $e) {
+        log_activity('SHRA could not read the master payment settings: ' . $e->getMessage());
+    }
+
+    return $cache[$prefix] = $rows;
+}
+
+/** Online payment settings for the public /join page. */
+function shra_pay_settings()
+{
+    $mode = get_option('shra_pay_mode') === 'full_only' ? 'full_only' : 'partial';
+
+    return [
+        'enabled'    => get_option('shra_pay_enabled') == '1',
+        'use_master' => get_option('shra_pay_use_master') == '1',
+        'gateways'   => shra_pay_selected_ids(),
+        'mode'       => $mode,
+        'partial'    => $mode === 'partial',
+        'min_type'   => get_option('shra_pay_min_type') === 'fixed' ? 'fixed' : 'percent',
+        'min_value'  => (float) get_option('shra_pay_min_value'),
+        'allow_skip' => get_option('shra_pay_allow_skip') == '1',
+        'note'       => (string) get_option('shra_pay_note'),
+    ];
+}
+
+/** Gateway ids the admin ticked in SHRA settings. */
+function shra_pay_selected_ids()
+{
+    $ids = json_decode((string) get_option('shra_pay_gateways'), true);
+
+    return is_array($ids) ? array_values(array_filter(array_map('strval', $ids))) : [];
+}
+
+/**
+ * Every payment gateway registered in this install, described with the state it
+ * will actually be used with: the MASTER account's settings while "use the
+ * master account's gateway credentials" is on, this instance's own otherwise.
+ *
+ * @return array id => [id, name, active, configured, currencies, test_mode, selected, source]
+ */
+function shra_master_gateways()
+{
+    $CI = &get_instance();
+    $CI->load->model('payment_modes_model');
+
+    $from_master = get_option('shra_pay_use_master') == '1';
+    $options     = $from_master ? shra_master_options('paymentmethod') : null;
+    $selected    = shra_pay_selected_ids();
+    $out         = [];
+
+    // One reader for both sources, so the settings screen and the checkout can
+    // never disagree about whether a gateway is ready.
+    $read = function ($name) use ($from_master, $options) {
+        return trim((string) ($from_master ? ($options[$name] ?? '') : get_option($name)));
+    };
+
+    foreach ($CI->payment_modes_model->get_payment_gateways(true) as $gateway) {
+        $id  = $gateway['id'];
+        $pfx = 'paymentmethod_' . $id . '_';
+
+        // A gateway counts as configured once at least one credential is filled
+        // in — every gateway keeps its keys in `encrypted` settings.
+        $configured = false;
+        foreach ($gateway['instance']->getSettings(false) as $setting) {
+            if (!empty($setting['encrypted']) && $read($pfx . $setting['name']) !== '') {
+                $configured = true;
+                break;
+            }
+        }
+
+        $out[$id] = [
+            'id'         => $id,
+            'name'       => $read($pfx . 'label') ?: ($gateway['name'] ?: $id),
+            'active'     => $read($pfx . 'active') == '1',
+            'configured' => $configured,
+            'currencies' => $read($pfx . 'currencies'),
+            'test_mode'  => $read($pfx . 'test_mode_enabled') == '1',
+            'selected'   => in_array($id, $selected, true),
+            'source'     => $from_master ? 'master' : 'local',
+        ];
+    }
+
+    return $out;
+}
+
+/**
+ * Gateways the rider may actually pay with right now: ticked in SHRA settings,
+ * active on the master, configured, and accepting the academy's base currency.
+ */
+function shra_pay_gateways()
+{
+    $pay = shra_pay_settings();
+    if (!$pay['enabled'] || !count($pay['gateways'])) {
+        return [];
+    }
+
+    $currency = get_base_currency()->name;
+    $out      = [];
+
+    foreach (shra_master_gateways() as $id => $g) {
+        if (!$g['selected'] || !$g['active'] || !$g['configured']) {
+            continue;
+        }
+        if ($g['currencies'] !== '') {
+            $allowed = array_map('trim', explode(',', strtoupper($g['currencies'])));
+            if (!in_array(strtoupper($currency), $allowed, true)) {
+                continue;
+            }
+        }
+        $out[$id] = $g;
+    }
+
+    return $out;
+}
+
+/**
+ * Smallest amount the rider is allowed to pay now, in currency units.
+ * Always at least 1 and never more than the package total.
+ */
+function shra_pay_min_amount($total)
+{
+    $pay   = shra_pay_settings();
+    $total = round((float) $total, 2);
+
+    if (!$pay['partial']) {
+        return $total;
+    }
+
+    $min = $pay['min_type'] === 'fixed'
+        ? $pay['min_value']
+        : $total * max(0, min(100, $pay['min_value'])) / 100;
+
+    return round(max(1, min($total, $min)), 2);
+}

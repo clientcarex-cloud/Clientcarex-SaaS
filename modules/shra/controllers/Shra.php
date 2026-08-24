@@ -855,7 +855,8 @@ class Shra extends AdminController
         if ($this->input->post()) {
             $post = $this->input->post(null, false);
             $keys = ['shra_academy_name', 'shra_tagline', 'shra_contact_line', 'shra_offer_percent', 'shra_offer_label', 'shra_offer_ends',
-                'shra_minor_age', 'shra_riding_levels', 'shra_chief_instructor', 'shra_director', 'shra_terms'];
+                'shra_minor_age', 'shra_riding_levels', 'shra_chief_instructor', 'shra_director', 'shra_terms',
+                'shra_pay_min_value', 'shra_pay_note'];
             foreach ($keys as $k) {
                 if (isset($post[$k])) {
                     update_option($k, is_string($post[$k]) ? trim($post[$k]) : $post[$k]);
@@ -863,6 +864,17 @@ class Shra extends AdminController
             }
             update_option('shra_offer_active', !empty($post['shra_offer_active']) ? '1' : '0');
             update_option('shra_auto_certificate', !empty($post['shra_auto_certificate']) ? '1' : '0');
+
+            // ── Online payments on /join ──
+            update_option('shra_pay_enabled', !empty($post['shra_pay_enabled']) ? '1' : '0');
+            update_option('shra_pay_use_master', !empty($post['shra_pay_use_master']) ? '1' : '0');
+            update_option('shra_pay_allow_skip', !empty($post['shra_pay_allow_skip']) ? '1' : '0');
+            update_option('shra_pay_mode', ($post['shra_pay_mode'] ?? '') === 'full_only' ? 'full_only' : 'partial');
+            update_option('shra_pay_min_type', ($post['shra_pay_min_type'] ?? '') === 'fixed' ? 'fixed' : 'percent');
+            // Only gateways this installation actually registers may be stored
+            $known = array_keys(shra_master_gateways());
+            $picked = array_values(array_intersect($known, (array) ($post['shra_pay_gateways'] ?? [])));
+            update_option('shra_pay_gateways', json_encode($picked));
 
             if (!empty($_FILES['logo']['name'])) {
                 $ext = strtolower(pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION));

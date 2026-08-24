@@ -12,8 +12,25 @@ $pkg     = $rider->preferred_package;
             <?php if ($pkg) { ?>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--cream-2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:18px">
                 <div><div class="k" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600">Selected plan</div><div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:700"><?php echo html_escape($pkg->name); ?> · <?php echo ucfirst($pkg->audience); ?></div><div class="hint"><?php echo (int) $pkg->sessions; ?> session<?php echo $pkg->sessions > 1 ? 's' : ''; ?> × <?php echo (int) $pkg->duration_min; ?> min</div></div>
-                <div style="text-align:right"><div style="font-family:'Inter',system-ui,sans-serif;font-size:22px;font-weight:700;color:var(--red)"><?php echo shra_money($plan['total']); ?></div><?php if ($plan['discount_percent'] > 0) { ?><div class="hint"><s><?php echo shra_money($plan['list_price']); ?></s> · <?php echo $plan['discount_percent'] + 0; ?>% off</div><?php } ?><div class="hint">pay at the desk</div></div>
+                <div style="text-align:right"><div style="font-family:'Inter',system-ui,sans-serif;font-size:22px;font-weight:700;color:<?php echo $paid > 0 ? 'var(--green)' : 'var(--red)'; ?>"><?php echo shra_money($plan['total']); ?></div><?php if ($plan['discount_percent'] > 0) { ?><div class="hint"><s><?php echo shra_money($plan['list_price']); ?></s> · <?php echo $plan['discount_percent'] + 0; ?>% off</div><?php } ?><div class="hint"><?php echo $paid > 0 ? ($due > 0.009 ? 'part paid' : 'paid in full') : 'pay at the desk'; ?></div></div>
             </div>
+
+            <?php if ($paid > 0) { ?>
+            <div style="display:flex;gap:10px;margin-bottom:18px">
+                <div style="flex:1;background:#e7efe0;border:1px solid #cfe0c2;border-radius:14px;padding:12px 14px">
+                    <div class="k" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--green);font-weight:700">Paid online</div>
+                    <div style="font-size:19px;font-weight:700;color:var(--green);margin-top:2px"><?php echo shra_money($paid); ?></div>
+                </div>
+                <?php if ($due > 0.009) { ?>
+                <div style="flex:1;background:var(--cream-2);border:1px solid var(--line);border-radius:14px;padding:12px 14px">
+                    <div class="k" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700">Balance at the desk</div>
+                    <div style="font-size:19px;font-weight:700;margin-top:2px"><?php echo shra_money($due); ?></div>
+                </div>
+                <?php } ?>
+            </div>
+            <?php } elseif ($pay_url) { ?>
+            <a href="<?php echo html_escape($pay_url); ?>" class="btn" style="margin-bottom:18px"><i class="fa-solid fa-lock"></i> Pay now and lock your plan</a>
+            <?php } ?>
             <?php } ?>
             <div class="kv">
                 <?php if ($learner) { ?><div><div class="k">Membership no.</div><div class="v"><?php echo html_escape($rider->membership_no ?: $rider->rider_no); ?></div></div><?php } ?>

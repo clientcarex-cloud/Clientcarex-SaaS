@@ -46,6 +46,9 @@
 .shra-card-body{padding:20px 22px}
 .shra-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid var(--line)}
 .shra-card-head h4{margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:20px}
+/* Small gold rule that splits a long card into sections */
+.shra-sec{font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--gold);font-weight:700;margin:20px 0 10px;display:flex;align-items:center;gap:10px}
+.shra-sec:after{content:'';flex:1;height:1px;background:var(--line)}
 .shra-card-cream{background:var(--cream)}
 
 /* stats */

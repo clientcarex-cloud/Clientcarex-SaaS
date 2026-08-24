@@ -577,3 +577,48 @@ $lead_defaults = [
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);
 }
+
+/* ═════════════ Online payments on the public /join page (v1.4) ═════════════
+ * The rider pays a full or part amount on the join form itself. The invoice is
+ * raised the moment checkout starts; the enrollment (sessions wallet) is only
+ * created once the gateway confirms the money, so an abandoned checkout leaves
+ * an unpaid invoice at the counter and no phantom sessions.
+ */
+if (!$CI->db->table_exists($p . 'shra_join_checkouts')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_join_checkouts` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `rider_id` INT(11) NOT NULL,
+        `package_id` INT(11) NOT NULL,
+        `invoice_id` INT(11) NOT NULL,
+        `enrollment_id` INT(11) DEFAULT NULL COMMENT 'set once the payment is confirmed',
+        `total` DECIMAL(15,2) NOT NULL DEFAULT 0 COMMENT 'package total after discount',
+        `amount_intended` DECIMAL(15,2) NOT NULL DEFAULT 0 COMMENT 'what the rider chose to pay now',
+        `kind` VARCHAR(10) NOT NULL DEFAULT 'full' COMMENT 'full | partial',
+        `gateway` VARCHAR(40) DEFAULT NULL COMMENT 'payment gateway id',
+        `status` VARCHAR(12) NOT NULL DEFAULT 'pending' COMMENT 'pending | paid | abandoned',
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `paid_at` DATETIME DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `invoice_id` (`invoice_id`),
+        KEY `rider_status` (`rider_id`, `status`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+$pay_defaults = [
+    // Master-account gateways: the tenant collects through the gateways configured
+    // once on the SaaS master, without ever storing the keys in the tenant options.
+    'shra_pay_enabled'      => '0',
+    'shra_pay_use_master'   => '1',
+    'shra_pay_gateways'     => '[]',
+    // full_only  — the rider must pay the whole package
+    // partial    — a part payment is allowed, down to the minimum below
+    'shra_pay_mode'         => 'partial',
+    'shra_pay_min_type'     => 'percent',
+    'shra_pay_min_value'    => '25',
+    // 1 = the rider may finish the registration without paying (pay at the desk)
+    'shra_pay_allow_skip'   => '1',
+    'shra_pay_note'         => 'Pay the balance at the reception desk on your first visit.',
+];
+foreach ($pay_defaults as $k => $v) {
+    add_option($k, $v);
+}

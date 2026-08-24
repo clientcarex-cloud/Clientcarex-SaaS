@@ -31,6 +31,79 @@
                 <textarea name="shra_terms" class="form-control" rows="12"><?php echo $o('shra_terms'); ?></textarea>
                 <div class="help">Shown on the self-registration form. A parent / guardian accepts on behalf of riders under the minor age.</div>
             </div></div>
+
+            <?php
+            /* Online payments — the gateways themselves live on the ClientcareX master
+               account; this tenant only chooses which of them the join page offers. */
+            $gateways   = shra_master_gateways();
+            $pay        = shra_pay_settings();
+            $usable     = shra_pay_gateways();
+            ?>
+            <div class="shra-card shra-mt"><div class="shra-card-head"><h4>Online payments on the join page</h4>
+                <a href="<?php echo html_escape(shra_join_url()); ?>" target="_blank" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open /join</a>
+            </div><div class="shra-card-body">
+                <label style="font-weight:600;display:flex;gap:8px;align-items:center"><input type="checkbox" name="shra_pay_enabled" value="1" <?php echo $pay['enabled'] ? 'checked' : ''; ?>> Let riders pay on the join page</label>
+                <div class="help" style="margin-top:6px">A rider who picks a plan on <code>/join</code> is taken to a checkout before the success page. The bill is raised the moment the checkout starts; the sessions are added to the rider's wallet only once the money arrives, so an abandoned payment leaves nothing but an unpaid invoice.</div>
+
+                <div class="shra-sec" style="margin-top:18px">Payment gateways from the master account</div>
+                <div class="help" style="margin-top:0">These are the gateways configured on the ClientcareX master account. Tick the ones this academy should collect through — the keys stay on the master and are never copied into this academy's settings; they are read straight from the master account when a rider pays. Untick "use the master account's gateway credentials" to collect with keys entered on this academy instead.</div>
+                <label style="font-weight:600;display:flex;gap:8px;align-items:center;margin:10px 0 12px"><input type="checkbox" name="shra_pay_use_master" value="1" <?php echo $pay['use_master'] ? 'checked' : ''; ?>> Use the master account's gateway credentials</label>
+
+                <?php if (!count($gateways)) { ?>
+                <div class="help">No payment gateway is registered on this installation yet.</div>
+                <?php } else { ?>
+                <table class="table table-condensed" style="margin-bottom:6px">
+                    <thead><tr><th style="width:34px"></th><th>Gateway</th><th><?php echo $pay['use_master'] ? 'On master' : 'On this academy'; ?></th><th>Currencies</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($gateways as $id => $g) { ?>
+                        <tr>
+                            <td><input type="checkbox" name="shra_pay_gateways[]" value="<?php echo html_escape($id); ?>" <?php echo $g['selected'] ? 'checked' : ''; ?>></td>
+                            <td><b><?php echo html_escape($g['name']); ?></b>
+                                <?php if ($g['test_mode']) { ?><span class="shra-badge shra-badge-gold">Test mode</span><?php } ?>
+                                <?php if ($g['selected'] && !isset($usable[$id]) && $g['active'] && $g['configured']) { ?><div class="help" style="margin-top:2px">Does not accept <?php echo html_escape(get_base_currency()->name); ?> — it will not be offered.</div><?php } ?>
+                            </td>
+                            <td><?php
+                                if (!$g['configured']) {
+                                    echo '<span class="shra-badge shra-badge-muted">Not configured</span>';
+                                } elseif (!$g['active']) {
+                                    echo '<span class="shra-badge shra-badge-red">Off</span>';
+                                } else {
+                                    echo '<span class="shra-badge shra-badge-green">Active</span>';
+                                }
+                            ?></td>
+                            <td><?php echo html_escape($g['currencies'] ?: '—'); ?></td>
+                        </tr>
+                    <?php } ?>
+                    </tbody>
+                </table>
+                <div class="help">
+                    <?php if (count($usable)) { ?>
+                        Riders will see: <b><?php echo html_escape(implode(', ', array_column($usable, 'name'))); ?></b>.
+                    <?php } else { ?>
+                        No gateway is ready yet — a gateway must be ticked here, switched on at the master account, and accept <?php echo html_escape(get_base_currency()->name); ?>.
+                    <?php } ?>
+                </div>
+                <?php } ?>
+
+                <div class="shra-sec" style="margin-top:18px">Full or part payment</div>
+                <div class="row">
+                    <div class="col-md-5"><div class="form-group"><label>What the rider may pay</label>
+                        <select name="shra_pay_mode" class="form-control" id="shra-pay-mode">
+                            <option value="partial" <?php echo $pay['mode'] === 'partial' ? 'selected' : ''; ?>>Full or part payment</option>
+                            <option value="full_only" <?php echo $pay['mode'] === 'full_only' ? 'selected' : ''; ?>>Full payment only</option>
+                        </select>
+                    </div></div>
+                    <div class="col-md-4"><div class="form-group"><label>Minimum part payment</label>
+                        <select name="shra_pay_min_type" class="form-control">
+                            <option value="percent" <?php echo $pay['min_type'] === 'percent' ? 'selected' : ''; ?>>% of the plan price</option>
+                            <option value="fixed" <?php echo $pay['min_type'] === 'fixed' ? 'selected' : ''; ?>>Fixed amount</option>
+                        </select>
+                    </div></div>
+                    <div class="col-md-3"><div class="form-group"><label>Value</label><input type="number" step="0.01" min="0" name="shra_pay_min_value" class="form-control" value="<?php echo $o('shra_pay_min_value'); ?>"></div></div>
+                </div>
+                <div class="form-group"><label>Line shown under the part-payment option</label><input type="text" name="shra_pay_note" class="form-control" value="<?php echo $o('shra_pay_note'); ?>"></div>
+                <label style="font-weight:600;display:flex;gap:8px;align-items:center"><input type="checkbox" name="shra_pay_allow_skip" value="1" <?php echo $pay['allow_skip'] ? 'checked' : ''; ?>> Let the rider skip the checkout and pay at the reception desk</label>
+            </div></div>
         </div>
 
         <div class="col-md-5">

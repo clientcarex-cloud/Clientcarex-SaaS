@@ -480,19 +480,7 @@ class Shra_model extends App_Model
         $this->load->model('invoices_model');
         $this->load->model('payment_modes_model');
 
-        $currency = get_base_currency();
-        $client   = $this->db->where('userid', $rider->client_id)->get(db_prefix() . 'clients')->row();
-
-        $items = [[
-            'order'            => 1,
-            'description'      => ucfirst($package->audience) . ' — ' . $package->name,
-            'long_description' => $package->sessions . ' session' . ($package->sessions > 1 ? 's' : '') . ' × ' . $package->duration_min . ' min'
-                . ' · ' . shra_money($package->per_session) . ' per session · Rider ' . $rider->rider_no,
-            'qty'              => 1,
-            'unit'             => '',
-            'rate'             => $quote['list_price'],
-            'taxname'          => [],
-        ]];
+        $client = $this->db->where('userid', $rider->client_id)->get(db_prefix() . 'clients')->row();
 
         $mode_name = $payment_mode;
         if (is_numeric($payment_mode)) {
@@ -502,32 +490,10 @@ class Shra_model extends App_Model
 
         $status = $paid_amount >= $quote['total'] ? 2 : ($paid_amount > 0 ? 3 : 1); // paid | partial | unpaid
 
-        $invoice_data = [
-            'clientid'                 => $rider->client_id,
-            'number'                   => get_option('next_invoice_number'),
-            'date'                     => date('Y-m-d'),
-            'duedate'                  => date('Y-m-d'),
-            'currency'                 => $currency->id,
-            'subtotal'                 => $quote['list_price'],
-            'total'                    => $quote['total'],
-            'discount_percent'         => $quote['discount_percent'],
-            'discount_total'           => $quote['discount_amount'],
-            'discount_type'            => $quote['discount_percent'] > 0 ? 'before_tax' : '',
-            'status'                   => $status,
-            'adminnote'                => 'SHRA counter billing · ' . $rider->rider_no . ' · ' . $package->name,
-            'clientnote'               => $quote['discount_percent'] > 0 ? ($quote['discount_percent'] + 0) . '% ' . (get_option('shra_offer_label') ?: 'offer') . ' applied.' : '',
-            'terms'                    => 'Sessions are first-come, first-served with no fixed time slots. Packages are non-transferable.',
-            'show_quantity_as'         => 1,
-            'newitems'                 => $items,
-            'billing_street'           => (string) ($client->billing_street ?: $rider->address),
-            'billing_city'             => (string) ($client->billing_city ?? ''),
-            'billing_state'            => (string) ($client->billing_state ?? ''),
-            'billing_zip'              => (string) ($client->billing_zip ?? ''),
-            'billing_country'          => (int) ($client->billing_country ?? 0),
-            'include_shipping'         => 0,
-            'show_shipping_on_invoice' => 0,
-            'allowed_payment_modes'    => is_numeric($payment_mode) ? [$payment_mode] : [],
-        ];
+        $invoice_data = $this->invoice_payload($rider, $package, $quote, $client, $status, [
+            'source'                => 'counter billing',
+            'allowed_payment_modes' => is_numeric($payment_mode) ? [$payment_mode] : [],
+        ]);
 
         $invoice_id = $this->invoices_model->add($invoice_data);
         if (!$invoice_id) {
@@ -548,8 +514,23 @@ class Shra_model extends App_Model
             $this->invoices_model->save_formatted_number($invoice_id);
         }
 
+        $enrolled = $this->add_enrollment($rider, $package, $quote, $invoice_id, $paid_amount, $mode_name, array_merge($opts, ['bill_token' => $token]));
+
+        return $enrolled + ['invoice_id' => $invoice_id, 'quote' => $quote];
+    }
+
+    /**
+     * Insert the sessions wallet for a bill and freeze the lead revenue credit.
+     * Shared by the counter (create_bill) and by the online /join checkout, which
+     * only reaches here once the gateway has confirmed the money.
+     *
+     * @return array ['enrollment_id', 'lead_id']
+     */
+    private function add_enrollment($rider, $package, array $quote, $invoice_id, $paid_amount, $mode_name, array $opts = [])
+    {
         $start   = date('Y-m-d');
         $expires = $package->validity_days ? date('Y-m-d', strtotime("+{$package->validity_days} days")) : null;
+        $token   = (string) ($opts['bill_token'] ?? '');
 
         $enr = [
             'enrollment_no'    => $this->next_number('shra_next_enrollment_no', 'SHRA-E-'),
@@ -573,7 +554,8 @@ class Shra_model extends App_Model
             'expires_at'       => $expires,
             'status'           => 'active',
             'notes'            => isset($opts['notes']) ? substr(trim((string) $opts['notes']), 0, 500) : null,
-            'created_by'       => get_staff_user_id(),
+            // No staff session on an online /join payment
+            'created_by'       => get_staff_user_id() ?: null,
             'created_at'       => date('Y-m-d H:i:s'),
         ];
         $this->db->insert(db_prefix() . 'shra_enrollments', $enr);
@@ -596,7 +578,231 @@ class Shra_model extends App_Model
             ]);
         }
 
-        return ['enrollment_id' => $enrollment_id, 'invoice_id' => $invoice_id, 'quote' => $quote, 'lead_id' => $lead_id];
+        return ['enrollment_id' => $enrollment_id, 'lead_id' => $lead_id];
+    }
+
+    /**
+     * The Perfex invoice for one package sold to one rider. Shared by the counter
+     * and by the online /join checkout so both raise an identical-looking bill.
+     */
+    private function invoice_payload($rider, $package, array $quote, $client, $status, array $opts = [])
+    {
+        $items = [[
+            'order'            => 1,
+            'description'      => ucfirst($package->audience) . ' — ' . $package->name,
+            'long_description' => $package->sessions . ' session' . ($package->sessions > 1 ? 's' : '') . ' × ' . $package->duration_min . ' min'
+                . ' · ' . shra_money($package->per_session) . ' per session · Rider ' . $rider->rider_no,
+            'qty'              => 1,
+            'unit'             => '',
+            'rate'             => $quote['list_price'],
+            'taxname'          => [],
+        ]];
+
+        return [
+            'clientid'                 => $rider->client_id,
+            'number'                   => get_option('next_invoice_number'),
+            'date'                     => date('Y-m-d'),
+            'duedate'                  => date('Y-m-d'),
+            'currency'                 => get_base_currency()->id,
+            'subtotal'                 => $quote['list_price'],
+            'total'                    => $quote['total'],
+            'discount_percent'         => $quote['discount_percent'],
+            'discount_total'           => $quote['discount_amount'],
+            'discount_type'            => $quote['discount_percent'] > 0 ? 'before_tax' : '',
+            'status'                   => $status,
+            'adminnote'                => 'SHRA ' . ($opts['source'] ?? 'billing') . ' · ' . $rider->rider_no . ' · ' . $package->name,
+            'clientnote'               => $quote['discount_percent'] > 0 ? ($quote['discount_percent'] + 0) . '% ' . (get_option('shra_offer_label') ?: 'offer') . ' applied.' : '',
+            'terms'                    => 'Sessions are first-come, first-served with no fixed time slots. Packages are non-transferable.',
+            'show_quantity_as'         => 1,
+            'newitems'                 => $items,
+            'billing_street'           => (string) (($client->billing_street ?? '') ?: $rider->address),
+            'billing_city'             => (string) ($client->billing_city ?? ''),
+            'billing_state'            => (string) ($client->billing_state ?? ''),
+            'billing_zip'              => (string) ($client->billing_zip ?? ''),
+            'billing_country'          => (int) ($client->billing_country ?? 0),
+            'include_shipping'         => 0,
+            'show_shipping_on_invoice' => 0,
+            'allowed_payment_modes'    => $opts['allowed_payment_modes'] ?? [],
+        ];
+    }
+
+    /* ═══════════ Online checkout from the public /join page (v1.4) ═══════════
+     * The invoice is raised when the rider starts the checkout so the gateway has
+     * something to attach the payment to; the enrollment waits for the money.
+     */
+
+    /** The open (or paid) checkout attached to an invoice. */
+    public function join_checkout_by_invoice($invoice_id)
+    {
+        if (!$this->db->table_exists(db_prefix() . 'shra_join_checkouts')) {
+            return null;
+        }
+
+        return $this->db->where('invoice_id', (int) $invoice_id)->get(db_prefix() . 'shra_join_checkouts')->row();
+    }
+
+    /** The latest checkout a rider started, whatever its state. */
+    public function join_checkout_for_rider($rider_id)
+    {
+        if (!$this->db->table_exists(db_prefix() . 'shra_join_checkouts')) {
+            return null;
+        }
+
+        return $this->db->where('rider_id', (int) $rider_id)->order_by('id', 'DESC')->limit(1)
+            ->get(db_prefix() . 'shra_join_checkouts')->row();
+    }
+
+    /**
+     * Raise (or re-use) the invoice a rider is about to pay online.
+     *
+     * A rider who abandons the gateway and comes back gets the SAME unpaid
+     * invoice rather than a new one each time — only the amount they intend to
+     * pay is updated.
+     *
+     * @param  float  $amount  What the rider chose to pay now
+     * @return array|string    ['checkout_id','invoice_id','hash','amount','total'] or an error message
+     */
+    public function create_join_invoice($rider_id, $package_id, $amount, $gateway = '')
+    {
+        $rider   = $this->get_rider($rider_id);
+        $package = $this->get_package($package_id);
+
+        if (!$rider || !$package || !$package->active) {
+            return 'That plan is no longer available. Please pick another one.';
+        }
+        if ((int) $package->is_guest !== ($rider->rider_type === 'guest' ? 1 : 0)) {
+            return 'That plan does not match your registration.';
+        }
+
+        $quote = $this->quote($package);
+        $total = (float) $quote['total'];
+        $min   = shra_pay_min_amount($total);
+        $amount = round((float) $amount, 2);
+
+        if ($amount < $min - 0.009) {
+            return 'The smallest amount you can pay now is ' . shra_money($min) . '.';
+        }
+        $amount = min($amount, $total);
+
+        // Ensure a core customer exists (riders registered on the public form have none yet)
+        if (!$rider->client_id) {
+            $link = $this->ensure_client((array) $rider);
+            if (empty($link['client_id'])) {
+                return 'We could not open your account. Please pay at the reception desk.';
+            }
+            $this->db->where('id', $rider->id)->update(db_prefix() . 'shra_riders', $link);
+            $rider->client_id  = $link['client_id'];
+            $rider->contact_id = $link['contact_id'];
+        }
+
+        $this->load->model('invoices_model');
+
+        // Reuse an unpaid checkout for the same plan instead of stacking invoices
+        $open = $this->db->where('rider_id', $rider->id)->where('package_id', $package->id)
+            ->where('status', 'pending')->order_by('id', 'DESC')->limit(1)
+            ->get(db_prefix() . 'shra_join_checkouts')->row();
+
+        if ($open) {
+            $invoice = $this->invoices_model->get((int) $open->invoice_id);
+            if ($invoice && (int) $invoice->status === 1) {
+                $this->db->where('id', $open->id)->update(db_prefix() . 'shra_join_checkouts', [
+                    'amount_intended' => $amount,
+                    'kind'            => $amount >= $total - 0.009 ? 'full' : 'partial',
+                    'gateway'         => $gateway !== '' ? substr($gateway, 0, 40) : $open->gateway,
+                ]);
+
+                return ['checkout_id' => (int) $open->id, 'invoice_id' => (int) $invoice->id,
+                    'hash' => $invoice->hash, 'amount' => $amount, 'total' => $total];
+            }
+        }
+
+        $client     = $this->db->where('userid', $rider->client_id)->get(db_prefix() . 'clients')->row();
+        $invoice_id = $this->invoices_model->add(
+            $this->invoice_payload($rider, $package, $quote, $client, 1, ['source' => 'online join'])
+        );
+
+        if (!$invoice_id) {
+            return 'We could not start the payment. Please pay at the reception desk.';
+        }
+
+        $this->db->insert(db_prefix() . 'shra_join_checkouts', [
+            'rider_id'        => $rider->id,
+            'package_id'      => $package->id,
+            'invoice_id'      => $invoice_id,
+            'total'           => $total,
+            'amount_intended' => $amount,
+            'kind'            => $amount >= $total - 0.009 ? 'full' : 'partial',
+            'gateway'         => substr($gateway, 0, 40),
+            'status'          => 'pending',
+            'created_at'      => date('Y-m-d H:i:s'),
+        ]);
+        $checkout_id = (int) $this->db->insert_id();
+
+        $invoice = $this->invoices_model->get($invoice_id);
+
+        return ['checkout_id' => $checkout_id, 'invoice_id' => (int) $invoice_id,
+            'hash' => $invoice->hash, 'amount' => $amount, 'total' => $total];
+    }
+
+    /**
+     * The gateway confirmed money against an invoice — create the sessions wallet.
+     * Called from the `after_payment_added` hook, so it runs for the browser
+     * callback AND for the webhook and must be safe to run more than once.
+     *
+     * @return int|null The enrollment id, or null when the invoice is not a /join checkout
+     */
+    public function fulfil_join_checkout($invoice_id)
+    {
+        $checkout = $this->join_checkout_by_invoice($invoice_id);
+        if (!$checkout) {
+            return null;
+        }
+        if ($checkout->enrollment_id) {
+            // The rider is topping up a part payment — the wallet already exists,
+            // it just has to catch up with what the invoice has now been paid.
+            $this->sync_paid((int) $checkout->enrollment_id);
+
+            return (int) $checkout->enrollment_id;
+        }
+
+        $rider   = $this->get_rider($checkout->rider_id);
+        $package = $this->get_package($checkout->package_id);
+        if (!$rider || !$package) {
+            log_activity('SHRA join checkout #' . $checkout->id . ' paid but the rider or plan is gone.');
+
+            return null;
+        }
+
+        $paid = (float) $this->db->select_sum('amount')->where('invoiceid', (int) $invoice_id)
+            ->get(db_prefix() . 'invoicepaymentrecords')->row()->amount;
+
+        $quote = [
+            'list_price'       => (float) $checkout->total,
+            'discount_percent' => 0,
+            'discount_amount'  => 0,
+            'total'            => (float) $checkout->total,
+        ];
+        // Re-derive the discount the same way the invoice did, so the wallet matches the bill
+        $fresh = $this->quote($package);
+        if (abs($fresh['total'] - (float) $checkout->total) < 0.01) {
+            $quote = $fresh;
+        }
+
+        $enrolled = $this->add_enrollment($rider, $package, $quote, (int) $invoice_id,
+            min($paid, (float) $checkout->total), 'Online · ' . ($checkout->gateway ?: 'gateway'), [
+                'notes' => 'Paid online from the join page.',
+            ]);
+
+        $this->db->where('id', $checkout->id)->update(db_prefix() . 'shra_join_checkouts', [
+            'enrollment_id' => $enrolled['enrollment_id'],
+            'status'        => 'paid',
+            'paid_at'       => date('Y-m-d H:i:s'),
+        ]);
+
+        // The plan is now bought, not just preferred
+        $this->db->where('id', $rider->id)->update(db_prefix() . 'shra_riders', ['preferred_package_id' => $package->id]);
+
+        return (int) $enrolled['enrollment_id'];
     }
 
     /* ═══════════════════════ Payments ═══════════════════════ */

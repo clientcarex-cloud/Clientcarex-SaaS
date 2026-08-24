@@ -6,6 +6,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * Public rider self-registration (QR) — no authentication.
  *
  *   /join                                 membership form (learners) — static, printed on the QR poster
+ *   /join/pay/{rider_no}/{sig}            online checkout (full or part payment)
  *   /join/done/{rider_no}/{sig}           success + membership PDF
  *   /join/pdf/{rider_no}/{sig}            membership PDF download
  *   /join/verify/{rider_no}[/{certificate_no}]   QR verification
@@ -43,6 +44,9 @@ class Shra_public extends App_Controller
     {
         if ($action === 'done') {
             return $this->done($a, $b);
+        }
+        if ($action === 'pay') {
+            return $this->pay($a, $b);
         }
         if ($action === 'pdf') {
             return $this->pdf($a, $b);
@@ -99,7 +103,10 @@ class Shra_public extends App_Controller
                 $id = $this->shra_model->add_rider($post, 'self');
                 if ($id) {
                     $rider = $this->shra_model->get_rider($id);
-                    redirect(site_url('join/done/' . $rider->rider_no . '/' . shra_sign($rider->rider_no)));
+                    $sig   = shra_sign($rider->rider_no);
+                    // A plan was chosen and the academy takes money online — collect it now
+                    $step  = ($rider->preferred_package_id && count(shra_pay_gateways())) ? 'pay' : 'done';
+                    redirect(site_url('join/' . $step . '/' . $rider->rider_no . '/' . $sig));
                 }
                 $errors[] = 'We could not save your registration. Please try again.';
             }
@@ -507,6 +514,106 @@ class Shra_public extends App_Controller
         return $e;
     }
 
+    /* ═══════════════════ Online payment (full / part) ═══════════════════
+     * Which gateways appear here, and whether a part payment is allowed at all,
+     * come from SHRA settings (admin/shra/settings). The gateways themselves are
+     * configured once on the SaaS master account — see shra.php.
+     */
+
+    private function pay($rider_no, $sig)
+    {
+        $rider = $this->shra_model->get_rider_by_no($rider_no);
+        if (!$rider || !shra_verify_sign($rider_no, $sig)) {
+            return $this->error('Not found', 'We could not find this registration.');
+        }
+
+        $pay      = shra_pay_settings();
+        $gateways = shra_pay_gateways();
+        $package  = $rider->preferred_package;
+        $done_url = site_url('join/done/' . $rider_no . '/' . $sig);
+
+        // Nothing to collect: no plan, no gateway, or the rider already paid
+        $checkout = $this->shra_model->join_checkout_for_rider($rider->id);
+        if (!$package || !count($gateways) || ($checkout && $checkout->status === 'paid')) {
+            redirect($done_url);
+        }
+
+        $quote = $this->shra_model->quote($package);
+        $total = (float) $quote['total'];
+        $min   = shra_pay_min_amount($total);
+
+        $data = [
+            'title'    => 'Payment — ' . get_option('shra_academy_name'),
+            'rider'    => $rider,
+            'package'  => $package,
+            'quote'    => $quote,
+            'total'    => $total,
+            'min'      => $min,
+            'pay'      => $pay,
+            'gateways' => $gateways,
+            'done_url' => $done_url,
+            'errors'   => [],
+            'old'      => [],
+        ];
+
+        if ($this->input->post()) {
+            $post    = $this->input->post(null, true);
+            $gateway = (string) ($post['gateway'] ?? '');
+            $partial = $pay['partial'] && ($post['kind'] ?? 'full') === 'partial';
+            $amount  = $partial ? (float) str_replace(',', '', (string) ($post['amount'] ?? '0')) : $total;
+            $errors  = [];
+
+            if (!isset($gateways[$gateway])) {
+                $errors[] = 'Please choose how you would like to pay.';
+            }
+            if ($amount < $min - 0.009) {
+                $errors[] = 'The smallest amount you can pay now is ' . shra_money($min) . '.';
+            }
+
+            if (!count($errors)) {
+                $res = $this->shra_model->create_join_invoice($rider->id, $package->id, $amount, $gateway);
+                if (!is_string($res)) {
+                    return $this->hand_off($res, $gateway);
+                }
+                $errors[] = $res;
+            }
+
+            $data['errors'] = $errors;
+            $data['old']    = $post;
+        }
+
+        $this->load->view('public_pay', $data);
+    }
+
+    /**
+     * Hand the rider over to the gateway. process_payment() ends the request
+     * itself (the gateway redirects or prints its checkout), so anything after
+     * the call means the gateway never started.
+     */
+    private function hand_off(array $checkout, $gateway)
+    {
+        $this->load->model('payments_model');
+
+        // Perfex replaces a part payment with the whole balance when the global
+        // "allow the payment amount to be modified" setting is off. How much the
+        // rider pays is SHRA's decision, so put our figure back — this filter runs
+        // after that override, on the way into the gateway.
+        $amount = (float) $checkout['amount'];
+        hooks()->add_filter('before_process_gateway_func', function ($data) use ($amount) {
+            $data['amount'] = $amount;
+
+            return $data;
+        }, 99);
+
+        $this->payments_model->process_payment([
+            'paymentmode' => $gateway,
+            'amount'      => $amount,
+            'invoiceid'   => $checkout['invoice_id'],
+        ], $checkout['invoice_id']);
+
+        return $this->error('Payment unavailable', 'We could not open the payment page just now. Please try again, or pay at the reception desk.');
+    }
+
     private function done($rider_no, $sig)
     {
         $rider = $this->shra_model->get_rider_by_no($rider_no);
@@ -516,11 +623,25 @@ class Shra_public extends App_Controller
 
         $plan = $rider->preferred_package ? $this->shra_model->quote($rider->preferred_package) : null;
 
+        // What, if anything, the rider paid online
+        $checkout = $this->shra_model->join_checkout_for_rider($rider->id);
+        $paid     = 0.0;
+        if ($checkout) {
+            $paid = (float) $this->db->select_sum('amount')->where('invoiceid', (int) $checkout->invoice_id)
+                ->get(db_prefix() . 'invoicepaymentrecords')->row()->amount;
+        }
+
         $this->load->view('public_success', [
-            'title'   => 'Welcome to the academy',
-            'rider'   => $rider,
-            'plan'    => $plan,
-            'pdf_url' => $rider->rider_type === 'learner' ? site_url('join/pdf/' . $rider->rider_no . '/' . $sig) : null,
+            'title'    => 'Welcome to the academy',
+            'rider'    => $rider,
+            'plan'     => $plan,
+            'paid'     => round($paid, 2),
+            'due'      => $checkout ? round(max(0, (float) $checkout->total - $paid), 2) : null,
+            'checkout' => $checkout,
+            // A checkout that was started but never paid can be picked up again
+            'pay_url'  => ($checkout && $checkout->status !== 'paid' && count(shra_pay_gateways()))
+                ? site_url('join/pay/' . $rider->rider_no . '/' . $sig) : null,
+            'pdf_url'  => $rider->rider_type === 'learner' ? site_url('join/pdf/' . $rider->rider_no . '/' . $sig) : null,
         ]);
     }
 
