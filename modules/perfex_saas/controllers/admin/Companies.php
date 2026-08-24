@@ -1150,18 +1150,24 @@ class Companies extends AdminController
             // 2. Trigger Installation/Activation via Impersonation
             // This ensures install.php runs and DB is updated correctly.
             $debug_output = "";
-            perfex_saas_impersonate_instance($company, function () use ($module_name, $status, &$debug_output) {
+            $applied = false;
+            perfex_saas_impersonate_instance($company, function () use ($module_name, $status, &$debug_output, &$applied) {
 
-                // Pre-check: If activating, ensure module exists in DB with version 0.0.0 to force install.php execution
-                // This is critical because simple 'activate' might set version to current, skipping db upgrade/install script.
+                $CI = &get_instance();
+                $table = db_prefix() . 'modules';
+
+                // Pre-check: App_modules::activate() caches the tblmodules rows of the
+                // instance it was constructed against — the master here — so it skips its
+                // own INSERT and the "active = 1" UPDATE then matches no row in the tenant.
+                // Seed the row ourselves, with the version from the module headers so the
+                // tenant's own cron does not immediately see a database upgrade as due.
                 if ($status === 1) {
-                    $CI = &get_instance();
-                    $table = db_prefix() . 'modules';
                     $exists = $CI->db->where('module_name', $module_name)->count_all_results($table);
                     if ($exists == 0) {
+                        $module = $CI->app_modules->get($module_name);
                         $CI->db->insert($table, [
                             'module_name' => $module_name,
-                            'installed_version' => '0.0.0',
+                            'installed_version' => $module['headers']['version'] ?? '0.0.0',
                             'active' => 0
                         ]);
                     }
@@ -1171,7 +1177,22 @@ class Companies extends AdminController
                 ob_start();
                 perfex_saas_setup_modules_for_tenant(true);
                 $debug_output = ob_get_clean();
+
+                // perfex_saas_setup_modules_for_tenant() swallows a failing activation hook
+                // (module install.php) per module, so read the result back instead of
+                // reporting a success the tenant database does not agree with.
+                $row = $CI->db->where('module_name', $module_name)->get($table)->row();
+                $applied = ((int) ($row->active ?? 0) === 1) === ($status === 1);
             });
+
+            if (!$applied) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'The tenant database still reports ' . $module_name . ' as ' . ($status === 1 ? 'inactive' : 'active') . '. See the debug output / application logs.',
+                    'debug' => $debug_output,
+                ]);
+                return;
+            }
 
             echo json_encode(['success' => true, 'debug' => $debug_output]);
 

@@ -150,7 +150,10 @@ if (!$CI->db->table_exists($p . 'shra_trainers')) {
 
     // Migrate: attendance.trainer_id used to point at tblstaff.staffid. Create a
     // trainer row for every staff member already referenced and repoint the rows.
-    $used = $CI->db->query("SELECT DISTINCT trainer_id FROM `{$p}shra_attendance` WHERE trainer_id IS NOT NULL")->result();
+    // Guard the query object: with db_debug off (production) a failed query is
+    // FALSE, and ->result() on it would abort the whole activation.
+    $used = $CI->db->query("SELECT DISTINCT trainer_id FROM `{$p}shra_attendance` WHERE trainer_id IS NOT NULL");
+    $used = $used ? $used->result() : [];
     foreach ($used as $u) {
         $st = $CI->db->select('staffid, firstname, lastname, phonenumber')->where('staffid', $u->trainer_id)->get($p . 'staff')->row();
         $CI->db->insert($p . 'shra_trainers', [
@@ -279,12 +282,42 @@ if (!$inr) {
 }
 
 if ($inr && (int) $inr->isdefault !== 1) {
-    $CI->load->model('currencies_model');
-    $result = $CI->currencies_model->make_base_currency($inr->id);
-    if ($result === true) {
-        log_activity('SHRA: base currency set to INR (₹)');
-    } elseif (is_array($result) && !empty($result['has_transactions_currency'])) {
+    // Do NOT use currencies_model->make_base_currency(): it walks
+    // $app->get_tables_with_currency(), a list built once when the App library
+    // was constructed. When the SaaS superadmin activates the module remotely
+    // the App library was constructed against the master database, so that list
+    // still carries the master's `tbl` prefix — every lookup then hits a table
+    // that does not exist in the tenant, the query returns false and ->row()
+    // aborts activation before Perfex ever flips tblmodules.active to 1.
+    $base = $CI->db->where('isdefault', 1)->get($p . 'currencies')->row();
+    $in_use = false;
+    foreach ([
+        'invoices' => 'currency',
+        'expenses' => 'currency',
+        'proposals' => 'currency',
+        'estimates' => 'currency',
+        'clients' => 'default_currency',
+        'creditnotes' => 'currency',
+        'subscriptions' => 'currency',
+    ] as $table => $field) {
+        if (!$base) {
+            break;
+        }
+        if (!$CI->db->table_exists($p . $table)) {
+            continue;
+        }
+        if ($CI->db->where($field, $base->id)->get($p . $table)->row()) {
+            $in_use = true;
+            break;
+        }
+    }
+
+    if ($in_use) {
         log_activity('SHRA: could not switch base currency to INR — transactions exist in the current base currency. Change it manually under Setup → Finance → Currencies.');
+    } else {
+        $CI->db->where('id', $inr->id)->update($p . 'currencies', ['isdefault' => 1]);
+        $CI->db->where('id !=', $inr->id)->update($p . 'currencies', ['isdefault' => 0]);
+        log_activity('SHRA: base currency set to INR (₹)');
     }
 }
 
@@ -460,7 +493,11 @@ $stage_defs = [
     'confirmed'        => ['Visited & Confirmed', 60, '#1e8449'],
     'won'              => ['Customer', 1000, '#7cb342'],
 ];
-$stage_map = json_decode((string) get_option('shra_lead_stage_map'), true) ?: [];
+// Read straight from the options table, not get_option(): the App library
+// caches autoloaded options at construction, so a remote (impersonated)
+// install would inherit the master instance's status ids here.
+$stage_map_row = $CI->db->select('value')->where('name', 'shra_lead_stage_map')->get($p . 'options')->row();
+$stage_map = json_decode((string) ($stage_map_row->value ?? ''), true) ?: [];
 foreach ($stage_defs as $key => $d) {
     $row = null;
     if (!empty($stage_map[$key])) {

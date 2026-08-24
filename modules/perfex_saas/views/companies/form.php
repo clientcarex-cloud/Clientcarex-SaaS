@@ -203,6 +203,11 @@ $(document).ready(function() {
             [csrfData['token_name']]: csrfData['hash']
         }).done(function(response) {
             response = JSON.parse(response);
+            // The per-module install output is the only place a failing install.php
+            // shows up — keep it reachable from the browser console.
+            if (response.debug) {
+                console.log('[remote module activation] ' + systemName + ':\n' + response.debug);
+            }
             if (response.success) {
                 alert_float('success', 'Module status updated remotely');
             } else {
