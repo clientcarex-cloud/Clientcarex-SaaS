@@ -1101,16 +1101,32 @@ class Shra_leads_model extends App_Model
     /* ═══════════════════════ Convert & revenue ═══════════════════════ */
 
     /** Create (or link) the rider for a lead so the counter can bill. Returns rider_id | error. */
-    public function convert_to_rider($lead_id)
+    /**
+     * @param array $opts rider_type ('learner' | 'guest'), package_id, source and
+     *                    promote — all set by the public /inquire booking, where the
+     *                    plan the visitor is paying for may differ from the one stored
+     *                    on the lead. With no opts this behaves exactly as before: a
+     *                    learner carrying the lead's own plan, and an already-known
+     *                    rider returned untouched.
+     */
+    public function convert_to_rider($lead_id, array $opts = [])
     {
         $l = $this->get($lead_id);
         if (!$l) {
             return 'Lead not found.';
         }
         $this->load->model('shra/shra_model');
+
+        $type       = ($opts['rider_type'] ?? '') === 'guest' ? 'guest' : 'learner';
+        $package_id = (int) ($opts['package_id'] ?? 0) ?: null;
+        // Upgrading an existing guest is only ever driven by a course purchase
+        $promote    = !empty($opts['promote']);
+
         if ($l->rider_id) {
             $r = $this->shra_model->get_rider($l->rider_id);
             if ($r) {
+                $this->align_rider($lead_id, $r, $type, $package_id, $promote);
+
                 return (int) $r->id;
             }
         }
@@ -1118,19 +1134,20 @@ class Shra_leads_model extends App_Model
         if ($existing) {
             $this->update_lead($lead_id, ['client_id' => (int) $existing->client_id], ['rider_id' => (int) $existing->id]);
             $this->event($lead_id, 'note', ['note' => 'Linked to existing rider ' . $existing->rider_no, 'log' => 'Linked to rider ' . $existing->rider_no]);
+            $this->align_rider($lead_id, $existing, $type, $package_id, $promote);
 
             return (int) $existing->id;
         }
         $is_child = $l->rider_for === 'child' || $l->audience === 'children';
         $data = [
-            'rider_type'           => 'learner',
+            'rider_type'           => $type,
             'full_name'            => $l->name,
             'mobile'               => $l->phonenumber,
             'email'                => $l->email,
             'address'              => $l->address ?: $l->city,
             'riding_level'         => shra_riding_levels()[0],
             'status'               => 'active',
-            'preferred_package_id' => $l->interest_package_id,
+            'preferred_package_id' => $package_id ?: $l->interest_package_id,
             'notes'                => 'From lead #' . $l->id . ($l->source_name ? ' · ' . $l->source_name : '') . ($l->agent_name ? ' · agent ' . $l->agent_name : ''),
         ];
         if ($is_child) {
@@ -1140,7 +1157,7 @@ class Shra_leads_model extends App_Model
                 $data['dob'] = date('Y-m-d', strtotime('-' . (int) $l->rider_age . ' years'));
             }
         }
-        $rider_id = $this->shra_model->add_rider($data, 'staff');
+        $rider_id = $this->shra_model->add_rider($data, ($opts['source'] ?? '') === 'self' ? 'self' : 'staff');
         if (!$rider_id) {
             return 'Could not create the rider.';
         }
@@ -1149,6 +1166,26 @@ class Shra_leads_model extends App_Model
         $this->event($lead_id, 'note', ['note' => 'Rider ' . $r->rider_no . ' created from lead', 'log' => 'Rider ' . $r->rider_no . ' created']);
 
         return (int) $rider_id;
+    }
+
+    /**
+     * Point an already-known rider at the plan they are about to buy, and promote a
+     * former guest to learner when that plan is a course (the counter does the same).
+     * Only ever narrows to what the visitor just chose — never clears anything.
+     */
+    private function align_rider($lead_id, $rider, $type, $package_id, $promote = false)
+    {
+        if ($package_id && (int) $rider->preferred_package_id !== $package_id) {
+            $this->db->where('id', (int) $rider->id)
+                ->update(db_prefix() . 'shra_riders', ['preferred_package_id' => $package_id]);
+        }
+        if ($promote && $type === 'learner' && $rider->rider_type === 'guest'
+            && $this->shra_model->set_rider_type($rider->id, 'learner')) {
+            $this->event($lead_id, 'note', [
+                'note' => 'Guest rider ' . $rider->rider_no . ' upgraded to a member (bought a course)',
+                'log'  => 'Rider ' . $rider->rider_no . ' upgraded to a member',
+            ]);
+        }
     }
 
     /**

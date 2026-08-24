@@ -299,6 +299,11 @@ section{padding:52px 0}
                     <input type="hidden" name="city" value="<?php echo $v('city'); ?>">
                     <button class="btn btn-gold btn-block" type="submit" id="subbtn"><i class="fa-solid fa-phone-volume"></i> Request a call back</button>
                     <div class="fine"><i class="fa-solid fa-lock"></i> No spam, no obligation. We only call to help you choose a package and book a visit.</div>
+                    <?php if ($can_pay) { ?>
+                    <div class="or" id="bookor" hidden>or</div>
+                    <button class="btn btn-dark btn-block" type="submit" name="action" value="book" id="bookbtn" hidden><i class="fa-solid fa-lock"></i> <span id="booklbl">Book &amp; pay now</span></button>
+                    <div class="fine" id="bookfine" hidden><i class="fa-solid fa-bolt"></i> Pay online and your place is confirmed straight away<?php echo $pay['partial'] ? ' — pay part now and the balance at the desk' : ''; ?>.</div>
+                    <?php } ?>
                     <?php if ($landing['wa_link']) { ?>
                     <div class="or">or</div>
                     <a class="btn btn-ghost btn-block" href="<?php echo html_escape($landing['wa_link']); ?>" target="_blank" rel="noopener" onclick="shraTrack('Contact',{method:'whatsapp'})" style="color:#128c7e"><i class="fa-brands fa-whatsapp" style="font-size:20px"></i> Chat on WhatsApp</a>
@@ -503,9 +508,28 @@ section{padding:52px 0}
     // Mobile: digits only, strip a pasted +91 / 0 prefix, cap at 10
     var ph=document.getElementById('phone');
     if(ph){ph.addEventListener('input',function(){var d=ph.value.replace(/\D+/g,'');if(d.length>10&&d.indexOf('91')===0){d=d.slice(2);}d=d.replace(/^0+/,'');ph.value=d.slice(0,10);});}
+    // "Book & pay now" — only offered once a real plan is picked
+    var bookable=<?php echo json_encode($bookable, JSON_FORCE_OBJECT); ?>;
+    var bk=document.getElementById('bookbtn'),bo=document.getElementById('bookor'),bf=document.getElementById('bookfine'),bl=document.getElementById('booklbl');
+    function syncBook(){
+        if(!bk){return;}
+        var p=sel?bookable[sel.value]:null;
+        [bk,bo,bf].forEach(function(e){if(e){e.hidden=!p;}});
+        if(p){bl.textContent=(p.guest?'Book this guest ride — ':'Book & pay now — ')+p.total;}
+    }
+    if(sel){sel.addEventListener('change',syncBook);}
+    document.querySelectorAll('[data-pick]').forEach(function(a){a.addEventListener('click',syncBook);});
+    syncBook();
     // Submit state + tracking
     var form=document.getElementById('leadform'),btn=document.getElementById('subbtn');
-    if(form){form.addEventListener('submit',function(){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i> Sending…';shraTrack('InitiateCheckout',{content_name:'inquire_form'});});}
+    if(form){form.addEventListener('submit',function(e){
+        var b=e.submitter||btn;
+        // Booking skips the thank-you page, so the Lead event has to fire here
+        if(b===bk){shraTrack('Lead',{content_name:'inquire_book'});}
+        b.disabled=true;
+        b.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i> '+(b===bk?'Opening the payment page…':'Sending…');
+        shraTrack('InitiateCheckout',{content_name:b===bk?'inquire_book':'inquire_form'});
+    });}
     // Scroll back to the form after a validation error
     <?php if ($has_err) { ?>setTimeout(function(){document.getElementById('form').scrollIntoView({block:'start'});},50);<?php } ?>
 })();

@@ -242,6 +242,28 @@ class Shra_model extends App_Model
         return true;
     }
 
+    /**
+     * Switch a rider between guest and learner, issuing the membership number the
+     * first time they become a learner. Used when a returning guest buys a course.
+     */
+    public function set_rider_type($id, $type)
+    {
+        $rider = $this->get_rider($id);
+        $type  = $type === 'guest' ? 'guest' : 'learner';
+        if (!$rider || $rider->rider_type === $type) {
+            return false;
+        }
+
+        $upd = ['rider_type' => $type];
+        if ($type === 'learner' && empty($rider->membership_no)) {
+            $upd['membership_no']        = $this->next_number('shra_next_membership_no', 'SHRA-M-', 4);
+            $upd['membership_issued_at'] = date('Y-m-d H:i:s');
+        }
+        $this->db->where('id', (int) $id)->update(db_prefix() . 'shra_riders', $upd);
+
+        return true;
+    }
+
     public function delete_rider($id)
     {
         $id = (int) $id;
@@ -670,8 +692,11 @@ class Shra_model extends App_Model
         if (!$rider || !$package || !$package->active) {
             return 'That plan is no longer available. Please pick another one.';
         }
-        if ((int) $package->is_guest !== ($rider->rider_type === 'guest' ? 1 : 0)) {
-            return 'That plan does not match your registration.';
+        // A guest is a walk-in visitor with no membership, so a multi-session course
+        // needs a full registration first. The other direction is fine — a member may
+        // buy a one-off guest ride.
+        if ($rider->rider_type === 'guest' && !(int) $package->is_guest) {
+            return 'That plan needs a full membership registration. Please register at ' . shra_join_url() . ' or ask the reception desk.';
         }
 
         $quote = $this->quote($package);

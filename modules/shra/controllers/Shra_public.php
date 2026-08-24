@@ -174,7 +174,19 @@ class Shra_public extends App_Controller
             'old'      => ['package_id' => (int) ($get['pkg'] ?? 0)],
             'ts'       => time(),
             'track'    => $this->tracking_from($get),
+            // Booking straight from the ad landing page, when SHRA settings allow it
+            'pay'      => shra_pay_settings(),
+            'can_pay'  => count(shra_pay_gateways()) > 0,
+            'bookable' => [],
         ];
+        if ($data['can_pay']) {
+            // What the "Book & pay now" button shows for each plan in the dropdown
+            foreach ($plans as $pl) {
+                if ($pl['total_raw'] > 0) {
+                    $data['bookable'][(string) $pl['id']] = ['total' => $pl['total'], 'guest' => (bool) $pl['is_guest']];
+                }
+            }
+        }
         $data['sig'] = shra_sign('inquire|' . $data['ts']);
 
         if ($this->input->post()) {
@@ -219,9 +231,20 @@ class Shra_public extends App_Controller
                 ], 'public_form');
                 // Duplicates are attached to the original lead silently — the visitor still sees a thank-you
                 if (!is_string($res)) {
-                    redirect(site_url('inquire/done'));
+                    // "Book & pay now" carries the visitor on to the checkout instead;
+                    // the lead is captured either way, so nothing is lost if they drop out.
+                    if (($post['action'] ?? '') === 'book' && count(shra_pay_gateways())) {
+                        $err = $this->book_from_lead((int) $res['lead_id'], (int) ($post['package_id'] ?? 0));
+                        if ($err !== '') {
+                            $errors[] = $err;
+                        }
+                    }
+                    if (!count($errors)) {
+                        redirect(site_url('inquire/done'));
+                    }
+                } else {
+                    $errors[] = $res;
                 }
-                $errors[] = $res;
             }
             $data['errors'] = $errors;
             $data['old']    = $post;
@@ -229,6 +252,38 @@ class Shra_public extends App_Controller
         }
 
         $this->load->view('public_inquire', $data);
+    }
+
+    /**
+     * Turn a freshly captured lead into a rider and send them to the /join checkout.
+     * Redirects on success; returns a message the inquiry form can show on failure.
+     *
+     * @return string '' when the visitor has been redirected to the checkout
+     */
+    private function book_from_lead($lead_id, $package_id)
+    {
+        $package = $this->shra_model->get_package($package_id);
+        if (!$package || !$package->active) {
+            return 'That plan is not available any more — we will call you about the others.';
+        }
+
+        $rider_id = $this->shra_leads_model->convert_to_rider($lead_id, [
+            'rider_type' => $package->is_guest ? 'guest' : 'learner',
+            'package_id' => (int) $package->id,
+            'source'     => 'self',
+            // A returning guest who buys a course becomes a member
+            'promote'    => true,
+        ]);
+        if (is_string($rider_id)) {
+            return $rider_id;
+        }
+
+        $rider = $this->shra_model->get_rider($rider_id);
+        if (!$rider) {
+            return 'We could not open your booking. Please call us instead.';
+        }
+
+        redirect(site_url('join/pay/' . $rider->rider_no . '/' . shra_sign($rider->rider_no)));
     }
 
     /** Landing-page settings (phone, reels, pixels) with sensible fallbacks. */
