@@ -9,7 +9,7 @@
             <tr>
                 <td class="shra-muted"><?php echo $i--; ?></td>
                 <td><a href="<?php echo admin_url('shra/rider/' . $a->rider_id); ?>" class="strong"><?php echo html_escape($a->full_name); ?></a><span class="sub"><?php echo html_escape($a->rider_no); ?><?php echo $a->rider_type === 'guest' ? ' · Guest' : ''; ?></span></td>
-                <td><?php echo html_escape($a->package_name); ?></td>
+                <td><?php echo html_escape($a->package_name); ?><?php echo shra_batch_label($a->batch ?? null, false) ? '<span class="sub">' . html_escape(shra_batch_label($a->batch, false)) . ' batch</span>' : ''; ?></td>
                 <td><?php echo (int) $a->session_no; ?> / <?php echo (int) $a->sessions_total; ?><?php echo $a->session_no >= $a->sessions_total ? ' <span class="shra-badge shra-badge-gold">Done</span>' : ''; ?></td>
                 <td><?php echo html_escape($a->trainer_name ?: '—'); ?></td>
                 <td><?php echo html_escape($a->horse_name ?: '—'); ?></td>

@@ -53,6 +53,8 @@ class Shra_model extends App_Model
         if (!empty($r->preferred_package_id)) {
             $r->preferred_package = $this->get_package($r->preferred_package_id);
         }
+        $r->batch_label = shra_batch_label($r->preferred_batch ?? null);
+        $r->schedule    = shra_schedule_line($r->preferred_start_date ?? null, $r->preferred_batch ?? null);
     }
 
     public function get_riders($filters = [])
@@ -122,7 +124,7 @@ class Shra_model extends App_Model
         $q = $this->db->escape_like_str(trim((string) $q));
 
         $today = date('Y-m-d');
-        $this->db->select("r.id, r.rider_no, r.full_name, r.mobile, r.dob, r.rider_type, r.riding_level, r.membership_no, r.status, r.preferred_package_id,
+        $this->db->select("r.id, r.rider_no, r.full_name, r.mobile, r.dob, r.rider_type, r.riding_level, r.membership_no, r.status, r.preferred_package_id, r.preferred_start_date, r.preferred_batch,
             (SELECT COALESCE(SUM(e.sessions_total - e.sessions_used),0) FROM {$p}shra_enrollments e WHERE e.rider_id = r.id AND e.status = 'active') AS sessions_left,
             (SELECT COUNT(*) FROM {$p}shra_attendance a WHERE a.rider_id = r.id AND a.session_date = '{$today}') AS attended_today,
             " . $this->due_sql('r.id') . " AS total_due")
@@ -277,7 +279,8 @@ class Shra_model extends App_Model
     private function clean_rider_data(array $in)
     {
         $allowed = ['rider_type', 'full_name', 'guardian_name', 'guardian_relationship', 'mobile', 'email', 'gender', 'dob',
-            'place_of_birth', 'address', 'marital_status', 'riding_level', 'preferred_package_id', 'terms_accepted', 'terms_accepted_by', 'status', 'notes'];
+            'place_of_birth', 'address', 'marital_status', 'riding_level', 'preferred_package_id', 'preferred_start_date',
+            'preferred_batch', 'terms_accepted', 'terms_accepted_by', 'status', 'notes'];
         $out = [];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $in)) {
@@ -296,6 +299,14 @@ class Shra_model extends App_Model
         }
         if (isset($out['preferred_package_id'])) {
             $out['preferred_package_id'] = (int) $out['preferred_package_id'] ?: null;
+        }
+        // When the rider wants to start, and in which daily batch. The desk may
+        // backdate a start; the public forms never send one in the past.
+        if (isset($out['preferred_start_date'])) {
+            $out['preferred_start_date'] = shra_start_date($out['preferred_start_date'], true);
+        }
+        if (isset($out['preferred_batch'])) {
+            $out['preferred_batch'] = shra_batch_key($out['preferred_batch']);
         }
         foreach (['email', 'guardian_name', 'guardian_relationship', 'place_of_birth', 'address', 'marital_status', 'gender', 'notes'] as $k) {
             if (isset($out[$k]) && $out[$k] === '') {
@@ -550,8 +561,12 @@ class Shra_model extends App_Model
      */
     private function add_enrollment($rider, $package, array $quote, $invoice_id, $paid_amount, $mode_name, array $opts = [])
     {
-        $start   = date('Y-m-d');
-        $expires = $package->validity_days ? date('Y-m-d', strtotime("+{$package->validity_days} days")) : null;
+        // The rider's start date and batch: what this bill says, else what they
+        // asked for when they registered, else today / no batch. An online /join
+        // payment reaches here with no opts at all, so the fallback matters.
+        $start   = shra_start_date($opts['start_date'] ?? '', true) ?: (shra_start_date($rider->preferred_start_date ?? '', true) ?: date('Y-m-d'));
+        $batch   = shra_batch_key($opts['batch'] ?? '') ?: shra_batch_key($rider->preferred_batch ?? '');
+        $expires = $package->validity_days ? date('Y-m-d', strtotime($start . " +{$package->validity_days} days")) : null;
         $token   = (string) ($opts['bill_token'] ?? '');
 
         $enr = [
@@ -573,6 +588,7 @@ class Shra_model extends App_Model
             'invoice_id'       => $invoice_id,
             'bill_token'       => $token !== '' ? $token : null,
             'start_date'       => $start,
+            'batch'            => $batch,
             'expires_at'       => $expires,
             'status'           => 'active',
             'notes'            => isset($opts['notes']) ? substr(trim((string) $opts['notes']), 0, 500) : null,
@@ -582,6 +598,21 @@ class Shra_model extends App_Model
         ];
         $this->db->insert(db_prefix() . 'shra_enrollments', $enr);
         $enrollment_id = $this->db->insert_id();
+
+        // The desk may have set the start date / batch on the bill itself — remember it
+        // on the rider so the next screen (and the next bill) starts from the same place.
+        if ($enrollment_id) {
+            $pref = [];
+            if (!empty($opts['start_date']) && $start !== ($rider->preferred_start_date ?? null)) {
+                $pref['preferred_start_date'] = $start;
+            }
+            if ($batch && $batch !== ($rider->preferred_batch ?? null)) {
+                $pref['preferred_batch'] = $batch;
+            }
+            if (count($pref)) {
+                $this->db->where('id', $rider->id)->update(db_prefix() . 'shra_riders', $pref);
+            }
+        }
 
         // A guest ride purchased by a guest rider: mark attended right away when asked
         if (!empty($opts['mark_now']) && $enrollment_id) {
@@ -850,6 +881,8 @@ class Shra_model extends App_Model
         $e->paid_real  = round($paid, 2);
         $e->due        = round(max(0, (float) $e->total - $paid), 2);
         $e->pay_status = $e->status === 'cancelled' ? 'cancelled' : ($e->due <= 0.009 ? 'paid' : ($paid > 0.009 ? 'partial' : 'unpaid'));
+        $e->batch_label = shra_batch_label($e->batch ?? null);
+        $e->schedule    = shra_schedule_line($e->start_date ?? null, $e->batch ?? null);
 
         return $e;
     }
@@ -1149,7 +1182,7 @@ class Shra_model extends App_Model
     public function get_attendance($filters = [], $limit = 300)
     {
         $p = db_prefix();
-        $this->db->select('a.*, r.full_name, r.rider_no, r.rider_type, e.package_name, e.sessions_total, e.enrollment_no,
+        $this->db->select('a.*, r.full_name, r.rider_no, r.rider_type, e.package_name, e.sessions_total, e.enrollment_no, e.batch,
             t.name AS trainer_name, CONCAT(m.firstname, " ", m.lastname) AS marked_by_name')
             ->from($p . 'shra_attendance a')
             ->join($p . 'shra_riders r', 'r.id = a.rider_id', 'left')

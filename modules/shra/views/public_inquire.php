@@ -15,6 +15,8 @@ $adult_try = $guest($adults);
 $from_raw = null;
 foreach ($plans as $p) { if (!$p['is_guest'] && $p['sessions'] > 0) { $ps = $p['total_raw'] / $p['sessions']; if ($from_raw === null || $ps < $from_raw) { $from_raw = $ps; } } }
 $from     = $from_raw !== null ? shra_money($from_raw) : '';
+$batches  = shra_batches();
+$batch_line = implode(' · ', array_map(function ($b) { return $b['label'] . ' ' . $b['time']; }, $batches));
 $live     = !empty($landing['latest_reels']);
 $reels    = $live ? array_slice($landing['latest_reels'], 0, 8) : array_map(function ($id) { return ['id' => $id, 'thumb' => '', 'views' => 0, 'likes' => 0, 'taken' => 0, 'caption' => '']; }, array_slice($landing['reels'], 0, 6));
 $fmt      = function ($n) { return $n >= 1000000 ? round($n / 1000000, 1) . 'M' : ($n >= 1000 ? round($n / 1000, $n >= 10000 ? 0 : 1) . 'K' : (string) $n); };
@@ -22,7 +24,7 @@ $ago      = function ($t) { $d = max(0, time() - $t); if ($d < 86400) { return '
 $faq = [
     ['Is horse riding safe for children?', 'Yes. Every lesson is one-on-one with a trained instructor who stays with the rider throughout. We start on calm, well-schooled horses at a walk and only progress when the rider is confident. Children from ' . (int) $landing['min_age'] . ' years can join.'],
     ['I have never ridden before — can I join?', 'Absolutely. Most of our riders start with zero experience. Your first session covers mounting, balance and control at a walk. Book a Guest Ride to try it before choosing a package.'],
-    ['When are the lessons?', 'Weekend batches (Saturday & Sunday, morning and evening) are the most popular. Weekday slots are available on request — tell us what suits you and we will match a time.'],
+    ['When are the lessons?', 'There are two batches every day — ' . $batch_line . '. Pick the one that suits you on the booking form and tell us the date you want to start. Seats in each batch go first come, first served.'],
     ['What should I wear?', 'Full-length trousers (jeans or track pants) and closed shoes — no sandals. Ask our team about safety gear when you book.'],
     ['Do I get a certificate?', 'Yes — riders who complete a package receive a certificate from ' . $academy . ' with a QR code for verification.'],
     ['Where is the academy?', ($landing['location'] ?: 'Hyderabad') . '. The exact location and directions are on the map below.'],
@@ -104,6 +106,9 @@ h1 em{font-style:italic;color:var(--brown)}
 .chips label{flex:1;text-align:center;border:1.5px solid var(--line);border-radius:12px;padding:11px 6px;font-size:13.5px;font-weight:600;cursor:pointer;background:#fff;color:var(--ink-2)}
 .chips input{display:none}
 .chips label:has(input:checked){background:var(--ink);border-color:var(--ink);color:var(--cream)}
+.chips label small{display:block;font-size:11px;font-weight:600;opacity:.72;margin-top:2px;letter-spacing:.2px}
+.fcfs{display:flex;gap:8px;align-items:flex-start;background:#f6ecd2;border:1px solid #e6d4a6;color:var(--brown);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600;line-height:1.45;margin:0 0 12px}
+.fcfs i{margin-top:2px}
 .err{background:#fbeeee;border:1px solid #e8b9b6;color:var(--red);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13.5px}
 .note-t{background:none;border:0;color:var(--brown);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:12px}
 .fine{font-size:12px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
@@ -249,7 +254,7 @@ section{padding:52px 0}
         <div>
             <div class="eyebrow">Horse riding lessons · Hyderabad</div>
             <h1>Learn to ride a horse — <em>with confidence.</em></h1>
-            <p class="lead">Professional one-on-one riding lessons for children (<?php echo (int) $landing['min_age']; ?>+) and adults, on calm, well-schooled horses. Zero experience needed. Weekend batches available.</p>
+            <p class="lead">Professional one-on-one riding lessons for children (<?php echo (int) $landing['min_age']; ?>+) and adults, on calm, well-schooled horses. Zero experience needed. Morning and evening batches, seven days a week.</p>
             <?php if ($offer['active']) { ?><div class="offer"><b><?php echo $offer['percent'] + 0; ?>% OFF</b> <?php echo html_escape($offer['label'] ?: 'Limited-time offer on all packages'); ?><?php if ($offer['ends']) { ?> · ends <?php echo date('j M', strtotime($offer['ends'])); ?><?php } ?></div><?php } ?>
             <div class="cta">
                 <a class="btn btn-gold" href="#form"><i class="fa-solid fa-bolt"></i> Book your ride</a>
@@ -259,7 +264,7 @@ section{padding:52px 0}
                 <span><i class="fa-solid fa-shield-heart"></i> Safety-first, 1-on-1 lessons</span>
                 <span><i class="fa-solid fa-child-reaching"></i> All ages · all levels</span>
                 <span><i class="fa-solid fa-certificate"></i> Certificate on completion</span>
-                <span><i class="fa-solid fa-calendar-days"></i> Sat &amp; Sun batches</span>
+                <span><i class="fa-solid fa-calendar-days"></i> <?php echo html_escape($batch_line); ?></span>
             </div>
             <div class="proof">
                 <div class="av"><span>A</span><span>R</span><span>S</span><span>+</span></div>
@@ -290,6 +295,13 @@ section{padding:52px 0}
                         <div class="f"><label>Rider's age</label><input type="number" name="rider_age" value="<?php echo $v('rider_age'); ?>" min="2" max="90" inputmode="numeric" placeholder="e.g. 8"></div>
                         <div class="f"><label>Interested in</label><select name="package_id" id="pkgsel"><option value=""><?php echo $can_pay ? 'Choose a plan…' : 'Not sure yet'; ?></option><?php foreach ($plans as $p) { ?><option value="<?php echo $p['id']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'selected' : ''; ?>><?php echo ($p['audience'] === 'children' ? 'Kids' : 'Adults') . ' · ' . html_escape($p['name']) . ($p['is_guest'] ? '' : ' · ' . $p['sessions'] . ' sessions'); ?></option><?php } ?></select></div>
                     </div>
+                    <div class="row">
+                        <div class="f"><label>Start date</label><input type="date" name="preferred_start_date" value="<?php echo $v('preferred_start_date'); ?>" min="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d', strtotime('+6 months')); ?>"></div>
+                        <div class="f"><label>Class timing</label><div class="chips">
+                            <?php foreach ($batches as $bk => $b) { ?><label><input type="radio" name="preferred_batch" value="<?php echo $bk; ?>" <?php echo $v('preferred_batch') === $bk ? 'checked' : ''; ?>><span><?php echo html_escape($b['label']); ?><small><?php echo html_escape($b['time']); ?></small></span></label><?php } ?>
+                        </div></div>
+                    </div>
+                    <div class="fcfs"><i class="fa-solid fa-user-clock"></i> <span><?php echo html_escape(shra_fcfs_note()); ?></span></div>
                     <button type="button" class="note-t" id="notet" <?php echo $v('message') !== '' ? 'hidden' : ''; ?>><i class="fa-solid fa-plus"></i> Add a note (optional)</button>
                     <div class="f" id="notef" <?php echo $v('message') === '' ? 'hidden' : ''; ?>><label>Anything we should know?</label><textarea name="message" rows="2" placeholder="Preferred days, previous experience, questions…"><?php echo $v('message'); ?></textarea></div>
                     <input type="hidden" name="city" value="<?php echo $v('city'); ?>">

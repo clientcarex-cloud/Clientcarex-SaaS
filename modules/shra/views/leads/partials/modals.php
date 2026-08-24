@@ -35,6 +35,11 @@ foreach ($packages as $pk) {
             <div class="col-sm-3"><div class="form-group"><label>Email</label><input type="email" name="email" class="form-control"></div></div>
         </div>
         <div class="row">
+            <div class="col-sm-4"><div class="form-group"><label>Start date</label><input type="date" name="preferred_start_date" class="form-control" min="<?php echo date('Y-m-d'); ?>"></div></div>
+            <div class="col-sm-4"><div class="form-group"><label>Batch</label><select name="preferred_batch" class="form-control"><option value="">Not decided</option><?php foreach (shra_batches() as $bk => $b) { ?><option value="<?php echo $bk; ?>"><?php echo html_escape($b['text']); ?></option><?php } ?></select></div></div>
+            <div class="col-sm-4"><div class="form-group"><label class="shra-muted" style="font-weight:500">&nbsp;</label><div class="help" style="margin-top:8px"><?php echo html_escape(shra_fcfs_note()); ?></div></div></div>
+        </div>
+        <div class="row">
             <?php if ($can_all) { ?>
             <div class="col-sm-6"><div class="form-group"><label>Assign to</label><select name="assigned" class="form-control"><option value="">Auto (round robin)</option><?php foreach ($agents as $a) { ?><option value="<?php echo $a->staffid; ?>" <?php echo $a->staffid == get_staff_user_id() ? 'selected' : ''; ?>><?php echo html_escape($a->full_name); ?></option><?php } ?></select></div></div>
             <?php } ?>

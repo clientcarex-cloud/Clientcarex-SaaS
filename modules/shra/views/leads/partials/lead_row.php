@@ -61,6 +61,8 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     <td class="shra-r-visit">
         <?php if ($l->visit_date) { ?>
             <?php echo date('D d M', strtotime($l->visit_date)); ?><span class="shra-r-sub"><?php echo html_escape(shra_slot($l->visit_slot) ?: 'Any time'); ?></span>
+        <?php } elseif ($l->schedule) { ?>
+            <?php echo $l->preferred_start_date ? date('D d M', strtotime($l->preferred_start_date)) : 'Wants'; ?><span class="shra-r-sub"><?php echo html_escape($l->batch_label ?: 'no batch'); ?></span>
         <?php } else { ?><span class="shra-muted">—</span><?php } ?>
     </td>
     <td class="shra-r-calls num">

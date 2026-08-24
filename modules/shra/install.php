@@ -30,6 +30,8 @@ if (!$CI->db->table_exists($p . 'shra_riders')) {
         `marital_status` VARCHAR(20) DEFAULT NULL COMMENT 'single | married | divorced | other',
         `riding_level` VARCHAR(30) NOT NULL DEFAULT 'beginner',
         `preferred_package_id` INT(11) UNSIGNED DEFAULT NULL,
+        `preferred_start_date` DATE DEFAULT NULL,
+        `preferred_batch` VARCHAR(10) DEFAULT NULL COMMENT 'morning | evening',
         `is_minor` TINYINT(1) NOT NULL DEFAULT 0,
         `terms_accepted` TINYINT(1) NOT NULL DEFAULT 0,
         `terms_accepted_by` VARCHAR(191) DEFAULT NULL COMMENT 'rider or guardian name',
@@ -93,6 +95,7 @@ if (!$CI->db->table_exists($p . 'shra_enrollments')) {
         `payment_mode` VARCHAR(100) DEFAULT NULL,
         `invoice_id` INT(11) DEFAULT NULL,
         `start_date` DATE DEFAULT NULL,
+        `batch` VARCHAR(10) DEFAULT NULL COMMENT 'morning | evening',
         `expires_at` DATE DEFAULT NULL,
         `status` VARCHAR(15) NOT NULL DEFAULT 'active' COMMENT 'active | completed | expired | cancelled',
         `completed_at` DATETIME DEFAULT NULL,
@@ -200,6 +203,17 @@ if (!$CI->db->field_exists('preferred_package_id', $p . 'shra_riders')) {
     $CI->db->query("ALTER TABLE `{$p}shra_riders` ADD COLUMN `preferred_package_id` INT(11) UNSIGNED DEFAULT NULL AFTER `riding_level`");
 }
 
+// ── Self-heal: start date & class batch chosen on the booking forms (v1.4.2) ──
+if (!$CI->db->field_exists('preferred_start_date', $p . 'shra_riders')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_riders` ADD COLUMN `preferred_start_date` DATE DEFAULT NULL AFTER `preferred_package_id`");
+}
+if (!$CI->db->field_exists('preferred_batch', $p . 'shra_riders')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_riders` ADD COLUMN `preferred_batch` VARCHAR(10) DEFAULT NULL COMMENT 'morning | evening' AFTER `preferred_start_date`");
+}
+if (!$CI->db->field_exists('batch', $p . 'shra_enrollments')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_enrollments` ADD COLUMN `batch` VARCHAR(10) DEFAULT NULL COMMENT 'morning | evening' AFTER `start_date`");
+}
+
 // ── Options (add_option is a no-op when the key exists) ──
 $shra_defaults = [
     'shra_schema_version'       => '0',
@@ -212,6 +226,12 @@ $shra_defaults = [
     'shra_offer_label'          => 'Limited time offer',
     'shra_offer_ends'           => '',
     'shra_minor_age'            => '18',
+    // Class batches — the two daily riding windows a rider picks from (24h clock)
+    'shra_batch_morning_start'  => '06:00',
+    'shra_batch_morning_end'    => '09:00',
+    'shra_batch_evening_start'  => '16:00',
+    'shra_batch_evening_end'    => '21:00',
+    'shra_batch_fcfs_note'      => 'Batches run on a first come, first served basis — seats are confirmed in the order bookings are received.',
     'shra_riding_levels'        => "Beginner\nNovice\nIntermediate\nAdvanced\nCompetitive",
     'shra_chief_instructor'     => 'Chief Instructor',
     'shra_director'             => 'Director',
@@ -342,6 +362,8 @@ if (!$CI->db->table_exists($p . 'shra_lead_ext')) {
         `rider_age` TINYINT(3) UNSIGNED DEFAULT NULL,
         `audience` VARCHAR(10) DEFAULT NULL COMMENT 'children | adults',
         `interest_package_id` INT(11) UNSIGNED DEFAULT NULL,
+        `preferred_start_date` DATE DEFAULT NULL,
+        `preferred_batch` VARCHAR(10) DEFAULT NULL COMMENT 'morning | evening',
         `expected_value` DECIMAL(15,2) NOT NULL DEFAULT 0,
         `next_action_at` DATETIME DEFAULT NULL COMMENT 'required while open',
         `next_action_type` VARCHAR(12) NOT NULL DEFAULT 'call' COMMENT 'call | whatsapp | visit | other',
@@ -395,6 +417,14 @@ if (!$CI->db->table_exists($p . 'shra_lead_events')) {
         KEY `staff_created` (`staff_id`, `created_at`),
         KEY `type_created` (`event_type`, `created_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Self-heal: start date & class batch asked for on the inquiry form (v1.4.2) ──
+if ($CI->db->table_exists($p . 'shra_lead_ext') && !$CI->db->field_exists('preferred_start_date', $p . 'shra_lead_ext')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_lead_ext` ADD COLUMN `preferred_start_date` DATE DEFAULT NULL AFTER `interest_package_id`");
+}
+if ($CI->db->table_exists($p . 'shra_lead_ext') && !$CI->db->field_exists('preferred_batch', $p . 'shra_lead_ext')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_lead_ext` ADD COLUMN `preferred_batch` VARCHAR(10) DEFAULT NULL COMMENT 'morning | evening' AFTER `preferred_start_date`");
 }
 
 // ── Frozen revenue credit ──

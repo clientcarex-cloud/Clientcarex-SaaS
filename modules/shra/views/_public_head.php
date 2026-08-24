@@ -43,6 +43,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:radial-gradient(120% 80
 .chips input{display:none}
 .chips input:checked+span{color:var(--cream)}
 .chips label:has(input:checked){background:var(--ink);border-color:var(--ink);color:var(--cream)}
+.chips label small{display:block;font-size:11px;font-weight:600;opacity:.72;margin-top:2px;letter-spacing:.2px}
+.fcfs{display:flex;gap:8px;align-items:flex-start;background:#f6ecd2;border:1px solid #e6d4a6;color:var(--brown);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600;line-height:1.45;margin-top:12px}
+.fcfs i{margin-top:2px}
 .guardian{background:var(--cream-2);border:1px dashed var(--gold-2);border-radius:14px;padding:14px 14px 4px;margin-bottom:12px}
 .guardian .note{font-size:12.5px;color:var(--brown);margin-bottom:10px;font-weight:600}
 .terms{max-height:190px;overflow:auto;font-size:12.5px;line-height:1.6;color:var(--ink-2);background:var(--cream-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-line}

@@ -122,6 +122,20 @@
                 <label style="font-weight:600;display:flex;gap:8px;align-items:center"><input type="checkbox" name="shra_auto_certificate" value="1" <?php echo get_option('shra_auto_certificate') == '1' ? 'checked' : ''; ?>> Issue the certificate automatically when the last session is marked</label>
             </div></div>
 
+            <div class="shra-card shra-mt"><div class="shra-card-head"><h4>Class batches</h4></div><div class="shra-card-body">
+                <div class="help" style="margin-top:0">Riders pick a start date and one of these two daily batches on the inquiry form, the join form and at the counter. Nothing is reserved for them — seats go first come, first served, and the line below says so on every one of those screens.</div>
+                <?php foreach (shra_batches() as $bk => $b) { ?>
+                <div class="row" style="margin-top:10px">
+                    <div class="col-xs-4"><div class="form-group" style="margin-bottom:0"><label><?php echo html_escape($b['label']); ?> batch</label><div class="help" style="margin-top:6px"><?php echo html_escape($b['time']); ?></div></div></div>
+                    <div class="col-xs-4"><div class="form-group" style="margin-bottom:0"><label>From</label><input type="time" name="shra_batch_<?php echo $bk; ?>_start" class="form-control" value="<?php echo html_escape($b['start']); ?>"></div></div>
+                    <div class="col-xs-4"><div class="form-group" style="margin-bottom:0"><label>To</label><input type="time" name="shra_batch_<?php echo $bk; ?>_end" class="form-control" value="<?php echo html_escape($b['end']); ?>"></div></div>
+                </div>
+                <?php } ?>
+                <div class="form-group" style="margin-top:14px;margin-bottom:0"><label>First come, first served line</label><textarea name="shra_batch_fcfs_note" class="form-control" rows="2"><?php echo html_escape(shra_fcfs_note()); ?></textarea>
+                    <div class="help">Shown wherever a batch is chosen. Leave the default if you are not sure.</div>
+                </div>
+            </div></div>
+
             <div class="shra-card shra-mt"><div class="shra-card-head"><h4>Self-registration link</h4><a href="<?php echo admin_url('shra/qr'); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa-solid fa-qrcode"></i> Poster</a></div><div class="shra-card-body">
                 <div class="shra-qr-url"><?php echo html_escape(shra_join_url()); ?></div>
                 <div class="help" style="margin-top:8px">Static link — print it once, it never changes.</div>

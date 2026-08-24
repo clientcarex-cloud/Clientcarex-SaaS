@@ -20,6 +20,11 @@ class Shra_public extends App_Controller
         parent::__construct();
         $this->load->model('shra/shra_model');
         $this->load->helper('shra/shra');
+        // The public pages take traffic before any staff member opens the admin panel,
+        // so they run the schema self-heal too — it is a no-op once the version matches.
+        if (function_exists('shra_maybe_upgrade_schema')) {
+            shra_maybe_upgrade_schema();
+        }
     }
 
     private function error($title, $message)
@@ -94,6 +99,9 @@ class Shra_public extends App_Controller
                 $post['rider_type']     = $type;
                 $post['terms_accepted'] = 1;
                 $post['status']         = 'active';
+                // Batch & start date: a preference, never a held seat — see shra_fcfs_note()
+                $post['preferred_start_date'] = shra_start_date($post['preferred_start_date'] ?? '');
+                $post['preferred_batch']      = shra_batch_key($post['preferred_batch'] ?? '');
                 unset($post['csrf_token_name']);
 
                 // Plan chosen on the form — must be an active package of the right kind
@@ -224,6 +232,8 @@ class Shra_public extends App_Controller
                     'rider_for'           => $post['rider_for'] ?? 'self',
                     'rider_age'           => $post['rider_age'] ?? '',
                     'interest_package_id' => (int) ($post['package_id'] ?? 0),
+                    'preferred_start_date' => $post['preferred_start_date'] ?? '',
+                    'preferred_batch'     => $post['preferred_batch'] ?? '',
                     'city'                => $post['city'] ?? '',
                     'source'              => $this->lead_source_id($track),
                     'description'         => $desc,

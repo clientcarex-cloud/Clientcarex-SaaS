@@ -31,6 +31,14 @@ $v = function ($k, $d = '') use ($r) { return html_escape($r && isset($r->$k) &&
                     <div class="col-md-3"><div class="form-group"><label>Place of birth</label><input type="text" name="place_of_birth" class="form-control" value="<?php echo $v('place_of_birth'); ?>"></div></div>
                     <div class="col-md-3"><div class="form-group"><label>Status</label><select name="marital_status" class="form-control"><option value="">—</option><?php foreach (shra_marital_statuses() as $k => $l) { ?><option value="<?php echo $k; ?>" <?php echo $v('marital_status') === $k ? 'selected' : ''; ?>><?php echo $l; ?></option><?php } ?></select></div></div>
                 </div>
+                <div class="row">
+                    <div class="col-md-4"><div class="form-group"><label>Preferred start date</label><input type="date" name="preferred_start_date" class="form-control" value="<?php echo $v('preferred_start_date'); ?>"></div></div>
+                    <div class="col-md-8"><div class="form-group"><label>Class batch</label>
+                        <div class="shra-seg" style="display:flex">
+                            <label><input type="radio" name="preferred_batch" value="" <?php echo shra_batch_key($v('preferred_batch')) === null ? 'checked' : ''; ?>><span>Not set</span></label>
+                            <?php foreach (shra_batches() as $bk => $b) { ?><label><input type="radio" name="preferred_batch" value="<?php echo $bk; ?>" <?php echo $v('preferred_batch') === $bk ? 'checked' : ''; ?>><span><?php echo html_escape($b['label']); ?> · <?php echo html_escape($b['time']); ?></span></label><?php } ?>
+                        </div><div class="help"><?php echo html_escape(shra_fcfs_note()); ?></div></div></div>
+                </div>
                 <div class="form-group"><label>Full address</label><textarea name="address" class="form-control" rows="2"><?php echo $v('address'); ?></textarea></div>
                 <div class="row">
                     <div class="col-md-8"><div class="form-group"><label>Guardian name <span class="shra-muted">(required for riders under <?php echo (int) get_option('shra_minor_age'); ?>)</span></label><input type="text" name="guardian_name" class="form-control" value="<?php echo $v('guardian_name'); ?>"></div></div>

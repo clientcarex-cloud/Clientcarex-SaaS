@@ -46,6 +46,16 @@
                     </div>
                 </div>
                 <?php if ($offer['active']) { ?><div class="shra-offer" style="margin-bottom:12px"><span class="stamp"><?php echo $offer['percent'] + 0; ?>% OFF</span> <?php echo html_escape($offer['label']); ?> — applied automatically, editable below.</div><?php } ?>
+                <div class="row" style="margin-bottom:14px">
+                    <div class="col-md-4"><div class="form-group"><label>Starts on</label><input type="date" name="start_date" id="shra-start-date" class="form-control" value="<?php echo date('Y-m-d'); ?>"></div></div>
+                    <div class="col-md-8"><div class="form-group"><label>Class batch</label>
+                        <div class="shra-seg" style="display:flex">
+                            <label><input type="radio" name="batch" value="" checked><span>Not set</span></label>
+                            <?php foreach (shra_batches() as $bk => $b) { ?><label><input type="radio" name="batch" value="<?php echo $bk; ?>" data-label="<?php echo html_escape($b['text']); ?>"><span><?php echo html_escape($b['label']); ?> · <?php echo html_escape($b['time']); ?></span></label><?php } ?>
+                        </div>
+                        <div class="help"><?php echo html_escape(shra_fcfs_note()); ?></div>
+                    </div></div>
+                </div>
                 <div class="shra-pkgs" id="shra-pkgs">
                     <?php foreach ($packages as $p) {
                         $q = $this->shra_model->quote($p); ?>

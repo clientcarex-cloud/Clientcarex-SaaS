@@ -199,9 +199,9 @@ class Shra_leads extends AdminController
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="shra-leads-' . date('Ymd') . '.csv"');
         $out = fopen('php://output', 'w');
-        fputcsv($out, ['ID', 'Name', 'Phone', 'Email', 'City', 'Source', 'Agent', 'Stage', 'Rider for', 'Age', 'Interest', 'Expected', 'Next action', 'Visit', 'Calls', 'Lost reason', 'Added', 'Won at']);
+        fputcsv($out, ['ID', 'Name', 'Phone', 'Email', 'City', 'Source', 'Agent', 'Stage', 'Rider for', 'Age', 'Interest', 'Start date', 'Batch', 'Expected', 'Next action', 'Visit', 'Calls', 'Lost reason', 'Added', 'Won at']);
         foreach ($list as $l) {
-            fputcsv($out, [$l->id, $l->name, $l->phonenumber, $l->email, $l->city, $l->source_name, $l->agent_name, shra_lead_stage_label($l->stage), $l->rider_for, $l->rider_age, $l->package_name,
+            fputcsv($out, [$l->id, $l->name, $l->phonenumber, $l->email, $l->city, $l->source_name, $l->agent_name, shra_lead_stage_label($l->stage), $l->rider_for, $l->rider_age, $l->package_name, $l->preferred_start_date, $l->batch_label,
                 $l->expected_value, $l->next_action_at, trim($l->visit_date . ' ' . $l->visit_slot), $l->call_attempts, $l->lost_reason, $l->dateadded, $l->won_at]);
         }
         fclose($out);
@@ -285,6 +285,8 @@ class Shra_leads extends AdminController
             'rider_for'           => $this->input->post('rider_for'),
             'rider_age'           => $this->input->post('rider_age'),
             'interest_package_id' => (int) $this->input->post('interest_package_id'),
+            'preferred_start_date' => $this->input->post('preferred_start_date'),
+            'preferred_batch'     => $this->input->post('preferred_batch'),
             'expected_value'      => $this->input->post('expected_value'),
             'description'         => $this->input->post('description'),
             'next_action_at'      => $this->input->post('next_action_at'),

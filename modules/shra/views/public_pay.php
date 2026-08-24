@@ -59,6 +59,7 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
                     <div>
                         <div class="nm"><?php echo html_escape($package->name); ?></div>
                         <div class="hint"><?php echo (int) $package->sessions; ?> session<?php echo $package->sessions > 1 ? 's' : ''; ?> × <?php echo (int) $package->duration_min; ?> min · <?php echo ucfirst($package->audience); ?></div>
+                        <?php if ($rider->schedule) { ?><div class="hint" style="margin-top:3px"><i class="fa-solid fa-calendar-day"></i> <?php echo html_escape($rider->schedule); ?></div><?php } ?>
                         <?php if ($quote['discount_percent'] > 0) { ?><div class="off"><?php echo $quote['discount_percent'] + 0; ?>% <?php echo html_escape(get_option('shra_offer_label') ?: 'offer'); ?> applied</div><?php } ?>
                     </div>
                     <div style="text-align:right">
@@ -114,6 +115,7 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
             <?php } ?>
             <div class="hint"<?php echo $single ? ' style="margin-top:20px"' : ''; ?>>You will be taken to the payment page. Cards, UPI, net banking and wallets are accepted where the provider supports them.<?php if ($single && $gateways[$only]['test_mode']) { ?> <span class="test">Test mode</span><?php } ?></div>
 
+            <?php if ($rider->preferred_batch) { ?><div class="fcfs"><i class="fa-solid fa-user-clock"></i> <span><?php echo html_escape(shra_fcfs_note()); ?> Paying now confirms your place in the <?php echo html_escape(shra_batch_label($rider->preferred_batch, false)); ?> batch.</span></div><?php } ?>
             <button type="submit" class="btn" style="margin-top:18px"><i class="fa-solid fa-lock"></i> <span id="pay-btn-label">Pay <?php echo shra_money($total); ?></span></button>
             <?php echo form_close(); ?>
 

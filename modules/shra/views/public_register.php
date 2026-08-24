@@ -111,7 +111,7 @@ include __DIR__ . '/_public_head.php';
         <div class="card-head" style="padding-bottom:14px">
             <div class="steps"><span class="on" data-s="1">Choose</span><span data-s="2">Plan</span><span data-s="3">Details</span><span data-s="4">Done</span></div>
             <h2 id="pane-title">How would you like to ride?</h2>
-            <p id="pane-sub">No fixed time slots — sessions are first-come, first-served. Pay at the desk when you arrive.</p>
+            <p id="pane-sub">Two batches a day — morning and evening. Pick a start date and a timing; seats go first come, first served.</p>
             <button type="button" class="safety-btn" data-safety><i class="fa-solid fa-shield-heart"></i> Horse riding safety guidelines <span class="arr"><i class="fa fa-arrow-right"></i></span></button>
         </div>
         <div class="card-body">
@@ -148,6 +148,14 @@ include __DIR__ . '/_public_head.php';
                         </label>
                     <?php } ?>
                 </div>
+                <div class="sec">When would you like to start?</div>
+                <div class="row">
+                    <div class="f"><label>Start date</label><input type="date" name="preferred_start_date" value="<?php echo $v('preferred_start_date'); ?>" min="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d', strtotime('+6 months')); ?>"><div class="hint">Leave blank and we will fix it with you at the desk.</div></div>
+                    <div class="f"><label>Class timing</label><div class="chips">
+                        <?php foreach (shra_batches() as $bk => $b) { ?><label><input type="radio" name="preferred_batch" value="<?php echo $bk; ?>" <?php echo $v('preferred_batch') === $bk ? 'checked' : ''; ?>><span><?php echo html_escape($b['label']); ?><small><?php echo html_escape($b['time']); ?></small></span></label><?php } ?>
+                    </div></div>
+                </div>
+                <div class="fcfs"><i class="fa-solid fa-user-clock"></i> <span><?php echo html_escape(shra_fcfs_note()); ?></span></div>
                 <div class="hint" style="margin-top:10px">You'll pay at the reception desk — nothing is charged online. You can change the plan at the desk too.</div>
                 <div class="nav"><button type="button" class="btn ghost" data-prev="1"><i class="fa fa-arrow-left"></i></button><button type="button" class="btn dark" data-next="3" id="to-details">Continue <i class="fa fa-arrow-right"></i></button></div>
             </div>
@@ -288,8 +296,8 @@ include __DIR__ . '/_public_head.php';
 (function () {
     var minorAge = <?php echo $minor_age; ?>;
     var form = document.getElementById('shra-join'), wiz = document.getElementById('wiz');
-    var titles = {1: ['How would you like to ride?', 'No fixed time slots — sessions are first-come, first-served. Pay at the desk when you arrive.'],
-                  2: ['Pick a plan', 'Choose the age group, then a plan. Prices are paid at the reception desk.'],
+    var titles = {1: ['How would you like to ride?', 'Two batches a day — morning and evening. Pick a start date and a timing; seats go first come, first served.'],
+                  2: ['Pick a plan & a batch', 'Choose the age group and a plan, then tell us when you want to start and which batch suits you.'],
                   3: ['Your details', 'Takes two minutes. Fields marked * are required.']};
     var dob = document.getElementById('dob'), hint = document.getElementById('age-hint');
     var gname = document.getElementById('guardian_name'), gnote = document.getElementById('guardian-note');

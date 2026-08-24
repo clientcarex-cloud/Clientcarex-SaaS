@@ -50,6 +50,7 @@
     <div class="shra-alert <?php echo $l->is_overdue ? 'shra-alert-bad' : 'shra-alert-ok'; ?>" style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <b>Next action:</b> <?php echo ucfirst($l->next_action_type); ?> · <?php echo shra_lead_due_text($l->next_action_at); ?>
         <?php if ($l->visit_date) { ?><span class="shra-pill"><i class="fa fa-calendar-check"></i> Visit <?php echo date('D d M', strtotime($l->visit_date)); ?> · <?php echo html_escape(shra_slot($l->visit_slot)); ?></span><?php } ?>
+        <?php if ($l->schedule) { ?><span class="shra-pill"><i class="fa-solid fa-user-clock"></i> <?php echo html_escape($l->schedule); ?></span><?php } ?>
         <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red"><?php echo (int) $l->no_show_count; ?> no-show<?php echo $l->no_show_count > 1 ? 's' : ''; ?></span><?php } ?>
         <?php if ($money['paid'] > 0) { ?><span class="shra-pill paid"><i class="fa fa-receipt"></i> Paid <?php echo shra_money($money['paid']); ?></span><?php } ?>
         <?php if ($money['due'] > 0) { ?><span class="shra-pill due"><i class="fa fa-hourglass-half"></i> Due <?php echo shra_money($money['due']); ?></span><?php } ?>
@@ -74,6 +75,10 @@
                         <div class="col-xs-6"><div class="form-group"><label>Rider age</label><input type="number" name="rider_age" class="form-control" value="<?php echo html_escape($l->rider_age); ?>"></div></div>
                     </div>
                     <div class="form-group"><label>Interested in</label><select name="interest_package_id" class="form-control"><option value="">Not sure yet</option><?php foreach ($packages as $pk) { ?><option value="<?php echo $pk->id; ?>" <?php echo $l->interest_package_id == $pk->id ? 'selected' : ''; ?>><?php echo ucfirst($pk->audience) . ' · ' . html_escape($pk->name) . ' · ' . shra_money($pk->price); ?></option><?php } ?></select></div>
+                    <div class="row">
+                        <div class="col-xs-6"><div class="form-group"><label>Start date</label><input type="date" name="preferred_start_date" class="form-control" value="<?php echo html_escape($l->preferred_start_date); ?>"></div></div>
+                        <div class="col-xs-6"><div class="form-group"><label>Batch</label><select name="preferred_batch" class="form-control"><option value="">Not decided</option><?php foreach (shra_batches() as $bk => $b) { ?><option value="<?php echo $bk; ?>" <?php echo $l->preferred_batch === $bk ? 'selected' : ''; ?>><?php echo html_escape($b['text']); ?></option><?php } ?></select></div></div>
+                    </div>
                     <div class="row">
                         <div class="col-xs-6"><div class="form-group"><label>Expected ₹</label><input type="number" name="expected_value" class="form-control" value="<?php echo $l->expected_value > 0 ? $l->expected_value + 0 : ''; ?>"></div></div>
                         <div class="col-xs-6"><div class="form-group"><label>Source</label><select name="source" class="form-control"><?php foreach ($sources as $s) { ?><option value="<?php echo $s->id; ?>" <?php echo $l->source == $s->id ? 'selected' : ''; ?>><?php echo html_escape($s->name); ?></option><?php } ?></select></div></div>

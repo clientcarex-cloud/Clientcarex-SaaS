@@ -37,7 +37,10 @@ $pkg     = $rider->preferred_package;
                 <div><div class="k">Rider no.</div><div class="v"><?php echo html_escape($rider->rider_no); ?></div></div>
                 <?php if ($learner) { ?><div><div class="k">Riding level</div><div class="v"><?php echo html_escape($rider->riding_level); ?></div></div><?php } ?>
                 <div><div class="k">Mobile</div><div class="v"><?php echo html_escape($rider->mobile); ?></div></div>
+                <?php if ($rider->preferred_start_date) { ?><div><div class="k">Starts on</div><div class="v"><?php echo date('D d M Y', strtotime($rider->preferred_start_date)); ?></div></div><?php } ?>
+                <?php if ($rider->batch_label) { ?><div><div class="k">Batch</div><div class="v"><?php echo html_escape($rider->batch_label); ?></div></div><?php } ?>
             </div>
+            <?php if ($rider->batch_label) { ?><div class="fcfs"><i class="fa-solid fa-user-clock"></i> <span><?php echo html_escape(shra_fcfs_note()); ?></span></div><?php } ?>
             <div style="width:180px;height:180px;margin:22px auto 6px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px"><?php echo shra_qr_svg(shra_verify_url($rider->rider_no), 4); ?></div>
             <div class="hint" style="text-align:center;margin-bottom:18px">Show this code at the desk</div>
             <?php if ($pdf_url) { ?>

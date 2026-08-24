@@ -19,7 +19,7 @@
             <td><div class="shra-person"><span class="shra-avatar"><?php echo strtoupper(mb_substr($r->full_name, 0, 1)); ?></span><div><a href="<?php echo admin_url('shra/rider/' . $r->id); ?>" class="name"><?php echo html_escape($r->full_name); ?></a><div class="meta"><?php echo html_escape($r->rider_no); ?><?php echo $r->membership_no ? ' · ' . html_escape($r->membership_no) : ''; ?></div></div></div></td>
             <td><?php echo html_escape($r->mobile); ?><span class="sub"><?php echo html_escape($r->email ?: ($r->guardian_name ? 'Guardian: ' . $r->guardian_name : '')); ?></span></td>
             <td><?php echo $r->age !== null ? $r->age . ' yrs' : '—'; ?><span class="sub"><?php echo html_escape($r->riding_level); ?><?php echo $r->is_minor ? ' · minor' : ''; ?></span></td>
-            <td><?php echo $r->rider_type === 'guest' ? '<span class="shra-badge shra-badge-gold">Guest</span>' : '<span class="shra-badge shra-badge-ink">Learner</span>'; ?></td>
+            <td><?php echo $r->rider_type === 'guest' ? '<span class="shra-badge shra-badge-gold">Guest</span>' : '<span class="shra-badge shra-badge-ink">Learner</span>'; ?><?php echo $r->schedule ? '<span class="sub">' . html_escape($r->schedule) . '</span>' : ''; ?></td>
             <td><?php echo $left > 0 ? '<span class="shra-badge shra-badge-green">' . $left . '</span>' : '<span class="shra-muted">0</span>'; ?></td>
             <td>
                 <?php if ((int) $r->bills === 0) { ?>

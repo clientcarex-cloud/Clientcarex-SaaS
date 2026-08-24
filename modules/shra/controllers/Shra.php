@@ -368,6 +368,8 @@ class Shra extends AdminController
             'notes'            => (string) $this->input->post('notes'),
             'mark_now'         => (int) $this->input->post('mark_now') === 1,
             'trainer_id'       => (int) $this->input->post('trainer_id') ?: null,
+            'start_date'       => (string) $this->input->post('start_date'),
+            'batch'            => (string) $this->input->post('batch'),
             'bill_token'       => (string) $this->input->post('bill_token'),
             'force'            => (int) $this->input->post('force') === 1,
             'lead_id'          => (int) $this->input->post('lead_id'),
@@ -856,7 +858,20 @@ class Shra extends AdminController
             $post = $this->input->post(null, false);
             $keys = ['shra_academy_name', 'shra_tagline', 'shra_contact_line', 'shra_offer_percent', 'shra_offer_label', 'shra_offer_ends',
                 'shra_minor_age', 'shra_riding_levels', 'shra_chief_instructor', 'shra_director', 'shra_terms',
-                'shra_pay_min_value', 'shra_pay_note'];
+                'shra_pay_min_value', 'shra_pay_note',
+                'shra_batch_morning_start', 'shra_batch_morning_end', 'shra_batch_evening_start', 'shra_batch_evening_end', 'shra_batch_fcfs_note'];
+            // Batch timings are stored as a 24-hour "HH:MM" — drop anything else rather
+            // than saving a value shra_batches() would silently fall back on.
+            $bad_time = false;
+            foreach (['shra_batch_morning_start', 'shra_batch_morning_end', 'shra_batch_evening_start', 'shra_batch_evening_end'] as $k) {
+                if (isset($post[$k]) && !preg_match('/^([01]?\d|2[0-3]):[0-5]\d$/', trim((string) $post[$k]))) {
+                    unset($post[$k]);
+                    $bad_time = true;
+                }
+            }
+            if ($bad_time) {
+                set_alert('warning', 'Batch timings must be a 24-hour time like 06:00 — the old timing was kept.');
+            }
             foreach ($keys as $k) {
                 if (isset($post[$k])) {
                     update_option($k, is_string($post[$k]) ? trim($post[$k]) : $post[$k]);

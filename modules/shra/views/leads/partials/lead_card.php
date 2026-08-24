@@ -21,6 +21,7 @@ $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->ride
         <?php if ($l->is_open) { ?>
             <?php echo shra_lead_due_text($l->next_action_at); ?>
             <?php if ($l->stage === 'visit_scheduled' && $l->visit_date) { ?><span class="shra-pill"><i class="fa fa-calendar-check"></i> <?php echo date('D d M', strtotime($l->visit_date)); ?> · <?php echo html_escape(shra_slot($l->visit_slot)); ?></span><?php } ?>
+            <?php if ($l->schedule) { ?><span class="shra-pill" title="Start date &amp; batch the lead asked for"><i class="fa-solid fa-user-clock"></i> <?php echo html_escape($l->schedule); ?></span><?php } ?>
             <?php if ($l->call_attempts) { ?><span class="shra-muted" style="font-size:11px"><?php echo (int) $l->call_attempts; ?> call<?php echo $l->call_attempts == 1 ? '' : 's'; ?><?php echo $l->lastcontact ? ' · last ' . date('d M', strtotime($l->lastcontact)) : ''; ?></span><?php } ?>
             <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red"><?php echo (int) $l->no_show_count; ?> no-show</span><?php } ?>
             <?php if ($l->is_stale) { ?><span class="shra-badge shra-badge-muted">Stale</span><?php } ?>

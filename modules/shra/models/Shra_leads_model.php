@@ -52,6 +52,8 @@ class Shra_leads_model extends App_Model
         $l->age_days   = (int) floor((time() - strtotime($l->dateadded)) / 86400);
         $l->wa_link    = shra_wa_link($l->phonenumber);
         $l->tel_link   = 'tel:' . preg_replace('/[^\d+]/', '', (string) $l->phonenumber);
+        $l->batch_label = shra_batch_label($l->preferred_batch ?? null);
+        $l->schedule    = shra_schedule_line($l->preferred_start_date ?? null, $l->preferred_batch ?? null);
 
         return $l;
     }
@@ -476,6 +478,8 @@ class Shra_leads_model extends App_Model
             'rider_age'           => $age,
             'audience'            => $audience,
             'interest_package_id' => $pkg_id,
+            'preferred_start_date' => shra_start_date($in['preferred_start_date'] ?? ''),
+            'preferred_batch'     => shra_batch_key($in['preferred_batch'] ?? ''),
             'expected_value'      => $expect,
             'next_action_at'      => $next,
             'next_action_type'    => 'call',
@@ -1060,6 +1064,12 @@ class Shra_leads_model extends App_Model
         if (array_key_exists('interest_package_id', $in)) {
             $ext['interest_package_id'] = (int) $in['interest_package_id'] ?: null;
         }
+        if (array_key_exists('preferred_start_date', $in)) {
+            $ext['preferred_start_date'] = shra_start_date($in['preferred_start_date'], true);
+        }
+        if (array_key_exists('preferred_batch', $in)) {
+            $ext['preferred_batch'] = shra_batch_key($in['preferred_batch']);
+        }
         if (array_key_exists('expected_value', $in) && $in['expected_value'] !== '') {
             $ext['expected_value'] = round((float) $in['expected_value'], 2);
             $core['lead_value']    = $ext['expected_value'];
@@ -1148,6 +1158,8 @@ class Shra_leads_model extends App_Model
             'riding_level'         => shra_riding_levels()[0],
             'status'               => 'active',
             'preferred_package_id' => $package_id ?: $l->interest_package_id,
+            'preferred_start_date' => $l->preferred_start_date ?? null,
+            'preferred_batch'      => $l->preferred_batch ?? null,
             'notes'                => 'From lead #' . $l->id . ($l->source_name ? ' · ' . $l->source_name : '') . ($l->agent_name ? ' · agent ' . $l->agent_name : ''),
         ];
         if ($is_child) {
@@ -1175,9 +1187,22 @@ class Shra_leads_model extends App_Model
      */
     private function align_rider($lead_id, $rider, $type, $package_id, $promote = false)
     {
+        $upd = [];
         if ($package_id && (int) $rider->preferred_package_id !== $package_id) {
-            $this->db->where('id', (int) $rider->id)
-                ->update(db_prefix() . 'shra_riders', ['preferred_package_id' => $package_id]);
+            $upd['preferred_package_id'] = $package_id;
+        }
+        // The start date / batch asked for on this inquiry wins over an older one
+        $l = $this->get($lead_id);
+        $start = $l ? shra_start_date($l->preferred_start_date ?? '', true) : null;
+        $batch = $l ? shra_batch_key($l->preferred_batch ?? '') : null;
+        if ($start && $start !== ($rider->preferred_start_date ?? null)) {
+            $upd['preferred_start_date'] = $start;
+        }
+        if ($batch && $batch !== ($rider->preferred_batch ?? null)) {
+            $upd['preferred_batch'] = $batch;
+        }
+        if (count($upd)) {
+            $this->db->where('id', (int) $rider->id)->update(db_prefix() . 'shra_riders', $upd);
         }
         if ($promote && $type === 'learner' && $rider->rider_type === 'guest'
             && $this->shra_model->set_rider_type($rider->id, 'learner')) {

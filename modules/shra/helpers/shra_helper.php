@@ -52,6 +52,121 @@ function shra_relationships()
     return ['Father', 'Mother', 'Guardian', 'Spouse', 'Brother', 'Sister', 'Other'];
 }
 
+/* ══════════════════ Class batches (start date + timing) ══════════════════
+ * A rider tells us when they want to start and which of the two daily riding
+ * windows they want — the morning batch or the evening batch. Nothing is held
+ * for them: the batch is a preference and seats go first come, first served,
+ * which is exactly what shra_fcfs_note() says on every page that asks for one.
+ * The two keys ('morning', 'evening') never change; only the clock times do,
+ * and those are editable in SHRA → Settings.
+ */
+
+/**
+ * The batches on offer.
+ *
+ * @return array key => ['key', 'label', 'start', 'end', 'time', 'text']
+ */
+function shra_batches()
+{
+    $hm = function ($raw, $fallback) {
+        $raw = trim((string) $raw);
+
+        return preg_match('/^([01]?\d|2[0-3]):[0-5]\d$/', $raw) ? $raw : $fallback;
+    };
+    // "06:00" → "6 AM", "16:30" → "4:30 PM"
+    $clock = function ($t) {
+        $ts = strtotime('2000-01-01 ' . $t);
+
+        return date(substr($t, -2) === '00' ? 'g A' : 'g:i A', $ts);
+    };
+
+    $out = [];
+    foreach ([
+        'morning' => ['Morning', 'shra_batch_morning_start', '06:00', 'shra_batch_morning_end', '09:00'],
+        'evening' => ['Evening', 'shra_batch_evening_start', '16:00', 'shra_batch_evening_end', '21:00'],
+    ] as $key => $d) {
+        $start = $hm(get_option($d[1]), $d[2]);
+        $end   = $hm(get_option($d[3]), $d[4]);
+        $time  = $clock($start) . ' – ' . $clock($end);
+        $out[$key] = [
+            'key'   => $key,
+            'label' => $d[0],
+            'start' => $start,
+            'end'   => $end,
+            'time'  => $time,
+            'text'  => $d[0] . ' (' . $time . ')',
+        ];
+    }
+
+    return $out;
+}
+
+/** A posted batch, validated. Returns 'morning', 'evening' or null. */
+function shra_batch_key($raw)
+{
+    $raw = strtolower(trim((string) $raw));
+
+    return isset(shra_batches()[$raw]) ? $raw : null;
+}
+
+/** "Morning (6 AM – 9 AM)", or just "Morning" — empty when no batch is chosen. */
+function shra_batch_label($key, $with_time = true)
+{
+    $key = shra_batch_key($key);
+    if ($key === null) {
+        return '';
+    }
+    $b = shra_batches()[$key];
+
+    return $with_time ? $b['text'] : $b['label'];
+}
+
+/**
+ * A requested start date as 'Y-m-d', or null when it is empty or unusable.
+ * The public forms only accept today onwards; the desk may backdate.
+ */
+function shra_start_date($raw, $allow_past = false)
+{
+    $raw = trim((string) $raw);
+    if ($raw === '' || $raw === '0000-00-00') {
+        return null;
+    }
+    $ts = strtotime($raw);
+    if (!$ts) {
+        return null;
+    }
+    $date = date('Y-m-d', $ts);
+    if (!$allow_past && $date < date('Y-m-d')) {
+        return null;
+    }
+
+    return $date <= date('Y-m-d', strtotime('+2 years')) ? $date : null;
+}
+
+/** "Starts Mon 01 Sep · Morning (6 AM – 9 AM)" — empty when neither is set. */
+function shra_schedule_line($start_date, $batch, $prefix = 'Starts ')
+{
+    $bits = [];
+    $date = shra_start_date($start_date, true);
+    if ($date) {
+        $bits[] = $prefix . date('D d M Y', strtotime($date));
+    }
+    $label = shra_batch_label($batch);
+    if ($label !== '') {
+        $bits[] = $label;
+    }
+
+    return implode(' · ', $bits);
+}
+
+/** The first-come-first-served line shown wherever a batch is picked. */
+function shra_fcfs_note()
+{
+    $note = trim((string) get_option('shra_batch_fcfs_note'));
+
+    return $note !== '' ? $note : 'Batches run on a first come, first served basis — seats are confirmed in the order bookings are received.';
+}
+
 /** Currency-formatted amount using the base currency. */
 /** Money for the admin screens — whole amounts drop the trailing ".00" (₹1,340 not ₹1,340.00). */
 function shra_money($amount)
@@ -547,6 +662,9 @@ function shra_lead_fill_template($text, $lead)
         '{agent}'   => is_staff_logged_in() ? get_staff_full_name(get_staff_user_id()) : '',
         '{academy}' => get_option('shra_academy_name') ?: 'SHRA',
         '{visit}'   => $visit,
+        '{start}'   => !empty($lead->preferred_start_date) ? date('D d M', strtotime($lead->preferred_start_date)) : '',
+        '{batch}'   => shra_batch_label($lead->preferred_batch ?? null),
+        '{batches}' => implode(' or ', array_map(function ($b) { return $b['text']; }, shra_batches())),
     ]);
 }
 

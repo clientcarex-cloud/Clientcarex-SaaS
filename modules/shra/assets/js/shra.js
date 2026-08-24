@@ -128,6 +128,10 @@
           $pp.trigger('click');
         }
       }
+      // Start date & batch asked for on the booking form → preselect those too
+      if (r.preferred_start_date) { $('#shra-start-date').val(r.preferred_start_date); }
+      if (r.preferred_batch) { $('#shra-bill-form input[name=batch][value="' + r.preferred_batch + '"]').prop('checked', true); }
+      summary();
     }
 
     // Quick add (name + mobile)
@@ -181,6 +185,17 @@
     $discount.on('input', function () { $(this).data('touched', true); summary(); });
     $paid.on('input', function () { $(this).data('touched', true); summary(); });
 
+    function scheduleLine() {
+      var d = $('#shra-start-date').val(), $b = $('#shra-bill-form input[name=batch]:checked'), out = [];
+      if (d) {
+        var dt = new Date(d + 'T00:00:00');
+        out.push('Starts ' + (isNaN(dt) ? d : dt.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' })));
+      }
+      if ($b.length && $b.val()) { out.push($b.data('label')); }
+      return out.join(' · ');
+    }
+    $(document).on('change', '#shra-start-date, #shra-bill-form input[name=batch]', summary);
+
     function summary() {
       if (!pkg) {
         $sum.html('<div class="shra-empty" style="padding:30px 10px"><i class="fa-solid fa-horse"></i>Pick a rider and a package</div>');
@@ -198,6 +213,7 @@
         '<div class="row-line"><span>' + S.esc(pkg.name) + ' <span class="shra-muted">(' + S.esc(pkg.audience) + ')</span></span><span>' + S.money(list) + '</span></div>' +
         '<div class="row-line"><span>' + pkg.sessions + ' session' + (pkg.sessions > 1 ? 's' : '') + ' × ' + pkg.duration_min + ' min</span><span class="shra-muted">' + S.money(pkg.per_session) + ' / session</span></div>' +
         (d > 0 ? '<div class="row-line" style="color:#a8322d"><span>Discount ' + d + '%</span><span>− ' + S.money(disc) + '</span></div>' : '') +
+        (scheduleLine() ? '<div class="row-line"><span><i class="fa-solid fa-calendar-day"></i> Schedule</span><span class="shra-muted">' + S.esc(scheduleLine()) + '</span></div>' : '') +
         '<div class="row-line total"><span>You pay</span><span class="amt">' + S.money(total) + '</span></div>' +
         (!entered ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Enter the amount received to continue.</div>' :
           (due > 0 ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Partial payment — ' + S.money(due) + ' will stay due on the invoice.</div>' : ''))
