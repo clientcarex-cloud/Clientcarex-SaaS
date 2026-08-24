@@ -4,7 +4,8 @@
 <div class="content">
     <?php $shra_active = 'leads'; include __DIR__ . '/../_nav.php'; $l = $lead; ?>
 
-    <div id="shra-lead-title" data-stage="<?php echo html_escape($l->stage); ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>"></div>
+    <?php $money = shra_lead_money($l); ?>
+    <div id="shra-lead-title" data-stage="<?php echo html_escape($l->stage); ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>" data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>"></div>
     <div class="shra-toolbar" style="justify-content:space-between;align-items:flex-start">
         <div>
             <a href="<?php echo admin_url('shra/shra_leads'); ?>" class="shra-muted" style="font-size:12px"><i class="fa fa-arrow-left"></i> Leads</a>
@@ -41,6 +42,8 @@
         <b>Next action:</b> <?php echo ucfirst($l->next_action_type); ?> · <?php echo shra_lead_due_text($l->next_action_at); ?>
         <?php if ($l->visit_date) { ?><span class="shra-pill"><i class="fa fa-calendar-check"></i> Visit <?php echo date('D d M', strtotime($l->visit_date)); ?> · <?php echo html_escape(shra_slot($l->visit_slot)); ?></span><?php } ?>
         <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red"><?php echo (int) $l->no_show_count; ?> no-show<?php echo $l->no_show_count > 1 ? 's' : ''; ?></span><?php } ?>
+        <?php if ($money['paid'] > 0) { ?><span class="shra-pill paid"><i class="fa fa-receipt"></i> Paid <?php echo shra_money($money['paid']); ?></span><?php } ?>
+        <?php if ($money['due'] > 0) { ?><span class="shra-pill due"><i class="fa fa-hourglass-half"></i> Due <?php echo shra_money($money['due']); ?></span><?php } ?>
         <span class="shra-muted" style="margin-left:auto"><?php echo (int) $l->call_attempts; ?> call attempt<?php echo $l->call_attempts == 1 ? '' : 's'; ?><?php echo $l->lastcontact ? ' · last ' . shra_datetime($l->lastcontact, false) : ''; ?></span>
     </div>
     <?php } elseif ($l->stage === 'won') { ?>
@@ -142,7 +145,13 @@
                     $ic  = $icons[$e->event_type] ?? 'fa-circle';
                     $txt = '';
                     switch ($e->event_type) {
-                        case 'call': case 'whatsapp': $txt = ($e->event_type === 'whatsapp' ? 'WhatsApp' : 'Call') . ' · <b>' . html_escape($outs[$e->outcome][0] ?? $e->outcome) . '</b>' . ($e->to_value ? ' · next ' . shra_datetime($e->to_value, false) : ''); break;
+                        case 'call': case 'whatsapp':
+                            $meta = json_decode((string) $e->meta, true) ?: [];
+                            $what = array_key_exists('stage', $meta)
+                                  ? ($meta['stage'] !== '' ? shra_lead_stage_label($meta['stage']) : 'Status kept')
+                                  : ($outs[$e->outcome][0] ?? $e->outcome);
+                            $txt  = ($e->event_type === 'whatsapp' ? 'WhatsApp' : 'Call') . ' · <b>' . html_escape($what) . '</b>' . ($e->to_value ? ' · next ' . shra_datetime($e->to_value, false) : '');
+                            break;
                         case 'stage': $txt = shra_lead_stage_label($e->from_value) . ' → <b>' . shra_lead_stage_label($e->to_value) . '</b>'; break;
                         case 'assigned': case 'reassigned': $txt = ucfirst($e->event_type) . ' to <b>' . html_escape(get_staff_full_name($e->to_value)) . '</b>'; break;
                         case 'visit_scheduled': case 'visit_rescheduled': $txt = ($e->event_type === 'visit_rescheduled' ? 'Visit rescheduled → ' : 'Visit scheduled → ') . '<b>' . html_escape($e->to_value) . '</b>'; break;

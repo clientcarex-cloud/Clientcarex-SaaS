@@ -2,9 +2,10 @@
 /** Lead card — used by My Day queues, pipeline board and re-rendered after every AJAX action. $l = decorated lead, $can_all */
 $can_all = isset($can_all) ? $can_all : shra_leads_can('all');
 $cls     = 'shra-lead' . ($l->is_overdue ? ' overdue' : '') . ($l->is_stale ? ' stale' : '') . (!$l->is_open ? ' closed' : '');
+$money   = shra_lead_money($l);
 $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : '') : ($l->rider_for === 'both' ? 'Self + child' : 'Self' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : ''));
 ?>
-<div class="<?php echo $cls; ?>" data-lead="<?php echo $l->id; ?>" data-stage="<?php echo $l->stage; ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>">
+<div class="<?php echo $cls; ?>" data-lead="<?php echo $l->id; ?>" data-stage="<?php echo $l->stage; ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>" data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>">
     <div class="shra-lead-top">
         <a href="<?php echo shra_lead_url($l->id); ?>" class="shra-lead-name"><?php echo html_escape($l->name); ?></a>
         <?php echo shra_lead_stage_badge($l->stage); ?>
@@ -20,10 +21,10 @@ $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->ride
         <?php if ($l->is_open) { ?>
             <?php echo shra_lead_due_text($l->next_action_at); ?>
             <?php if ($l->stage === 'visit_scheduled' && $l->visit_date) { ?><span class="shra-pill"><i class="fa fa-calendar-check"></i> <?php echo date('D d M', strtotime($l->visit_date)); ?> · <?php echo html_escape(shra_slot($l->visit_slot)); ?></span><?php } ?>
-            <?php if ($l->call_attempts) { ?><span class="shra-muted" style="font-size:11px"><?php echo (int) $l->call_attempts; ?> call<?php echo $l->call_attempts == 1 ? '' : 's'; ?><?php echo $l->last_outcome ? ' · ' . html_escape(shra_lead_outcomes()[$l->last_outcome][0] ?? ucfirst(str_replace('_', ' ', $l->last_outcome))) : ''; ?></span><?php } ?>
+            <?php if ($l->call_attempts) { ?><span class="shra-muted" style="font-size:11px"><?php echo (int) $l->call_attempts; ?> call<?php echo $l->call_attempts == 1 ? '' : 's'; ?><?php echo $l->lastcontact ? ' · last ' . date('d M', strtotime($l->lastcontact)) : ''; ?></span><?php } ?>
             <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red"><?php echo (int) $l->no_show_count; ?> no-show</span><?php } ?>
             <?php if ($l->is_stale) { ?><span class="shra-badge shra-badge-muted">Stale</span><?php } ?>
-            <?php if (!empty($l->paid_amount)) { ?><span class="shra-badge shra-badge-green" title="Advance collected on a call"><i class="fa fa-receipt"></i> <?php echo shra_money($l->paid_amount); ?></span><?php } ?>
+            <?php if ($money['paid'] > 0) { ?><span class="shra-badge shra-badge-green" title="Collected on a call"><i class="fa fa-receipt"></i> <?php echo shra_money($money['paid']); ?><?php echo $money['due'] > 0 ? ' · due ' . shra_money($money['due']) : ''; ?></span><?php } ?>
             <?php if ($l->expected_value > 0) { ?><span class="shra-muted" style="font-size:11px;margin-left:auto"><?php echo shra_money($l->expected_value); ?></span><?php } ?>
         <?php } elseif ($l->stage === 'won') { ?>
             <span class="shra-badge shra-badge-green"><i class="fa fa-check"></i> Joined <?php echo $l->won_at ? date('d M', strtotime($l->won_at)) : ''; ?></span>

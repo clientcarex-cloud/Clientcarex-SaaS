@@ -375,7 +375,51 @@ function shra_lead_stage_badge($key)
     return '<span class="shra-badge shra-stage" style="background:' . $color . '1a;color:' . $color . '">' . html_escape(shra_lead_stage_label($key)) . '</span>';
 }
 
-/** Call outcomes: key => [label, counts as contact?, needs next action?] */
+/**
+ * The Log-call dialog sets a lead status, not a separate "outcome" — but the events table,
+ * the leaderboard and the EOD report have always spoken the outcome vocabulary, so every
+ * status carries the outcome it implies. Old and new rows stay comparable.
+ */
+function shra_lead_stage_outcome($stage, $channel = 'call')
+{
+    if ($channel === 'whatsapp' && ($stage === '' || $stage === 'new')) {
+        return 'whatsapp_sent';
+    }
+    $map = [
+        'new'              => 'no_answer',
+        'prospect'         => 'interested',
+        'enquired'         => 'interested',
+        'contacted'        => 'interested',
+        'no_response'      => 'no_answer',
+        'callback_request' => 'callback_requested',
+        'followup'         => 'interested',
+        'visit_scheduled'  => 'interested',
+        'visited'          => 'interested',
+        'confirmed'        => 'interested',
+        'won'              => 'interested',
+        'lost'             => 'not_interested',
+        'junk'             => 'wrong_number',
+    ];
+
+    return $map[$stage] ?? 'no_answer';
+}
+
+/**
+ * Money on a lead: what the deal is worth, what the agent has already collected on a call
+ * and what is still due. Used by the work list, the cards and the Log-call dialog.
+ */
+function shra_lead_money($l)
+{
+    $deal = (float) ($l->expected_value ?? 0);
+    if ($deal <= 0) {
+        $deal = (float) ($l->package_price ?? 0);
+    }
+    $paid = (float) ($l->paid_amount ?? 0);
+
+    return ['deal' => $deal, 'paid' => $paid, 'due' => $deal > 0 ? max(0, round($deal - $paid, 2)) : 0];
+}
+
+/** Call outcomes: key => [label, counts as contact?, needs next action?] — legacy vocabulary, see shra_lead_stage_outcome(). */
 function shra_lead_outcomes()
 {
     return [
@@ -696,7 +740,6 @@ function shra_lead_modal_vars()
         'packages'   => $CI->shra_model->get_packages(true),
         'slots'      => shra_lead_visit_slots(),
         'reasons'    => shra_lead_lost_reasons(),
-        'outcomes'   => shra_lead_outcomes(),
         'methods'    => shra_lead_payment_methods(),
         'templates'  => shra_lead_wa_templates(),
         'weekend'    => shra_lead_weekend_dates(),

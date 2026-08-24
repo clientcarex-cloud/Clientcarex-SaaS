@@ -557,8 +557,14 @@ class Shra_leads_model extends App_Model
         return true;
     }
 
-    /** Log a call / WhatsApp attempt. Returns true | error string. */
-    public function log_call($lead_id, $outcome, $next_at = null, $note = '', $channel = 'call')
+    /**
+     * Log a call / WhatsApp attempt. The agent picks the lead status in the dialog — the
+     * outcome stored on the event is derived from it (see shra_lead_stage_outcome), so the
+     * leaderboard and the EOD report keep reading the same vocabulary as before.
+     * $stage is the status the agent picked, '' to keep the current one. The move itself is
+     * applied by the controller. Returns true | error string.
+     */
+    public function log_call($lead_id, $stage = '', $next_at = null, $note = '', $channel = 'call')
     {
         $l = $this->get($lead_id);
         if (!$l) {
@@ -567,18 +573,16 @@ class Shra_leads_model extends App_Model
         if (!$l->is_open) {
             return 'This lead is closed (' . shra_lead_stage_label($l->stage) . '). Reopen it first.';
         }
-        $defs = shra_lead_outcomes();
-        if (!isset($defs[$outcome])) {
-            return 'Pick an outcome.';
+        $stage = (string) $stage;
+        if ($stage !== '' && !in_array($stage, shra_lead_quick_stages(), true)) {
+            return 'Pick a status from the list — a visit, a confirmation or a loss has its own step.';
         }
-        [$label, $is_contact, $needs_next] = $defs[$outcome];
+        $target = $stage !== '' ? $stage : $l->stage;
+        // A WhatsApp that changed nothing is exactly that — don't read the standing status into it.
+        $outcome = ($channel === 'whatsapp' && $stage === '') ? 'whatsapp_sent' : shra_lead_stage_outcome($target, $channel);
+        $defs    = shra_lead_outcomes();
+        [, $is_contact, $needs_next] = $defs[$outcome];
 
-        if ($outcome === 'not_interested') {
-            return $this->mark_lost($lead_id, 'Not interested anymore', $note);
-        }
-        if ($outcome === 'wrong_number') {
-            return $this->mark_junk($lead_id, 'Wrong number' . ($note ? ' — ' . $note : ''));
-        }
         if ($needs_next) {
             if (empty($next_at)) {
                 return 'Set the next follow-up date & time — every open lead must have one.';
@@ -602,16 +606,20 @@ class Shra_leads_model extends App_Model
         }
         $this->update_lead($lead_id, $core, $ext);
         $this->event($lead_id, $channel === 'whatsapp' ? 'whatsapp' : 'call', ['outcome' => $outcome, 'note' => $note, 'to' => $next_at,
-            'log' => ucfirst($channel) . ': ' . $label . ($note ? ' — ' . $note : '') . ($next_at ? ' · next ' . shra_datetime($next_at, false) : '')]);
-
-        // New → Contacted on first real contact; Visit scheduled stays as is
-        if ($is_contact && in_array($l->stage, ['new'])) {
-            $this->set_stage($lead_id, 'contacted', ['silent_next' => true]);
-        } elseif ($is_contact && $l->stage === 'contacted' && $outcome === 'interested') {
-            $this->set_stage($lead_id, 'followup', ['silent_next' => true]);
-        }
+            'meta' => ['stage' => $stage],   // '' = the agent kept the status
+            'log'  => ucfirst($channel) . ': ' . shra_lead_stage_label($target) . ($note ? ' — ' . $note : '') . ($next_at ? ' · next ' . shra_datetime($next_at, false) : '')]);
 
         return true;
+    }
+
+    /** Every call / WhatsApp attempt on a lead, newest first — the log at the foot of the dialog. */
+    public function call_log($lead_id, $limit = 40)
+    {
+        $p = db_prefix();
+
+        return $this->db->query("SELECT e.*, CONCAT(s.firstname,' ',s.lastname) AS staff_name FROM {$p}shra_lead_events e
+            LEFT JOIN {$p}staff s ON s.staffid = e.staff_id
+            WHERE e.lead_id = ? AND e.event_type IN ('call','whatsapp') ORDER BY e.id DESC LIMIT " . (int) $limit, [(int) $lead_id])->result();
     }
 
     /**

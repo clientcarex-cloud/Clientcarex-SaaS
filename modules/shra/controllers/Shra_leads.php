@@ -69,7 +69,6 @@ class Shra_leads extends AdminController
             'packages'   => $this->shra_model->get_packages(true),
             'slots'      => shra_lead_visit_slots(),
             'reasons'    => shra_lead_lost_reasons(),
-            'outcomes'   => shra_lead_outcomes(),
             'methods'    => shra_lead_payment_methods(),
             'templates'  => shra_lead_wa_templates(),
             'weekend'    => shra_lead_weekend_dates(),
@@ -294,9 +293,10 @@ class Shra_leads extends AdminController
 
     public function log_call()
     {
-        $l    = $this->lead_or_fail($this->input->post('lead_id'), true);
-        $note = trim((string) $this->input->post('note'));
-        $res  = $this->leads->log_call($l->id, (string) $this->input->post('outcome'), (string) $this->input->post('next_action_at'), $note, (string) $this->input->post('channel') ?: 'call');
+        $l     = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $note  = trim((string) $this->input->post('note'));
+        $stage = (string) $this->input->post('stage');
+        $res   = $this->leads->log_call($l->id, $stage, (string) $this->input->post('next_action_at'), $note, (string) $this->input->post('channel') ?: 'call');
         if ($res !== true) {
             $this->result($res);
 
@@ -306,8 +306,7 @@ class Shra_leads extends AdminController
         // The agent may also have taken an advance on the same call ("pay 50% today").
         [$paid, $pay_warning] = $this->collect_payment($l->id);
 
-        // …and may move the status from the same dialog.
-        $stage = (string) $this->input->post('stage');
+        // The status picked in the dialog is applied here.
         if ($stage !== '' && in_array($stage, shra_lead_quick_stages())) {
             $fresh = $this->leads->get($l->id);
             if ($fresh && $fresh->stage !== $stage) {
@@ -327,6 +326,16 @@ class Shra_leads extends AdminController
 
         $this->json(['success' => true, 'warning' => (bool) $pay_warning, 'card' => $this->card($l->id),
             'message' => 'Call logged' . $paid . '.' . $pay_warning]);
+    }
+
+    /** Every call logged on this lead — rendered at the foot of the Log call dialog. */
+    public function call_log()
+    {
+        $l = $this->lead_or_fail($this->input->get('lead_id'), true);
+        $this->json(['success' => true, 'html' => $this->load->view('leads/partials/call_log', [
+            'log'  => $this->leads->call_log($l->id),
+            'lead' => $l,
+        ], true)]);
     }
 
     /**

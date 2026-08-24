@@ -64,13 +64,37 @@
       .always(function () { $b.prop('disabled', false).html(html); });
   }
 
+  /** Whatever is known about the lead, read off the row / card / lead page it was opened from. */
+  function leadData(id, key) {
+    var $c = cardOf(id).first();
+    var v = $c.length ? $c.data(key) : undefined;
+
+    return (v === undefined || v === '') ? $('#shra-lead-title').data(key) : v;
+  }
+
   function openModal(sel, id) {
-    var $m = $(sel), $c = cardOf(id).first();
+    var $m = $(sel);
+    var phone = leadData(id, 'phone'), paid = leadData(id, 'paid'), due = leadData(id, 'due');
     $m.find('[name=lead_id]').val(id);
-    $m.find('.shra-m-name').text($c.data('name') || $('#shra-lead-title').data('name') || '');
-    $m.find('.shra-m-phone').html($c.data('phone') ? '<a href="tel:' + esc($c.data('phone')) + '" class="shra-pill"><i class="fa fa-phone"></i> ' + esc($c.data('phone')) + '</a>' : '');
+    $m.find('.shra-m-name').text(leadData(id, 'name') || '');
+    $m.find('.shra-m-phone').html(phone ? '<a href="tel:' + esc(phone) + '" class="shra-pill"><i class="fa fa-phone"></i> ' + esc(phone) + '</a>' : '');
+    // Money already collected, and what is still open — the agent needs both on the call.
+    var money = '';
+    if (paid) { money += '<span class="shra-pill paid"><i class="fa fa-receipt"></i> Paid ' + esc(paid) + '</span>'; }
+    if (due) { money += '<span class="shra-pill due"><i class="fa fa-hourglass-half"></i> Due ' + esc(due) + '</span>'; }
+    $m.find('.shra-m-money').html(money);
     $m.modal('show');
     return $m;
+  }
+
+  /** The lead's call history, loaded into the foot of the Log call dialog. */
+  function loadCallLog(id) {
+    var $box = $('#shra-call-log');
+    if (!$box.length) { return; }
+    $box.html('<div class="shra-cl-empty"><i class="fa fa-circle-notch fa-spin"></i> Loading the calls…</div>');
+    $.getJSON(cfg().urls.call_log, { lead_id: id }, function (res) {
+      $box.html(res && res.success ? res.html : '<div class="shra-cl-empty">Could not load the call history.</div>');
+    }).fail(function () { $box.html('<div class="shra-cl-empty">Could not load the call history.</div>'); });
   }
 
   function localDT(expr) {
@@ -131,10 +155,11 @@
     switch (act) {
       case 'call':
         var $m = openModal('#shra-lead-call', id);
-        $m.find('[name=outcome]').val(''); $m.find('.shra-oc').removeClass('on'); $m.find('[name=note]').val('');
-        $m.find('[name=next_action_at]').val(localDT('tomorrow 10:00')).trigger('change'); $('#shra-call-next').show();
+        $m.find('[name=note]').val('');
+        $m.find('[name=next_action_at]').val(localDT('tomorrow 10:00')).trigger('change');
         resetPayment();
         buildStageChips(stageOf(id));
+        loadCallLog(id);
         break;
       case 'visit': openModal('#shra-lead-visit', id); break;
       case 'lost': openModal('#shra-lead-lost', id).find('[name=reason]').val(''); break;
@@ -161,17 +186,15 @@
   }
 
   /**
-   * Status picker inside Log call: "Keep <current>" plus the moves allowed from here that
+   * The only picker in Log call: "Keep <current>" plus the statuses reachable from here that
    * need no extra details. Visits, confirmations and losses keep their own dialogs.
    */
   function buildStageChips(from) {
     var c = cfg(), $wrap = $('#shra-call-stage'), $list = $('#shra-call-stage-list');
     $('#shra-lead-call [name=stage]').val('');
-    if (!c.stages || !c.transitions) { $wrap.hide(); return; }
-    var allowed = (c.transitions[from] || []).filter(function (k) { return (c.quickStages || []).indexOf(k) !== -1; });
-    if (!allowed.length) { $wrap.hide(); return; }
-    var cur = c.stages[from];
+    var cur = (c.stages || {})[from];
     var html = '<button type="button" class="shra-chip on" data-stage="">Keep ' + esc(cur ? cur.label : 'current') + '</button>';
+    var allowed = ((c.transitions || {})[from] || []).filter(function (k) { return (c.quickStages || []).indexOf(k) !== -1; });
     allowed.forEach(function (k) {
       html += '<button type="button" class="shra-chip" data-stage="' + k + '"><i style="background:' + esc(c.stages[k].color) + '"></i>' + esc(c.stages[k].label) + '</button>';
     });
@@ -183,18 +206,6 @@
     $('#shra-lead-call [name=stage]').val($(this).data('stage'));
   });
 
-  // Log call modal
-  $('#shra-lead-call').on('click', '.shra-oc', function () {
-    var $m = $('#shra-lead-call');
-    $m.find('.shra-oc').removeClass('on'); $(this).addClass('on');
-    $m.find('[name=outcome]').val($(this).data('outcome'));
-    $('#shra-call-next').toggle(+$(this).data('next') === 1);
-    // Nobody pays on a wrong number or a "not interested" — hide the money block there.
-    var dead = ['not_interested', 'wrong_number'].indexOf($(this).data('outcome')) !== -1;
-    if (dead) { resetPayment(); }
-    $('#shra-call-pay').toggle(!dead);
-  });
-
   /* ───────── Payment taken on the call (advance / part payment) ───────── */
   function resetPayment() {
     var $m = $('#shra-lead-call');
@@ -202,7 +213,6 @@
     $('#shra-pay-box').prop('hidden', true);
     $m.find('[name=paid_amount],[name=paid_reference],[name=paid_note]').val('');
     clearProof();
-    $('#shra-call-pay').show();
   }
   function clearProof() {
     var el = document.getElementById('shra-pay-proof');
@@ -213,6 +223,8 @@
   }
   $('#shra-pay-on').on('change', function () {
     var on = $(this).is(':checked');
+    var due = leadData($('#shra-lead-call [name=lead_id]').val(), 'due');
+    $('#shra-lead-call [name=paid_amount]').attr('placeholder', due ? 'Due ' + due : 'e.g. 50% advance');
     $('#shra-pay-box').prop('hidden', !on);
     if (on) { setTimeout(function () { $('#shra-lead-call [name=paid_amount]').focus(); }, 50); } else { clearProof(); $('#shra-lead-call [name=paid_amount]').val(''); }
   });
@@ -236,7 +248,6 @@
   $('#shra-lead-call-form').on('submit', function (e) {
     e.preventDefault();
     var $f = $(this);
-    if (!$f.find('[name=outcome]').val()) { toast('warning', 'Pick an outcome.'); return; }
     if ($('#shra-pay-on').is(':checked') && !(parseFloat($f.find('[name=paid_amount]').val()) > 0)) {
       toast('warning', 'Enter the amount collected, or untick "Payment taken on this call".');
       $f.find('[name=paid_amount]').focus();
@@ -287,7 +298,15 @@
     $m.modal('show');
     $('#shra-wa-list').off('click').on('click', 'a', function () {
       $m.modal('hide');
-      setTimeout(function () { var $mm = openModal('#shra-lead-call', id); $mm.find('[name=channel]').val('whatsapp'); buildStageChips(stageOf(id)); $mm.find('.shra-oc[data-outcome=whatsapp_sent]').trigger('click'); }, 400);
+      setTimeout(function () {
+        var $mm = openModal('#shra-lead-call', id);
+        $mm.find('[name=channel]').val('whatsapp');
+        $mm.find('[name=note]').val('');
+        $mm.find('[name=next_action_at]').val(localDT('tomorrow 10:00')).trigger('change');
+        resetPayment();
+        buildStageChips(stageOf(id));
+        loadCallLog(id);
+      }, 400);
     });
   });
   $('#shra-lead-call').on('hidden.bs.modal', function () { $(this).find('[name=channel]').val('call'); resetPayment(); });

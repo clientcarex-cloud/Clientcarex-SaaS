@@ -151,14 +151,15 @@
         <table class="shra-table shra-wt">
             <thead>
                 <tr>
-                    <th>Lead</th>
-                    <th>Phone</th>
-                    <th>Stage</th>
-                    <th>Next action</th>
-                    <th>Visit</th>
-                    <th class="num">Calls</th>
-                    <th></th>
-                    <th><?php echo $can_all ? 'Source / agent' : 'Source'; ?></th>
+                    <th class="shra-r-name">Lead</th>
+                    <th class="shra-r-phone">Phone</th>
+                    <th class="shra-r-stage">Stage</th>
+                    <th class="shra-r-due">Next action</th>
+                    <th class="shra-r-visit">Visit</th>
+                    <th class="shra-r-calls num">Calls</th>
+                    <th class="shra-r-paid num">Paid</th>
+                    <th class="shra-r-flags"></th>
+                    <th class="shra-r-src"><?php echo $can_all ? 'Source / agent' : 'Source'; ?></th>
                     <th class="shra-r-act">Action</th>
                 </tr>
             </thead>

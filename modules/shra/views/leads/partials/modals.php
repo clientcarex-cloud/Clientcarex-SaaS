@@ -1,5 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-/** Shared lead modals + JS config. Expects $agents, $sources, $packages, $slots, $reasons, $outcomes, $methods, $templates, $weekend, $can_all, $can_manage */
+/** Shared lead modals + JS config. Expects $agents, $sources, $packages, $slots, $reasons, $methods, $templates, $weekend, $can_all, $can_manage */
 $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
 $methods  = isset($methods) ? $methods : shra_lead_payment_methods();
 $cur_sym  = get_base_currency()->symbol;
@@ -39,13 +39,14 @@ $cur_sym  = get_base_currency()->symbol;
 <!-- Log call -->
 <div class="modal fade shra" id="shra-lead-call" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form id="shra-lead-call-form" enctype="multipart/form-data">
-    <input type="hidden" name="lead_id"><input type="hidden" name="outcome"><input type="hidden" name="channel" value="call">
+    <input type="hidden" name="lead_id"><input type="hidden" name="channel" value="call">
     <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-phone"></i> Log call · <span class="shra-m-name"></span></h4></div>
     <div class="modal-body">
-        <div class="shra-m-phone" style="margin-bottom:12px"></div>
-        <label>Outcome</label>
-        <div class="shra-outcomes">
-            <?php foreach ($outcomes as $k => $o) { ?><button type="button" class="shra-oc <?php echo $k; ?>" data-outcome="<?php echo $k; ?>" data-next="<?php echo $o[2] ? 1 : 0; ?>"><?php echo $o[0]; ?></button><?php } ?>
+        <div class="shra-m-head"><span class="shra-m-phone"></span><span class="shra-m-money"></span></div>
+        <div id="shra-call-stage">
+            <label>Status <span class="shra-muted" style="font-weight:400;font-size:11.5px">— where the lead stands after this call</span></label>
+            <div class="shra-chips" id="shra-call-stage-list"></div>
+            <input type="hidden" name="stage" value="">
         </div>
         <div id="shra-call-next">
             <label style="margin-top:14px">Next follow-up *</label>
@@ -59,11 +60,6 @@ $cur_sym  = get_base_currency()->symbol;
                 <button type="button" class="shra-chip" data-plus="+1 week 11:00">Next week</button>
             </div>
             <input type="datetime-local" name="next_action_at" class="form-control" style="margin-top:8px" value="<?php echo $tomorrow; ?>">
-        </div>
-        <div id="shra-call-stage" style="margin-top:14px">
-            <label>Status <span class="shra-muted" style="font-weight:400;font-size:11.5px">— leave as is, or move it</span></label>
-            <div class="shra-chips" id="shra-call-stage-list"></div>
-            <input type="hidden" name="stage" value="">
         </div>
         <div class="form-group" style="margin-top:12px"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Optional — what was discussed"></div>
 
@@ -90,6 +86,11 @@ $cur_sym  = get_base_currency()->symbol;
         </div>
 
         <div class="help">Booking a visit, confirming or losing the lead has its own step — use the row buttons.</div>
+
+        <div class="shra-cl-wrap">
+            <div class="shra-cl-head"><i class="fa fa-clock-rotate-left"></i> Call history</div>
+            <div id="shra-call-log"></div>
+        </div>
     </div>
     <div class="modal-footer"><button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button><button type="submit" class="shra-btn shra-btn-primary"><i class="fa fa-check"></i> Save</button></div>
     </form>
@@ -170,7 +171,7 @@ $cur_sym  = get_base_currency()->symbol;
     <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa-brands fa-whatsapp"></i> WhatsApp · <span class="shra-m-name"></span></h4></div>
     <div class="modal-body">
         <div id="shra-wa-list"></div>
-        <div class="help" style="margin-top:8px">Opens WhatsApp with the message prefilled. Log the outcome afterwards.</div>
+        <div class="help" style="margin-top:8px">Opens WhatsApp with the message prefilled. Log the call and set the status afterwards.</div>
     </div>
 </div></div></div>
 
@@ -216,6 +217,7 @@ window.SHRA_LEADS_CFG = {
         note: <?php echo json_encode(admin_url('shra/shra_leads/note')); ?>,
         payment_del: <?php echo json_encode(admin_url('shra/shra_leads/delete_payment')); ?>,
         payment_proof: <?php echo json_encode(admin_url('shra/shra_leads/attach_proof')); ?>,
+        call_log: <?php echo json_encode(admin_url('shra/shra_leads/call_log')); ?>,
         details: <?php echo json_encode(admin_url('shra/shra_leads/update_details')); ?>,
         eod: <?php echo json_encode(admin_url('shra/shra_leads/eod')); ?>
     },

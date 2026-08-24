@@ -39,7 +39,11 @@ Stored in core `tblleads_status` (so native Perfex Kanban/reports still work), s
 | — | **Lost** (`tblleads.lost=1`) | `lost` | Mandatory `lost_reason` (price / distance / timing / age / competitor / no response / other). |
 | — | **Junk** (`tblleads.junk=1`) | `junk` | Wrong number / spam. |
 
-Sub-outcomes for the call log (not stages): `no_answer`, `busy`, `switched_off`, `callback_requested`, `interested`, `not_interested`, `wrong_number`, `whatsapp_sent`.
+~~Sub-outcomes for the call log (not stages)~~ — **dropped Aug 2026.** The Log-call dialog sets a
+lead status and nothing else; `tblshra_lead_events.outcome` is still written, derived from the
+status by `shra_lead_stage_outcome()`, so the leaderboard, the day report and years of history
+keep speaking one vocabulary (`no_answer`, `callback_requested`, `interested`, `not_interested`,
+`wrong_number`, `whatsapp_sent`).
 
 Auto-transitions:
 - `Visit Scheduled` + visit date passed + no `Visited` → shows in **No-show** bucket; agent must reschedule or mark lost (next_action forced to today).
@@ -205,7 +209,8 @@ capture(array $in, $source_ctx)          -> ['lead_id'=>…] | ['duplicate'=>tru
 normalize_phone($raw)                    -> digits, strip +91/0 prefix, 10-digit validate (IN default, configurable)
 assign($lead_id, $staff_id, $by, $auto)  -> writes tblleads.assigned/dateassigned, event, core notification
 next_agent_round_robin()                 -> least-recently-assigned among pool
-log_call($lead_id, $outcome, $next_at, $note)  -> attempts++, lastcontact, event, activity_log, stage auto New→Contacted
+log_call($lead_id, $stage, $next_at, $note)    -> attempts++, lastcontact, event (outcome derived from $stage), activity_log
+                                                 $stage='' keeps the current status; the controller applies the move
 set_stage($lead_id, $stage_key, $ctx)    -> validates transition matrix + required fields; updates tblleads.status,
                                             last_status_change, _ext.stage_key; fires core 'lead_status_changed'
 schedule_visit($lead_id, $date, $slot)   -> stage visit_scheduled, creates/updates tblreminders (agent, 1 day + morning-of),

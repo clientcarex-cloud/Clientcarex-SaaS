@@ -29,13 +29,14 @@ $cls = 'shra-lead shra-r'
      . (empty($l->next_action_at) && $l->is_open ? ' unset' : '')
      . (!$l->is_open ? ' closed' : '');
 
-$outcome = $l->last_outcome ? (shra_lead_outcomes()[$l->last_outcome][0] ?? ucfirst(str_replace('_', ' ', $l->last_outcome))) : '';
+$money   = shra_lead_money($l);
 $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . ' ' . $l->email . ' ' . $l->source_name . ' ' . $l->agent_name . ' ' . $l->package_name . ' ' . shra_lead_stage_label($l->stage)));
 ?>
 <tr class="<?php echo $cls; ?>" data-lead="<?php echo $l->id; ?>" data-stage="<?php echo $l->stage; ?>" data-bucket="<?php echo $bucket; ?>"
     data-agent="<?php echo (int) $l->assigned; ?>" data-source="<?php echo (int) $l->source; ?>" data-stale="<?php echo $l->is_stale ? 1 : 0; ?>"
     data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>"
-    data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>" data-s="<?php echo html_escape($hay); ?>">
+    data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>"
+    data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>" data-s="<?php echo html_escape($hay); ?>">
     <td class="shra-r-name">
         <a href="<?php echo shra_lead_url($l->id); ?>"><?php echo html_escape($l->name); ?></a>
         <span class="shra-r-sub">
@@ -63,12 +64,20 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     </td>
     <td class="shra-r-calls num">
         <?php echo (int) $l->call_attempts; ?>
-        <?php if ($outcome) { ?><span class="shra-r-sub"><?php echo html_escape($outcome); ?></span><?php } ?>
+        <?php if ($l->lastcontact) { ?><span class="shra-r-sub"><?php echo date('d M', strtotime($l->lastcontact)); ?></span><?php } ?>
+    </td>
+    <td class="shra-r-paid num">
+        <?php if ($money['paid'] > 0) { ?>
+            <span class="shra-r-paid-amt"><?php echo shra_money($money['paid']); ?></span>
+            <?php if ($money['due'] > 0) { ?><span class="shra-r-sub shra-r-paid-due">due <?php echo shra_money($money['due']); ?></span>
+            <?php } elseif ($money['deal'] > 0) { ?><span class="shra-r-sub shra-r-paid-full">full</span><?php } ?>
+        <?php } elseif ($money['due'] > 0) { ?>
+            <span class="shra-r-paid-due">due <?php echo shra_money($money['due']); ?></span>
+        <?php } else { ?><span class="shra-muted">—</span><?php } ?>
     </td>
     <td class="shra-r-flags">
         <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red" title="No-shows"><?php echo (int) $l->no_show_count; ?> NS</span><?php } ?>
         <?php if ($l->is_stale) { ?><span class="shra-badge shra-badge-muted">Stale</span><?php } ?>
-        <?php if (!empty($l->paid_amount)) { ?><span class="shra-r-paid" title="Advance collected on a call"><i class="fa fa-receipt"></i> <?php echo shra_money($l->paid_amount); ?></span><?php } ?>
         <?php if ($l->expected_value > 0) { ?><span class="shra-r-val"><?php echo shra_money($l->expected_value); ?></span><?php } ?>
     </td>
     <td class="shra-r-src"><?php echo html_escape($l->source_name ?: '—'); ?><?php if ($can_all) { ?><span class="shra-r-sub"><?php echo html_escape($l->agent_name ?: 'Unassigned'); ?></span><?php } ?></td>
