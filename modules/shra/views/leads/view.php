@@ -5,7 +5,7 @@
     <?php $shra_active = 'leads'; include __DIR__ . '/../_nav.php'; $l = $lead; ?>
 
     <?php $money = shra_lead_money($l); ?>
-    <div id="shra-lead-title" data-stage="<?php echo html_escape($l->stage); ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>" data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>"></div>
+    <div id="shra-lead-title" data-stage="<?php echo html_escape($l->stage); ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>" data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>" data-paid-num="<?php echo $money['paid'] + 0; ?>" data-deal-num="<?php echo $money['deal'] + 0; ?>" data-pkg="<?php echo (int) $l->interest_package_id; ?>"></div>
     <div class="shra-toolbar" style="justify-content:space-between;align-items:flex-start">
         <div>
             <a href="<?php echo admin_url('shra/shra_leads'); ?>" class="shra-muted" style="font-size:12px"><i class="fa fa-arrow-left"></i> Leads</a>
@@ -36,6 +36,15 @@
             <?php if ($can_manage) { ?><button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="reassign" data-lead="<?php echo $l->id; ?>"><i class="fa fa-headset"></i> Reassign</button><?php } ?>
         </div>
     </div>
+
+    <?php if (!empty($billed)) { ?>
+    <div class="shra-alert shra-alert-ok" style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <i class="fa-solid fa-circle-check"></i> <b>Bill raised</b> &middot; <?php echo html_escape($billed->enrollment_no); ?> &middot; <?php echo html_escape($billed->package_name); ?>
+        &middot; <?php echo shra_money($billed->total); ?> &middot; received <?php echo shra_money($billed->paid_real); ?>
+        <?php if ($billed->due > 0.009) { ?><span class="shra-pill due"><i class="fa fa-hourglass-half"></i> Due <?php echo shra_money($billed->due); ?></span><?php } ?>
+        <?php if (shra_can_billing() || shra_can('view')) { ?><a href="<?php echo admin_url('shra/receipt_pdf/' . $billed->id); ?>" target="_blank" rel="noopener" class="shra-btn shra-btn-gold shra-btn-sm" style="margin-left:auto"><i class="fa fa-receipt"></i> Open receipt</a><?php } ?>
+    </div>
+    <?php } ?>
 
     <?php if ($l->is_open) { ?>
     <div class="shra-alert <?php echo $l->is_overdue ? 'shra-alert-bad' : 'shra-alert-ok'; ?>" style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">

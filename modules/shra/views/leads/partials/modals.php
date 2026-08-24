@@ -1,8 +1,18 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-/** Shared lead modals + JS config. Expects $agents, $sources, $packages, $slots, $reasons, $methods, $templates, $weekend, $can_all, $can_manage */
+/** Shared lead modals + JS config. Expects $agents, $sources, $packages, $slots, $reasons, $methods, $payment_modes, $templates, $weekend, $can_all, $can_manage */
 $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
 $methods  = isset($methods) ? $methods : shra_lead_payment_methods();
 $cur_sym  = get_base_currency()->symbol;
+/* Counter modes (id => name) for the Confirm dialog. Falls back to the free-text lead
+   methods when the module is used without the billing screen. */
+$pay_modes = isset($payment_modes) ? $payment_modes : [];
+$can_bill  = shra_can_billing();
+/* What the package will actually be billed at — the running offer is applied, exactly as
+   the counter would. Keeps the Confirm dialog's maths equal to the invoice. */
+$pkg_total = [];
+foreach ($packages as $pk) {
+    $pkg_total[$pk->id] = (float) get_instance()->shra_model->quote($pk)['total'];
+}
 ?>
 <!-- Add lead -->
 <div class="modal fade shra" id="shra-lead-add" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
@@ -134,19 +144,58 @@ $cur_sym  = get_base_currency()->symbol;
     </form>
 </div></div></div>
 
-<!-- Confirm (visited & confirmed) -->
-<div class="modal fade shra" id="shra-lead-confirm" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
-    <form id="shra-lead-confirm-form">
+<!-- Confirm (visited & confirmed) — package, balance due, collect, close the sale -->
+<div class="modal fade shra" id="shra-lead-confirm" tabindex="-1"><div class="modal-dialog" style="width:520px;max-width:95vw"><div class="modal-content">
+    <form id="shra-lead-confirm-form" enctype="multipart/form-data">
     <input type="hidden" name="lead_id">
-    <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-thumbs-up"></i> Confirmed · <span class="shra-m-name"></span></h4></div>
+    <input type="hidden" name="complete" value="0">
+    <input type="hidden" name="force" value="0">
+    <input type="hidden" name="bill_token" value="">
+    <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-thumbs-up"></i> Confirmed &middot; <span class="shra-m-name"></span></h4></div>
     <div class="modal-body">
+        <div class="shra-m-head"><span class="shra-m-phone"></span><span class="shra-m-money"></span></div>
         <label>Package chosen</label>
-        <select name="package_id" class="form-control"><option value="">Not decided</option><?php foreach ($packages as $pk) { ?><option value="<?php echo $pk->id; ?>" data-price="<?php echo $pk->price; ?>"><?php echo ucfirst($pk->audience) . ' · ' . html_escape($pk->name) . ' · ' . shra_money($pk->price); ?></option><?php } ?></select>
+        <select name="package_id" class="form-control"><option value="">Not decided</option><?php foreach ($packages as $pk) { ?><option value="<?php echo $pk->id; ?>" data-price="<?php echo $pkg_total[$pk->id]; ?>"><?php echo ucfirst($pk->audience) . ' &middot; ' . html_escape($pk->name) . ' &middot; ' . shra_money($pkg_total[$pk->id]); ?></option><?php } ?></select>
         <label style="margin-top:12px">Expected amount</label>
         <input type="number" name="expected_value" class="form-control" step="1" min="0" placeholder="Leave blank to use the package price">
+
+        <!-- What this lead owes right now: the deal, the advances already taken, the balance. -->
+        <div class="shra-cf-bill" id="shra-cf-bill">
+            <div class="shra-cf-line"><span>Bill amount</span><b id="shra-cf-total">&mdash;</b></div>
+            <div class="shra-cf-line"><span>Already collected <span class="shra-muted">advances on calls</span></span><b id="shra-cf-paid">&mdash;</b></div>
+            <div class="shra-cf-line grand"><span>Balance to collect</span><b id="shra-cf-due">&mdash;</b></div>
+        </div>
+
+        <label class="shra-pay-switch"><input type="checkbox" id="shra-cf-pay-on"> <i class="fa-solid fa-indian-rupee-sign"></i> Collect payment now <span class="shra-muted">&mdash; full or part</span></label>
+        <div class="shra-pay-box" id="shra-cf-pay-box" hidden>
+            <div class="row">
+                <div class="col-xs-6"><div class="form-group"><label>Amount collected *</label>
+                    <div class="input-group"><span class="input-group-addon"><?php echo html_escape($cur_sym); ?></span>
+                    <input type="number" name="paid_amount" class="form-control" min="1" step="1" inputmode="decimal"></div></div></div>
+                <div class="col-xs-6"><div class="form-group"><label>Paid by</label>
+                    <select name="payment_mode" class="form-control">
+                        <?php if (count($pay_modes)) { foreach ($pay_modes as $m) { ?><option value="<?php echo $m->id; ?>" <?php echo $m->selected_by_default ? 'selected' : ''; ?>><?php echo html_escape($m->name); ?></option><?php } } else { foreach ($methods as $m) { ?><option value="<?php echo html_escape($m); ?>"><?php echo html_escape($m); ?></option><?php } } ?>
+                    </select></div></div>
+            </div>
+            <div class="form-group"><label>Reference / UPI ID <span class="shra-muted" style="font-weight:400">&mdash; optional</span></label><input type="text" name="paid_reference" class="form-control" placeholder="Transaction or receipt number"></div>
+            <div class="form-group">
+                <label>Payment screenshot</label>
+                <label class="shra-pay-file" for="shra-cf-proof"><i class="fa fa-paperclip"></i> <span>Attach the screenshot the customer sent</span></label>
+                <input type="file" name="payment_proof" id="shra-cf-proof" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
+                <div id="shra-cf-preview" hidden><img alt="" id="shra-cf-thumb"><span id="shra-cf-fname"></span><button type="button" class="shra-ic xs" id="shra-cf-clear" title="Remove"><i class="fa fa-xmark"></i></button></div>
+                <div class="help">JPG, PNG, WEBP or PDF up to 5 MB.</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0"><label>Payment note</label><input type="text" name="paid_note" class="form-control" placeholder="Optional"></div>
+        </div>
+
+        <?php if ($can_bill) { ?>
+        <label class="shra-pay-switch"><input type="checkbox" id="shra-cf-complete"> <i class="fa-solid fa-cash-register"></i> Raise the bill &amp; mark complete <span class="shra-muted">&mdash; no second trip to the counter</span></label>
+        <div class="help" id="shra-cf-complete-help" hidden></div>
+        <?php } ?>
+
         <div class="form-group" style="margin-top:12px"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Optional"></div>
     </div>
-    <div class="modal-footer"><button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button><button type="submit" class="shra-btn shra-btn-gold"><i class="fa fa-check"></i> Confirm</button></div>
+    <div class="modal-footer"><button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button><button type="submit" class="shra-btn shra-btn-gold"><i class="fa fa-check"></i> <span id="shra-cf-submit-txt">Confirm</span></button></div>
     </form>
 </div></div></div>
 
@@ -226,6 +275,8 @@ window.SHRA_LEADS_CFG = {
     agent: <?php echo json_encode(get_staff_full_name(get_staff_user_id())); ?>,
     cc: <?php echo json_encode(preg_replace('/\D+/', '', (string) get_option('shra_lead_phone_country'))); ?>,
     canAll: <?php echo $can_all ? 'true' : 'false'; ?>,
+    canBill: <?php echo $can_bill ? 'true' : 'false'; ?>,
+    money: <?php echo json_encode(['sym' => $cur_sym, 'before' => get_base_currency()->placement !== 'after']); ?>,
     stages: <?php echo json_encode(array_map(function ($d) { return ['label' => $d[0], 'color' => $d[2]]; }, shra_lead_stage_defs())); ?>,
     transitions: <?php echo json_encode(shra_lead_transitions()); ?>,
     quickStages: <?php echo json_encode(shra_lead_quick_stages()); ?>

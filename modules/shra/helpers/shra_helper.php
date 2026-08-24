@@ -740,6 +740,30 @@ function shra_lead_due_text($datetime)
  * button works outside the leads tab, where the leads controller's common()
  * data is not available.
  */
+/**
+ * Counter payment modes (cash / UPI / card) — the same list the billing screen uses, so a
+ * payment taken in the Confirm dialog lands on the invoice under the right mode.
+ * Self-heals Cash + UPI when nothing is configured yet.
+ */
+function shra_lead_payment_modes()
+{
+    $CI = &get_instance();
+    $p  = db_prefix();
+    $q  = function () use ($CI, $p) {
+        return $CI->db->where('active', 1)->where('expenses_only', 0)->order_by('id', 'ASC')->get($p . 'payment_modes')->result();
+    };
+    $modes = $q();
+    if (!count($modes)) {
+        foreach (['Cash', 'UPI'] as $n) {
+            $CI->db->insert($p . 'payment_modes', ['name' => $n, 'description' => '', 'active' => 1, 'expenses_only' => 0,
+                'invoices_only' => 0, 'show_on_pdf' => 0, 'selected_by_default' => $n === 'Cash' ? 1 : 0]);
+        }
+        $modes = $q();
+    }
+
+    return $modes;
+}
+
 function shra_lead_modal_vars()
 {
     $CI = &get_instance();
@@ -757,6 +781,7 @@ function shra_lead_modal_vars()
         'slots'      => shra_lead_visit_slots(),
         'reasons'    => shra_lead_lost_reasons(),
         'methods'    => shra_lead_payment_methods(),
+        'payment_modes' => shra_lead_payment_modes(),
         'templates'  => shra_lead_wa_templates(),
         'weekend'    => shra_lead_weekend_dates(),
         'can_all'    => shra_leads_can('all'),

@@ -14,6 +14,15 @@
 
   function toast(type, msg) { if (window.alert_float) { alert_float(type, msg); } else { alert(msg); } }
 
+  /** Base-currency amount, formatted the way the rest of the desk shows money. */
+  function money(n) {
+    var c = cfg().money || { sym: '', before: true };
+    var v = Math.round((Number(n) || 0) * 100) / 100;
+    var s = v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+    return c.before ? c.sym + s : s + c.sym;
+  }
+
   function cardOf(id) { return $('.shra-lead[data-lead="' + id + '"]'); }
 
   /** Replace every rendering of a lead with the fresh HTML, then recount the tabs. */
@@ -31,6 +40,9 @@
 
   function handleRes(res, leadId, done) {
     if (!res.success) {
+      // The billing guards (recent bill / unused sessions / older balance) come back as a
+      // question, not an error — the dialog that asked for the bill answers it.
+      if (res.needs_confirm && done) { done(res); return; }
       toast('danger', res.message || 'Could not save.');
       if (res.duplicate && res.url) { setTimeout(function () { if (confirm('Open the existing lead?')) { location.href = res.url; } }, 300); }
       return;
@@ -163,7 +175,7 @@
         break;
       case 'visit': openModal('#shra-lead-visit', id); break;
       case 'lost': openModal('#shra-lead-lost', id).find('[name=reason]').val(''); break;
-      case 'confirm': openModal('#shra-lead-confirm', id); break;
+      case 'confirm': openConfirm(id); break;
       case 'reassign': openModal('#shra-lead-reassign', id); break;
       case 'visited':
         if (confirm('Mark as visited (arrived at the academy)?')) { post(cfg().urls.visited, { lead_id: id }); }
@@ -268,13 +280,134 @@
     post(cfg().urls.lost, d, function () { $('#shra-lead-lost').modal('hide'); });
   });
 
-  // Confirm modal
-  $('#shra-lead-confirm [name=package_id]').on('change', function () { var p = $(this).find(':selected').data('price'); if (p) { $('#shra-lead-confirm [name=expected_value]').attr('placeholder', 'Package price ' + p); } });
+  /* ───────── Confirm: package, balance, collect, close the sale ───────── */
+  function cfClearProof() {
+    var el = document.getElementById('shra-cf-proof');
+    if (el) { el.value = ''; }
+    $('#shra-cf-preview').prop('hidden', true);
+    $('#shra-cf-thumb').attr('src', '').hide();
+    $('#shra-cf-fname').text('');
+  }
+
+  /** Everything the dialog shows about money is derived here, live, as the fields change. */
+  function cfRefresh() {
+    var $m = $('#shra-lead-confirm');
+    var paid = parseFloat($m.data('paidNum')) || 0;
+    var pkg  = parseFloat($m.find('[name=package_id] :selected').data('price')) || 0;
+    var exp  = parseFloat($m.find('[name=expected_value]').val());
+    var deal = exp > 0 ? exp : pkg;
+    var due  = Math.max(0, Math.round((deal - paid) * 100) / 100);
+
+    $('#shra-cf-total').text(deal > 0 ? money(deal) : '—');
+    $('#shra-cf-paid').text(money(paid));
+    $('#shra-cf-due').text(deal > 0 ? money(due) : '—');
+    $m.find('[name=paid_amount]').attr('placeholder', due > 0 ? money(due) : 'Amount');
+    $m.find('[name=expected_value]').attr('placeholder', pkg > 0 ? 'Package price ' + money(pkg) : 'Leave blank to use the package price');
+
+    var $c = $('#shra-cf-complete');
+    if (!$c.length) { return; }
+    var on  = $c.is(':checked');
+    var now = $('#shra-cf-pay-on').is(':checked') ? (parseFloat($m.find('[name=paid_amount]').val()) || 0) : 0;
+    $m.find('[name=complete]').val(on ? '1' : '0');
+    $('#shra-cf-submit-txt').text(on ? (now > 0 ? 'Collect ' + money(now) + ' & complete' : 'Bill & complete') : 'Confirm');
+    // The invoice is always raised for the package, never for a hand-typed expected value.
+    var got = Math.min(pkg, paid + now);
+    var msg = !pkg
+      ? 'Pick the package — the invoice is raised for it.'
+      : 'Invoice ' + money(pkg) + ' · received ' + money(got)
+        + (pkg - got > 0.009 ? ' · <b>' + money(pkg - got) + ' stays due</b> on the bill.' : ' · fully paid.')
+        + ' The rider, the invoice and the receipt are created, and the lead moves to Joined.';
+    $('#shra-cf-complete-help').prop('hidden', !on).html(msg);
+  }
+
+  function openConfirm(id) {
+    var $m = openModal('#shra-lead-confirm', id);
+    $m.data('paidNum', parseFloat(leadData(id, 'paidNum')) || 0);
+    $m.find('[name=complete],[name=force]').val('0');
+    $m.find('[name=bill_token]').val('cf' + id + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6));
+    $m.find('[name=expected_value],[name=note],[name=paid_amount],[name=paid_reference],[name=paid_note]').val('');
+    $m.find('[name=package_id]').val(String(leadData(id, 'pkg') || ''));
+    $('#shra-cf-pay-on').prop('checked', false).prop('disabled', false);
+    $('#shra-cf-pay-box').prop('hidden', true);
+    $('#shra-cf-complete').prop('checked', false);
+    cfClearProof();
+    cfRefresh();
+  }
+
+  $('#shra-lead-confirm').on('change keyup', '[name=package_id],[name=expected_value],[name=paid_amount]', cfRefresh);
+  $('#shra-cf-complete').on('change', cfRefresh);
+  $('#shra-cf-pay-on').on('change', function () {
+    var on = $(this).is(':checked');
+    $('#shra-cf-pay-box').prop('hidden', !on);
+    if (on) {
+      var $a = $('#shra-lead-confirm [name=paid_amount]');
+      var due = cfDue();
+      if (!$a.val() && due > 0) { $a.val(due); }
+      setTimeout(function () { $a.focus().select(); }, 50);
+    } else {
+      $('#shra-lead-confirm [name=paid_amount]').val('');
+      cfClearProof();
+    }
+    cfRefresh();
+  });
+  /** The balance as a plain number — what the amount field is pre-filled with. */
+  function cfDue() {
+    var $m = $('#shra-lead-confirm');
+    var paid = parseFloat($m.data('paidNum')) || 0;
+    var pkg  = parseFloat($m.find('[name=package_id] :selected').data('price')) || 0;
+    var exp  = parseFloat($m.find('[name=expected_value]').val());
+    var deal = exp > 0 ? exp : pkg;
+
+    return Math.max(0, Math.round((deal - paid) * 100) / 100);
+  }
+  $('#shra-cf-clear').on('click', cfClearProof);
+  $('#shra-cf-proof').on('change', function () {
+    var f = this.files && this.files[0];
+    if (!f) { cfClearProof(); return; }
+    if (f.size > 5 * 1024 * 1024) { toast('warning', 'That screenshot is over 5 MB — send a smaller one.'); cfClearProof(); return; }
+    $('#shra-cf-fname').text(f.name);
+    $('#shra-cf-preview').prop('hidden', false);
+    if (/^image\//.test(f.type) && window.FileReader) {
+      var r = new FileReader();
+      r.onload = function (e) { $('#shra-cf-thumb').attr('src', e.target.result).show(); };
+      r.readAsDataURL(f);
+    } else {
+      $('#shra-cf-thumb').attr('src', '').hide();
+    }
+  });
+
+  /** Money already banked must never be posted twice when the bill is re-tried. */
+  function cfLockPayment(paidNum) {
+    $('#shra-lead-confirm').data('paidNum', paidNum);
+    $('#shra-cf-pay-on').prop('checked', false).prop('disabled', true);
+    $('#shra-cf-pay-box').prop('hidden', true);
+    $('#shra-lead-confirm [name=paid_amount],#shra-lead-confirm [name=paid_reference],#shra-lead-confirm [name=paid_note]').val('');
+    cfClearProof();
+  }
+
   $('#shra-lead-confirm-form').on('submit', function (e) {
     e.preventDefault();
-    post(cfg().urls.confirm, formObj($(this)), function (res) {
+    var $f = $(this);
+    if ($('#shra-cf-pay-on').is(':checked') && !(parseFloat($f.find('[name=paid_amount]').val()) > 0)) {
+      toast('warning', 'Enter the amount collected, or untick "Collect payment now".');
+      $f.find('[name=paid_amount]').focus();
+      return;
+    }
+    if ($f.find('[name=complete]').val() === '1' && !$f.find('[name=package_id]').val()) {
+      toast('warning', 'Pick the package — the invoice is raised for it.');
+      $f.find('[name=package_id]').focus();
+      return;
+    }
+    postForm(cfg().urls.confirm, $f, function (res) {
+      if (res.paid_recorded) { cfLockPayment(res.paid_num); }
+      if (res.needs_confirm) {
+        if (confirm(res.message)) { $f.find('[name=force]').val('1'); $f.trigger('submit'); }
+        else { toast('warning', 'Confirmed — the bill was not raised.'); location.href = res.lead_url; }
+        return;
+      }
       $('#shra-lead-confirm').modal('hide');
-      if (res.bill_url && confirm('Confirmed. Open the counter to bill now?')) { location.href = res.bill_url; }
+      if (res.redirect) { location.href = res.redirect; return; }
+      if (res.bill_url && !res.warning && confirm('Confirmed. Open the counter to bill now?')) { location.href = res.bill_url; }
     });
   });
 

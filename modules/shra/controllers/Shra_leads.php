@@ -61,6 +61,18 @@ class Shra_leads extends AdminController
         }
     }
 
+    /** The lead ledger stores the mode by name; the invoice stores it by id. */
+    private function payment_mode_name($mode)
+    {
+        $mode = trim((string) $mode);
+        if ($mode === '' || !is_numeric($mode)) {
+            return $mode;
+        }
+        $m = $this->db->where('id', (int) $mode)->get(db_prefix() . 'payment_modes')->row();
+
+        return $m ? $m->name : '';
+    }
+
     private function common()
     {
         return [
@@ -235,6 +247,15 @@ class Shra_leads extends AdminController
         $data['notes']       = $this->db->where('rel_type', 'lead')->where('rel_id', $l->id)->order_by('dateadded', 'DESC')->get(db_prefix() . 'notes')->result();
         $data['rider']       = $l->rider_id ? $this->shra_model->get_rider($l->rider_id) : null;
         $data['enrollments'] = $l->rider_id ? $this->shra_model->get_enrollments(['rider_id' => $l->rider_id], 20) : [];
+        // Landed here straight from "Collect & complete" — show the bill that was just raised.
+        $data['billed'] = null;
+        $billed         = (int) $this->input->get('billed');
+        if ($billed && $l->rider_id) {
+            $e = $this->shra_model->get_enrollment($billed);
+            if ($e && (int) $e->rider_id === (int) $l->rider_id) {
+                $data['billed'] = $e;
+            }
+        }
         $this->load->view('leads/view', $data);
     }
 
@@ -339,12 +360,12 @@ class Shra_leads extends AdminController
     }
 
     /**
-     * Advance / part payment entered in the Log call dialog, with the screenshot the
-     * customer sent. Nothing to do when the amount is blank. Returns
+     * Advance / part payment entered in the Log call or Confirm dialog, with the screenshot
+     * the customer sent. Nothing to do when the amount is blank. Returns
      * [" · ₹500 collected" | "", " warning text" | ""] — the call itself is already logged,
      * so a payment problem is reported next to it rather than failing the whole action.
      */
-    private function collect_payment($lead_id)
+    private function collect_payment($lead_id, $method = null)
     {
         // "4,500" / "4 500" must not become ₹4 — strip the grouping before casting.
         $raw = str_replace([',', ' ', "\xc2\xa0"], '', trim((string) $this->input->post('paid_amount')));
@@ -359,7 +380,7 @@ class Shra_leads extends AdminController
         $pay = $this->leads->add_payment(
             $lead_id,
             $raw,
-            (string) $this->input->post('paid_method'),
+            $method !== null ? (string) $method : (string) $this->input->post('paid_method'),
             trim((string) $this->input->post('paid_reference')),
             trim((string) $this->input->post('paid_note')),
             $file,
@@ -503,12 +524,111 @@ class Shra_leads extends AdminController
         $this->result($res, 'No-show recorded — follow up today.', ['card' => $this->card($l->id)]);
     }
 
+    /**
+     * Confirm the lead, and — when the dialog asked for it — take the balance and close the
+     * sale in the same step: the money is written to the lead ledger first (so it survives a
+     * failed bill), then the rider is created and the real invoice raised, which credits the
+     * agent and moves the lead to Joined.
+     */
     public function confirm()
     {
         $this->need('all');
-        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
-        $res = $this->leads->confirm($l->id, (int) $this->input->post('package_id'), $this->input->post('expected_value'), trim((string) $this->input->post('note')));
-        $this->result($res, 'Confirmed. Bill now to convert.', ['card' => $this->card($l->id), 'bill_url' => admin_url('shra/shra_leads/bill_now/' . $l->id)]);
+        $l = $this->lead_or_fail($this->input->post('lead_id'), true);
+        // A forced retry (the counter asked "bill anyway?" and the agent said yes) re-posts the
+        // same dialog — the lead is already confirmed, so don't log it or ping the agent twice.
+        $retry = (int) $this->input->post('force') === 1 && $l->stage === 'confirmed';
+        $res   = $retry ? true : $this->leads->confirm($l->id, (int) $this->input->post('package_id'), $this->input->post('expected_value'), trim((string) $this->input->post('note')));
+        if ($res !== true) {
+            $this->result($res);
+
+            return;
+        }
+
+        // Money handed over in the dialog. Recorded even when the bill below cannot be
+        // raised, so nothing collected is ever lost.
+        $mode = $this->payment_mode_name($this->input->post('payment_mode'));
+        [$paid, $pay_warning] = $this->collect_payment($l->id, $mode);
+
+        $fresh = $this->leads->get($l->id);
+        $state = [
+            'paid_recorded' => $paid !== '',
+            'paid_num'      => round((float) $fresh->paid_amount, 2),
+            'lead_url'      => shra_lead_url($l->id),
+        ];
+
+        if ((int) $this->input->post('complete') !== 1) {
+            $this->json(array_merge($state, ['success' => true, 'warning' => (bool) $pay_warning, 'card' => $this->card($l->id),
+                'message'  => 'Confirmed' . $paid . '. Bill now to convert.' . $pay_warning,
+                'bill_url' => admin_url('shra/shra_leads/bill_now/' . $l->id)]));
+
+            return;
+        }
+
+        // ── Collect & complete ──
+        // The lead stays confirmed whatever happens here; the reason the bill did not go
+        // through is reported next to it rather than rolling the confirmation back.
+        $stop = function ($why) use ($l, $paid, $pay_warning, $state) {
+            $this->json(array_merge($state, ['success' => true, 'warning' => true, 'card' => $this->card($l->id),
+                'message'  => 'Confirmed' . $paid . '. The bill was not raised: ' . $why . $pay_warning,
+                'bill_url' => admin_url('shra/shra_leads/bill_now/' . $l->id)]));
+        };
+        if (!shra_can_billing()) {
+            $stop('you do not have the billing permission — ask the counter to bill this rider.');
+
+            return;
+        }
+        $package_id = (int) $fresh->interest_package_id;
+        if (!$package_id) {
+            $stop('pick the package first — the invoice is raised for it.');
+
+            return;
+        }
+        $rider_id = $this->leads->convert_to_rider($l->id);
+        if (!is_int($rider_id)) {
+            $stop(is_string($rider_id) ? lcfirst($rider_id) : 'the rider could not be created.');
+
+            return;
+        }
+
+        $bill = $this->shra_model->create_bill($rider_id, $package_id, [
+            'paid_amount'  => round((float) $fresh->paid_amount, 2),
+            'payment_mode' => (string) $this->input->post('payment_mode'),
+            'reference'    => trim((string) $this->input->post('paid_reference')),
+            'notes'        => 'Leads desk · confirmed & billed on lead #' . $l->id,
+            'lead_id'      => $l->id,
+            'credit_lead'  => '1',
+            'bill_token'   => (string) $this->input->post('bill_token'),
+            'force'        => (int) $this->input->post('force') === 1,
+        ]);
+        if (is_string($bill)) {
+            $stop(lcfirst($bill));
+
+            return;
+        }
+        if (!empty($bill['needs_confirm'])) {
+            // The counter guards (recent bill / unused sessions / older balance) — the
+            // dialog asks and posts again with force=1.
+            $this->json(array_merge($state, ['success' => false, 'needs_confirm' => true, 'message' => $bill['message']]));
+
+            return;
+        }
+
+        $e = $this->shra_model->get_enrollment($bill['enrollment_id']);
+        // The advances on this lead went onto the invoice as money received — say so on the
+        // timeline, so nobody chases the rider for cash that is already in the drawer.
+        if ((float) $fresh->paid_amount > 0.009) {
+            $this->leads->event($l->id, 'note', [
+                'note' => shra_money(min((float) $fresh->paid_amount, (float) $e->total)) . ' already collected on this lead was recorded as received on invoice '
+                    . ($e->invoice_id ? format_invoice_number($e->invoice_id) : '#' . $e->enrollment_no) . ' — do not collect it again.',
+                'log'  => 'Advances settled into ' . $e->enrollment_no,
+            ]);
+        }
+        $this->json(array_merge($state, [
+            'success'  => true,
+            'message'  => 'Confirmed' . $paid . ' · ' . $e->enrollment_no . ' billed'
+                . ($e->due > 0.009 ? ' · ' . shra_money($e->due) . ' still due.' : ' · fully paid.') . $pay_warning,
+            'redirect' => shra_lead_url($l->id) . '?billed=' . (int) $e->id,
+        ]));
     }
 
     public function lost()

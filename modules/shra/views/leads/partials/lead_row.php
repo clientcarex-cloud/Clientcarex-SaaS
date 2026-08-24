@@ -36,7 +36,8 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     data-agent="<?php echo (int) $l->assigned; ?>" data-source="<?php echo (int) $l->source; ?>" data-stale="<?php echo $l->is_stale ? 1 : 0; ?>"
     data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>"
     data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>"
-    data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>" data-s="<?php echo html_escape($hay); ?>">
+    data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>"
+    data-paid-num="<?php echo $money['paid'] + 0; ?>" data-deal-num="<?php echo $money['deal'] + 0; ?>" data-pkg="<?php echo (int) $l->interest_package_id; ?>" data-s="<?php echo html_escape($hay); ?>">
     <td class="shra-r-name">
         <a href="<?php echo shra_lead_url($l->id); ?>"><?php echo html_escape($l->name); ?></a>
         <span class="shra-r-sub">

@@ -5,7 +5,7 @@ $cls     = 'shra-lead' . ($l->is_overdue ? ' overdue' : '') . ($l->is_stale ? ' 
 $money   = shra_lead_money($l);
 $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : '') : ($l->rider_for === 'both' ? 'Self + child' : 'Self' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : ''));
 ?>
-<div class="<?php echo $cls; ?>" data-lead="<?php echo $l->id; ?>" data-stage="<?php echo $l->stage; ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>" data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>">
+<div class="<?php echo $cls; ?>" data-lead="<?php echo $l->id; ?>" data-stage="<?php echo $l->stage; ?>" data-name="<?php echo html_escape($l->name); ?>" data-phone="<?php echo html_escape($l->phonenumber); ?>" data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>" data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>" data-paid-num="<?php echo $money['paid'] + 0; ?>" data-deal-num="<?php echo $money['deal'] + 0; ?>" data-pkg="<?php echo (int) $l->interest_package_id; ?>">
     <div class="shra-lead-top">
         <a href="<?php echo shra_lead_url($l->id); ?>" class="shra-lead-name"><?php echo html_escape($l->name); ?></a>
         <?php echo shra_lead_stage_badge($l->stage); ?>
