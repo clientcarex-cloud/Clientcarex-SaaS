@@ -247,6 +247,24 @@ class Shra_leads_model extends App_Model
             LEFT JOIN {$p}staff s ON s.staffid = a.agent_id WHERE a.lead_id = ? ORDER BY a.id ASC", [(int) $lead_id])->result();
     }
 
+    /** Advances collected on this lead, newest first. */
+    public function payments($lead_id)
+    {
+        $p = db_prefix();
+        // The table is created by the module install run — never break the lead page before it.
+        if (!$this->db->table_exists($p . 'shra_lead_payments')) {
+            return [];
+        }
+
+        return $this->db->query("SELECT pm.*, CONCAT(s.firstname,' ',s.lastname) AS staff_name FROM {$p}shra_lead_payments pm
+            LEFT JOIN {$p}staff s ON s.staffid = pm.staff_id WHERE pm.lead_id = ? ORDER BY pm.id DESC", [(int) $lead_id])->result();
+    }
+
+    public function payment($id)
+    {
+        return $this->db->where('id', (int) $id)->get(db_prefix() . 'shra_lead_payments')->row();
+    }
+
     /* ═══════════════════════ Write helpers ═══════════════════════ */
 
     private function staff_id()
@@ -592,6 +610,108 @@ class Shra_leads_model extends App_Model
         } elseif ($is_contact && $l->stage === 'contacted' && $outcome === 'interested') {
             $this->set_stage($lead_id, 'followup', ['silent_next' => true]);
         }
+
+        return true;
+    }
+
+    /**
+     * Record an advance the agent collected on the call ("pay 50% now" offers), with the
+     * payment screenshot the customer sent back. Money is not a bill yet — it is proof the
+     * lead has committed; the counter still raises the real invoice at billing time.
+     * $file is the stored name inside uploads/shra/lead_payments/. Returns the payment id | error string.
+     */
+    public function add_payment($lead_id, $amount, $method = '', $reference = '', $note = '', $file = '', $file_name = '')
+    {
+        $l = $this->get($lead_id);
+        if (!$l) {
+            return 'Lead not found.';
+        }
+        $amount = round((float) $amount, 2);
+        if ($amount <= 0) {
+            return 'Enter the amount collected.';
+        }
+        if ($amount > 99999999) {
+            return 'That amount looks wrong — check it and try again.';
+        }
+        $p = db_prefix();
+        if (!$this->db->table_exists($p . 'shra_lead_payments')) {
+            return 'Payments are not set up yet — reactivate the SHRA module under Setup → Modules.';
+        }
+        $this->db->insert($p . 'shra_lead_payments', [
+            'lead_id'    => (int) $lead_id,
+            'staff_id'   => $this->staff_id(),
+            'amount'     => $amount,
+            'method'     => $method !== '' ? substr($method, 0, 40) : null,
+            'reference'  => $reference !== '' ? substr($reference, 0, 80) : null,
+            'note'       => $note !== '' ? substr($note, 0, 255) : null,
+            'file'       => $file !== '' ? $file : null,
+            'file_name'  => $file_name !== '' ? substr($file_name, 0, 160) : null,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        $id = (int) $this->db->insert_id();
+        if (!$id) {
+            return 'Could not save the payment.';
+        }
+        $this->update_lead($lead_id, [], ['paid_amount' => (float) $l->paid_amount + $amount, 'last_payment_at' => date('Y-m-d H:i:s')]);
+        $this->event($lead_id, 'payment', [
+            'to'   => $amount,
+            'note' => $note,
+            'meta' => ['payment_id' => $id, 'method' => $method, 'reference' => $reference, 'file' => $file !== '' ? 1 : 0],
+            'log'  => 'Payment collected: ' . shra_money($amount) . ($method ? ' · ' . $method : '') . ($reference ? ' · ref ' . $reference : '') . ($file !== '' ? ' · screenshot attached' : ''),
+        ]);
+
+        return $id;
+    }
+
+    /** Attach (or replace) the screenshot on a payment already recorded. */
+    public function attach_payment_proof($id, $file, $file_name = '')
+    {
+        $pay = $this->payment($id);
+        if (!$pay) {
+            return 'Payment not found.';
+        }
+        $old = $pay->file;
+        $this->db->where('id', (int) $pay->id)->update(db_prefix() . 'shra_lead_payments', [
+            'file'      => $file,
+            'file_name' => $file_name !== '' ? substr($file_name, 0, 160) : null,
+        ]);
+        if ($old && $old !== $file) {
+            $abs = FCPATH . 'uploads/shra/lead_payments/' . basename($old);
+            if (is_file($abs)) {
+                @unlink($abs);
+            }
+        }
+        $this->event($pay->lead_id, 'payment_proof', [
+            'to'   => $pay->amount,
+            'meta' => ['payment_id' => (int) $pay->id],
+            'log'  => ($old ? 'Payment screenshot replaced on ' : 'Payment screenshot attached to ') . shra_money($pay->amount),
+        ]);
+
+        return true;
+    }
+
+    /** Remove a wrongly entered payment (managers only — the controller gates it). */
+    public function delete_payment($id)
+    {
+        $pay = $this->payment($id);
+        if (!$pay) {
+            return 'Payment not found.';
+        }
+        $l = $this->get($pay->lead_id);
+        $this->db->where('id', (int) $pay->id)->delete(db_prefix() . 'shra_lead_payments');
+        if ($pay->file) {
+            $abs = FCPATH . 'uploads/shra/lead_payments/' . basename($pay->file);
+            if (is_file($abs)) {
+                @unlink($abs);
+            }
+        }
+        if ($l) {
+            $this->update_lead($pay->lead_id, [], ['paid_amount' => max(0, (float) $l->paid_amount - (float) $pay->amount)]);
+        }
+        $this->event($pay->lead_id, 'payment_removed', [
+            'to'  => $pay->amount,
+            'log' => 'Payment entry removed: ' . shra_money($pay->amount),
+        ]);
 
         return true;
     }
@@ -1203,6 +1323,9 @@ class Shra_leads_model extends App_Model
         $t   = $date . ' 23:59:59';
         $tm  = date('Y-m-d', strtotime($date . ' +1 day'));
         $now = date('Y-m-d H:i:s');
+        // Advances only exist once the module install run has created the table.
+        $has_pay = $this->db->table_exists($p . 'shra_lead_payments');
+        $pay_sql = $has_pay ? "(SELECT COALESCE(SUM(pm.amount),0) FROM {$p}shra_lead_payments pm WHERE pm.staff_id = ? AND pm.created_at BETWEEN ? AND ?)" : '0';
 
         // Calls / WhatsApp are credited to whoever logged them; everything else to
         // whoever owns the lead right now — same rule the leaderboard uses.
@@ -1223,13 +1346,14 @@ class Shra_leads_model extends App_Model
             (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ? AND a.kind = 'repeat') AS renewals,
             (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ?) AS revenue,
             (SELECT COALESCE(SUM(a.amount_paid),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ?) AS collected,
+            {$pay_sql} AS advance,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.assigned = ? AND l.last_status_change BETWEEN ? AND ? AND l.lost = 1) AS lost,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_now,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.next_action_at < ?) AS overdue_now,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND DATE(x.next_action_at) = ?) AS due_tomorrow";
 
         $b = [];
-        for ($i = 0; $i < 15; $i++) {
+        for ($i = 0, $triples = $has_pay ? 16 : 15; $i < $triples; $i++) {
             array_push($b, $id, $f, $t);
         }
         array_push($b, $id, $id, $now, $id, $tm);

@@ -411,6 +411,20 @@ function shra_lead_lost_reasons()
     return count($s) ? $s : ['Price too high', 'Not interested', 'Other'];
 }
 
+/** How an agent can take an advance on a call — editable in Leads → Settings. */
+function shra_lead_payment_methods()
+{
+    $s = shra_lead_lines_option('shra_lead_payment_methods');
+
+    return count($s) ? $s : ['UPI', 'Cash', 'Card', 'Bank transfer', 'Cheque'];
+}
+
+/** Payment screenshots never sit on a public URL — they go through the controller. */
+function shra_lead_payment_file_url($payment_id)
+{
+    return admin_url('shra/shra_leads/payment_file/' . (int) $payment_id);
+}
+
 /** [['title'=>..,'text'=>..], ...] */
 function shra_lead_wa_templates()
 {
@@ -568,6 +582,9 @@ function shra_lead_eod_message(array $d)
     $L[] = '🏆 *CLOSED TODAY*';
     $L[] = 'Joined *' . $n($t->won) . '*  ·  Renewals *' . $n($t->renewals) . '*  ·  Lost *' . $n($t->lost) . '*';
     $L[] = 'Revenue *' . shra_money($t->revenue) . '*  ·  Collected *' . shra_money($t->collected) . '*';
+    if (isset($t->advance) && (float) $t->advance > 0) {
+        $L[] = 'Advance taken on calls *' . shra_money($t->advance) . '*';
+    }
     foreach ($d['wins'] as $w) {
         $L[] = '  ✨ ' . trim((string) $w->name) . ($w->package_name ? ' — ' . $w->package_name : '')
              . ' · ' . shra_money($w->amount_billed) . ($w->kind === 'repeat' ? ' _(renewal)_' : '');
@@ -680,6 +697,7 @@ function shra_lead_modal_vars()
         'slots'      => shra_lead_visit_slots(),
         'reasons'    => shra_lead_lost_reasons(),
         'outcomes'   => shra_lead_outcomes(),
+        'methods'    => shra_lead_payment_methods(),
         'templates'  => shra_lead_wa_templates(),
         'weekend'    => shra_lead_weekend_dates(),
         'can_all'    => shra_leads_can('all'),

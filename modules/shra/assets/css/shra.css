@@ -253,6 +253,26 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-chip.on,.shra-chip:hover{border-color:var(--gold);color:var(--brown);background:var(--cream)}
 .shra-chip i{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px}
 #shra-call-stage-list{margin-top:6px}
+/* payment taken on a call */
+.shra-pay-switch{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink-2);margin:14px 0 0;cursor:pointer}
+.shra-pay-switch input{margin:0}
+.shra-pay-switch i{color:var(--green)}
+.shra-pay-switch .shra-muted{font-weight:400}
+.shra-pay-box{border:1.5px solid var(--line);border-radius:12px;padding:12px 12px 2px;margin-top:8px;background:var(--cream-2)}
+.shra-pay-box .form-group{margin-bottom:10px}
+.shra-pay-file{display:flex;align-items:center;gap:8px;border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;color:var(--ink-2);background:#fff;cursor:pointer;margin:0}
+.shra-pay-file:hover{border-color:var(--gold);color:var(--brown)}
+#shra-pay-preview{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--ink-2)}
+#shra-pay-thumb{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+#shra-pay-preview span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shra-pay-list{display:flex;flex-direction:column;gap:10px}
+.shra-pay-item{display:flex;align-items:center;gap:10px}
+.shra-pay-item .shra-pay-amt{font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
+.shra-pay-item img{width:40px;height:40px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.shra-pay-item .shra-muted{font-size:11.5px}
+.shra-tl.payment .shra-tl-ic,.shra-tl.payment_removed .shra-tl-ic{background:#e7efe0;color:var(--green)}
+.shra-r-paid{font-size:11.5px;color:var(--green);font-weight:700;font-variant-numeric:tabular-nums}
+
 .shra-wa-tpl{display:block;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px;text-decoration:none!important;color:var(--ink)!important}
 .shra-wa-tpl:hover{border-color:#128c7e}
 .shra-wa-tpl b{display:block;font-size:13px}

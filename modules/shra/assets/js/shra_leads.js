@@ -29,19 +29,39 @@
     if (typeof S.onLeadUpdated === 'function') { S.onLeadUpdated(id, $new); }
   }
 
+  function handleRes(res, leadId, done) {
+    if (!res.success) {
+      toast('danger', res.message || 'Could not save.');
+      if (res.duplicate && res.url) { setTimeout(function () { if (confirm('Open the existing lead?')) { location.href = res.url; } }, 300); }
+      return;
+    }
+    toast(res.warning ? 'warning' : 'success', res.message || 'Saved.');
+    if (res.card) { swapCard(leadId, res.card); }
+    if (done) { done(res); }
+  }
+
   function post(url, data, done) {
     // Tell the server which rendering to send back: dense row or board card.
     if (data && data.lead_id && !data.fmt) { data.fmt = cardOf(data.lead_id).first().is('tr') ? 'row' : 'card'; }
-    $.post(url, data, function (res) {
-      if (!res.success) {
-        toast('danger', res.message || 'Could not save.');
-        if (res.duplicate && res.url) { setTimeout(function () { if (confirm('Open the existing lead?')) { location.href = res.url; } }, 300); }
-        return;
-      }
-      toast(res.warning ? 'warning' : 'success', res.message || 'Saved.');
-      if (res.card) { swapCard(data.lead_id, res.card); }
-      if (done) { done(res); }
-    }, 'json').fail(function () { toast('danger', 'Request failed.'); });
+    $.post(url, data, function (res) { handleRes(res, data.lead_id, done); }, 'json')
+      .fail(function () { toast('danger', 'Request failed.'); });
+  }
+
+  /**
+   * Same contract as post(), for a form that carries a file (the payment screenshot).
+   * $.ajaxSetup's CSRF default is dropped once data is a FormData, so the token goes in by hand.
+   */
+  function postForm(url, $f, done) {
+    var id = $f.find('[name=lead_id]').val();
+    var fd = new FormData($f[0]);
+    fd.append('fmt', cardOf(id).first().is('tr') ? 'row' : 'card');
+    if (typeof csrfData !== 'undefined' && csrfData.token_name) { fd.append(csrfData.token_name, csrfData.hash); }
+    var $b = $f.find('[type=submit]').prop('disabled', true), html = $b.html();
+    $b.html('<i class="fa fa-circle-notch fa-spin"></i> Saving…');
+    $.ajax({ url: url, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json' })
+      .done(function (res) { handleRes(res, id, done); })
+      .fail(function () { toast('danger', 'Request failed.'); })
+      .always(function () { $b.prop('disabled', false).html(html); });
   }
 
   function openModal(sel, id) {
@@ -113,6 +133,7 @@
         var $m = openModal('#shra-lead-call', id);
         $m.find('[name=outcome]').val(''); $m.find('.shra-oc').removeClass('on'); $m.find('[name=note]').val('');
         $m.find('[name=next_action_at]').val(localDT('tomorrow 10:00')).trigger('change'); $('#shra-call-next').show();
+        resetPayment();
         buildStageChips(stageOf(id));
         break;
       case 'visit': openModal('#shra-lead-visit', id); break;
@@ -168,6 +189,47 @@
     $m.find('.shra-oc').removeClass('on'); $(this).addClass('on');
     $m.find('[name=outcome]').val($(this).data('outcome'));
     $('#shra-call-next').toggle(+$(this).data('next') === 1);
+    // Nobody pays on a wrong number or a "not interested" — hide the money block there.
+    var dead = ['not_interested', 'wrong_number'].indexOf($(this).data('outcome')) !== -1;
+    if (dead) { resetPayment(); }
+    $('#shra-call-pay').toggle(!dead);
+  });
+
+  /* ───────── Payment taken on the call (advance / part payment) ───────── */
+  function resetPayment() {
+    var $m = $('#shra-lead-call');
+    $('#shra-pay-on').prop('checked', false);
+    $('#shra-pay-box').prop('hidden', true);
+    $m.find('[name=paid_amount],[name=paid_reference],[name=paid_note]').val('');
+    clearProof();
+    $('#shra-call-pay').show();
+  }
+  function clearProof() {
+    var el = document.getElementById('shra-pay-proof');
+    if (el) { el.value = ''; }
+    $('#shra-pay-preview').prop('hidden', true);
+    $('#shra-pay-thumb').attr('src', '').hide();
+    $('#shra-pay-fname').text('');
+  }
+  $('#shra-pay-on').on('change', function () {
+    var on = $(this).is(':checked');
+    $('#shra-pay-box').prop('hidden', !on);
+    if (on) { setTimeout(function () { $('#shra-lead-call [name=paid_amount]').focus(); }, 50); } else { clearProof(); $('#shra-lead-call [name=paid_amount]').val(''); }
+  });
+  $('#shra-pay-clear').on('click', clearProof);
+  $('#shra-pay-proof').on('change', function () {
+    var f = this.files && this.files[0];
+    if (!f) { clearProof(); return; }
+    if (f.size > 5 * 1024 * 1024) { toast('warning', 'That screenshot is over 5 MB — send a smaller one.'); clearProof(); return; }
+    $('#shra-pay-fname').text(f.name);
+    $('#shra-pay-preview').prop('hidden', false);
+    if (/^image\//.test(f.type) && window.FileReader) {
+      var r = new FileReader();
+      r.onload = function (e) { $('#shra-pay-thumb').attr('src', e.target.result).show(); };
+      r.readAsDataURL(f);
+    } else {
+      $('#shra-pay-thumb').attr('src', '').hide();
+    }
   });
   // Scoped to the follow-up block — the status picker below it uses .shra-chip too.
   $('#shra-lead-call').on('click', '#shra-call-next .shra-chip', function () { $('#shra-lead-call [name=next_action_at]').val(localDT($(this).data('plus'))).trigger('change'); $(this).addClass('on').siblings().removeClass('on'); });
@@ -175,7 +237,12 @@
     e.preventDefault();
     var $f = $(this);
     if (!$f.find('[name=outcome]').val()) { toast('warning', 'Pick an outcome.'); return; }
-    post(cfg().urls.call, formObj($f), function () { $('#shra-lead-call').modal('hide'); });
+    if ($('#shra-pay-on').is(':checked') && !(parseFloat($f.find('[name=paid_amount]').val()) > 0)) {
+      toast('warning', 'Enter the amount collected, or untick "Payment taken on this call".');
+      $f.find('[name=paid_amount]').focus();
+      return;
+    }
+    postForm(cfg().urls.call, $f, function () { $('#shra-lead-call').modal('hide'); });
   });
 
   // Visit modal
@@ -223,7 +290,35 @@
       setTimeout(function () { var $mm = openModal('#shra-lead-call', id); $mm.find('[name=channel]').val('whatsapp'); buildStageChips(stageOf(id)); $mm.find('.shra-oc[data-outcome=whatsapp_sent]').trigger('click'); }, 400);
     });
   });
-  $('#shra-lead-call').on('hidden.bs.modal', function () { $(this).find('[name=channel]').val('call'); });
+  $('#shra-lead-call').on('hidden.bs.modal', function () { $(this).find('[name=channel]').val('call'); resetPayment(); });
+
+  // Lead page: drop a wrongly entered payment (managers only — the button is theirs).
+  $(document).on('click', '[data-shra-pay-del]', function () {
+    if (!confirm('Remove this payment entry? The lead keeps a record that it was removed.')) { return; }
+    post(cfg().urls.payment_del, { payment_id: $(this).data('shra-pay-del'), lead_id: $(this).data('lead') }, function () { location.reload(); });
+  });
+
+  // Lead page: the screenshot the customer sent after the call was logged.
+  $(document).on('click', '[data-shra-pay-proof]', function () {
+    var $late = $('#shra-pay-proof-late');
+    if (!$late.length) { return; }
+    $late.data('payment', $(this).data('shra-pay-proof')).data('lead', $(this).data('lead')).val('').trigger('click');
+  });
+  $(document).on('change', '#shra-pay-proof-late', function () {
+    var f = this.files && this.files[0], $i = $(this);
+    if (!f) { return; }
+    if (f.size > 5 * 1024 * 1024) { toast('warning', 'That screenshot is over 5 MB — send a smaller one.'); $i.val(''); return; }
+    var fd = new FormData();
+    fd.append('payment_id', $i.data('payment'));
+    fd.append('lead_id', $i.data('lead'));
+    fd.append('payment_proof', f);
+    if (typeof csrfData !== 'undefined' && csrfData.token_name) { fd.append(csrfData.token_name, csrfData.hash); }
+    toast('info', 'Uploading the screenshot…');
+    $.ajax({ url: cfg().urls.payment_proof, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json' })
+      .done(function (res) { if (!res.success) { toast('danger', res.message || 'Could not attach it.'); return; } toast('success', res.message); location.reload(); })
+      .fail(function () { toast('danger', 'Request failed.'); })
+      .always(function () { $i.val(''); });
+  });
 
   function formObj($f) {
     var o = {};

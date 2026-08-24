@@ -413,6 +413,39 @@ if (!$CI->db->table_exists($p . 'shra_lead_sources_meta')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
+// ── Advance / part payments collected by an agent on a call ──
+if (!$CI->db->table_exists($p . 'shra_lead_payments')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_lead_payments` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `lead_id` INT(11) NOT NULL,
+        `staff_id` INT(11) DEFAULT NULL COMMENT 'agent who collected it',
+        `amount` DECIMAL(15,2) NOT NULL DEFAULT 0,
+        `method` VARCHAR(40) DEFAULT NULL COMMENT 'UPI | Cash | Card | Bank transfer | …',
+        `reference` VARCHAR(80) DEFAULT NULL COMMENT 'UPI ref / receipt no',
+        `note` VARCHAR(255) DEFAULT NULL,
+        `file` VARCHAR(160) DEFAULT NULL COMMENT 'screenshot in uploads/shra/lead_payments/',
+        `file_name` VARCHAR(160) DEFAULT NULL COMMENT 'name the agent uploaded',
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `lead_created` (`lead_id`, `created_at`),
+        KEY `staff_created` (`staff_id`, `created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// Running total on the lead, so lists and rows need no join.
+if (!$CI->db->field_exists('paid_amount', $p . 'shra_lead_ext')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_lead_ext` ADD COLUMN `paid_amount` DECIMAL(15,2) NOT NULL DEFAULT 0 COMMENT 'advance collected before billing' AFTER `expected_value`,
+        ADD COLUMN `last_payment_at` DATETIME DEFAULT NULL AFTER `paid_amount`");
+}
+
+// ── Payment screenshots (served only through Shra_leads::payment_file) ──
+$pay_dir = FCPATH . 'uploads/shra/lead_payments/';
+if (!is_dir($pay_dir)) {
+    @mkdir($pay_dir, 0755, true);
+}
+@file_put_contents($pay_dir . 'index.html', '');
+@file_put_contents($pay_dir . '.htaccess', "<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n    Order allow,deny\n    Deny from all\n</IfModule>\n");
+
 // ── Funnel stages → core tblleads_status (keeps native Perfex leads working) ──
 $stage_defs = [
     'new'              => ['New', 10, '#5b8def'],
@@ -482,6 +515,7 @@ $lead_defaults = [
     'shra_lead_repeat_credit_months' => '12',
     'shra_lead_manager_digest'       => '1',
     'shra_lead_visit_slots'          => "Sat 07:00-08:00\nSat 08:00-09:00\nSat 16:00-17:00\nSat 17:00-18:00\nSun 07:00-08:00\nSun 08:00-09:00\nSun 16:00-17:00\nSun 17:00-18:00\nWeekday (any time)",
+    'shra_lead_payment_methods'      => "UPI\nCash\nCard\nBank transfer\nCheque",
     'shra_lead_lost_reasons'         => "Price too high\nDistance / location\nTiming doesn't suit\nChild too young\nJoined a competitor\nNo response after 5+ calls\nNot interested anymore\nOther",
     'shra_lead_wa_templates'         => "Intro|Hello {name}, this is {agent} from {academy}. Thank you for your interest in horse riding! May I share our packages and a good time for a visit?\nVisit reminder|Hi {name}, reminder of your visit to {academy} on {visit}. Please wear full-length trousers and closed shoes. See you there!\nOffer|Hi {name}, {academy} has a limited-time offer on packages this month. Shall I reserve a slot for you?",
     'shra_lead_last_cron'            => '0',

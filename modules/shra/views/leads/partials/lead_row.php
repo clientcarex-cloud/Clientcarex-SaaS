@@ -68,6 +68,7 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     <td class="shra-r-flags">
         <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red" title="No-shows"><?php echo (int) $l->no_show_count; ?> NS</span><?php } ?>
         <?php if ($l->is_stale) { ?><span class="shra-badge shra-badge-muted">Stale</span><?php } ?>
+        <?php if (!empty($l->paid_amount)) { ?><span class="shra-r-paid" title="Advance collected on a call"><i class="fa fa-receipt"></i> <?php echo shra_money($l->paid_amount); ?></span><?php } ?>
         <?php if ($l->expected_value > 0) { ?><span class="shra-r-val"><?php echo shra_money($l->expected_value); ?></span><?php } ?>
     </td>
     <td class="shra-r-src"><?php echo html_escape($l->source_name ?: '—'); ?><?php if ($can_all) { ?><span class="shra-r-sub"><?php echo html_escape($l->agent_name ?: 'Unassigned'); ?></span><?php } ?></td>

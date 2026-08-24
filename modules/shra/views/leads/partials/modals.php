@@ -1,6 +1,8 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-/** Shared lead modals + JS config. Expects $agents, $sources, $packages, $slots, $reasons, $outcomes, $templates, $weekend, $can_all, $can_manage */
+/** Shared lead modals + JS config. Expects $agents, $sources, $packages, $slots, $reasons, $outcomes, $methods, $templates, $weekend, $can_all, $can_manage */
 $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
+$methods  = isset($methods) ? $methods : shra_lead_payment_methods();
+$cur_sym  = get_base_currency()->symbol;
 ?>
 <!-- Add lead -->
 <div class="modal fade shra" id="shra-lead-add" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
@@ -36,7 +38,7 @@ $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
 
 <!-- Log call -->
 <div class="modal fade shra" id="shra-lead-call" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <form id="shra-lead-call-form">
+    <form id="shra-lead-call-form" enctype="multipart/form-data">
     <input type="hidden" name="lead_id"><input type="hidden" name="outcome"><input type="hidden" name="channel" value="call">
     <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-phone"></i> Log call · <span class="shra-m-name"></span></h4></div>
     <div class="modal-body">
@@ -64,6 +66,29 @@ $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
             <input type="hidden" name="stage" value="">
         </div>
         <div class="form-group" style="margin-top:12px"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Optional — what was discussed"></div>
+
+        <div id="shra-call-pay">
+            <label class="shra-pay-switch"><input type="checkbox" id="shra-pay-on"> <i class="fa-solid fa-indian-rupee-sign"></i> Payment taken on this call <span class="shra-muted">— advance / part payment</span></label>
+            <div class="shra-pay-box" id="shra-pay-box" hidden>
+                <div class="row">
+                    <div class="col-xs-6"><div class="form-group"><label>Amount collected *</label>
+                        <div class="input-group"><span class="input-group-addon"><?php echo html_escape($cur_sym); ?></span>
+                        <input type="number" name="paid_amount" class="form-control" min="1" step="1" inputmode="decimal" placeholder="e.g. 50% advance"></div></div></div>
+                    <div class="col-xs-6"><div class="form-group"><label>Paid by</label>
+                        <select name="paid_method" class="form-control"><?php foreach ($methods as $m) { ?><option value="<?php echo html_escape($m); ?>"><?php echo html_escape($m); ?></option><?php } ?></select></div></div>
+                </div>
+                <div class="form-group"><label>Reference / UPI ID <span class="shra-muted" style="font-weight:400">— optional</span></label><input type="text" name="paid_reference" class="form-control" placeholder="Transaction or receipt number"></div>
+                <div class="form-group">
+                    <label>Payment screenshot</label>
+                    <label class="shra-pay-file" for="shra-pay-proof"><i class="fa fa-paperclip"></i> <span>Attach the screenshot the customer sent</span></label>
+                    <input type="file" name="payment_proof" id="shra-pay-proof" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
+                    <div id="shra-pay-preview" hidden><img alt="" id="shra-pay-thumb"><span id="shra-pay-fname"></span><button type="button" class="shra-ic xs" id="shra-pay-clear" title="Remove"><i class="fa fa-xmark"></i></button></div>
+                    <div class="help">JPG, PNG, WEBP or PDF up to 5 MB. Only staff who can see this lead can open it.</div>
+                </div>
+                <div class="form-group" style="margin-bottom:0"><label>Payment note</label><input type="text" name="paid_note" class="form-control" placeholder="Optional — e.g. balance on the first visit"></div>
+            </div>
+        </div>
+
         <div class="help">Booking a visit, confirming or losing the lead has its own step — use the row buttons.</div>
     </div>
     <div class="modal-footer"><button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button><button type="submit" class="shra-btn shra-btn-primary"><i class="fa fa-check"></i> Save</button></div>
@@ -189,6 +214,8 @@ window.SHRA_LEADS_CFG = {
         stage: <?php echo json_encode(admin_url('shra/shra_leads/stage')); ?>,
         reassign: <?php echo json_encode(admin_url('shra/shra_leads/reassign')); ?>,
         note: <?php echo json_encode(admin_url('shra/shra_leads/note')); ?>,
+        payment_del: <?php echo json_encode(admin_url('shra/shra_leads/delete_payment')); ?>,
+        payment_proof: <?php echo json_encode(admin_url('shra/shra_leads/attach_proof')); ?>,
         details: <?php echo json_encode(admin_url('shra/shra_leads/update_details')); ?>,
         eod: <?php echo json_encode(admin_url('shra/shra_leads/eod')); ?>
     },

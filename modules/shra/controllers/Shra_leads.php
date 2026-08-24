@@ -70,6 +70,7 @@ class Shra_leads extends AdminController
             'slots'      => shra_lead_visit_slots(),
             'reasons'    => shra_lead_lost_reasons(),
             'outcomes'   => shra_lead_outcomes(),
+            'methods'    => shra_lead_payment_methods(),
             'templates'  => shra_lead_wa_templates(),
             'weekend'    => shra_lead_weekend_dates(),
             'can_all'    => shra_leads_can('all'),
@@ -231,6 +232,7 @@ class Shra_leads extends AdminController
         $data['lead']        = $l;
         $data['events']      = $this->leads->events($l->id);
         $data['attribution'] = $this->leads->attribution_for_lead($l->id);
+        $data['payments']    = $this->leads->payments($l->id);
         $data['notes']       = $this->db->where('rel_type', 'lead')->where('rel_id', $l->id)->order_by('dateadded', 'DESC')->get(db_prefix() . 'notes')->result();
         $data['rider']       = $l->rider_id ? $this->shra_model->get_rider($l->rider_id) : null;
         $data['enrollments'] = $l->rider_id ? $this->shra_model->get_enrollments(['rider_id' => $l->rider_id], 20) : [];
@@ -295,26 +297,179 @@ class Shra_leads extends AdminController
         $l    = $this->lead_or_fail($this->input->post('lead_id'), true);
         $note = trim((string) $this->input->post('note'));
         $res  = $this->leads->log_call($l->id, (string) $this->input->post('outcome'), (string) $this->input->post('next_action_at'), $note, (string) $this->input->post('channel') ?: 'call');
+        if ($res !== true) {
+            $this->result($res);
 
-        // The agent may also move the status from the same dialog.
+            return;
+        }
+
+        // The agent may also have taken an advance on the same call ("pay 50% today").
+        [$paid, $pay_warning] = $this->collect_payment($l->id);
+
+        // …and may move the status from the same dialog.
         $stage = (string) $this->input->post('stage');
-        if ($res === true && $stage !== '' && in_array($stage, shra_lead_quick_stages())) {
+        if ($stage !== '' && in_array($stage, shra_lead_quick_stages())) {
             $fresh = $this->leads->get($l->id);
             if ($fresh && $fresh->stage !== $stage) {
                 $moved = $this->leads->set_stage($l->id, $stage, ['silent_next' => true, 'note' => $note]);
                 if ($moved !== true) {
                     $this->json(['success' => true, 'warning' => true, 'card' => $this->card($l->id),
-                        'message' => 'Call logged — status not changed: ' . (is_string($moved) ? $moved : 'not allowed from here.')]);
+                        'message' => 'Call logged' . $paid . ' — status not changed: ' . (is_string($moved) ? $moved : 'not allowed from here.')]);
 
                     return;
                 }
-                $this->result(true, 'Call logged · status set to ' . shra_lead_stage_label($stage) . '.', ['card' => $this->card($l->id)]);
+                $this->json(['success' => true, 'warning' => (bool) $pay_warning, 'card' => $this->card($l->id),
+                    'message' => 'Call logged' . $paid . ' · status set to ' . shra_lead_stage_label($stage) . '.' . $pay_warning]);
 
                 return;
             }
         }
 
-        $this->result($res, 'Call logged.', ['card' => $this->card($l->id)]);
+        $this->json(['success' => true, 'warning' => (bool) $pay_warning, 'card' => $this->card($l->id),
+            'message' => 'Call logged' . $paid . '.' . $pay_warning]);
+    }
+
+    /**
+     * Advance / part payment entered in the Log call dialog, with the screenshot the
+     * customer sent. Nothing to do when the amount is blank. Returns
+     * [" · ₹500 collected" | "", " warning text" | ""] — the call itself is already logged,
+     * so a payment problem is reported next to it rather than failing the whole action.
+     */
+    private function collect_payment($lead_id)
+    {
+        // "4,500" / "4 500" must not become ₹4 — strip the grouping before casting.
+        $raw = str_replace([',', ' ', "\xc2\xa0"], '', trim((string) $this->input->post('paid_amount')));
+        if ($raw === '') {
+            return ['', ''];
+        }
+        if (!is_numeric($raw) || (float) $raw <= 0) {
+            return ['', ' The amount collected was not a number, so no payment was recorded.'];
+        }
+
+        [$file, $file_name, $file_err] = $this->store_payment_proof();
+        $pay = $this->leads->add_payment(
+            $lead_id,
+            $raw,
+            (string) $this->input->post('paid_method'),
+            trim((string) $this->input->post('paid_reference')),
+            trim((string) $this->input->post('paid_note')),
+            $file,
+            $file_name
+        );
+        if (!is_int($pay)) {
+            if ($file !== '') {
+                @unlink(FCPATH . 'uploads/shra/lead_payments/' . $file);
+            }
+
+            return ['', ' Payment not saved: ' . (is_string($pay) ? $pay : 'could not save it.')];
+        }
+
+        return [' · ' . shra_money($raw) . ' collected', $file_err !== '' ? ' ' . $file_err . ' Attach it from the lead page.' : ''];
+    }
+
+    /**
+     * Move the uploaded screenshot into uploads/shra/lead_payments/ under an unguessable
+     * name (it is only ever served back through payment_file()).
+     * Returns [stored name, original name, reason it was refused].
+     */
+    private function store_payment_proof()
+    {
+        if (empty($_FILES['payment_proof']['name'])) {
+            return ['', '', ''];
+        }
+        $f = $_FILES['payment_proof'];
+        if ($f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) {
+            return ['', '', 'The screenshot did not upload.'];
+        }
+        if ($f['size'] > 5 * 1024 * 1024) {
+            return ['', '', 'The screenshot must be under 5 MB.'];
+        }
+        $ext   = strtolower(pathinfo((string) $f['name'], PATHINFO_EXTENSION));
+        $types = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'pdf' => 'application/pdf'];
+        if (!isset($types[$ext])) {
+            return ['', '', 'Only JPG, PNG, WEBP or PDF can be attached.'];
+        }
+        if ($ext !== 'pdf' && @getimagesize($f['tmp_name']) === false) {
+            return ['', '', 'That file is not a readable image.'];
+        }
+        $dir = FCPATH . 'uploads/shra/lead_payments/';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+            @file_put_contents($dir . 'index.html', '');
+        }
+        $name = date('Ymd') . '_' . bin2hex(function_exists('random_bytes') ? random_bytes(12) : openssl_random_pseudo_bytes(12)) . '.' . $ext;
+        if (!@move_uploaded_file($f['tmp_name'], $dir . $name)) {
+            return ['', '', 'The screenshot could not be stored.'];
+        }
+        @chmod($dir . $name, 0644);
+
+        return [$name, (string) $f['name'], ''];
+    }
+
+    /** Serve a payment screenshot to staff who may see the lead — never a public URL. */
+    public function payment_file($id)
+    {
+        $pay = $this->leads->payment($id);
+        if (!$pay || !$pay->file) {
+            show_404();
+        }
+        $this->lead_or_fail($pay->lead_id);
+        $abs = FCPATH . 'uploads/shra/lead_payments/' . basename($pay->file);
+        if (!is_file($abs)) {
+            show_404();
+        }
+        $ext   = strtolower(pathinfo($abs, PATHINFO_EXTENSION));
+        $types = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'pdf' => 'application/pdf'];
+        header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream'));
+        header('Content-Length: ' . filesize($abs));
+        header('Content-Disposition: inline; filename="payment-' . (int) $pay->id . '.' . $ext . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, max-age=600');
+        readfile($abs);
+        exit;
+    }
+
+    /** Screenshot arrived after the call was logged — attach it to the payment from the lead page. */
+    public function attach_proof()
+    {
+        $pay = $this->leads->payment($this->input->post('payment_id'));
+        if (!$pay) {
+            $this->json(['success' => false, 'message' => 'Payment not found.']);
+
+            return;
+        }
+        $l = $this->lead_or_fail($pay->lead_id, true);
+        if (empty($_FILES['payment_proof']['name'])) {
+            $this->json(['success' => false, 'message' => 'Pick the screenshot first.']);
+
+            return;
+        }
+        [$file, $file_name, $err] = $this->store_payment_proof();
+        if ($file === '') {
+            $this->json(['success' => false, 'message' => trim($err) ?: 'The screenshot could not be attached.']);
+
+            return;
+        }
+        $res = $this->leads->attach_payment_proof($pay->id, $file, $file_name);
+        if ($res !== true) {
+            @unlink(FCPATH . 'uploads/shra/lead_payments/' . $file);
+        }
+        $this->result($res, 'Screenshot attached.', ['card' => $this->card($l->id)]);
+    }
+
+    /** Wrong amount typed in? A manager can drop the entry; the audit trail keeps the removal. */
+    public function delete_payment()
+    {
+        $this->need('manage');
+        $pay = $this->leads->payment($this->input->post('payment_id'));
+        if (!$pay) {
+            $this->json(['success' => false, 'message' => 'Payment not found.']);
+
+            return;
+        }
+        $l   = $this->lead_or_fail($pay->lead_id, true);
+        $res = $this->leads->delete_payment($pay->id);
+        $this->result($res, 'Payment entry removed.', ['card' => $this->card($l->id)]);
     }
 
     public function schedule_visit()
@@ -507,7 +662,7 @@ class Shra_leads extends AdminController
         $this->need('manage');
         if ($this->input->post()) {
             $post = $this->input->post(null, false);
-            foreach (['shra_lead_sla_minutes', 'shra_lead_stale_days', 'shra_lead_phone_country', 'shra_lead_repeat_credit_months', 'shra_lead_visit_slots', 'shra_lead_lost_reasons', 'shra_lead_wa_templates',
+            foreach (['shra_lead_sla_minutes', 'shra_lead_stale_days', 'shra_lead_phone_country', 'shra_lead_repeat_credit_months', 'shra_lead_visit_slots', 'shra_lead_lost_reasons', 'shra_lead_payment_methods', 'shra_lead_wa_templates',
                 'shra_lead_landing_phone', 'shra_lead_landing_location', 'shra_lead_landing_maps_url', 'shra_lead_landing_instagram', 'shra_lead_landing_reels', 'shra_lead_landing_min_age', 'shra_lead_meta_pixel_id', 'shra_lead_gads_id', 'shra_lead_gads_label', 'shra_lead_ga4_id', 'shra_lead_landing_map_query', 'shra_lead_landing_map_embed'] as $k) {
                 if (isset($post[$k])) {
                     update_option($k, trim((string) $post[$k]));

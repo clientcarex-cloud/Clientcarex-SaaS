@@ -23,6 +23,7 @@ $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->ride
             <?php if ($l->call_attempts) { ?><span class="shra-muted" style="font-size:11px"><?php echo (int) $l->call_attempts; ?> call<?php echo $l->call_attempts == 1 ? '' : 's'; ?><?php echo $l->last_outcome ? ' · ' . html_escape(shra_lead_outcomes()[$l->last_outcome][0] ?? ucfirst(str_replace('_', ' ', $l->last_outcome))) : ''; ?></span><?php } ?>
             <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red"><?php echo (int) $l->no_show_count; ?> no-show</span><?php } ?>
             <?php if ($l->is_stale) { ?><span class="shra-badge shra-badge-muted">Stale</span><?php } ?>
+            <?php if (!empty($l->paid_amount)) { ?><span class="shra-badge shra-badge-green" title="Advance collected on a call"><i class="fa fa-receipt"></i> <?php echo shra_money($l->paid_amount); ?></span><?php } ?>
             <?php if ($l->expected_value > 0) { ?><span class="shra-muted" style="font-size:11px;margin-left:auto"><?php echo shra_money($l->expected_value); ?></span><?php } ?>
         <?php } elseif ($l->stage === 'won') { ?>
             <span class="shra-badge shra-badge-green"><i class="fa fa-check"></i> Joined <?php echo $l->won_at ? date('d M', strtotime($l->won_at)) : ''; ?></span>
