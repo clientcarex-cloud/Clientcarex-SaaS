@@ -37,7 +37,8 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
 .gw input{display:none}
 .gw .ic{width:34px;height:34px;border-radius:9px;background:var(--ink);color:var(--cream);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
 .gw b{font-size:14.5px}
-.gw .test{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--brown);background:#f6ecd2;border-radius:999px;padding:2px 8px;margin-left:auto}
+.test{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--brown);background:#f6ecd2;border-radius:999px;padding:2px 8px}
+.gw .test{margin-left:auto}
 .due{display:flex;justify-content:space-between;font-size:13.5px;padding:12px 2px 0;border-top:1px dashed var(--line);margin-top:14px;color:var(--muted)}
 .due b{color:var(--ink);font-size:15px}
 .skip{display:block;text-align:center;margin-top:14px;font-size:13.5px;color:var(--muted);text-decoration:underline}
@@ -94,6 +95,13 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
             </label>
             <?php } ?>
 
+            <?php $single = count($gateways) === 1; ?>
+            <?php if ($single) {
+                // Only one way to pay — there is nothing to choose, so skip the picker
+                // and send the rider straight to it when they hit Pay.
+                $only = key($gateways); ?>
+            <input type="hidden" name="gateway" value="<?php echo html_escape($only); ?>">
+            <?php } else { ?>
             <div class="sec">Pay with</div>
             <?php foreach ($gateways as $id => $g) { ?>
             <label class="gw">
@@ -103,7 +111,8 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
                 <?php if ($g['test_mode']) { ?><span class="test">Test mode</span><?php } ?>
             </label>
             <?php } ?>
-            <div class="hint">You will be taken to the payment page. Cards, UPI, net banking and wallets are accepted where the provider supports them.</div>
+            <?php } ?>
+            <div class="hint"<?php echo $single ? ' style="margin-top:20px"' : ''; ?>>You will be taken to the payment page. Cards, UPI, net banking and wallets are accepted where the provider supports them.<?php if ($single && $gateways[$only]['test_mode']) { ?> <span class="test">Test mode</span><?php } ?></div>
 
             <button type="submit" class="btn" style="margin-top:18px"><i class="fa-solid fa-lock"></i> <span id="pay-btn-label">Pay <?php echo shra_money($total); ?></span></button>
             <?php echo form_close(); ?>
@@ -153,7 +162,9 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
                 return;
             }
         }
-        if (!form.querySelector('input[name=gateway]:checked')) {
+        // A radio must be picked; the single-gateway form carries a hidden field instead
+        var gw = form.querySelector('input[name=gateway]:checked') || form.querySelector('input[name=gateway][type=hidden]');
+        if (!gw || !gw.value) {
             e.preventDefault();
             alert('Please choose how you would like to pay.');
             return;
