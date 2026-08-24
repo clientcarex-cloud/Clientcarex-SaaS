@@ -30,7 +30,12 @@ register_activation_hook(SHRA_MODULE_NAME, 'shra_module_activation_hook');
 
 function shra_module_activation_hook()
 {
-    require_once(__DIR__ . '/install.php');
+    // require, not require_once: install.php declares nothing, it is idempotent by
+    // design, and it may legitimately have to run twice in one process — e.g. once
+    // for the master via shra_maybe_upgrade_schema() and again for a tenant during
+    // a SaaS remote activation. require_once would silently skip the second run and
+    // leave the tenant with an activated module and no tables.
+    require(__DIR__ . '/install.php');
 }
 
 $CI = &get_instance();
@@ -278,6 +283,6 @@ function shra_maybe_upgrade_schema()
         return;
     }
 
-    require_once(__DIR__ . '/install.php');
+    require(__DIR__ . '/install.php');
     update_option('shra_schema_version', SHRA_MODULE_VERSION);
 }

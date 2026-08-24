@@ -1096,6 +1096,10 @@ class Companies extends AdminController
             $metadata = (object) $company->metadata;
             $admin_approved_modules = isset($metadata->admin_approved_modules) ? (array) $metadata->admin_approved_modules : [];
             $admin_disabled_modules = isset($metadata->admin_disabled_modules) ? (array) $metadata->admin_disabled_modules : [];
+            // The customer-facing "disabled modules" list. perfex_saas_tenant_modules()
+            // subtracts it *after* merging the approved list, so a module sitting in here
+            // can never be activated no matter what the admin approves.
+            $disabled_modules = isset($metadata->disabled_modules) ? (array) $metadata->disabled_modules : [];
 
             if ($status === 1) {
                 // Activate: Add to approved, remove from disabled
@@ -1103,6 +1107,7 @@ class Companies extends AdminController
                     $admin_approved_modules[] = $module_name;
                 }
                 $admin_disabled_modules = array_diff($admin_disabled_modules, [$module_name]);
+                $disabled_modules = array_diff($disabled_modules, [$module_name]);
             } else {
                 // Deactivate: Add to disabled, remove from approved
                 if (!in_array($module_name, $admin_disabled_modules)) {
@@ -1112,8 +1117,11 @@ class Companies extends AdminController
             }
 
             // Clean up arrays
-            $metadata->admin_approved_modules = array_unique(array_filter($admin_approved_modules));
-            $metadata->admin_disabled_modules = array_unique(array_filter($admin_disabled_modules));
+            // array_values: array_diff/array_filter keep the original keys, and a gapped
+            // array json_encodes to an object rather than a list.
+            $metadata->admin_approved_modules = array_values(array_unique(array_filter($admin_approved_modules)));
+            $metadata->admin_disabled_modules = array_values(array_unique(array_filter($admin_disabled_modules)));
+            $metadata->disabled_modules = array_values(array_unique(array_filter($disabled_modules)));
 
             // Save metadata
             $update_data = [
@@ -1183,12 +1191,37 @@ class Companies extends AdminController
                 // reporting a success the tenant database does not agree with.
                 $row = $CI->db->where('module_name', $module_name)->get($table)->row();
                 $applied = ((int) ($row->active ?? 0) === 1) === ($status === 1);
+
+                // Distinguish "the installer failed" from "the module was never in the
+                // tenant's allowed list", which are fixed in completely different places.
+                $allowed = perfex_saas_tenant_modules(perfex_saas_tenant(), false, false, false, false, true);
+                $debug_output .= '<br/>[check] allowed for tenant: ' . (in_array($module_name, $allowed) ? 'yes' : 'NO')
+                    . ' | tblmodules row: ' . ($row ? ('active=' . $row->active . ', version=' . $row->installed_version) : 'MISSING')
+                    . '<br/>[check] resolved list: ' . implode(', ', $allowed);
             });
 
             if (!$applied) {
+                // Pull the module's own line out of the verbose install log — that is
+                // where the swallowed activation-hook error is reported.
+                $reason = [];
+                foreach (preg_split('/<br\s*\/?>|\r?\n/i', $debug_output) as $line) {
+                    $line = trim(strip_tags($line));
+                    if ($line !== '' && stripos($line, $module_name) !== false && stripos($line, 'error') !== false) {
+                        $reason[] = $line;
+                    }
+                }
+                $reason = implode(' | ', array_slice($reason, 0, 3));
+
+                if ($reason === '' && stripos($debug_output, 'allowed for tenant: NO') !== false) {
+                    $reason = $module_name . ' is not in the list of modules resolved for this tenant (package + approved), so it was never activated.';
+                }
+
+                log_message('error', "Remote Module Activation: $module_name not applied for {$company->slug}. Debug: " . strip_tags($debug_output));
+
                 echo json_encode([
                     'success' => false,
-                    'error' => 'The tenant database still reports ' . $module_name . ' as ' . ($status === 1 ? 'inactive' : 'active') . '. See the debug output / application logs.',
+                    'error' => 'The tenant database still reports ' . $module_name . ' as ' . ($status === 1 ? 'inactive' : 'active') . '.'
+                        . ($reason !== '' ? ' ' . $reason : ' No error was reported by the installer — see the browser console for the full output.'),
                     'debug' => $debug_output,
                 ]);
                 return;
