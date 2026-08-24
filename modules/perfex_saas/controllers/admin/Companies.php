@@ -1190,6 +1190,23 @@ class Companies extends AdminController
                 // (module install.php) per module, so read the result back instead of
                 // reporting a success the tenant database does not agree with.
                 $row = $CI->db->where('module_name', $module_name)->get($table)->row();
+
+                // Recover from the helper's failed-upgrade path: it deletes the module
+                // row and calls activate() again, but App_modules caches tblmodules from
+                // the instance it was constructed against (the master, here), so that
+                // activate() skips its INSERT and its "active = 1" UPDATE matches nothing.
+                // The row is then simply gone.
+                if ($status === 1 && !$row) {
+                    $module = $CI->app_modules->get($module_name);
+                    $CI->db->insert($table, [
+                        'module_name' => $module_name,
+                        'installed_version' => $module['headers']['version'] ?? '0.0.0',
+                        'active' => 1,
+                    ]);
+                    $debug_output .= '<br/>[check] module row had been dropped by the failed-upgrade path — restored it';
+                    $row = $CI->db->where('module_name', $module_name)->get($table)->row();
+                }
+
                 $applied = ((int) ($row->active ?? 0) === 1) === ($status === 1);
 
                 // Distinguish "the installer failed" from "the module was never in the
