@@ -19,14 +19,13 @@ $live     = !empty($landing['latest_reels']);
 $reels    = $live ? array_slice($landing['latest_reels'], 0, 8) : array_map(function ($id) { return ['id' => $id, 'thumb' => '', 'views' => 0, 'likes' => 0, 'taken' => 0, 'caption' => '']; }, array_slice($landing['reels'], 0, 6));
 $fmt      = function ($n) { return $n >= 1000000 ? round($n / 1000000, 1) . 'M' : ($n >= 1000 ? round($n / 1000, $n >= 10000 ? 0 : 1) . 'K' : (string) $n); };
 $ago      = function ($t) { $d = max(0, time() - $t); if ($d < 86400) { return 'today'; } if ($d < 604800) { return floor($d / 86400) . 'd ago'; } if ($d < 2592000) { return floor($d / 604800) . 'w ago'; } return date('M Y', $t); };
-$phone_href = $landing['phone_digits'] !== '' ? 'tel:+' . preg_replace('/\D+/', '', get_option('shra_lead_phone_country')) . ltrim(shra_phone_norm($landing['phone']), '0') : '';
 $faq = [
     ['Is horse riding safe for children?', 'Yes. Every lesson is one-on-one with a trained instructor who stays with the rider throughout. We start on calm, well-schooled horses at a walk and only progress when the rider is confident. Children from ' . (int) $landing['min_age'] . ' years can join.'],
     ['I have never ridden before — can I join?', 'Absolutely. Most of our riders start with zero experience. Your first session covers mounting, balance and control at a walk. Book a Guest Ride to try it before choosing a package.'],
     ['When are the lessons?', 'Weekend batches (Saturday & Sunday, morning and evening) are the most popular. Weekday slots are available on request — tell us what suits you and we will match a time.'],
     ['What should I wear?', 'Full-length trousers (jeans or track pants) and closed shoes — no sandals. Ask our team about safety gear when you book.'],
     ['Do I get a certificate?', 'Yes — riders who complete a package receive a certificate from ' . $academy . ' with a QR code for verification.'],
-    ['Where is the academy?', ($landing['location'] ?: 'Hyderabad') . '. Book a visit and we will send you the exact location on WhatsApp.'],
+    ['Where is the academy?', ($landing['location'] ?: 'Hyderabad') . '. The exact location and directions are on the map below.'],
 ];
 ?>
 <!DOCTYPE html>
@@ -36,7 +35,7 @@ $faq = [
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title><?php echo html_escape($title); ?></title>
-<meta name="description" content="Professional horse riding lessons for kids and adults in Hyderabad. Book a free visit to <?php echo html_escape($academy); ?>.">
+<meta name="description" content="Professional horse riding lessons for kids and adults in Hyderabad. <?php echo $can_pay ? 'Book and pay for your session online at ' . html_escape($academy) . '.' : 'Book a free visit to ' . html_escape($academy) . '.'; ?>">
 <link rel="icon" href="<?php echo shra_logo_url(); ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +43,7 @@ $faq = [
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <?php include __DIR__ . '/_landing_track.php'; ?>
 <style>
-:root{--cream:#f6efe0;--cream-2:#fbf7ee;--sand:#e9d9b6;--ink:#1c1a17;--ink-2:#3a3530;--gold:#b8922e;--gold-2:#d4b45c;--brown:#5a3e22;--muted:#7a6f5e;--line:#e3d6b8;--red:#a8322d;--green:#2f4a1f;--wa:#25d366}
+:root{--cream:#f6efe0;--cream-2:#fbf7ee;--sand:#e9d9b6;--ink:#1c1a17;--ink-2:#3a3530;--gold:#b8922e;--gold-2:#d4b45c;--brown:#5a3e22;--muted:#7a6f5e;--line:#e3d6b8;--red:#a8322d;--green:#2f4a1f}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;scroll-padding-top:70px}
 body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding-bottom:84px}
@@ -55,7 +54,6 @@ a{color:inherit}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:15px 22px;border:0;border-radius:14px;font:inherit;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;transition:.15s;white-space:nowrap}
 .btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
 .btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:#fff;box-shadow:0 10px 24px rgba(184,146,46,.35)}
-.btn-wa{background:var(--wa);color:#fff;box-shadow:0 10px 24px rgba(37,211,102,.3)}
 .btn-dark{background:var(--ink);color:var(--cream)}
 .btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
 .btn-block{width:100%}
@@ -110,8 +108,6 @@ h1 em{font-style:italic;color:var(--brown)}
 .note-t{background:none;border:0;color:var(--brown);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:12px}
 .fine{font-size:12px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
 .fine i{color:var(--green)}
-.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:14px 0 10px}
-.or:before,.or:after{content:'';flex:1;height:1px;background:var(--line)}
 /* sections */
 section{padding:52px 0}
 .sec-h{text-align:center;max-width:640px;margin:0 auto 30px}
@@ -244,7 +240,7 @@ section{padding:52px 0}
         <img src="<?php echo shra_logo_url(); ?>" alt="">
         <div class="nm"><?php echo html_escape($academy); ?><?php if ($landing['location']) { ?><small><i class="fa-solid fa-location-dot"></i> <?php echo html_escape($landing['location']); ?></small><?php } ?></div>
         <div class="sp"></div>
-        <?php if ($phone_href) { ?><a class="call" href="<?php echo $phone_href; ?>" onclick="shraTrack('Contact',{method:'call'})"><i class="fa-solid fa-phone"></i> <span>Call <?php echo html_escape($landing['phone']); ?></span></a><?php } ?>
+        <a class="call" href="#form"><i class="fa-solid fa-bolt"></i> <span>Book now</span></a>
     </div>
 </header>
 
@@ -256,8 +252,8 @@ section{padding:52px 0}
             <p class="lead">Professional one-on-one riding lessons for children (<?php echo (int) $landing['min_age']; ?>+) and adults, on calm, well-schooled horses. Zero experience needed. Weekend batches available.</p>
             <?php if ($offer['active']) { ?><div class="offer"><b><?php echo $offer['percent'] + 0; ?>% OFF</b> <?php echo html_escape($offer['label'] ?: 'Limited-time offer on all packages'); ?><?php if ($offer['ends']) { ?> · ends <?php echo date('j M', strtotime($offer['ends'])); ?><?php } ?></div><?php } ?>
             <div class="cta">
-                <a class="btn btn-gold" href="#form"><i class="fa-solid fa-calendar-check"></i> Book a free visit</a>
-                <?php if ($landing['wa_link']) { ?><a class="btn btn-wa" href="<?php echo html_escape($landing['wa_link']); ?>" target="_blank" rel="noopener" onclick="shraTrack('Contact',{method:'whatsapp'})"><i class="fa-brands fa-whatsapp"></i> WhatsApp us</a><?php } ?>
+                <a class="btn btn-gold" href="#form"><i class="fa-solid fa-bolt"></i> Book your ride</a>
+                <a class="btn btn-ghost" href="#pricing"><i class="fa-solid fa-tags"></i> See packages</a>
             </div>
             <div class="trust">
                 <span><i class="fa-solid fa-shield-heart"></i> Safety-first, 1-on-1 lessons</span>
@@ -274,7 +270,7 @@ section{padding:52px 0}
         <div class="card" id="form">
             <div class="card-head">
                 <div class="ic"><i class="fa-solid fa-horse-head"></i></div>
-                <div><h2>Get a call back</h2><p>Packages, timings &amp; a free visit — we call you the same day.</p></div>
+                <div><h2><?php echo $can_pay ? 'Book your ride' : 'Get a call back'; ?></h2><p><?php echo $can_pay ? 'Pick a plan, pay online and your place is confirmed — no waiting for a call back.' : 'Packages, timings &amp; a free visit — we call you the same day.'; ?></p></div>
             </div>
             <div class="card-body">
                 <?php if ($has_err) { ?><div class="err"><?php foreach ($errors as $e) { echo '<div>' . html_escape($e) . '</div>'; } ?></div><?php } ?>
@@ -292,21 +288,22 @@ section{padding:52px 0}
                     </div></div>
                     <div class="row">
                         <div class="f"><label>Rider's age</label><input type="number" name="rider_age" value="<?php echo $v('rider_age'); ?>" min="2" max="90" inputmode="numeric" placeholder="e.g. 8"></div>
-                        <div class="f"><label>Interested in</label><select name="package_id" id="pkgsel"><option value="">Not sure yet</option><?php foreach ($plans as $p) { ?><option value="<?php echo $p['id']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'selected' : ''; ?>><?php echo ($p['audience'] === 'children' ? 'Kids' : 'Adults') . ' · ' . html_escape($p['name']) . ($p['is_guest'] ? '' : ' · ' . $p['sessions'] . ' sessions'); ?></option><?php } ?></select></div>
+                        <div class="f"><label>Interested in</label><select name="package_id" id="pkgsel"><option value=""><?php echo $can_pay ? 'Choose a plan…' : 'Not sure yet'; ?></option><?php foreach ($plans as $p) { ?><option value="<?php echo $p['id']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'selected' : ''; ?>><?php echo ($p['audience'] === 'children' ? 'Kids' : 'Adults') . ' · ' . html_escape($p['name']) . ($p['is_guest'] ? '' : ' · ' . $p['sessions'] . ' sessions'); ?></option><?php } ?></select></div>
                     </div>
                     <button type="button" class="note-t" id="notet" <?php echo $v('message') !== '' ? 'hidden' : ''; ?>><i class="fa-solid fa-plus"></i> Add a note (optional)</button>
                     <div class="f" id="notef" <?php echo $v('message') === '' ? 'hidden' : ''; ?>><label>Anything we should know?</label><textarea name="message" rows="2" placeholder="Preferred days, previous experience, questions…"><?php echo $v('message'); ?></textarea></div>
                     <input type="hidden" name="city" value="<?php echo $v('city'); ?>">
+                    <?php if ($can_pay) { ?>
+                    <?php /* The intent rides in a hidden field: a submit button's own
+                            name/value is not reported by every browser (nor by a
+                            scripted .click()), and this is now the only submit. */ ?>
+                    <input type="hidden" name="action" value="book">
+                    <button class="btn btn-gold btn-block" type="submit" id="bookbtn"><i class="fa-solid fa-lock"></i> <span id="booklbl">Choose a plan to continue</span></button>
+                    <div class="fine"><i class="fa-solid fa-lock"></i> Secure payment. Your place is confirmed the moment you pay<?php echo $pay['partial'] ? ' — or pay a part now and the balance at the desk' : ''; ?>.</div>
+                    <?php } else { ?>
+                    <?php /* No gateway is live — the page falls back to collecting the enquiry. */ ?>
                     <button class="btn btn-gold btn-block" type="submit" id="subbtn"><i class="fa-solid fa-phone-volume"></i> Request a call back</button>
                     <div class="fine"><i class="fa-solid fa-lock"></i> No spam, no obligation. We only call to help you choose a package and book a visit.</div>
-                    <?php if ($can_pay) { ?>
-                    <div class="or" id="bookor" hidden>or</div>
-                    <button class="btn btn-dark btn-block" type="submit" name="action" value="book" id="bookbtn" hidden><i class="fa-solid fa-lock"></i> <span id="booklbl">Book &amp; pay now</span></button>
-                    <div class="fine" id="bookfine" hidden><i class="fa-solid fa-bolt"></i> Pay online and your place is confirmed straight away<?php echo $pay['partial'] ? ' — pay part now and the balance at the desk' : ''; ?>.</div>
-                    <?php } ?>
-                    <?php if ($landing['wa_link']) { ?>
-                    <div class="or">or</div>
-                    <a class="btn btn-ghost btn-block" href="<?php echo html_escape($landing['wa_link']); ?>" target="_blank" rel="noopener" onclick="shraTrack('Contact',{method:'whatsapp'})" style="color:#128c7e"><i class="fa-brands fa-whatsapp" style="font-size:20px"></i> Chat on WhatsApp</a>
                     <?php } ?>
                 </form>
             </div>
@@ -382,7 +379,7 @@ section{padding:52px 0}
                     <div class="ss"><?php echo $p['sessions']; ?> sessions · <?php echo $p['duration_min']; ?> min each</div>
                     <div class="pr"><span class="now"><?php echo $p['total']; ?></span><?php if ($p['discount'] > 0) { ?><span class="was"><?php echo $p['price']; ?></span><?php } ?></div>
                     <div class="per"><b><?php echo $p['per_session_now']; ?></b> per session</div>
-                    <a class="btn <?php echo $p['is_featured'] ? 'btn-gold' : 'btn-ghost'; ?>" href="#form" data-pick="<?php echo $p['id']; ?>">Enquire <i class="fa-solid fa-arrow-right"></i></a>
+                    <a class="btn <?php echo $p['is_featured'] ? 'btn-gold' : 'btn-ghost'; ?>" href="#form" data-pick="<?php echo $p['id']; ?>"><?php echo $can_pay ? 'Book now' : 'Enquire'; ?> <i class="fa-solid fa-arrow-right"></i></a>
                 </div>
                 <?php } ?>
             </div>
@@ -396,10 +393,14 @@ section{padding:52px 0}
     <div class="wrap">
         <div class="sec-h">
             <div class="eyebrow">How it works</div>
-            <h2>From your first call to your first ride</h2>
+            <h2><?php echo $can_pay ? 'From booking to your first ride' : 'From your first call to your first ride'; ?></h2>
         </div>
         <div class="steps">
-            <div class="st"><h3>Request a call back</h3><p>Fill the 30-second form or WhatsApp us. Our team calls you the same day with packages and timings.</p></div>
+            <?php if ($can_pay) { ?>
+            <div class="st"><h3>Book &amp; pay online</h3><p>Pick a plan, enter your details and pay securely. Your place is confirmed straight away — no waiting for a call back.</p></div>
+            <?php } else { ?>
+            <div class="st"><h3>Request a call back</h3><p>Fill the 30-second form and our team calls you the same day with packages and timings.</p></div>
+            <?php } ?>
             <div class="st"><h3>Visit the academy</h3><p>Come see the horses, meet the instructors and take a Guest Ride — usually on a Saturday or Sunday morning.</p></div>
             <div class="st"><h3>Pick a package &amp; start</h3><p>Choose the plan that fits, get your membership card and start your sessions. Certificate on completion.</p></div>
         </div>
@@ -419,9 +420,9 @@ section{padding:52px 0}
                 <h3><?php echo html_escape($academy); ?></h3>
                 <?php if ($landing['location']) { ?><div class="addr"><i class="fa-solid fa-location-dot" style="color:var(--gold)"></i> <?php echo html_escape($landing['location']); ?></div><?php } ?>
                 <ul>
-                    <li><i class="fa-solid fa-clock"></i><span><b>Visits:</b> Saturday &amp; Sunday mornings and evenings — book a slot and we confirm on WhatsApp.</span></li>
-                    <?php if ($landing['phone']) { ?><li><i class="fa-solid fa-phone"></i><span><b>Call:</b> <a href="<?php echo $phone_href; ?>" onclick="shraTrack('Contact',{method:'call'})" style="color:var(--brown);font-weight:600"><?php echo html_escape($landing['phone']); ?></a></span></li><?php } ?>
-                    <li><i class="fa-solid fa-car"></i><span>Share your location with us on WhatsApp and we'll send the easiest route.</span></li>
+                    <li><i class="fa-solid fa-clock"></i><span><b>Visits:</b> Saturday &amp; Sunday mornings and evenings — <?php echo $can_pay ? 'book online and your slot is confirmed straight away' : 'book a slot and we confirm the timing with you'; ?>.</span></li>
+                    <?php if ($landing['phone']) { ?><li><i class="fa-solid fa-phone"></i><span><b>Reception:</b> <b style="color:var(--brown)"><?php echo html_escape($landing['phone']); ?></b></span></li><?php } ?>
+                    <li><i class="fa-solid fa-car"></i><span>Tap <b>Get directions</b> for the easiest route from wherever you are.</span></li>
                 </ul>
                 <a class="btn btn-dark" href="<?php echo html_escape($landing['maps_url']); ?>" target="_blank" rel="noopener" onclick="shraTrack('FindLocation')"><i class="fa-solid fa-diamond-turn-right"></i> Get directions</a>
             </div>
@@ -445,10 +446,9 @@ section{padding:52px 0}
 <section class="final">
     <div class="wrap">
         <h2>Ready to see your rider smile?</h2>
-        <p>Book a free visit<?php if ($offer['active']) { ?> and lock in the <?php echo $offer['percent'] + 0; ?>% offer before it ends<?php } ?>. Limited weekend slots each month.</p>
+        <p><?php echo $can_pay ? 'Book your session in under a minute' : 'Book a free visit'; ?><?php if ($offer['active']) { ?> and lock in the <?php echo $offer['percent'] + 0; ?>% offer before it ends<?php } ?>. Limited weekend slots each month.</p>
         <div class="cta">
-            <a class="btn btn-gold" href="#form"><i class="fa-solid fa-calendar-check"></i> Book a free visit</a>
-            <?php if ($phone_href) { ?><a class="btn btn-ghost" href="<?php echo $phone_href; ?>" onclick="shraTrack('Contact',{method:'call'})"><i class="fa-solid fa-phone"></i> Call <?php echo html_escape($landing['phone']); ?></a><?php } ?>
+            <a class="btn btn-gold" href="#form"><i class="fa-solid fa-bolt"></i> Book your ride</a>
         </div>
     </div>
 </section>
@@ -463,9 +463,7 @@ section{padding:52px 0}
 </footer>
 
 <div class="bar">
-    <?php if ($phone_href) { ?><a class="btn btn-dark sq" href="<?php echo $phone_href; ?>" aria-label="Call" onclick="shraTrack('Contact',{method:'call'})"><i class="fa-solid fa-phone"></i></a><?php } ?>
-    <?php if ($landing['wa_link']) { ?><a class="btn btn-wa" href="<?php echo html_escape($landing['wa_link']); ?>" target="_blank" rel="noopener" onclick="shraTrack('Contact',{method:'whatsapp'})"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><?php } ?>
-    <a class="btn btn-gold" href="#form"><i class="fa-solid fa-calendar-check"></i> Book a visit</a>
+    <a class="btn btn-gold" href="#form"><i class="fa-solid fa-bolt"></i> <?php echo $can_pay ? 'Book &amp; pay now' : 'Book a visit'; ?></a>
 </div>
 
 <script>
@@ -508,14 +506,14 @@ section{padding:52px 0}
     // Mobile: digits only, strip a pasted +91 / 0 prefix, cap at 10
     var ph=document.getElementById('phone');
     if(ph){ph.addEventListener('input',function(){var d=ph.value.replace(/\D+/g,'');if(d.length>10&&d.indexOf('91')===0){d=d.slice(2);}d=d.replace(/^0+/,'');ph.value=d.slice(0,10);});}
-    // "Book & pay now" — only offered once a real plan is picked
+    // Checkout button — carries the price of whichever plan is selected
     var bookable=<?php echo json_encode($bookable, JSON_FORCE_OBJECT); ?>;
-    var bk=document.getElementById('bookbtn'),bo=document.getElementById('bookor'),bf=document.getElementById('bookfine'),bl=document.getElementById('booklbl');
+    var bk=document.getElementById('bookbtn'),bl=document.getElementById('booklbl');
+    function plan(){return (bk&&sel)?bookable[sel.value]:null;}
     function syncBook(){
         if(!bk){return;}
-        var p=sel?bookable[sel.value]:null;
-        [bk,bo,bf].forEach(function(e){if(e){e.hidden=!p;}});
-        if(p){bl.textContent=(p.guest?'Book this guest ride — ':'Book & pay now — ')+p.total;}
+        var p=plan();
+        bl.textContent=p?((p.guest?'Book this guest ride — ':'Book & pay now — ')+p.total):'Choose a plan to continue';
     }
     if(sel){sel.addEventListener('change',syncBook);}
     document.querySelectorAll('[data-pick]').forEach(function(a){a.addEventListener('click',syncBook);});
@@ -523,7 +521,14 @@ section{padding:52px 0}
     // Submit state + tracking
     var form=document.getElementById('leadform'),btn=document.getElementById('subbtn');
     if(form){form.addEventListener('submit',function(e){
-        var b=e.submitter||btn;
+        var b=e.submitter||btn||bk;
+        // Nothing to charge for yet — send them to the plan picker instead of the gateway
+        if(b===bk&&!plan()){
+            e.preventDefault();
+            sel.focus();
+            sel.scrollIntoView({block:'center'});
+            return;
+        }
         // Booking skips the thank-you page, so the Lead event has to fire here
         if(b===bk){shraTrack('Lead',{content_name:'inquire_book'});}
         b.disabled=true;

@@ -2,7 +2,6 @@
 /** Thank-you page after the /inquire landing form — fires the ad conversion tags. */
 $academy    = get_option('shra_academy_name') ?: 'Stallion Horse Riding Academy';
 $conversion = true;
-$phone_href = $landing['phone_digits'] !== '' ? 'tel:+' . preg_replace('/\D+/', '', get_option('shra_lead_phone_country')) . ltrim(shra_phone_norm($landing['phone']), '0') : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,7 +32,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:radial-gradient(120% 80
 .next div{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--ink-2)}
 .next i{width:30px;height:30px;border-radius:9px;background:var(--cream);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;margin-top:-2px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px 20px;border:0;border-radius:14px;font:inherit;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:10px}
-.btn-wa{background:var(--wa);color:#fff;box-shadow:0 10px 24px rgba(37,211,102,.3)}
 .btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
 .hint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:6px}
 .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:18px}
@@ -54,8 +52,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:radial-gradient(120% 80
                 <div><i class="fa-solid fa-calendar-check"></i><span><b>Pick a visit slot</b> — Saturday and Sunday mornings are the most popular; we'll find one that suits you.</span></div>
                 <div><i class="fa-solid fa-shirt"></i><span><b>On the day</b> — wear full-length trousers and closed shoes.</span></div>
             </div>
-            <?php if ($landing['wa_link']) { ?><a class="btn btn-wa" href="<?php echo html_escape($landing['wa_link']); ?>" target="_blank" rel="noopener" onclick="shraTrack('Contact',{method:'whatsapp'})"><i class="fa-brands fa-whatsapp" style="font-size:20px"></i> WhatsApp us now</a><?php } ?>
-            <?php if ($phone_href) { ?><a class="btn btn-ghost" href="<?php echo $phone_href; ?>" onclick="shraTrack('Contact',{method:'call'})"><i class="fa-solid fa-phone"></i> Call <?php echo html_escape($landing['phone']); ?></a><?php } ?>
             <?php if ($landing['instagram']) { ?><div class="hint">Meanwhile, see our riders on <a href="<?php echo html_escape($landing['instagram']); ?>" target="_blank" rel="noopener" style="color:var(--brown);font-weight:600">Instagram <i class="fa-brands fa-instagram"></i></a></div><?php } ?>
         </div>
     </div>

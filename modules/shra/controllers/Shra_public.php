@@ -232,9 +232,12 @@ class Shra_public extends App_Controller
                 // Duplicates are attached to the original lead silently — the visitor still sees a thank-you
                 if (!is_string($res)) {
                     // "Book & pay now" carries the visitor on to the checkout instead;
-                    // the lead is captured either way, so nothing is lost if they drop out.
-                    if (($post['action'] ?? '') === 'book' && count(shra_pay_gateways())) {
-                        $err = $this->book_from_lead((int) $res['lead_id'], (int) ($post['package_id'] ?? 0));
+                    // the lead is captured either way, so nothing is lost if they drop
+                    // out — including when no plan was picked, which just leaves the
+                    // enquiry for the team to call back on.
+                    $pkg_id = (int) ($post['package_id'] ?? 0);
+                    if (($post['action'] ?? '') === 'book' && $pkg_id && count(shra_pay_gateways())) {
+                        $err = $this->book_from_lead((int) $res['lead_id'], $pkg_id);
                         if ($err !== '') {
                             $errors[] = $err;
                         }
