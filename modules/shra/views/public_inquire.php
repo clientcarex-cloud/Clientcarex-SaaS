@@ -69,32 +69,57 @@ a{color:inherit}
 .top .call{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px;text-decoration:none;background:var(--ink);color:var(--cream);padding:10px 16px;border-radius:999px}
 .top .call i{color:var(--gold-2)}
 /* hero */
-.hero{position:relative;overflow:hidden;background:radial-gradient(120% 90% at 10% 0%,#fbf5e6 0%,var(--cream) 50%,#efe3c6 100%)}
-.hero:before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath d='M60 10l4 8 8-4-4 8 8 4-8 4 4 8-8-4-4 8-4-8-8 4 4-8-8-4 8-4-4-8 8 4z' fill='%23b8922e' fill-opacity='.06'/%3E%3C/svg%3E");pointer-events:none}
-.hero .wrap{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;padding:46px 18px 40px;align-items:start}
+.hero{position:relative;overflow:hidden;background:#161109;color:var(--cream)}
+.hero:before{content:'';position:absolute;inset:0;background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath d='M60 10l4 8 8-4-4 8 8 4-8 4 4 8-8-4-4 8-4-8-8 4 4-8-8-4 8-4-4-8 8 4z' fill='%23d4b45c' fill-opacity='.07'/%3E%3C/svg%3E"),
+  radial-gradient(65% 60% at 85% 0%,rgba(184,146,46,.30) 0%,rgba(184,146,46,0) 60%),
+  radial-gradient(55% 50% at 0% 100%,rgba(90,62,34,.55) 0%,rgba(90,62,34,0) 65%),
+  linear-gradient(160deg,#1e1810 0%,#161109 55%,#231a0d 100%);pointer-events:none}
+.hero .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1.05fr .95fr;gap:44px;padding:50px 18px 54px;align-items:center}
 .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
-.eyebrow:before{content:'';width:28px;height:1px;background:var(--gold)}
-h1{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:clamp(36px,5.2vw,58px);line-height:1.02;letter-spacing:-.5px}
-h1 em{font-style:italic;color:var(--brown)}
-.lead{font-size:17px;color:var(--ink-2);margin-top:16px;max-width:520px}
-.offer{display:inline-flex;align-items:center;gap:10px;margin-top:18px;background:#fff;border:1px dashed var(--red);color:var(--red);border-radius:12px;padding:9px 12px 9px 9px;font-size:13.5px;font-weight:600}
+.hero-badge{display:inline-flex;align-items:center;gap:9px;background:rgba(212,180,92,.12);border:1px solid rgba(212,180,92,.45);color:var(--gold-2);border-radius:999px;padding:7px 14px;font-size:11.5px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;margin-bottom:18px}
+.hero-badge .dot{width:8px;height:8px;border-radius:50%;background:#57c95c;animation:shraPing 1.6s ease-out infinite}
+h1{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:clamp(38px,5.4vw,64px);line-height:1.02;letter-spacing:-.5px;color:#fff}
+h1 em{font-style:italic;background:linear-gradient(100deg,var(--gold-2) 0%,#f3dc92 45%,var(--gold) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:17.5px;color:#d9cdb2;margin-top:16px;max-width:520px}
+.offer{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:10px;margin-top:18px;background:rgba(168,50,45,.16);border:1px dashed #d4655f;color:#ffb3aa;border-radius:12px;padding:9px 12px 9px 9px;font-size:13.5px;font-weight:600}
 .offer b{background:var(--red);color:#fff;border-radius:7px;padding:3px 9px;font-size:13px}
-.cta{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
-.trust{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:24px;font-size:13.5px;color:var(--ink-2);font-weight:500}
-.trust span{display:inline-flex;align-items:center;gap:7px}
-.trust i{color:var(--gold);font-size:13px}
-.proof{display:flex;align-items:center;gap:12px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.offer:after{content:'';position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.15),transparent);animation:shraSweep 2.8s ease-in-out infinite}
+.cta{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+.hero .cta .btn{font-size:16.5px;padding:16px 26px}
+.btn-pulse{animation:shraPulse 2.2s ease-out infinite}
+.hero .btn-ghost{background:rgba(255,255,255,.05);color:var(--cream);border:1.5px solid rgba(246,239,224,.25)}
+.hero .btn-ghost:hover{background:rgba(255,255,255,.1)}
+.times{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:13.5px;color:#cbbf9f;font-weight:600}
+.times i{color:var(--gold-2)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:16px 18px;margin-top:26px;padding-top:22px;border-top:1px solid rgba(246,239,224,.14)}
+.stats b{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:27px;font-weight:700;color:var(--gold-2);line-height:1.05}
+.stats small{display:block;font-size:12px;color:#b7ab90;margin-top:4px;font-weight:600;line-height:1.35}
+.proof{display:flex;align-items:center;gap:12px;margin-top:20px;font-size:13.5px;color:#b7ab90}
 .proof .av{display:flex}
-.proof .av span{width:30px;height:30px;border-radius:50%;border:2px solid var(--cream);margin-left:-8px;background:linear-gradient(135deg,var(--gold-2),var(--brown));display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.proof .av span{width:30px;height:30px;border-radius:50%;border:2px solid #2a2116;margin-left:-8px;background:linear-gradient(135deg,var(--gold-2),var(--brown));display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
 .proof .av span:first-child{margin-left:0}
-.proof b{color:var(--ink)}
+.proof b{color:#fff}
+.proof .stars{color:var(--gold-2);letter-spacing:2.5px;font-size:12.5px}
+@keyframes shraPing{0%{box-shadow:0 0 0 0 rgba(87,201,92,.55)}70%{box-shadow:0 0 0 9px rgba(87,201,92,0)}100%{box-shadow:0 0 0 0 rgba(87,201,92,0)}}
+@keyframes shraPulse{0%{box-shadow:0 10px 24px rgba(184,146,46,.35),0 0 0 0 rgba(212,180,92,.55)}70%{box-shadow:0 10px 24px rgba(184,146,46,.35),0 0 0 16px rgba(212,180,92,0)}100%{box-shadow:0 10px 24px rgba(184,146,46,.35),0 0 0 0 rgba(212,180,92,0)}}
+@keyframes shraSweep{0%{left:-60%}55%{left:120%}100%{left:120%}}
+@media(prefers-reduced-motion:reduce){.hero-badge .dot,.btn-pulse,.offer:after{animation:none}}
 /* form card */
-.card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 28px 70px rgba(90,62,34,.16);overflow:hidden}
-.card-head{padding:20px 24px 16px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,var(--cream-2));display:flex;align-items:center;gap:14px}
-.card-head .ic{width:44px;height:44px;border-radius:12px;background:var(--ink);color:var(--gold-2);display:inline-flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.card-head h2{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:24px;line-height:1.1}
-.card-head p{color:var(--muted);font-size:13px;margin-top:2px}
-.card-body{padding:20px 24px 22px}
+.card{background:#fff;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}
+.card:before{content:'';display:block;height:5px;background:linear-gradient(90deg,var(--gold),var(--gold-2),var(--gold))}
+.card-head{padding:20px 22px 12px;display:flex;align-items:flex-start;gap:12px}
+.card-head h2{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:26px;line-height:1.1;color:var(--ink)}
+.card-head p{color:var(--muted);font-size:13px;margin-top:3px}
+.card-head .sec{margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;background:var(--cream);color:var(--brown);border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:800;white-space:nowrap}
+.card-body{padding:6px 22px 22px;color:var(--ink)}
+.more{border:1.5px dashed var(--line);border-radius:12px;background:var(--cream-2);margin-bottom:12px}
+.more summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px;padding:12px 14px;font-size:13px;font-weight:700;color:var(--brown)}
+.more summary::-webkit-details-marker{display:none}
+.more summary .opt{font-weight:500;color:var(--muted)}
+.more summary .ch{margin-left:auto;color:var(--gold);transition:.2s}
+.more[open] summary .ch{transform:rotate(45deg)}
+.more .inner{padding:2px 14px 14px}
 .f{margin-bottom:12px}
 .f label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
 .f .req{color:var(--red)}
@@ -107,10 +132,9 @@ h1 em{font-style:italic;color:var(--brown)}
 .chips input{display:none}
 .chips label:has(input:checked){background:var(--ink);border-color:var(--ink);color:var(--cream)}
 .chips label small{display:block;font-size:11px;font-weight:600;opacity:.72;margin-top:2px;letter-spacing:.2px}
-.fcfs{display:flex;gap:8px;align-items:flex-start;background:#f6ecd2;border:1px solid #e6d4a6;color:var(--brown);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600;line-height:1.45;margin:0 0 12px}
+.fcfs{display:flex;gap:8px;align-items:flex-start;background:#f6ecd2;border:1px solid #e6d4a6;color:var(--brown);border-radius:10px;padding:9px 11px;font-size:12px;font-weight:600;line-height:1.45;margin:0 0 12px}
 .fcfs i{margin-top:2px}
-.err{background:#fbeeee;border:1px solid #e8b9b6;color:var(--red);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13.5px}
-.note-t{background:none;border:0;color:var(--brown);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:12px}
+.err{background:#fbeeee;border:1px solid #e8b9b6;color:var(--red);border-radius:12px;padding:10px 14px;margin:8px 0 14px;font-size:13.5px}
 .fine{font-size:12px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
 .fine i{color:var(--green)}
 /* sections */
@@ -212,7 +236,8 @@ section{padding:52px 0}
 .bar .btn{flex:1;padding:13px 10px;font-size:14px;border-radius:12px}
 .bar .btn.sq{flex:0 0 52px;padding:0;font-size:20px}
 @media(max-width:900px){
-  .hero .wrap{grid-template-columns:1fr;gap:26px;padding:30px 18px 34px}
+  .hero .wrap{grid-template-columns:1fr;gap:30px;padding:34px 18px 38px}
+  .stats{grid-template-columns:repeat(2,1fr)}
   .grid{grid-template-columns:1fr 1fr}
   .plans{grid-template-columns:1fr 1fr}
   .steps{grid-template-columns:1fr}
@@ -252,30 +277,31 @@ section{padding:52px 0}
 <section class="hero">
     <div class="wrap">
         <div>
-            <div class="eyebrow">Horse riding lessons · Hyderabad</div>
-            <h1>Learn to ride a horse — <em>with confidence.</em></h1>
-            <p class="lead">Professional one-on-one riding lessons for children (<?php echo (int) $landing['min_age']; ?>+) and adults, on calm, well-schooled horses. Zero experience needed. Morning and evening batches, seven days a week.</p>
+            <div class="hero-badge"><span class="dot"></span> Admissions open · Hyderabad</div>
+            <h1>Learn to ride a horse. <em>Start this week.</em></h1>
+            <p class="lead">One-on-one riding lessons for children (<?php echo (int) $landing['min_age']; ?>+) and adults on calm, well-schooled horses. Zero experience needed — <?php echo $can_pay ? 'book online in 30 seconds and your place is confirmed' : 'book your visit in 30 seconds'; ?>.</p>
             <?php if ($offer['active']) { ?><div class="offer"><b><?php echo $offer['percent'] + 0; ?>% OFF</b> <?php echo html_escape($offer['label'] ?: 'Limited-time offer on all packages'); ?><?php if ($offer['ends']) { ?> · ends <?php echo date('j M', strtotime($offer['ends'])); ?><?php } ?></div><?php } ?>
             <div class="cta">
-                <a class="btn btn-gold" href="#form"><i class="fa-solid fa-bolt"></i> Book your ride</a>
+                <a class="btn btn-gold btn-pulse" href="#form"><i class="fa-solid fa-bolt"></i> <?php echo $can_pay ? 'Book my ride now' : 'Book my ride'; ?></a>
                 <a class="btn btn-ghost" href="#pricing"><i class="fa-solid fa-tags"></i> See packages</a>
             </div>
-            <div class="trust">
-                <span><i class="fa-solid fa-shield-heart"></i> Safety-first, 1-on-1 lessons</span>
-                <span><i class="fa-solid fa-child-reaching"></i> All ages · all levels</span>
-                <span><i class="fa-solid fa-certificate"></i> Certificate on completion</span>
-                <span><i class="fa-solid fa-calendar-days"></i> <?php echo html_escape($batch_line); ?></span>
+            <div class="times"><i class="fa-solid fa-clock"></i> <?php echo html_escape($batch_line); ?> · 7 days a week</div>
+            <div class="stats">
+                <div><b>1-on-1</b><small>instructor with every rider</small></div>
+                <div><b><?php echo (int) $landing['min_age']; ?>+</b><small>kids &amp; adults, all levels</small></div>
+                <?php if ($from) { ?><div><b><?php echo $from; ?></b><small>per session onwards</small></div><?php } ?>
+                <div><b><i class="fa-solid fa-certificate" style="font-size:22px"></i></b><small>certificate on completion</small></div>
             </div>
             <div class="proof">
                 <div class="av"><span>A</span><span>R</span><span>S</span><span>+</span></div>
-                <div>Join <b><?php echo $landing['ig_followers'] > 0 ? $fmt(floor($landing['ig_followers'] / 100) * 100) . '+' : '7,000+'; ?> followers</b> watching our riders grow <?php if ($landing['instagram']) { ?>· <a href="<?php echo html_escape($landing['instagram']); ?>" target="_blank" rel="noopener" style="color:var(--brown);font-weight:600">@<?php echo html_escape($landing['ig_handle'] ?: 'stallionhorseriding'); ?></a><?php } ?></div>
+                <div><span class="stars">★★★★★</span><br>Join <b><?php echo $landing['ig_followers'] > 0 ? $fmt(floor($landing['ig_followers'] / 100) * 100) . '+' : '7,000+'; ?> followers</b> watching our riders grow <?php if ($landing['instagram']) { ?>· <a href="<?php echo html_escape($landing['instagram']); ?>" target="_blank" rel="noopener" style="color:var(--gold-2);font-weight:600">@<?php echo html_escape($landing['ig_handle'] ?: 'stallionhorseriding'); ?></a><?php } ?></div>
             </div>
         </div>
 
         <div class="card" id="form">
             <div class="card-head">
-                <div class="ic"><i class="fa-solid fa-horse-head"></i></div>
-                <div><h2><?php echo $can_pay ? 'Book your ride' : 'Get a call back'; ?></h2><p><?php echo $can_pay ? 'Pick a plan, pay online and your place is confirmed — no waiting for a call back.' : 'Packages, timings &amp; a free visit — we call you the same day.'; ?></p></div>
+                <div><h2><?php echo $can_pay ? 'Book your ride' : 'Get a call back'; ?></h2><p><?php echo $can_pay ? 'Pay online — your place is confirmed instantly.' : 'We call you the same day with packages &amp; timings.'; ?></p></div>
+                <span class="sec"><i class="fa-regular fa-clock"></i> 30 SEC</span>
             </div>
             <div class="card-body">
                 <?php if ($has_err) { ?><div class="err"><?php foreach ($errors as $e) { echo '<div>' . html_escape($e) . '</div>'; } ?></div><?php } ?>
@@ -291,19 +317,22 @@ section{padding:52px 0}
                         <label><input type="radio" name="rider_for" value="self" <?php echo $v('rider_for') === 'self' ? 'checked' : ''; ?>><span>Myself</span></label>
                         <label><input type="radio" name="rider_for" value="both" <?php echo $v('rider_for') === 'both' ? 'checked' : ''; ?>><span>Both</span></label>
                     </div></div>
-                    <div class="row">
-                        <div class="f"><label>Rider's age</label><input type="number" name="rider_age" value="<?php echo $v('rider_age'); ?>" min="2" max="90" inputmode="numeric" placeholder="e.g. 8"></div>
-                        <div class="f"><label>Interested in</label><select name="package_id" id="pkgsel"><option value=""><?php echo $can_pay ? 'Choose a plan…' : 'Not sure yet'; ?></option><?php foreach ($plans as $p) { ?><option value="<?php echo $p['id']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'selected' : ''; ?>><?php echo ($p['audience'] === 'children' ? 'Kids' : 'Adults') . ' · ' . html_escape($p['name']) . ($p['is_guest'] ? '' : ' · ' . $p['sessions'] . ' sessions'); ?></option><?php } ?></select></div>
-                    </div>
-                    <div class="row">
-                        <div class="f"><label>Start date</label><input type="date" name="preferred_start_date" value="<?php echo $v('preferred_start_date'); ?>" min="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d', strtotime('+6 months')); ?>"></div>
-                        <div class="f"><label>Class timing</label><div class="chips">
-                            <?php foreach ($batches as $bk => $b) { ?><label><input type="radio" name="preferred_batch" value="<?php echo $bk; ?>" <?php echo $v('preferred_batch') === $bk ? 'checked' : ''; ?>><span><?php echo html_escape($b['label']); ?><small><?php echo html_escape($b['time']); ?></small></span></label><?php } ?>
-                        </div></div>
-                    </div>
-                    <div class="fcfs"><i class="fa-solid fa-user-clock"></i> <span><?php echo html_escape(shra_fcfs_note()); ?></span></div>
-                    <button type="button" class="note-t" id="notet" <?php echo $v('message') !== '' ? 'hidden' : ''; ?>><i class="fa-solid fa-plus"></i> Add a note (optional)</button>
-                    <div class="f" id="notef" <?php echo $v('message') === '' ? 'hidden' : ''; ?>><label>Anything we should know?</label><textarea name="message" rows="2" placeholder="Preferred days, previous experience, questions…"><?php echo $v('message'); ?></textarea></div>
+                    <div class="f"><label><?php echo $can_pay ? 'Choose your plan' : 'Interested in'; ?></label><select name="package_id" id="pkgsel"><option value=""><?php echo $can_pay ? 'Choose a plan…' : 'Not sure yet'; ?></option><?php foreach ($plans as $p) { ?><option value="<?php echo $p['id']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'selected' : ''; ?>><?php echo ($p['audience'] === 'children' ? 'Kids' : 'Adults') . ' · ' . html_escape($p['name']) . ($p['is_guest'] ? '' : ' · ' . $p['sessions'] . ' sessions'); ?></option><?php } ?></select></div>
+                    <?php $more_open = $v('rider_age') !== '' || $v('preferred_start_date') !== '' || $v('preferred_batch') !== '' || $v('message') !== ''; ?>
+                    <details class="more" <?php echo $more_open ? 'open' : ''; ?>>
+                        <summary><i class="fa-solid fa-sliders"></i> Age, start date &amp; timing <span class="opt">(optional)</span><i class="fa-solid fa-plus ch"></i></summary>
+                        <div class="inner">
+                            <div class="row">
+                                <div class="f"><label>Rider's age</label><input type="number" name="rider_age" value="<?php echo $v('rider_age'); ?>" min="2" max="90" inputmode="numeric" placeholder="e.g. 8"></div>
+                                <div class="f"><label>Start date</label><input type="date" name="preferred_start_date" value="<?php echo $v('preferred_start_date'); ?>" min="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d', strtotime('+6 months')); ?>"></div>
+                            </div>
+                            <div class="f"><label>Class timing</label><div class="chips">
+                                <?php foreach ($batches as $bk => $b) { ?><label><input type="radio" name="preferred_batch" value="<?php echo $bk; ?>" <?php echo $v('preferred_batch') === $bk ? 'checked' : ''; ?>><span><?php echo html_escape($b['label']); ?><small><?php echo html_escape($b['time']); ?></small></span></label><?php } ?>
+                            </div></div>
+                            <div class="fcfs"><i class="fa-solid fa-user-clock"></i> <span><?php echo html_escape(shra_fcfs_note()); ?></span></div>
+                            <div class="f" style="margin-bottom:0"><label>Anything we should know?</label><textarea name="message" rows="2" placeholder="Preferred days, previous experience, questions…"><?php echo $v('message'); ?></textarea></div>
+                        </div>
+                    </details>
                     <input type="hidden" name="city" value="<?php echo $v('city'); ?>">
                     <?php if ($can_pay) { ?>
                     <?php /* The intent rides in a hidden field: a submit button's own
@@ -480,9 +509,6 @@ section{padding:52px 0}
 
 <script>
 (function(){
-    // Note toggle
-    var nt=document.getElementById('notet'),nf=document.getElementById('notef');
-    if(nt){nt.addEventListener('click',function(){nt.hidden=true;nf.hidden=false;nf.querySelector('textarea').focus();});}
     // Pricing tabs
     document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){
         document.querySelectorAll('.tabs button').forEach(function(x){x.classList.toggle('on',x===b);});
