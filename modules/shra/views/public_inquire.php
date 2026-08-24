@@ -288,7 +288,7 @@ section{padding:52px 0}
             <div class="times"><i class="fa-solid fa-clock"></i> <?php echo html_escape($batch_line); ?> · 7 days a week</div>
             <div class="stats">
                 <div><b>1-on-1</b><small>instructor with every rider</small></div>
-                <div><b><?php echo (int) $landing['min_age']; ?>+</b><small>kids &amp; adults, all levels</small></div>
+                <div><b><?php echo (int) $landing['min_age']; ?>+ kids</b><small>&amp; adults, all levels</small></div>
                 <?php if ($from) { ?><div><b><?php echo $from; ?></b><small>per session onwards</small></div><?php } ?>
                 <div><b><i class="fa-solid fa-certificate" style="font-size:22px"></i></b><small>certificate on completion</small></div>
             </div>
