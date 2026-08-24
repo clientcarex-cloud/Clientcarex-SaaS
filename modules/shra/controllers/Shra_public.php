@@ -219,6 +219,11 @@ class Shra_public extends App_Controller
             if (!shra_phone_valid((string) ($post['phone'] ?? ''))) {
                 $errors[] = 'Please enter a valid mobile number.';
             }
+            // Age is optional, but when given it must be a real rider's age
+            $age = trim((string) ($post['rider_age'] ?? ''));
+            if ($age !== '' && (!ctype_digit($age) || (int) $age < $data['landing']['min_age'] || (int) $age > 90)) {
+                $errors[] = "The rider's age must be between " . $data['landing']['min_age'] . ' and 90.';
+            }
 
             if (!count($errors)) {
                 $track = $this->tracking_from($post);
@@ -327,7 +332,7 @@ class Shra_public extends App_Controller
             'gads_id'     => trim((string) get_option('shra_lead_gads_id')),
             'gads_label'  => trim((string) get_option('shra_lead_gads_label')),
             'ga4_id'      => trim((string) get_option('shra_lead_ga4_id')),
-            'min_age'     => (int) (get_option('shra_lead_landing_min_age') ?: 4),
+            'min_age'     => (int) (get_option('shra_lead_landing_min_age') ?: 5),
         ];
         // Map: a pasted "Share → Embed a map" URL wins; otherwise a keyless search embed of the location line
         $embed = trim((string) get_option('shra_lead_landing_map_embed'));

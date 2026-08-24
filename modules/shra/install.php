@@ -595,7 +595,7 @@ $lead_defaults = [
     'shra_lead_landing_maps_url'     => '',
     'shra_lead_landing_instagram'    => 'https://www.instagram.com/stallionhorseriding/',
     'shra_lead_landing_reels'        => "DUs_7fKk4kE\nDUVtHcEEnZR\nDcOWWidzl0q\nDcJTWs0smrv\nDcBUVBvhifG\nDbqKR3ZTrzr",
-    'shra_lead_landing_min_age'      => '4',
+    'shra_lead_landing_min_age'      => '5',
     'shra_lead_meta_pixel_id'        => '',
     'shra_lead_gads_id'              => '',
     'shra_lead_gads_label'           => '',
@@ -606,6 +606,10 @@ $lead_defaults = [
 ];
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);
+}
+// One-time default bump: minimum rider age went 4 → 5 (add_option keeps the old stored value)
+if (get_option('shra_lead_landing_min_age') === '4') {
+    update_option('shra_lead_landing_min_age', '5');
 }
 
 /* ═════════════ Online payments on the public /join page (v1.4) ═════════════

@@ -323,7 +323,7 @@ section{padding:52px 0}
                         <summary><i class="fa-solid fa-sliders"></i> Age, start date &amp; timing <span class="opt">(optional)</span><i class="fa-solid fa-plus ch"></i></summary>
                         <div class="inner">
                             <div class="row">
-                                <div class="f"><label>Rider's age</label><input type="number" name="rider_age" value="<?php echo $v('rider_age'); ?>" min="2" max="90" inputmode="numeric" placeholder="e.g. 8"></div>
+                                <div class="f"><label>Rider's age</label><input type="number" name="rider_age" value="<?php echo $v('rider_age'); ?>" min="<?php echo (int) $landing['min_age']; ?>" max="90" inputmode="numeric" title="Riders must be <?php echo (int) $landing['min_age']; ?> years or older" placeholder="e.g. 8"></div>
                                 <div class="f"><label>Start date</label><input type="date" name="preferred_start_date" value="<?php echo $v('preferred_start_date'); ?>" min="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d', strtotime('+6 months')); ?>"></div>
                             </div>
                             <div class="f"><label>Class timing</label><div class="chips">
