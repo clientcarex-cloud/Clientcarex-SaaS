@@ -639,6 +639,14 @@ if (!$CI->db->table_exists($p . 'shra_join_checkouts')) {
         KEY `rider_status` (`rider_id`, `status`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
+// v1.4.5 — the /join checkout runs off the lead until money lands; the rider row
+// is only created by fulfil_join_checkout() once the gateway confirms a payment.
+if ($CI->db->table_exists($p . 'shra_join_checkouts') && !$CI->db->field_exists('lead_id', $p . 'shra_join_checkouts')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_join_checkouts` ADD `lead_id` INT(11) DEFAULT NULL COMMENT 'checkout started from a lead, rider created on payment' AFTER `rider_id`, ADD KEY `lead_id` (`lead_id`)");
+}
+if ($CI->db->table_exists($p . 'shra_lead_ext') && !$CI->db->field_exists('join_payload', $p . 'shra_lead_ext')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_lead_ext` ADD `join_payload` TEXT NULL COMMENT 'full join-form data, becomes the rider once paid'");
+}
 
 $pay_defaults = [
     // Master-account gateways: the tenant collects through the gateways configured

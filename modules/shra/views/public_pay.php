@@ -39,7 +39,7 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
         <div class="card-head">
             <div class="steps"><span class="done">Choose</span><span class="done">Plan</span><span class="done">Details</span><span class="on">Pay</span></div>
             <h2>Secure your seat, <?php echo html_escape(explode(' ', trim($rider->full_name))[0]); ?></h2>
-            <p>You are registered as <b><?php echo html_escape($rider->rider_no); ?></b>. Pay now to lock your plan — or pay at the desk when you arrive.</p>
+            <p><?php echo $rider->rider_no !== '' ? 'You are registered as <b>' . html_escape($rider->rider_no) . '</b>. Pay now to lock your plan' : 'Pay now to confirm your registration and lock your plan'; ?> — or pay at the desk when you arrive.</p>
         </div>
         <div class="card-body">
             <?php if (count($errors)) { ?>
@@ -61,7 +61,7 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
                 </div>
             </div>
 
-            <?php echo form_open(site_url('join/pay/' . $rider->rider_no . '/' . shra_sign($rider->rider_no)), ['id' => 'shra-pay']); ?>
+            <?php echo form_open($action_url ?? site_url('join/pay/' . $rider->rider_no . '/' . shra_sign($rider->rider_no)), ['id' => 'shra-pay']); ?>
 
             <div class="sec">How much would you like to pay?</div>
             <label class="opt">

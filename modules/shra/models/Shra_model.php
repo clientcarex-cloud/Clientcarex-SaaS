@@ -801,6 +801,98 @@ class Shra_model extends App_Model
     }
 
     /**
+     * Same as create_join_invoice(), but for a checkout that starts from a LEAD:
+     * no rider exists yet — fulfil_join_checkout() creates one the moment the
+     * gateway confirms money. Until then the person is a lead and nothing more.
+     *
+     * @param  object $lead  A decorated lead from Shra_leads_model::get()
+     * @return array|string  ['checkout_id','invoice_id','hash','amount','total'] or an error message
+     */
+    public function create_join_invoice_for_lead($lead, $package_id, $amount, $gateway = '')
+    {
+        $package = $this->get_package($package_id);
+        if (!$lead || !$package || !$package->active) {
+            return 'That plan is no longer available. Please pick another one.';
+        }
+
+        $quote  = $this->quote($package);
+        $total  = (float) $quote['total'];
+        $min    = shra_pay_min_amount($total);
+        $amount = round((float) $amount, 2);
+
+        if ($amount < $min - 0.009) {
+            return 'The smallest amount you can pay now is ' . shra_money($min) . '.';
+        }
+        $amount = min($amount, $total);
+
+        // The invoice needs a core customer; the rider row itself can wait.
+        $link = $this->ensure_client([
+            'full_name' => $lead->name,
+            'mobile'    => $lead->phonenumber,
+            'email'     => (string) ($lead->email ?? ''),
+            'address'   => (string) ($lead->address ?? ''),
+        ]);
+        if (empty($link['client_id'])) {
+            return 'We could not open your account. Please pay at the reception desk.';
+        }
+
+        $this->load->model('invoices_model');
+
+        // Reuse an unpaid checkout for the same plan instead of stacking invoices
+        $open = $this->db->where('lead_id', (int) $lead->id)->where('package_id', $package->id)
+            ->where('status', 'pending')->order_by('id', 'DESC')->limit(1)
+            ->get(db_prefix() . 'shra_join_checkouts')->row();
+
+        if ($open) {
+            $invoice = $this->invoices_model->get((int) $open->invoice_id);
+            if ($invoice && (int) $invoice->status === 1) {
+                $this->db->where('id', $open->id)->update(db_prefix() . 'shra_join_checkouts', [
+                    'amount_intended' => $amount,
+                    'kind'            => $amount >= $total - 0.009 ? 'full' : 'partial',
+                    'gateway'         => $gateway !== '' ? substr($gateway, 0, 40) : $open->gateway,
+                ]);
+
+                return ['checkout_id' => (int) $open->id, 'invoice_id' => (int) $invoice->id,
+                    'hash' => $invoice->hash, 'amount' => $amount, 'total' => $total];
+            }
+        }
+
+        // invoice_payload() only reads rider_no / client_id / address from the rider
+        $riderish = (object) [
+            'rider_no'  => 'LEAD-' . $lead->id,
+            'client_id' => (int) $link['client_id'],
+            'address'   => (string) ($lead->address ?? ''),
+        ];
+        $client     = $this->db->where('userid', $riderish->client_id)->get(db_prefix() . 'clients')->row();
+        $invoice_id = $this->invoices_model->add(
+            $this->invoice_payload($riderish, $package, $quote, $client, 1, ['source' => 'online join'])
+        );
+
+        if (!$invoice_id) {
+            return 'We could not start the payment. Please pay at the reception desk.';
+        }
+
+        $this->db->insert(db_prefix() . 'shra_join_checkouts', [
+            'rider_id'        => 0,
+            'lead_id'         => (int) $lead->id,
+            'package_id'      => $package->id,
+            'invoice_id'      => $invoice_id,
+            'total'           => $total,
+            'amount_intended' => $amount,
+            'kind'            => $amount >= $total - 0.009 ? 'full' : 'partial',
+            'gateway'         => substr($gateway, 0, 40),
+            'status'          => 'pending',
+            'created_at'      => date('Y-m-d H:i:s'),
+        ]);
+        $checkout_id = (int) $this->db->insert_id();
+
+        $invoice = $this->invoices_model->get($invoice_id);
+
+        return ['checkout_id' => $checkout_id, 'invoice_id' => (int) $invoice_id,
+            'hash' => $invoice->hash, 'amount' => $amount, 'total' => $total];
+    }
+
+    /**
      * The gateway confirmed money against an invoice — create the sessions wallet.
      * Called from the `after_payment_added` hook, so it runs for the browser
      * callback AND for the webhook and must be safe to run more than once.
@@ -819,6 +911,28 @@ class Shra_model extends App_Model
             $this->sync_paid((int) $checkout->enrollment_id);
 
             return (int) $checkout->enrollment_id;
+        }
+
+        // A lead-based checkout has no rider yet — the money is confirmed, so the
+        // person becomes a rider right now, built from the stored join-form data.
+        if (!$checkout->rider_id && !empty($checkout->lead_id)) {
+            $this->load->model('shra/shra_leads_model');
+            $ext     = $this->db->where('lead_id', (int) $checkout->lead_id)->get(db_prefix() . 'shra_lead_ext')->row();
+            $payload = ($ext && !empty($ext->join_payload)) ? json_decode($ext->join_payload, true) : null;
+            $pk      = $this->get_package($checkout->package_id);
+            $rid     = $this->shra_leads_model->materialize_rider((int) $checkout->lead_id, $payload, [
+                'rider_type' => is_array($payload) && ($payload['rider_type'] ?? '') === 'guest' ? 'guest' : (($pk && (int) $pk->is_guest) ? 'guest' : 'learner'),
+                'package_id' => (int) $checkout->package_id,
+                'source'     => 'self',
+                'promote'    => true,
+            ]);
+            if (!is_int($rid)) {
+                log_activity('SHRA join checkout #' . $checkout->id . ' paid but the rider could not be created: ' . $rid);
+
+                return null;
+            }
+            $this->db->where('id', $checkout->id)->update(db_prefix() . 'shra_join_checkouts', ['rider_id' => $rid]);
+            $checkout->rider_id = $rid;
         }
 
         $rider   = $this->get_rider($checkout->rider_id);

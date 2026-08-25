@@ -10,7 +10,7 @@ Requires at least: 2.3.*
 */
 
 define('SHRA_MODULE_NAME', 'shra');
-define('SHRA_MODULE_VERSION', '1.4.4');
+define('SHRA_MODULE_VERSION', '1.4.5');
 
 register_language_files(SHRA_MODULE_NAME, [SHRA_MODULE_NAME]);
 
@@ -420,6 +420,17 @@ function shra_join_invoice_redirect($invoice)
 
     $rider = $CI->db->select('rider_no')->where('id', (int) $checkout->rider_id)->get(db_prefix() . 'shra_riders')->row();
     if (!$rider) {
+        // Lead-based checkout: no rider exists until the payment is confirmed.
+        // Paid → fulfil has already created the rider by the time this filter
+        // runs, so landing here means the payment did not go through — put the
+        // visitor back on their lead checkout to retry (or walk away, staying a lead).
+        if (!empty($checkout->lead_id)) {
+            $paid = (float) $CI->db->select_sum('amount')->where('invoiceid', (int) $invoice->id)
+                ->get(db_prefix() . 'invoicepaymentrecords')->row()->amount;
+            $step = $paid > 0 ? 'done' : 'pay';
+            redirect(site_url('join/' . $step . '/L' . $checkout->lead_id . '/' . shra_sign('lead-pay|' . $checkout->lead_id)));
+        }
+
         return $invoice;
     }
 

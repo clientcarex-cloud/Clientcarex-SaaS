@@ -109,39 +109,32 @@ class Shra_public extends App_Controller
                 $pkg = !empty($post['package_id']) ? $this->shra_model->get_package((int) $post['package_id']) : null;
                 $post['preferred_package_id'] = ($pkg && $pkg->active && (int) $pkg->is_guest === ($type === 'guest' ? 1 : 0)) ? $pkg->id : null;
 
-                $id = $this->shra_model->add_rider($post, 'self');
-                if ($id) {
-                    $rider = $this->shra_model->get_rider($id);
-                    $sig   = shra_sign($rider->rider_no);
-                    // A plan was chosen and the academy takes money online — collect it now
-                    $step  = ($rider->preferred_package_id && count(shra_pay_gateways())) ? 'pay' : 'done';
-
-                    // Until money arrives this registration is also a lead: capture()
-                    // round-robin assigns it and notifies the agent, who follows up if
-                    // the payment never happens. Once paid, billing marks the lead won;
-                    // if it stays unpaid the cron reclaims the rider row and only the
-                    // lead remains. A lead capture that fails must never block the join.
-                    $this->load->model('shra/shra_leads_model');
-                    $src = $this->db->where('name', 'Website QR')->get(db_prefix() . 'leads_sources')->row();
-                    $res = $this->shra_leads_model->capture([
-                        'name'                 => $rider->full_name,
-                        'phone'                => $rider->mobile,
-                        'email'                => (string) $rider->email,
-                        'rider_for'            => $rider->is_minor ? 'child' : 'self',
-                        'rider_age'            => shra_age($rider->dob),
-                        'interest_package_id'  => (int) $rider->preferred_package_id,
-                        'preferred_start_date' => $rider->preferred_start_date,
-                        'preferred_batch'      => $rider->preferred_batch,
-                        'address'              => (string) $rider->address,
-                        'source'               => $src ? (int) $src->id : 0,
-                        'description'          => 'Registered on the join page (' . ($type === 'guest' ? 'guest ride' : 'membership')
-                            . ($pkg ? ' · ' . $pkg->name : ' · no plan chosen') . '). '
-                            . ($step === 'pay' ? 'Online payment pending — becomes a rider once paid.' : 'No online payment taken — collect at the desk.'),
-                    ], 'join_form');
-                    if (!is_string($res)) {
-                        $this->shra_leads_model->link_rider((int) $res['lead_id'], $rider);
-                    }
-                    redirect(site_url('join/' . $step . '/' . $rider->rider_no . '/' . $sig));
+                // Nobody becomes a rider for filling a form. The registration is
+                // captured as an assigned lead (the agent is notified), the full
+                // form data is kept on the lead, and fulfil_join_checkout() creates
+                // the rider the moment the gateway confirms money. Unpaid = lead only.
+                $this->load->model('shra/shra_leads_model');
+                $payable = $post['preferred_package_id'] && count(shra_pay_gateways());
+                $src     = $this->db->where('name', 'Website QR')->get(db_prefix() . 'leads_sources')->row();
+                $res     = $this->shra_leads_model->capture([
+                    'name'                 => $post['full_name'],
+                    'phone'                => $post['mobile'],
+                    'email'                => (string) ($post['email'] ?? ''),
+                    'rider_for'            => shra_is_minor($post['dob'] ?? null) ? 'child' : 'self',
+                    'rider_age'            => shra_age($post['dob'] ?? null),
+                    'interest_package_id'  => (int) $post['preferred_package_id'],
+                    'preferred_start_date' => $post['preferred_start_date'],
+                    'preferred_batch'      => $post['preferred_batch'],
+                    'address'              => (string) ($post['address'] ?? ''),
+                    'source'               => $src ? (int) $src->id : 0,
+                    'description'          => 'Registered on the join page (' . ($type === 'guest' ? 'guest ride' : 'membership')
+                        . ($pkg ? ' · ' . $pkg->name : ' · no plan chosen') . '). '
+                        . ($payable ? 'Online payment pending — becomes a rider once paid.' : 'No online payment taken — follow up and collect at the desk.'),
+                ], 'join_form');
+                if (!is_string($res)) {
+                    $lead_id = (int) $res['lead_id'];
+                    $this->shra_leads_model->store_join_payload($lead_id, $post);
+                    redirect(site_url('join/' . ($payable ? 'pay' : 'done') . '/L' . $lead_id . '/' . shra_sign('lead-pay|' . $lead_id)));
                 }
                 $errors[] = 'We could not save your registration. Please try again.';
             }
@@ -305,7 +298,8 @@ class Shra_public extends App_Controller
     }
 
     /**
-     * Turn a freshly captured lead into a rider and send them to the /join checkout.
+     * Send a freshly captured lead to the /join checkout. The lead stays a lead —
+     * fulfil_join_checkout() turns it into a rider only when the payment lands.
      * Redirects on success; returns a message the inquiry form can show on failure.
      *
      * @return string '' when the visitor has been redirected to the checkout
@@ -317,23 +311,10 @@ class Shra_public extends App_Controller
             return 'That plan is not available any more — we will call you about the others.';
         }
 
-        $rider_id = $this->shra_leads_model->convert_to_rider($lead_id, [
-            'rider_type' => $package->is_guest ? 'guest' : 'learner',
-            'package_id' => (int) $package->id,
-            'source'     => 'self',
-            // A returning guest who buys a course becomes a member
-            'promote'    => true,
-        ]);
-        if (is_string($rider_id)) {
-            return $rider_id;
-        }
+        // Remember the plan they picked; the checkout reads it from the lead
+        $this->db->where('lead_id', (int) $lead_id)->update(db_prefix() . 'shra_lead_ext', ['interest_package_id' => (int) $package->id]);
 
-        $rider = $this->shra_model->get_rider($rider_id);
-        if (!$rider) {
-            return 'We could not open your booking. Please call us instead.';
-        }
-
-        redirect(site_url('join/pay/' . $rider->rider_no . '/' . shra_sign($rider->rider_no)));
+        redirect(site_url('join/pay/L' . (int) $lead_id . '/' . shra_sign('lead-pay|' . (int) $lead_id)));
     }
 
     /** Landing-page settings (phone, reels, pixels) with sensible fallbacks. */
@@ -627,6 +608,11 @@ class Shra_public extends App_Controller
 
     private function pay($rider_no, $sig)
     {
+        // L{id} tokens are lead-based checkouts — no rider exists until they pay
+        if (preg_match('/^L(\d+)$/', (string) $rider_no, $m)) {
+            return $this->pay_lead((int) $m[1], $sig);
+        }
+
         $rider = $this->shra_model->get_rider_by_no($rider_no);
         if (!$rider || !shra_verify_sign($rider_no, $sig)) {
             return $this->error('Not found', 'We could not find this registration.');
@@ -691,6 +677,91 @@ class Shra_public extends App_Controller
     }
 
     /**
+     * The /join checkout for a LEAD — the person registered (or clicked "Book &
+     * pay now") but is not a rider yet. The pay page looks identical; the rider
+     * row is only created by fulfil_join_checkout() once the gateway confirms
+     * the money. Whoever never pays simply stays a lead.
+     */
+    private function pay_lead($lead_id, $sig)
+    {
+        if (!shra_verify_sign('lead-pay|' . $lead_id, $sig)) {
+            return $this->error('Not found', 'We could not find this registration.');
+        }
+        $this->load->model('shra/shra_leads_model');
+        $lead = $this->shra_leads_model->get($lead_id);
+        if (!$lead) {
+            return $this->error('Not found', 'We could not find this registration.');
+        }
+
+        $pay      = shra_pay_settings();
+        $gateways = shra_pay_gateways();
+        $package  = $lead->interest_package_id ? $this->shra_model->get_package((int) $lead->interest_package_id) : null;
+        $done_url = site_url('join/done/L' . $lead_id . '/' . $sig);
+
+        // Already paid — the rider exists now, their own pages take over
+        if ($lead->rider_id) {
+            $r = $this->shra_model->get_rider($lead->rider_id);
+            if ($r) {
+                $checkout = $this->shra_model->join_checkout_for_rider($r->id);
+                if ($checkout && $checkout->status === 'paid') {
+                    redirect(site_url('join/done/' . $r->rider_no . '/' . shra_sign($r->rider_no)));
+                }
+            }
+        }
+        if (!$package || !$package->active || !count($gateways)) {
+            redirect($done_url);
+        }
+
+        $quote = $this->shra_model->quote($package);
+        $total = (float) $quote['total'];
+        $min   = shra_pay_min_amount($total);
+
+        $data = [
+            'title'      => 'Payment — ' . get_option('shra_academy_name'),
+            // The pay view only reads these rider fields; a lead has no rider_no yet
+            'rider'      => (object) ['full_name' => $lead->name, 'rider_no' => '', 'schedule' => null, 'preferred_batch' => $lead->preferred_batch ?? null],
+            'action_url' => site_url('join/pay/L' . $lead_id . '/' . $sig),
+            'package'    => $package,
+            'quote'      => $quote,
+            'total'      => $total,
+            'min'        => $min,
+            'pay'        => $pay,
+            'gateways'   => $gateways,
+            'done_url'   => $done_url,
+            'errors'     => [],
+            'old'        => [],
+        ];
+
+        if ($this->input->post()) {
+            $post    = $this->input->post(null, true);
+            $gateway = (string) ($post['gateway'] ?? '');
+            $partial = $pay['partial'] && ($post['kind'] ?? 'full') === 'partial';
+            $amount  = $partial ? (float) str_replace(',', '', (string) ($post['amount'] ?? '0')) : $total;
+            $errors  = [];
+
+            if (!isset($gateways[$gateway])) {
+                $errors[] = 'Please choose how you would like to pay.';
+            }
+            if ($amount < $min - 0.009) {
+                $errors[] = 'The smallest amount you can pay now is ' . shra_money($min) . '.';
+            }
+
+            if (!count($errors)) {
+                $res = $this->shra_model->create_join_invoice_for_lead($lead, $package->id, $amount, $gateway);
+                if (!is_string($res)) {
+                    return $this->hand_off($res, $gateway);
+                }
+                $errors[] = $res;
+            }
+
+            $data['errors'] = $errors;
+            $data['old']    = $post;
+        }
+
+        $this->load->view('public_pay', $data);
+    }
+
+    /**
      * Hand the rider over to the gateway. process_payment() ends the request
      * itself (the gateway redirects or prints its checkout), so anything after
      * the call means the gateway never started.
@@ -721,6 +792,31 @@ class Shra_public extends App_Controller
 
     private function done($rider_no, $sig)
     {
+        // L{id} tokens — the person is (still) a lead: paid leads bounce to their
+        // rider success page, unpaid ones get a thank-you and the team follows up.
+        if (preg_match('/^L(\d+)$/', (string) $rider_no, $m)) {
+            $lead_id = (int) $m[1];
+            if (!shra_verify_sign('lead-pay|' . $lead_id, $sig)) {
+                return $this->error('Not found', 'We could not find this registration.');
+            }
+            $this->load->model('shra/shra_leads_model');
+            $lead = $this->shra_leads_model->get($lead_id);
+            if (!$lead) {
+                return $this->error('Not found', 'We could not find this registration.');
+            }
+            if ($lead->rider_id) {
+                $r = $this->shra_model->get_rider($lead->rider_id);
+                if ($r) {
+                    redirect(site_url('join/done/' . $r->rider_no . '/' . shra_sign($r->rider_no)));
+                }
+            }
+
+            return $this->load->view('public_inquire_success', [
+                'title'   => 'Thank you — ' . get_option('shra_academy_name'),
+                'landing' => $this->landing(),
+            ]);
+        }
+
         $rider = $this->shra_model->get_rider_by_no($rider_no);
         if (!$rider || !shra_verify_sign($rider_no, $sig)) {
             return $this->error('Not found', 'We could not find this registration.');

@@ -1143,6 +1143,44 @@ class Shra_leads_model extends App_Model
         return true;
     }
 
+    /** Keep the full join-form data on the lead so the rider can be created from it once the payment lands. */
+    public function store_join_payload($lead_id, array $payload)
+    {
+        unset($payload['csrf_token_name'], $payload['website'], $payload['ts'], $payload['sig']);
+        $this->db->where('lead_id', (int) $lead_id)->update(db_prefix() . 'shra_lead_ext', ['join_payload' => json_encode($payload)]);
+    }
+
+    /**
+     * The payment for a lead-based /join checkout has landed — now (and only now)
+     * the person becomes a rider. The full join-form payload wins when there is
+     * one and the person is new; otherwise convert_to_rider() reuses or builds a
+     * rider from the lead itself (returning customers keep their record).
+     *
+     * @return int|string rider id, or an error message
+     */
+    public function materialize_rider($lead_id, $payload, array $opts = [])
+    {
+        $l = $this->get($lead_id);
+        if (!$l) {
+            return 'Lead not found.';
+        }
+        $this->load->model('shra/shra_model');
+
+        if (!$l->rider_id && is_array($payload) && !empty($payload['full_name'])
+            && !$this->shra_model->find_rider_by_mobile($l->phonenumber)) {
+            $rider_id = $this->shra_model->add_rider($payload, 'self');
+            if ($rider_id) {
+                $r = $this->shra_model->get_rider($rider_id);
+                $this->update_lead($lead_id, ['client_id' => (int) $r->client_id], ['rider_id' => (int) $rider_id]);
+                $this->event($lead_id, 'note', ['note' => 'Payment received — rider ' . $r->rider_no . ' created from the join form', 'log' => 'Paid — rider ' . $r->rider_no . ' created']);
+
+                return (int) $rider_id;
+            }
+        }
+
+        return $this->convert_to_rider($lead_id, $opts);
+    }
+
     public function convert_to_rider($lead_id, array $opts = [])
     {
         $l = $this->get($lead_id);
