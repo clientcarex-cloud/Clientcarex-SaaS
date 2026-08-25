@@ -1,7 +1,6 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 include __DIR__ . '/_public_head.php';
 $old_kind   = ($old['kind'] ?? ($pay['partial'] ? 'full' : 'full'));
-$old_amount = isset($old['amount']) && $old['amount'] !== '' ? (float) str_replace(',', '', $old['amount']) : $min;
 $old_gw     = (string) ($old['gateway'] ?? key($gateways));
 ?>
 <style>
@@ -29,8 +28,6 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
 .opt:has(input:checked) .tick{background:var(--ink);border-color:var(--ink);color:#fff}
 .amtbox{margin-top:12px;display:none}
 .opt:has(input:checked) .amtbox{display:block}
-.amtbox .in{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:12px;background:#fff;padding:2px 12px}
-.amtbox input{border:0;outline:none;font:inherit;font-size:19px;font-weight:700;padding:11px 0;width:100%;background:transparent}
 .gw{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:14px;padding:13px 16px;cursor:pointer;background:#fff;margin-bottom:10px}
 .gw:has(input:checked){border-color:var(--ink);background:var(--cream-2)}
 .gw input{display:none}
@@ -83,14 +80,12 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
             <label class="opt">
                 <input type="radio" name="kind" value="partial" <?php echo $old_kind === 'partial' ? 'checked' : ''; ?>>
                 <div class="hd">
-                    <div><b>Pay part now</b><div class="sub">At least <?php echo shra_money($min); ?> today. <?php echo html_escape($pay['note']); ?></div></div>
+                    <div><b>Pay part now — <?php echo shra_money($min); ?></b><div class="sub"><?php echo html_escape($pay['note']); ?></div></div>
                     <div class="tick"><i class="fa fa-check"></i></div>
                 </div>
                 <div class="amtbox">
-                    <div class="in">
-                        <input type="number" name="amount" id="pay-amount" step="0.01" min="<?php echo $min; ?>" max="<?php echo $total; ?>" value="<?php echo $old_amount; ?>" inputmode="decimal" placeholder="Enter amount">
-                    </div>
-                    <div class="due"><span>Balance to pay at the desk</span><b id="pay-due">—</b></div>
+                    <input type="hidden" name="amount" value="<?php echo $min; ?>">
+                    <div class="due"><span>Balance to pay at the desk</span><b><?php echo shra_money(max(0, $total - $min)); ?></b></div>
                 </div>
             </label>
             <?php } ?>
@@ -129,9 +124,7 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
         min   = <?php echo json_encode(round($min, 2)); ?>,
         cur   = <?php echo json_encode(get_base_currency()->symbol); ?>,
         form  = document.getElementById('shra-pay'),
-        amt   = document.getElementById('pay-amount'),
-        label = document.getElementById('pay-btn-label'),
-        due   = document.getElementById('pay-due');
+        label = document.getElementById('pay-btn-label');
 
     function money(n) {
         return cur + n.toFixed(2).replace(/\.00$/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -143,26 +136,13 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
     }
 
     function sync() {
-        var now = partial() && amt ? parseFloat(amt.value || '0') : total;
-        if (isNaN(now)) { now = 0; }
-        label.textContent = 'Pay ' + money(Math.min(now, total));
-        if (due) { due.textContent = money(Math.max(0, total - Math.min(now, total))); }
+        label.textContent = 'Pay ' + money(partial() ? Math.min(min, total) : total);
     }
 
     form.addEventListener('change', sync);
-    if (amt) { amt.addEventListener('input', sync); }
     sync();
 
     form.addEventListener('submit', function (e) {
-        if (partial() && amt) {
-            var v = parseFloat(amt.value || '0');
-            if (isNaN(v) || v < min - 0.009) {
-                e.preventDefault();
-                alert('The smallest amount you can pay now is ' + money(min) + '.');
-                amt.focus();
-                return;
-            }
-        }
         // A radio must be picked; the single-gateway form carries a hidden field instead
         var gw = form.querySelector('input[name=gateway]:checked') || form.querySelector('input[name=gateway][type=hidden]');
         if (!gw || !gw.value) {
