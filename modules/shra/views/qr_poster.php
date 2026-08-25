@@ -32,7 +32,7 @@
 .shra-poster .step{position:relative;z-index:1;text-align:center}
 .shra-poster .step .ic{width:68px;height:68px;margin:0 auto 8px;position:relative}
 .shra-poster .step .ic>svg{position:absolute;inset:0;width:100%;height:100%}
-.shra-poster .step .ic>i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--disc-fg)}
+.shra-poster .step .ic>svg.gl{inset:0;margin:auto;width:26px;height:26px;fill:var(--disc-fg)}
 .shra-poster .step .n{position:absolute;top:-4px;left:calc(50% + 20px);width:22px;height:22px;display:flex;align-items:center;justify-content:center}
 .shra-poster .step .n>svg{position:absolute;inset:0;width:100%;height:100%}
 .shra-poster .step .n>em{position:relative;font-style:normal;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:14px;color:var(--badge-fg)}
@@ -94,19 +94,21 @@
         <div class="url"><?php echo html_escape($url); ?></div>
         <div class="steps">
             <?php
+            // Icons are inline Font Awesome 6 path data (fa-qrcode, fa-ticket, fa-horse):
+            // SVG fills survive printing where webfont glyph colors get "readability"-adjusted.
             $steps = [
-                ['fa-qrcode', 'Scan &amp; register', 'Two minutes on your phone'],
-                ['fa-ticket', 'Pick a riding plan', 'At the reception desk'],
-                ['fa-horse', 'Ride!', 'First come, first served'],
+                ['0 0 448 512', 'M0 80C0 53.5 21.5 32 48 32l96 0c26.5 0 48 21.5 48 48l0 96c0 26.5-21.5 48-48 48l-96 0c-26.5 0-48-21.5-48-48L0 80zM64 96l0 64 64 0 0-64L64 96zM0 336c0-26.5 21.5-48 48-48l96 0c26.5 0 48 21.5 48 48l0 96c0 26.5-21.5 48-48 48l-96 0c-26.5 0-48-21.5-48-48l0-96zm64 16l0 64 64 0 0-64-64 0zM304 32l96 0c26.5 0 48 21.5 48 48l0 96c0 26.5-21.5 48-48 48l-96 0c-26.5 0-48-21.5-48-48l0-96c0-26.5 21.5-48 48-48zm80 64l-64 0 0 64 64 0 0-64zM256 304c0-8.8 7.2-16 16-16l64 0c8.8 0 16 7.2 16 16s7.2 16 16 16l32 0c8.8 0 16-7.2 16-16s7.2-16 16-16s16 7.2 16 16l0 96c0 8.8-7.2 16-16 16l-64 0c-8.8 0-16-7.2-16-16s-7.2-16-16-16s-16 7.2-16 16l0 64c0 8.8-7.2 16-16 16l-32 0c-8.8 0-16-7.2-16-16l0-160zM368 480a16 16 0 1 1 0-32 16 16 0 1 1 0 32zm64 0a16 16 0 1 1 0-32 16 16 0 1 1 0 32z', 'Scan &amp; register', 'Two minutes on your phone'],
+                ['0 0 576 512', 'M64 64C28.7 64 0 92.7 0 128l0 64c0 8.8 7.4 15.7 15.7 18.6C34.5 217.1 48 235 48 256s-13.5 38.9-32.3 45.4C7.4 304.3 0 311.2 0 320l0 64c0 35.3 28.7 64 64 64l448 0c35.3 0 64-28.7 64-64l0-64c0-8.8-7.4-15.7-15.7-18.6C541.5 294.9 528 277 528 256s13.5-38.9 32.3-45.4c8.3-2.9 15.7-9.8 15.7-18.6l0-64c0-35.3-28.7-64-64-64L64 64zm64 112l0 160c0 8.8 7.2 16 16 16l288 0c8.8 0 16-7.2 16-16l0-160c0-8.8-7.2-16-16-16l-288 0c-8.8 0-16 7.2-16 16zM96 160c0-17.7 14.3-32 32-32l320 0c17.7 0 32 14.3 32 32l0 192c0 17.7-14.3 32-32 32l-320 0c-17.7 0-32-14.3-32-32l0-192z', 'Pick a riding plan', 'At the reception desk'],
+                ['0 0 576 512', 'M448 238.1l0-78.1 16 0 9.8 19.6c12.5 25.1 42.2 36.4 68.3 26c20.5-8.2 33.9-28 33.9-50.1L576 80c0-19.1-8.4-36.3-21.7-48l5.7 0c8.8 0 16-7.2 16-16s-7.2-16-16-16L480 0 448 0C377.3 0 320 57.3 320 128l-96 0-20.8 0-54.4 0c-30.7 0-57.6 16.3-72.5 40.8C33.2 174.5 0 211.4 0 256l0 56c0 13.3 10.7 24 24 24s24-10.7 24-24l0-56c0-13.4 6.6-25.2 16.7-32.5c1.6 13 6.3 25.4 13.6 36.4l28.2 42.4c8.3 12.4 6.4 28.7-1.2 41.6c-16.5 28-20.6 62.2-10 93.9l17.5 52.4c4.4 13.1 16.6 21.9 30.4 21.9l33.7 0c21.8 0 37.3-21.4 30.4-42.1l-20.8-62.5c-2.1-6.4-.5-13.4 4.3-18.2l12.7-12.7c13.2-13.2 20.6-31.1 20.6-49.7c0-2.3-.1-4.6-.3-6.9l84 24c4.1 1.2 8.2 2.1 12.3 2.8L320 480c0 17.7 14.3 32 32 32l32 0c17.7 0 32-14.3 32-32l0-164.3c19.2-19.2 31.5-45.7 32-75.7c0 0 0 0 0 0l0-1.9zM496 64a16 16 0 1 1 0 32 16 16 0 1 1 0-32z', 'Ride!', 'First come, first served'],
             ];
             foreach ($steps as $i => $s) { ?>
             <div class="step">
                 <div class="ic">
                     <svg viewBox="0 0 68 68" aria-hidden="true"><circle cx="34" cy="34" r="33" fill="none" stroke="var(--accent)" stroke-width="1.5"/><circle cx="34" cy="34" r="28" fill="var(--disc)"/></svg>
-                    <i class="fa-solid <?php echo $s[0]; ?>"></i>
+                    <svg class="gl" viewBox="<?php echo $s[0]; ?>" aria-hidden="true"><path d="<?php echo $s[1]; ?>"/></svg>
                 </div>
                 <span class="n"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="var(--accent)"/></svg><em><?php echo $i + 1; ?></em></span>
-                <b><?php echo $s[1]; ?></b><small><?php echo $s[2]; ?></small>
+                <b><?php echo $s[2]; ?></b><small><?php echo $s[3]; ?></small>
             </div>
             <?php } ?>
         </div>
