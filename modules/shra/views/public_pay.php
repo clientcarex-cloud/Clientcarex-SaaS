@@ -29,8 +29,7 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
 .opt:has(input:checked) .tick{background:var(--ink);border-color:var(--ink);color:#fff}
 .amtbox{margin-top:12px;display:none}
 .opt:has(input:checked) .amtbox{display:block}
-.amtbox .in{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:12px;background:#fff;padding:2px 12px}
-.amtbox .in span{font-weight:700;color:var(--muted)}
+.amtbox .in{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:12px;background:#fff;padding:2px 12px}
 .amtbox input{border:0;outline:none;font:inherit;font-size:19px;font-weight:700;padding:11px 0;width:100%;background:transparent}
 .gw{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:14px;padding:13px 16px;cursor:pointer;background:#fff;margin-bottom:10px}
 .gw:has(input:checked){border-color:var(--ink);background:var(--cream-2)}
@@ -88,8 +87,8 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
                     <div class="tick"><i class="fa fa-check"></i></div>
                 </div>
                 <div class="amtbox">
-                    <div class="in"><span><?php echo html_escape(get_base_currency()->symbol); ?></span>
-                        <input type="number" name="amount" id="pay-amount" step="0.01" min="<?php echo $min; ?>" max="<?php echo $total; ?>" value="<?php echo $old_amount; ?>" inputmode="decimal">
+                    <div class="in">
+                        <input type="number" name="amount" id="pay-amount" step="0.01" min="<?php echo $min; ?>" max="<?php echo $total; ?>" value="<?php echo $old_amount; ?>" inputmode="decimal" placeholder="Enter amount">
                     </div>
                     <div class="due"><span>Balance to pay at the desk</span><b id="pay-due">—</b></div>
                 </div>
