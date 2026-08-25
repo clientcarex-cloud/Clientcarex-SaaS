@@ -1119,6 +1119,23 @@ class Shra_leads_model extends App_Model
      *                    learner carrying the lead's own plan, and an already-known
      *                    rider returned untouched.
      */
+    /**
+     * Tie a lead to a rider created outside the pipeline (the /join page captures
+     * both at once). Never steals a lead that already points at another rider —
+     * a returning customer's won lead keeps its history.
+     */
+    public function link_rider($lead_id, $rider)
+    {
+        $l = $this->get($lead_id);
+        if (!$l || $l->rider_id) {
+            return false;
+        }
+        $this->update_lead($lead_id, ['client_id' => (int) $rider->client_id], ['rider_id' => (int) $rider->id]);
+        $this->event($lead_id, 'note', ['note' => 'Rider ' . $rider->rider_no . ' registered on the join page', 'log' => 'Registered on the join page as rider ' . $rider->rider_no]);
+
+        return true;
+    }
+
     public function convert_to_rider($lead_id, array $opts = [])
     {
         $l = $this->get($lead_id);
@@ -1884,6 +1901,45 @@ class Shra_leads_model extends App_Model
             }
             if (count($managers)) {
                 pusher_trigger_notification($managers);
+            }
+        }
+
+        // 4. Join-page registrations that never turned into money — reclaim the
+        //    rider, keep the lead. A self-registered rider with no enrollment
+        //    after the grace window paid neither online nor at the desk, so the
+        //    rider row goes and the linked lead stays with its agent, who is
+        //    nudged to follow up. Blank option = 48 h; 0 switches the reclaim off.
+        $hours = get_option('shra_join_reclaim_hours');
+        $hours = ($hours === '' || $hours === false || $hours === null) ? 48 : (int) $hours;
+        if ($hours > 0) {
+            $rcut      = date('Y-m-d H:i:s', time() - $hours * 3600);
+            $abandoned = $this->db->query("SELECT r.id, r.rider_no, r.full_name, x.lead_id, l.assigned
+                FROM {$p}shra_riders r
+                JOIN {$p}shra_lead_ext x ON x.rider_id = r.id
+                JOIN {$p}leads l ON l.id = x.lead_id
+                WHERE r.source = 'self' AND r.created_at < '{$rcut}'
+                  AND NOT EXISTS (SELECT 1 FROM {$p}shra_enrollments e WHERE e.rider_id = r.id)
+                LIMIT 50")->result();
+            if (count($abandoned)) {
+                $this->load->model('shra/shra_model');
+                $this->load->model('invoices_model');
+            }
+            foreach ($abandoned as $a) {
+                // Void the open checkout and its unpaid invoice first, so a late
+                // gateway webhook cannot pay for a rider that no longer exists.
+                $open = $this->db->where('rider_id', $a->id)->where('status', 'pending')->get($p . 'shra_join_checkouts')->result();
+                foreach ($open as $c) {
+                    $this->db->where('id', $c->id)->update($p . 'shra_join_checkouts', ['status' => 'abandoned']);
+                    $this->invoices_model->mark_as_cancelled((int) $c->invoice_id);
+                }
+                $this->db->where('lead_id', $a->lead_id)->update($p . 'shra_lead_ext', ['rider_id' => null]);
+                $this->shra_model->delete_rider($a->id);
+                $this->event($a->lead_id, 'note', ['staff_id' => null,
+                    'note' => 'Join-page registration (rider ' . $a->rider_no . ') was never paid — the rider entry was removed; the lead stays open for follow-up.',
+                    'log'  => 'Join not completed — back to lead']);
+                if ($a->assigned) {
+                    $this->notify($a->assigned, 'shra_not_lead_join_unpaid', [$a->full_name], $a->lead_id);
+                }
             }
         }
     }

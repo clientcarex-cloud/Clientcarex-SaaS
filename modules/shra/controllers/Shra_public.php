@@ -114,6 +114,32 @@ class Shra_public extends App_Controller
                     $sig   = shra_sign($rider->rider_no);
                     // A plan was chosen and the academy takes money online — collect it now
                     $step  = ($rider->preferred_package_id && count(shra_pay_gateways())) ? 'pay' : 'done';
+
+                    // Until money arrives this registration is also a lead: capture()
+                    // round-robin assigns it and notifies the agent, who follows up if
+                    // the payment never happens. Once paid, billing marks the lead won;
+                    // if it stays unpaid the cron reclaims the rider row and only the
+                    // lead remains. A lead capture that fails must never block the join.
+                    $this->load->model('shra/shra_leads_model');
+                    $src = $this->db->where('name', 'Website QR')->get(db_prefix() . 'leads_sources')->row();
+                    $res = $this->shra_leads_model->capture([
+                        'name'                 => $rider->full_name,
+                        'phone'                => $rider->mobile,
+                        'email'                => (string) $rider->email,
+                        'rider_for'            => $rider->is_minor ? 'child' : 'self',
+                        'rider_age'            => shra_age($rider->dob),
+                        'interest_package_id'  => (int) $rider->preferred_package_id,
+                        'preferred_start_date' => $rider->preferred_start_date,
+                        'preferred_batch'      => $rider->preferred_batch,
+                        'address'              => (string) $rider->address,
+                        'source'               => $src ? (int) $src->id : 0,
+                        'description'          => 'Registered on the join page (' . ($type === 'guest' ? 'guest ride' : 'membership')
+                            . ($pkg ? ' · ' . $pkg->name : ' · no plan chosen') . '). '
+                            . ($step === 'pay' ? 'Online payment pending — becomes a rider once paid.' : 'No online payment taken — collect at the desk.'),
+                    ], 'join_form');
+                    if (!is_string($res)) {
+                        $this->shra_leads_model->link_rider((int) $res['lead_id'], $rider);
+                    }
                     redirect(site_url('join/' . $step . '/' . $rider->rider_no . '/' . $sig));
                 }
                 $errors[] = 'We could not save your registration. Please try again.';
