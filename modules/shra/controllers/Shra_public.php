@@ -208,10 +208,15 @@ class Shra_public extends App_Controller
             if (!shra_verify_sign('inquire|' . $ts, (string) ($post['sig'] ?? '')) || time() - $ts < 3 || time() - $ts > 10800) {
                 $errors[] = 'The form expired — please try again.';
             }
-            $ip    = $this->input->ip_address();
-            $count = $this->db->where('ip', $ip)->where('event_type', 'created')->where('created_at >=', date('Y-m-d H:i:s', time() - 3600))->count_all_results(db_prefix() . 'shra_lead_events');
-            if ($count >= 5) {
-                $errors[] = 'Too many inquiries from this connection. Please call us instead.';
+            // Per-IP cap, configurable in lead settings — blank falls back to 5/hour, 0 switches it off
+            $limit = get_option('shra_lead_rate_limit');
+            $limit = ($limit === '' || $limit === false || $limit === null) ? 5 : (int) $limit;
+            if ($limit > 0) {
+                $ip    = $this->input->ip_address();
+                $count = $this->db->where('ip', $ip)->where('event_type', 'created')->where('created_at >=', date('Y-m-d H:i:s', time() - 3600))->count_all_results(db_prefix() . 'shra_lead_events');
+                if ($count >= $limit) {
+                    $errors[] = 'Too many inquiries from this connection. Please call us instead.';
+                }
             }
             if (trim((string) ($post['name'] ?? '')) === '') {
                 $errors[] = 'Please enter your name.';

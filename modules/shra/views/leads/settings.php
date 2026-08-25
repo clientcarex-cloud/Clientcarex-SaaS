@@ -49,6 +49,9 @@
                         <div class="col-sm-3"><div class="form-group"><label>Minimum rider age</label><input type="number" name="shra_lead_landing_min_age" class="form-control" value="<?php echo (int) get_option('shra_lead_landing_min_age'); ?>" min="1"></div></div>
                     </div>
                     <div class="row">
+                        <div class="col-sm-4"><div class="form-group"><label>Max inquiries per hour, per connection</label><input type="number" name="shra_lead_rate_limit" class="form-control" value="<?php echo html_escape(get_option('shra_lead_rate_limit')); ?>" min="0" placeholder="5"><span class="help">Anti-spam limit per IP address. Blank = 5 per hour. Set 0 to switch it off temporarily (e.g. while testing the form) — remember to turn it back on.</span></div></div>
+                    </div>
+                    <div class="row">
                         <div class="col-sm-6"><div class="form-group"><label>Google Maps link</label><input type="url" name="shra_lead_landing_maps_url" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_maps_url')); ?>" placeholder="https://maps.app.goo.gl/…"></div></div>
                         <div class="col-sm-6"><div class="form-group"><label>Instagram profile URL</label><input type="url" name="shra_lead_landing_instagram" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_instagram')); ?>"></div></div>
                     </div>
