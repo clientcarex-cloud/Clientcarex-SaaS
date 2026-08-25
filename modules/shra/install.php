@@ -607,8 +607,8 @@ $lead_defaults = [
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);
 }
-// One-time default bump: minimum rider age went 4 → 5 (add_option keeps the old stored value)
-if (get_option('shra_lead_landing_min_age') === '4') {
+// One-time default bump: minimum rider age went 3/4 → 5 (add_option keeps the old stored value)
+if (in_array(get_option('shra_lead_landing_min_age'), ['3', '4'], true)) {
     update_option('shra_lead_landing_min_age', '5');
 }
 
