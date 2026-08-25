@@ -138,6 +138,7 @@ class Shra_leads extends AdminController
                 'agent' => $agent && $this->input->get('agent') ? $agent : 0,
                 'from'  => $from,
                 'to'    => $to,
+                'order' => 'l.dateadded DESC',
             ]), 1500);
             $data['no_shows'] = [];
         } else {
@@ -148,6 +149,10 @@ class Shra_leads extends AdminController
                     $rows[] = $l;
                 }
             }
+            // Newest enquiry first — flattening the buckets above regrouped them.
+            usort($rows, function ($a, $b) {
+                return strcmp((string) $b->dateadded, (string) $a->dateadded);
+            });
             $data['rows']     = $rows;
             $data['no_shows'] = shra_leads_can('all') ? $this->leads->no_shows(20) : [];
         }

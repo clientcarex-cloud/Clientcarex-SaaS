@@ -171,7 +171,7 @@ class Shra_leads_model extends App_Model
             $bind = [(int) $staff_id];
         }
         $rows = $this->db->query($this->base_select() . " WHERE $who AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won'
-            ORDER BY x.next_action_at IS NULL DESC, x.next_action_at ASC LIMIT 800", $bind)->result();
+            ORDER BY l.dateadded DESC LIMIT 800", $bind)->result();
         $out  = ['overdue' => [], 'today' => [], 'upcoming' => [], 'later' => [], 'unset' => []];
         $now  = time();
         foreach ($rows as $r) {

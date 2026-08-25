@@ -41,7 +41,8 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     <td class="shra-r-name">
         <a href="<?php echo shra_lead_url($l->id); ?>"><?php echo html_escape($l->name); ?></a>
         <span class="shra-r-sub">
-            <?php echo $who; ?><?php if ($l->city) { ?> · <?php echo html_escape($l->city); ?><?php } ?><?php if ($l->package_name) { ?> · <?php echo html_escape($l->package_name); ?><?php } ?>
+            <span class="shra-r-ago" title="Added <?php echo html_escape(shra_datetime($l->dateadded)); ?>"><?php echo time_ago($l->dateadded); ?></span>
+            · <?php echo $who; ?><?php if ($l->city) { ?> · <?php echo html_escape($l->city); ?><?php } ?><?php if ($l->package_name) { ?> · <?php echo html_escape($l->package_name); ?><?php } ?>
         </span>
     </td>
     <td class="shra-r-phone">

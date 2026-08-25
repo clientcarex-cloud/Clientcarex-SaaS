@@ -132,9 +132,10 @@ include __DIR__ . '/_public_head.php';
 
             <!-- ───── Step 2: plan ───── -->
             <div class="pane" data-pane="2">
+                <?php $aud_default = $v('rider_type', 'learner') === 'guest' ? 'adults' : 'children'; ?>
                 <div class="seg">
-                    <label><input type="radio" name="audience" value="children" <?php echo $v('audience', 'children') === 'children' ? 'checked' : ''; ?>>Children · under <?php echo $minor_age; ?></label>
-                    <label><input type="radio" name="audience" value="adults" <?php echo $v('audience') === 'adults' ? 'checked' : ''; ?>>Adults</label>
+                    <label><input type="radio" name="audience" value="children" <?php echo $v('audience', $aud_default) === 'children' ? 'checked' : ''; ?>>Children · under <?php echo $minor_age; ?></label>
+                    <label><input type="radio" name="audience" value="adults" <?php echo $v('audience', $aud_default) === 'adults' ? 'checked' : ''; ?>>Adults</label>
                 </div>
                 <?php if ($offer['active']) { ?><div class="offer"><span class="st"><?php echo $offer['percent'] + 0; ?>% OFF</span> <?php echo html_escape($offer['label'] ?: 'Offer'); ?> — prices below already include it.</div><?php } ?>
                 <div class="plans" id="plans">
@@ -148,14 +149,16 @@ include __DIR__ . '/_public_head.php';
                         </label>
                     <?php } ?>
                 </div>
+                <div class="learner-only">
                 <div class="sec">When would you like to start?</div>
                 <div class="row">
                     <div class="f"><label>Start date</label><input type="date" name="preferred_start_date" value="<?php echo $v('preferred_start_date'); ?>" min="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d', strtotime('+6 months')); ?>"><div class="hint">Leave blank and we will fix it with you at the desk.</div></div>
                     <div class="f"><label>Class timing</label><div class="chips">
-                        <?php foreach (shra_batches() as $bk => $b) { ?><label><input type="radio" name="preferred_batch" value="<?php echo $bk; ?>" <?php echo $v('preferred_batch') === $bk ? 'checked' : ''; ?>><span><?php echo html_escape($b['label']); ?><small><?php echo html_escape($b['time']); ?></small></span></label><?php } ?>
+                        <?php foreach (shra_batches() as $bk => $b) { ?><label data-end="<?php echo html_escape($b['end']); ?>"><input type="radio" name="preferred_batch" value="<?php echo $bk; ?>" <?php echo $v('preferred_batch') === $bk ? 'checked' : ''; ?>><span><?php echo html_escape($b['label']); ?><small><?php echo html_escape($b['time']); ?></small></span></label><?php } ?>
                     </div></div>
                 </div>
                 <div class="fcfs"><i class="fa-solid fa-user-clock"></i> <span><?php echo html_escape(shra_fcfs_note()); ?></span></div>
+                </div>
                 <div class="hint" style="margin-top:10px">You'll pay at the reception desk — nothing is charged online. You can change the plan at the desk too.</div>
                 <div class="nav"><button type="button" class="btn ghost" data-prev="1"><i class="fa fa-arrow-left"></i></button><button type="button" class="btn dark" data-next="3" id="to-details">Continue <i class="fa fa-arrow-right"></i></button></div>
             </div>
@@ -309,8 +312,10 @@ include __DIR__ . '/_public_head.php';
     function go(n) {
         document.querySelectorAll('.pane').forEach(function (p) { p.classList.toggle('on', p.dataset.pane == n); });
         document.querySelectorAll('.steps span').forEach(function (s) { var i = +s.dataset.s; s.classList.toggle('on', i == n); s.classList.toggle('done', i < n); });
-        document.getElementById('pane-title').textContent = titles[n][0];
-        document.getElementById('pane-sub').textContent = titles[n][1];
+        var t = titles[n][0], sub = titles[n][1];
+        if (n == 2 && type() === 'guest') { t = 'Pick a plan'; sub = 'Choose the age group and a plan — we will fix the ride timing with you at the desk.'; }
+        document.getElementById('pane-title').textContent = t;
+        document.getElementById('pane-sub').textContent = sub;
         wiz.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -338,7 +343,33 @@ include __DIR__ . '/_public_head.php';
         wiz.classList.toggle('is-learner', learner);
         form.querySelector('[name=address]').required = learner;
         document.querySelector('#submit-btn span').textContent = learner ? 'Register & get my membership' : 'Reserve my guest ride';
+        syncStartPrefs(learner);
         filterPlans();
+    }
+
+    // Guest rides carry no start date / batch; learners get today + the batch still open at this hour.
+    function syncStartPrefs(learner) {
+        var date = form.querySelector('[name=preferred_start_date]');
+        var batches = form.querySelectorAll('[name=preferred_batch]');
+        if (!learner) {
+            date.value = '';
+            batches.forEach(function (b) { b.checked = false; });
+            return;
+        }
+        if (!form.querySelector('[name=preferred_batch]:checked') && batches.length) {
+            var now = new Date(), mins = now.getHours() * 60 + now.getMinutes(), pick = null;
+            batches.forEach(function (b) {
+                var end = (b.closest('label').dataset.end || '').split(':');
+                if (!pick && end.length === 2 && mins <= (+end[0]) * 60 + (+end[1])) { pick = b; }
+            });
+            if (!pick) { pick = batches[0]; now = new Date(now.getTime() + 86400000); } // past today's batches → tomorrow morning
+            pick.checked = true;
+            if (!date.value) {
+                var ymd = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+                date.value = ymd >= date.min ? ymd : date.min;
+            }
+        }
+        if (!date.value) { date.value = date.min; }
     }
 
     function age() {
@@ -358,7 +389,10 @@ include __DIR__ . '/_public_head.php';
         acceptText.innerHTML = minor ? 'As the parent / guardian named above, I have read and accept the terms &amp; conditions on behalf of the rider.' : 'I have read and accept the terms &amp; conditions of the academy.';
     }
 
-    form.querySelectorAll('[name=rider_type]').forEach(function (r) { r.addEventListener('change', applyType); });
+    form.querySelectorAll('[name=rider_type]').forEach(function (r) { r.addEventListener('change', function () {
+        if (type() === 'guest') { form.querySelector('[name=audience][value=adults]').checked = true; }
+        applyType();
+    }); });
     form.querySelectorAll('[name=audience]').forEach(function (r) { r.addEventListener('change', filterPlans); });
     form.querySelectorAll('[name=plan_pick]').forEach(function (r) { r.addEventListener('change', syncPick); });
     document.querySelectorAll('[data-next]').forEach(function (b) { b.addEventListener('click', function () {

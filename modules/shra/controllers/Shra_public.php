@@ -99,9 +99,10 @@ class Shra_public extends App_Controller
                 $post['rider_type']     = $type;
                 $post['terms_accepted'] = 1;
                 $post['status']         = 'active';
-                // Batch & start date: a preference, never a held seat — see shra_fcfs_note()
-                $post['preferred_start_date'] = shra_start_date($post['preferred_start_date'] ?? '');
-                $post['preferred_batch']      = shra_batch_key($post['preferred_batch'] ?? '');
+                // Batch & start date: a preference, never a held seat — see shra_fcfs_note().
+                // Guest rides carry neither: the form hides them and the desk fixes the timing.
+                $post['preferred_start_date'] = $type === 'guest' ? null : shra_start_date($post['preferred_start_date'] ?? '');
+                $post['preferred_batch']      = $type === 'guest' ? null : shra_batch_key($post['preferred_batch'] ?? '');
                 unset($post['csrf_token_name']);
 
                 // Plan chosen on the form — must be an active package of the right kind
