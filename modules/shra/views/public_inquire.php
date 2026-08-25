@@ -313,11 +313,11 @@ section{padding:52px 0}
                     <div class="f"><label>Your name <span class="req">*</span></label><input type="text" name="name" value="<?php echo $v('name'); ?>" required autocomplete="name" placeholder="Full name"></div>
                     <div class="f"><label>Mobile number <span class="req">*</span></label><input type="tel" name="phone" id="phone" value="<?php echo $v('phone'); ?>" required inputmode="numeric" autocomplete="tel-national" maxlength="10" pattern="[6-9][0-9]{9}" title="Enter a 10-digit Indian mobile number" placeholder="10-digit mobile number"></div>
                     <div class="f"><label>Who will ride?</label><div class="chips">
-                        <label><input type="radio" name="rider_for" value="child" <?php echo $v('rider_for', 'child') === 'child' ? 'checked' : ''; ?>><span>My child</span></label>
-                        <label><input type="radio" name="rider_for" value="self" <?php echo $v('rider_for') === 'self' ? 'checked' : ''; ?>><span>Myself</span></label>
+                        <label><input type="radio" name="rider_for" value="self" <?php echo $v('rider_for', 'self') === 'self' ? 'checked' : ''; ?>><span>Myself</span></label>
+                        <label><input type="radio" name="rider_for" value="child" <?php echo $v('rider_for') === 'child' ? 'checked' : ''; ?>><span>My child</span></label>
                         <label><input type="radio" name="rider_for" value="both" <?php echo $v('rider_for') === 'both' ? 'checked' : ''; ?>><span>Both</span></label>
                     </div></div>
-                    <div class="f"><label><?php echo $can_pay ? 'Choose your plan' : 'Interested in'; ?></label><select name="package_id" id="pkgsel"><option value=""><?php echo $can_pay ? 'Choose a plan…' : 'Not sure yet'; ?></option><?php foreach ($plans as $p) { ?><option value="<?php echo $p['id']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'selected' : ''; ?>><?php echo ($p['audience'] === 'children' ? 'Kids' : 'Adults') . ' · ' . html_escape($p['name']) . ($p['is_guest'] ? '' : ' · ' . $p['sessions'] . ' sessions'); ?></option><?php } ?></select></div>
+                    <div class="f"><label><?php echo $can_pay ? 'Choose your plan' : 'Interested in'; ?></label><select name="package_id" id="pkgsel"><option value=""><?php echo $can_pay ? 'Choose a plan…' : 'Not sure yet'; ?></option><?php foreach ($plans as $p) { ?><option value="<?php echo $p['id']; ?>" data-aud="<?php echo $p['audience']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'selected' : ''; ?>><?php echo ($p['audience'] === 'children' ? 'Kids' : 'Adults') . ' · ' . html_escape($p['name']) . ($p['is_guest'] ? '' : ' · ' . $p['sessions'] . ' sessions'); ?></option><?php } ?></select></div>
                     <?php $more_open = $v('rider_age') !== '' || $v('preferred_start_date') !== '' || $v('preferred_batch') !== '' || $v('message') !== ''; ?>
                     <details class="more" <?php echo $more_open ? 'open' : ''; ?>>
                         <summary><i class="fa-solid fa-sliders"></i> Age, start date &amp; timing <span class="opt">(optional)</span><i class="fa-solid fa-plus ch"></i></summary>
@@ -407,10 +407,10 @@ section{padding:52px 0}
             <div class="eyebrow">Simple pricing</div>
             <h2>Packages<?php if ($from) { ?> from <?php echo $from; ?> / session<?php } ?></h2>
             <p>Try a single Guest Ride first, or save more with a longer package.<?php if ($offer['active']) { ?> <b style="color:var(--red)">Prices below include the <?php echo $offer['percent'] + 0; ?>% offer.</b><?php } ?></p>
-            <?php if (count($kids) && count($adults)) { ?><div class="tabs"><button type="button" class="on" data-tab="kids">Kids</button><button type="button" data-tab="adults">Adults</button></div><?php } ?>
+            <?php if (count($kids) && count($adults)) { ?><div class="tabs"><button type="button" class="on" data-tab="adults">Adults</button><button type="button" data-tab="kids">Kids</button></div><?php } ?>
         </div>
-        <?php foreach (['kids' => [$kids, $kid_try], 'adults' => [$adults, $adult_try]] as $key => $set) { list($list, $try) = $set; if (!count($list)) { continue; } ?>
-        <div class="tabpane <?php echo $key === 'kids' || !count($kids) ? 'on' : ''; ?>" data-pane="<?php echo $key; ?>">
+        <?php foreach (['adults' => [$adults, $adult_try], 'kids' => [$kids, $kid_try]] as $key => $set) { list($list, $try) = $set; if (!count($list)) { continue; } ?>
+        <div class="tabpane <?php echo $key === 'adults' || !count($adults) ? 'on' : ''; ?>" data-pane="<?php echo $key; ?>">
             <?php if ($try) { ?><div class="try"><i class="fa-solid fa-star"></i><div><b>Try it first — <?php echo html_escape($try['name']); ?></b><small>One <?php echo $try['duration_min']; ?>-minute session with an instructor. Perfect for a first visit.</small></div><div class="pr"><b><?php echo $try['total']; ?></b><?php if ($try['discount'] > 0) { ?> <span style="font-size:12px;color:var(--muted);text-decoration:line-through"><?php echo $try['price']; ?></span><?php } ?><br><a href="#form" data-pick="<?php echo $try['id']; ?>">Book a guest ride →</a></div></div><?php } ?>
             <div class="plans">
                 <?php foreach ($list as $p) { if ($p['is_guest']) { continue; } ?>
@@ -517,9 +517,10 @@ section{padding:52px 0}
     // "Enquire" buttons pre-select the package in the form
     var sel=document.getElementById('pkgsel');
     document.querySelectorAll('[data-pick]').forEach(function(a){a.addEventListener('click',function(){
-        if(sel){sel.value=a.dataset.pick;}
         var r=document.querySelector('input[name=rider_for][value='+(a.closest('[data-pane]')&&a.closest('[data-pane]').dataset.pane==='adults'?'self':'child')+']');
         if(r){r.checked=true;}
+        filterPlans();
+        if(sel){sel.value=a.dataset.pick;}
         shraTrack('ViewContent',{content_name:'package_'+a.dataset.pick});
     });});
     // Instagram reels — lazy, click-to-load (keeps the page light for ad traffic)
@@ -555,7 +556,34 @@ section{padding:52px 0}
     }
     if(sel){sel.addEventListener('change',syncBook);}
     document.querySelectorAll('[data-pick]').forEach(function(a){a.addEventListener('click',syncBook);});
-    syncBook();
+    // The plan list follows "Who will ride?" — kids plans for a child, adult plans for myself, everything for both
+    var allPlans=sel?Array.prototype.slice.call(sel.options):[];
+    function filterPlans(){
+        if(!sel){return;}
+        var r=document.querySelector('input[name=rider_for]:checked');
+        var want=!r||r.value==='both'?null:(r.value==='child'?'children':'adults');
+        var keep=sel.value;
+        sel.innerHTML='';
+        allPlans.forEach(function(o){if(!o.value||!want||o.dataset.aud===want){sel.appendChild(o);}});
+        sel.value=keep;
+        if(sel.value!==keep){sel.value='';}
+        syncBook();
+    }
+    document.querySelectorAll('input[name=rider_for]').forEach(function(r){r.addEventListener('change',filterPlans);});
+    // A plan arriving pre-selected (ad link ?pkg= or a validation re-render) flips the chip
+    // to its audience rather than being filtered out of the list
+    if(sel&&sel.value){
+        var pre=sel.options[sel.selectedIndex];
+        if(pre&&pre.dataset.aud){
+            var need=pre.dataset.aud==='children'?'child':'self';
+            var cur=document.querySelector('input[name=rider_for]:checked');
+            if(cur&&cur.value!=='both'&&cur.value!==need){
+                var pr=document.querySelector('input[name=rider_for][value='+need+']');
+                if(pr){pr.checked=true;}
+            }
+        }
+    }
+    filterPlans();
     // Submit state + tracking
     var form=document.getElementById('leadform'),btn=document.getElementById('subbtn');
     if(form){form.addEventListener('submit',function(e){
