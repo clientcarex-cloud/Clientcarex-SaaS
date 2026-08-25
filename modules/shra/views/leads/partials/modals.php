@@ -229,6 +229,15 @@ foreach ($packages as $pk) {
     </div>
 </div></div></div>
 
+<!-- Copy-message picker (the copy icon next to WhatsApp) -->
+<div class="modal fade shra" id="shra-lead-wa-copy" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
+    <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-copy"></i> Copy message · <span class="shra-m-name"></span></h4></div>
+    <div class="modal-body">
+        <div id="shra-wa-copy-list"></div>
+        <div class="help" style="margin-top:8px">Tap a message to copy it, then paste it into WhatsApp.</div>
+    </div>
+</div></div></div>
+
 <!-- End-of-day report -->
 <div class="modal fade shra" id="shra-lead-eod" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa-solid fa-file-lines"></i> End-of-day report</h4></div>
