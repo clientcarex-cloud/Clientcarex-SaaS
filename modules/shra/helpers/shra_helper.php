@@ -636,7 +636,7 @@ function shra_lead_wa_copy_msg()
         . "1️⃣ Reply *YES* to this message\n"
         . "2️⃣ I'll book your FREE academy visit\n"
         . "3️⃣ Meet the horses, watch a class, pick your batch 🎉\n\n"
-        . "⏰ Weekend slots fill up fast — shall I reserve yours today?";
+        . "⏰ Open all days except Monday · 7–9 AM & 4–6 PM — slots fill fast, shall I reserve yours today?";
 }
 
 /**
@@ -650,14 +650,14 @@ function shra_lead_wa_master_msg()
         return $msg;
     }
 
-    return "Hey {name}! 🐎 {agent} here from *{academy}*.\n\n"
+    return "Hey *{name}*! 🐎 {agent} here from *{academy}*.\n\n"
         . "Riding lessons for ages 5+ — certified trainers, gentle horses, full safety gear included 🦺\n\n"
         . "*3 easy ways to get started:*\n"
-        . "1️⃣ Book online in 2 min 👉 {self_booking}\n"
+        . "1️⃣ Book yourself in 2 min 👉 {self_booking}\n"
         . "2️⃣ Reply with your day & time — I'll book it for you ✅\n"
-        . "3️⃣ Walk in · Sat & Sun · 7–9 AM & 4–6 PM\n\n"
+        . "3️⃣ Walk in — all days except Monday · 7–9 AM & 4–6 PM\n\n"
         . "📍 Find us: {maps}\n\n"
-        . "Weekend slots go fast — pick one and I'll make it happen! ⚡";
+        . "Slots go fast — pick one and I'll make it happen! ⚡";
 }
 
 /** Maps link for WhatsApp messages — the configured URL, else a Google Maps search. */
@@ -693,8 +693,8 @@ function shra_lead_wa_links()
     return [
         ['title' => '📍 Location', 'text' => "Here's how to reach *{academy}*, {name}! 🐎\n\n📍 {maps}\n\nSave the pin — and ping me if you need directions on the way!"],
         ['title' => '🖥️ Self booking', 'text' => "{name}, lock in your slot in under a minute! ⚡\n\n👉 {self_booking}\n\nPick your plan, choose your batch — done! Your confirmation comes instantly 🐎"],
-        ['title' => '🤝 Agent booking', 'text' => "Let me do the work for you, {name}! 🙌 Just reply with:\n\n1️⃣ Day — Saturday or Sunday\n2️⃣ Time — morning or evening\n\n…and I'll book your visit at *{academy}* right away ✅"],
-        ['title' => '🚶 Direct visit', 'text' => "No booking needed, {name} — just walk in! 🐎\n\n🕐 Sat & Sun · 7–9 AM & 4–6 PM\n📍 {maps}\n\nAsk for *{agent}* at the gate — I'll personally show you around {academy}!"],
+        ['title' => '🤝 Agent booking', 'text' => "Let me do the work for you, {name}! 🙌 Just reply with:\n\n1️⃣ Day — any day except Monday\n2️⃣ Time — morning (7–9 AM) or evening (4–6 PM)\n\n…and I'll book your visit at *{academy}* right away ✅"],
+        ['title' => '🚶 Direct visit', 'text' => "No booking needed, {name} — just walk in! 🐎\n\n🗓️ Open all days except Monday\n🕐 7–9 AM & 4–6 PM\n📍 {maps}\n\nAsk for *{agent}* at the gate — I'll personally show you around {academy}!"],
     ];
 }
 
