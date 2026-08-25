@@ -287,6 +287,8 @@ window.SHRA_LEADS_CFG = {
     templates: <?php echo json_encode($templates); ?>,
     copyMsg: <?php echo json_encode(shra_lead_wa_copy_msg()); ?>,
     masterMsg: <?php echo json_encode(shra_lead_wa_master_msg()); ?>,
+    offerLine: <?php echo json_encode(shra_lead_wa_offer_line()); ?>,
+    offerMsg: <?php echo json_encode(shra_lead_wa_offer_msg()); ?>,
     links: <?php echo json_encode(shra_lead_wa_links()); ?>,
     academy: <?php echo json_encode(get_option('shra_academy_name') ?: 'SHRA'); ?>,
     location: <?php echo json_encode(get_option('shra_lead_landing_location') ?: ''); ?>,

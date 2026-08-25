@@ -576,7 +576,7 @@ function shra_lead_visit_slots()
 {
     $s = shra_lead_lines_option('shra_lead_visit_slots');
 
-    return count($s) ? $s : ['Sat 07:00-08:00', 'Sun 07:00-08:00', 'Weekday (any time)'];
+    return count($s) ? $s : ['Sat 06:00-07:00', 'Sun 06:00-07:00', 'Weekday (any time)'];
 }
 
 function shra_lead_lost_reasons()
@@ -636,7 +636,8 @@ function shra_lead_wa_copy_msg()
         . "1️⃣ Reply *YES* to this message\n"
         . "2️⃣ I'll book your FREE academy visit\n"
         . "3️⃣ Meet the horses, watch a class, pick your batch 🎉\n\n"
-        . "⏰ Open all days except Monday · 7–9 AM & 4–6 PM — slots fill fast, shall I reserve yours today?";
+        . "{offer}\n\n"
+        . "⏰ Open all days except Monday · 6–9 AM & 4–6 PM — slots fill fast, shall I reserve yours today?";
 }
 
 /**
@@ -655,9 +656,44 @@ function shra_lead_wa_master_msg()
         . "*3 easy ways to get started:*\n"
         . "1️⃣ Book yourself in 2 min 👉 {self_booking}\n"
         . "2️⃣ Reply with your day & time — I'll book it for you ✅\n"
-        . "3️⃣ Walk in — all days except Monday · 7–9 AM & 4–6 PM\n\n"
+        . "3️⃣ Walk in — all days except Monday · 6–9 AM & 4–6 PM\n\n"
         . "📍 Find us: {maps}\n\n"
+        . "{offer}\n\n"
         . "Slots go fast — pick one and I'll make it happen! ⚡";
+}
+
+/**
+ * The running offer as one WhatsApp-ready line — "🔥 *20% OFF* — Monsoon special
+ * · ends 31 Aug" — or '' when nothing runs, so {offer} vanishes from messages.
+ */
+function shra_lead_wa_offer_line()
+{
+    $o = shra_offer();
+    if (!$o['active']) {
+        return '';
+    }
+    $line = '🔥 *' . ($o['percent'] + 0) . '% OFF* — ' . ($o['label'] !== '' ? $o['label'] : 'limited-time offer on all packages');
+    if ($o['ends'] !== '') {
+        $line .= ' · ends ' . date('j M', strtotime($o['ends']));
+    }
+
+    return $line;
+}
+
+/** The urgency message in the copy picker — only listed while an offer runs. */
+function shra_lead_wa_offer_msg()
+{
+    $msg = trim((string) get_option('shra_lead_wa_offer_msg'));
+    if ($msg !== '') {
+        return $msg;
+    }
+
+    return "*{name}*, this won't last! ⏳\n\n"
+        . "{offer}\n\n"
+        . "Lock it in before it ends:\n"
+        . "1️⃣ Book yourself in 2 min 👉 {self_booking}\n"
+        . "2️⃣ Or just reply *YES* and I'll reserve your slot ✅\n\n"
+        . "Don't let this one ride away, {name}! 🐎💨";
 }
 
 /** Maps link for WhatsApp messages — the configured URL, else a Google Maps search. */
@@ -693,8 +729,8 @@ function shra_lead_wa_links()
     return [
         ['title' => '📍 Location', 'text' => "Here's how to reach *{academy}*, {name}! 🐎\n\n📍 {maps}\n\nSave the pin — and ping me if you need directions on the way!"],
         ['title' => '🖥️ Self booking', 'text' => "{name}, lock in your slot in under a minute! ⚡\n\n👉 {self_booking}\n\nPick your plan, choose your batch — done! Your confirmation comes instantly 🐎"],
-        ['title' => '🤝 Agent booking', 'text' => "Let me do the work for you, {name}! 🙌 Just reply with:\n\n1️⃣ Day — any day except Monday\n2️⃣ Time — morning (7–9 AM) or evening (4–6 PM)\n\n…and I'll book your visit at *{academy}* right away ✅"],
-        ['title' => '🚶 Direct visit', 'text' => "No booking needed, {name} — just walk in! 🐎\n\n🗓️ Open all days except Monday\n🕐 7–9 AM & 4–6 PM\n📍 {maps}\n\nAsk for *{agent}* at the gate — I'll personally show you around {academy}!"],
+        ['title' => '🤝 Agent booking', 'text' => "Let me do the work for you, {name}! 🙌 Just reply with:\n\n1️⃣ Day — any day except Monday\n2️⃣ Time — morning (6–9 AM) or evening (4–6 PM)\n\n…and I'll book your visit at *{academy}* right away ✅"],
+        ['title' => '🚶 Direct visit', 'text' => "No booking needed, {name} — just walk in! 🐎\n\n🗓️ Open all days except Monday\n🕐 6–9 AM & 4–6 PM\n📍 {maps}\n\nAsk for *{agent}* at the gate — I'll personally show you around {academy}!"],
     ];
 }
 

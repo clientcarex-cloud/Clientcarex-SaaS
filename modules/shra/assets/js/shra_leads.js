@@ -441,7 +441,10 @@
       .replace(/\{location\}/g, cfg().location || '')
       .replace(/\{maps\}/g, cfg().maps || '')
       .replace(/\{self_booking\}/g, cfg().selfBooking || '')
-      .replace(/\{join\}/g, cfg().joinUrl || '');
+      .replace(/\{join\}/g, cfg().joinUrl || '')
+      .replace(/\{offer\}/g, cfg().offerLine || '')
+      // No offer running → {offer} left a hole; collapse the blank lines it made.
+      .replace(/\n{3,}/g, '\n\n').trim();
   }
 
   $(document).on('click', '[data-shra-wa]', function (e) {
@@ -481,7 +484,9 @@
     var items = [
       { title: '⭐ Master pitch', text: cfg().masterMsg || '' },
       { title: '🐎 Full pitch', text: cfg().copyMsg || '' }
-    ].concat(cfg().links || []);
+    ];
+    if (cfg().offerLine) { items.push({ title: '🔥 Limited-time offer', text: cfg().offerMsg || '' }); }
+    items = items.concat(cfg().links || []);
     var $m = $('#shra-lead-wa-copy'); $m.find('.shra-m-name').text(name);
     $('#shra-wa-copy-list').html(items.map(function (t) {
       var txt = waFill(t.text, name, visit);

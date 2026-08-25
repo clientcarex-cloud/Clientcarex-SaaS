@@ -442,7 +442,7 @@ section{padding:52px 0}
             <?php } else { ?>
             <div class="st"><h3>Request a call back</h3><p>Fill the 30-second form and our team calls you the same day with packages and timings.</p></div>
             <?php } ?>
-            <div class="st"><h3>Visit the academy</h3><p>Come see the horses, meet the instructors and take a Guest Ride — any day except Monday, 7–9 AM or 4–6 PM.</p></div>
+            <div class="st"><h3>Visit the academy</h3><p>Come see the horses, meet the instructors and take a Guest Ride — any day except Monday, 6–9 AM or 4–6 PM.</p></div>
             <div class="st"><h3>Pick a package &amp; start</h3><p>Choose the plan that fits, get your membership card and start your sessions. Certificate on completion.</p></div>
         </div>
     </div>
@@ -461,7 +461,7 @@ section{padding:52px 0}
                 <h3><?php echo html_escape($academy); ?></h3>
                 <?php if ($landing['location']) { ?><div class="addr"><i class="fa-solid fa-location-dot" style="color:var(--gold)"></i> <?php echo html_escape($landing['location']); ?></div><?php } ?>
                 <ul>
-                    <li><i class="fa-solid fa-clock"></i><span><b>Visits:</b> all days except Monday, 7–9 AM &amp; 4–6 PM — <?php echo $can_pay ? 'book online and your slot is confirmed straight away' : 'book a slot and we confirm the timing with you'; ?>.</span></li>
+                    <li><i class="fa-solid fa-clock"></i><span><b>Visits:</b> all days except Monday, 6–9 AM &amp; 4–6 PM — <?php echo $can_pay ? 'book online and your slot is confirmed straight away' : 'book a slot and we confirm the timing with you'; ?>.</span></li>
                     <?php if ($landing['phone']) { ?><li><i class="fa-solid fa-phone"></i><span><b>Reception:</b> <b style="color:var(--brown)"><?php echo html_escape($landing['phone']); ?></b></span></li><?php } ?>
                     <li><i class="fa-solid fa-car"></i><span>Tap <b>Get directions</b> for the easiest route from wherever you are.</span></li>
                 </ul>
