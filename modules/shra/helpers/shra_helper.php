@@ -639,6 +639,27 @@ function shra_lead_wa_copy_msg()
         . "⏰ Weekend slots fill up fast — shall I reserve yours today?";
 }
 
+/**
+ * The one-message version of everything — info, links and all three ways to
+ * book, kept short. Top item in the copy picker; editable in lead settings.
+ */
+function shra_lead_wa_master_msg()
+{
+    $msg = trim((string) get_option('shra_lead_wa_master_msg'));
+    if ($msg !== '') {
+        return $msg;
+    }
+
+    return "Hey {name}! 🐎 {agent} here from *{academy}*.\n\n"
+        . "Riding lessons for ages 5+ — certified trainers, gentle horses, full safety gear included 🦺\n\n"
+        . "*3 easy ways to get started:*\n"
+        . "1️⃣ Book online in 2 min 👉 {self_booking}\n"
+        . "2️⃣ Reply with your day & time — I'll book it for you ✅\n"
+        . "3️⃣ Walk in · Sat & Sun · 7–9 AM & 4–6 PM\n\n"
+        . "📍 Find us: {maps}\n\n"
+        . "Weekend slots go fast — pick one and I'll make it happen! ⚡";
+}
+
 /** Maps link for WhatsApp messages — the configured URL, else a Google Maps search. */
 function shra_lead_maps_url()
 {

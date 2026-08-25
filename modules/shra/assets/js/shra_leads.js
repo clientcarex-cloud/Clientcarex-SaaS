@@ -478,7 +478,10 @@
     var id = $(this).data('shra-wa-copy'), $c = cardOf(id).first();
     var name  = ($c.data('name') || $('#shra-lead-title').data('name') || '').toString();
     var visit = $c.data('visit') || $('#shra-lead-title').data('visit') || '';
-    var items = [{ title: '🐎 Full pitch', text: cfg().copyMsg || '' }].concat(cfg().links || []);
+    var items = [
+      { title: '⭐ Master pitch', text: cfg().masterMsg || '' },
+      { title: '🐎 Full pitch', text: cfg().copyMsg || '' }
+    ].concat(cfg().links || []);
     var $m = $('#shra-lead-wa-copy'); $m.find('.shra-m-name').text(name);
     $('#shra-wa-copy-list').html(items.map(function (t) {
       var txt = waFill(t.text, name, visit);
