@@ -307,7 +307,11 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-wa-tpl{display:block;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px;text-decoration:none!important;color:var(--ink)!important}
 .shra-wa-tpl:hover{border-color:#128c7e}
 .shra-wa-tpl b{display:block;font-size:13px}
-.shra-wa-tpl span{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+.shra-wa-tpl span{font-size:12px;color:var(--muted);display:block;margin-top:2px;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.shra-wa-item{display:flex;gap:6px;align-items:center}
+.shra-wa-item .shra-wa-tpl{flex:1;min-width:0}
+.shra-wa-item .shra-ic{flex:0 0 auto;margin-bottom:8px}
+.shra-wa-sec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:12px 0 6px}
 
 /* timeline */
 .shra-timeline{padding:10px 22px 14px}

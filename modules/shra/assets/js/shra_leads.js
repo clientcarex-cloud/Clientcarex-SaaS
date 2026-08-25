@@ -431,9 +431,22 @@
   // Reassign
   $('#shra-lead-reassign-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.reassign, formObj($(this)), function () { $('#shra-lead-reassign').modal('hide'); }); });
 
-  // WhatsApp templates
+  // WhatsApp templates & share links
+  function waFill(text, name, visit) {
+    return String(text || '')
+      .replace(/\{name\}/g, String(name || '').split(' ')[0])
+      .replace(/\{agent\}/g, cfg().agent)
+      .replace(/\{academy\}/g, cfg().academy)
+      .replace(/\{visit\}/g, visit || '')
+      .replace(/\{location\}/g, cfg().location || '')
+      .replace(/\{maps\}/g, cfg().maps || '')
+      .replace(/\{self_booking\}/g, cfg().selfBooking || '')
+      .replace(/\{join\}/g, cfg().joinUrl || '');
+  }
+
   $(document).on('click', '[data-shra-wa]', function (e) {
-    if (!cfg().templates || !cfg().templates.length) { return; } // plain wa.me link
+    var tpls = cfg().templates || [], links = cfg().links || [];
+    if (!tpls.length && !links.length) { return; } // plain wa.me link
     e.preventDefault();
     var id = $(this).data('shra-wa'), $c = cardOf(id).first();
     var name = $c.data('name') || $('#shra-lead-title').data('name') || '', phone = ($c.data('phone') || $('#shra-lead-title').data('phone') || '').toString().replace(/\D/g, '');
@@ -441,10 +454,18 @@
     if (phone.length > 10 && cfg().cc && phone.indexOf(cfg().cc) === 0) { phone = phone.slice(cfg().cc.length); }
     phone = phone.replace(/^0+/, '');
     var $m = $('#shra-lead-wa'); $m.find('.shra-m-name').text(name);
-    $('#shra-wa-list').html(cfg().templates.map(function (t) {
-      var txt = t.text.replace(/\{name\}/g, name.split(' ')[0]).replace(/\{agent\}/g, cfg().agent).replace(/\{academy\}/g, cfg().academy).replace(/\{visit\}/g, visit).replace(/\{location\}/g, cfg().location || '');
-      return '<a class="shra-wa-tpl" target="_blank" rel="noopener" href="https://wa.me/' + cfg().cc + phone + '?text=' + encodeURIComponent(txt) + '"><b>' + esc(t.title) + '</b><span>' + esc(txt) + '</span></a>';
-    }).join('') + '<a class="shra-wa-tpl" target="_blank" rel="noopener" href="https://wa.me/' + cfg().cc + phone + '"><b>Blank chat</b><span>Open WhatsApp without a message</span></a>');
+    // Every item sends via wa.me; the copy icon puts the same text on the clipboard instead.
+    function item(t) {
+      var txt = waFill(t.text, name, visit);
+      return '<div class="shra-wa-item">'
+        + '<a class="shra-wa-tpl" target="_blank" rel="noopener" href="https://wa.me/' + cfg().cc + phone + '?text=' + encodeURIComponent(txt) + '"><b>' + esc(t.title) + '</b><span>' + esc(txt) + '</span></a>'
+        + '<button type="button" class="shra-ic wa-copy" title="Copy this message" data-wa-item-copy="1"><i class="fa fa-copy"></i></button>'
+        + '</div>';
+    }
+    var html = tpls.map(item).join('');
+    if (links.length) { html += '<div class="shra-wa-sec">Share info &amp; links</div>' + links.map(item).join(''); }
+    html += '<a class="shra-wa-tpl" target="_blank" rel="noopener" href="https://wa.me/' + cfg().cc + phone + '"><b>Blank chat</b><span>Open WhatsApp without a message</span></a>';
+    $('#shra-wa-list').html(html);
     $m.modal('show');
     $('#shra-wa-list').off('click').on('click', 'a', function () {
       $m.modal('hide');
@@ -457,6 +478,15 @@
         buildStageChips(stageOf(id));
         loadCallLog(id);
       }, 400);
+    }).on('click', '[data-wa-item-copy]', function (e2) {
+      e2.stopPropagation();
+      var $b = $(this), txt = $b.closest('.shra-wa-item').find('.shra-wa-tpl span').text();
+      copyText(txt, function () {
+        toast('success', 'Message copied — paste it into WhatsApp.');
+        var $i = $b.find('i');
+        $i.attr('class', 'fa fa-check');
+        setTimeout(function () { $i.attr('class', 'fa fa-copy'); }, 2000);
+      });
     });
   });
   // Copy button next to WhatsApp — the full pitch on the clipboard, personalised.
@@ -464,12 +494,7 @@
     var id = $(this).data('shra-wa-copy'), $c = cardOf(id).first(), $b = $(this);
     var name  = ($c.data('name') || $('#shra-lead-title').data('name') || '').toString();
     var visit = $c.data('visit') || $('#shra-lead-title').data('visit') || '';
-    var txt = (cfg().copyMsg || '')
-      .replace(/\{name\}/g, name.split(' ')[0])
-      .replace(/\{agent\}/g, cfg().agent)
-      .replace(/\{academy\}/g, cfg().academy)
-      .replace(/\{visit\}/g, visit)
-      .replace(/\{location\}/g, cfg().location || '');
+    var txt = waFill(cfg().copyMsg, name, visit);
     if (!txt) { return; }
     copyText(txt, function () {
       toast('success', 'Message copied — paste it into WhatsApp.');

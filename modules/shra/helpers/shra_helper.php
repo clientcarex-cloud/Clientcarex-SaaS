@@ -639,6 +639,44 @@ function shra_lead_wa_copy_msg()
         . "⏰ Weekend slots fill up fast — shall I reserve yours today?";
 }
 
+/** Maps link for WhatsApp messages — the configured URL, else a Google Maps search. */
+function shra_lead_maps_url()
+{
+    $u = trim((string) get_option('shra_lead_landing_maps_url'));
+    if ($u !== '') {
+        return $u;
+    }
+    $q = trim((string) get_option('shra_lead_landing_map_query')) ?: trim((string) get_option('shra_lead_landing_location'));
+
+    return $q !== '' ? 'https://maps.google.com/?q=' . rawurlencode($q) : '';
+}
+
+/**
+ * Share-info messages in the WhatsApp picker (location, self booking, agent
+ * booking, direct visit). Title|Message per line, literal \n = new line,
+ * same placeholders as the templates. Editable in lead settings.
+ */
+function shra_lead_wa_links()
+{
+    $out = [];
+    foreach (shra_lead_lines_option('shra_lead_wa_links') as $line) {
+        $parts = explode('|', $line, 2);
+        if (count($parts) === 2) {
+            $out[] = ['title' => trim($parts[0]), 'text' => str_replace('\n', "\n", trim($parts[1]))];
+        }
+    }
+    if (count($out)) {
+        return $out;
+    }
+
+    return [
+        ['title' => '📍 Location', 'text' => "Here's how to reach *{academy}*, {name}! 🐎\n\n📍 {maps}\n\nSave the pin — and ping me if you need directions on the way!"],
+        ['title' => '🖥️ Self booking', 'text' => "{name}, lock in your slot in under a minute! ⚡\n\n👉 {self_booking}\n\nPick your plan, choose your batch — done! Your confirmation comes instantly 🐎"],
+        ['title' => '🤝 Agent booking', 'text' => "Let me do the work for you, {name}! 🙌 Just reply with:\n\n1️⃣ Day — Saturday or Sunday\n2️⃣ Time — morning or evening\n\n…and I'll book your visit at *{academy}* right away ✅"],
+        ['title' => '🚶 Direct visit', 'text' => "No booking needed, {name} — just walk in! 🐎\n\n🕐 Sat & Sun · 7–9 AM & 4–6 PM\n📍 {maps}\n\nAsk for *{agent}* at the gate — I'll personally show you around {academy}!"],
+    ];
+}
+
 /**
  * Digits-only phone used as the duplicate key. Strips the country code
  * (option shra_lead_phone_country, default 91) and a leading trunk 0.
