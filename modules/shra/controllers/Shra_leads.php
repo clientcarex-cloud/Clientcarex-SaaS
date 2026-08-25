@@ -511,6 +511,35 @@ class Shra_leads extends AdminController
         $this->result($res, 'Payment entry removed.', ['card' => $this->card($l->id)]);
     }
 
+    /** Bulk delete from the work list. Superadmin only — deliberately not a staff permission. */
+    public function bulk_delete()
+    {
+        if (!is_admin() || $this->input->method() !== 'post') {
+            $this->json(['success' => false, 'message' => 'Only a superadmin can delete leads.']);
+
+            return;
+        }
+        $ids = $this->input->post('ids');
+        $ids = is_array($ids) ? array_unique(array_filter(array_map('intval', $ids))) : [];
+        if (!count($ids)) {
+            $this->json(['success' => false, 'message' => 'Nothing selected.']);
+
+            return;
+        }
+        $done = 0;
+        foreach ($ids as $id) {
+            if ($this->leads->delete_lead($id)) {
+                $done++;
+            }
+        }
+        $this->json([
+            'success' => $done > 0,
+            'message' => $done > 0
+                ? 'Deleted ' . $done . ' lead' . ($done === 1 ? '' : 's') . ($done < count($ids) ? ' — ' . (count($ids) - $done) . ' could not be deleted.' : '.')
+                : 'Nothing was deleted.',
+        ]);
+    }
+
     public function schedule_visit()
     {
         $l   = $this->lead_or_fail($this->input->post('lead_id'), true);

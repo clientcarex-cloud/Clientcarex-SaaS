@@ -44,6 +44,16 @@
             <?php } else { include __DIR__ . '/partials/rider_rows.php'; } ?>
         </div>
     <?php } ?>
+    <?php if (is_admin()) { // superadmin only: bulk delete bar, shown once something is ticked ?>
+    <div id="shra-bulkbar" class="shra-bulkbar" hidden
+         data-url="<?php echo admin_url('shra/bulk_delete_riders'); ?>"
+         data-confirm="Permanently delete {n} rider(s)? Their enrollments and attendance history are removed too. This cannot be undone.">
+        <span><b class="shra-bulk-count">0</b> selected</span>
+        <button type="button" class="shra-btn shra-btn-outline shra-btn-sm shra-bulk-clear">Clear</button>
+        <button type="button" class="shra-btn shra-btn-danger shra-btn-sm shra-bulk-del"><i class="fa fa-trash"></i> Delete selected</button>
+    </div>
+    <?php } ?>
+
     <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>

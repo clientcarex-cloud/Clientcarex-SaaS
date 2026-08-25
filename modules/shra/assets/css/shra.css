@@ -458,3 +458,15 @@ button.shra-wa-tpl{width:100%;text-align:left;background:#fff;cursor:pointer;fon
 }
 @media(max-width:900px){.shra-wt .shra-r-calls,.shra-wt .shra-r-flags{display:none}}
 @media(max-width:700px){.shra-wt .shra-r-visit{display:none}}
+
+/* ── Bulk select & delete (superadmin) ─────────────────────────────── */
+.shra-table th.shra-r-sel,.shra-table td.shra-r-sel{width:34px;padding-left:14px;padding-right:2px;text-align:center}
+.shra-r-sel input[type=checkbox]{width:15px;height:15px;margin:0;cursor:pointer;accent-color:var(--red);vertical-align:middle}
+tr.shra-row-picked td{background:#fdf3f2!important}
+.shra-bulkbar{position:sticky;bottom:14px;z-index:60;display:flex;gap:10px;align-items:center;justify-content:center;width:fit-content;margin:14px auto 0;padding:10px 16px;background:var(--ink);color:var(--cream);border-radius:999px;box-shadow:0 10px 28px rgba(28,26,23,.35);font-size:13px;font-weight:600}
+.shra-bulkbar[hidden]{display:none}
+.shra-bulkbar .shra-bulk-count{color:var(--gold-2)}
+.shra-bulkbar .shra-btn-outline{background:transparent;border-color:rgba(246,239,224,.35);color:var(--cream)!important}
+.shra-bulkbar .shra-btn-outline:hover{background:rgba(246,239,224,.12)}
+.shra-bulkbar .shra-btn-danger{background:var(--red);border-color:var(--red);color:#fff!important}
+.shra-bulkbar .shra-btn-danger:hover{filter:brightness(1.1)}

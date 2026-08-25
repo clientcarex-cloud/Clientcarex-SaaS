@@ -619,6 +619,8 @@
       $('#shra-none').prop('hidden', shown > 0 || !total);
       $('.shra-wt thead').toggle(shown > 0);
       $('#shra-count').text(total ? shown + ' of ' + total + ' shown' : '');
+      // Rows that just left the view must not stay part of a bulk selection.
+      $(document).trigger('shra:filtered');
     }
 
     function refresh() { if ($rows) { drawTabs(); apply(); } }

@@ -9,13 +9,14 @@
  */
 ?>
 <div class="shra-table-wrap"><table class="shra-table">
-    <thead><tr><th>Rider</th><th>Contact</th><th>Age · Level</th><th>Type</th><th>Sessions left</th><th>Payment</th><th>Last session</th><th>Registered</th><th></th></tr></thead>
+    <thead><tr><?php if (is_admin()) { ?><th class="shra-r-sel"><input type="checkbox" class="shra-bulk-all" title="Select every rider in this list"></th><?php } ?><th>Rider</th><th>Contact</th><th>Age · Level</th><th>Type</th><th>Sessions left</th><th>Payment</th><th>Last session</th><th>Registered</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($riders as $r) {
         $rdue = round((float) $r->total_due, 2);
         $left = (int) $r->sessions_left;
         $att  = (int) $r->attended_today > 0; ?>
         <tr class="<?php echo $att ? 'shra-row-attended' : ''; ?>">
+            <?php if (is_admin()) { ?><td class="shra-r-sel"><input type="checkbox" class="shra-bulk-cb" value="<?php echo (int) $r->id; ?>" title="Select for bulk delete"></td><?php } ?>
             <td><div class="shra-person"><span class="shra-avatar"><?php echo strtoupper(mb_substr($r->full_name, 0, 1)); ?></span><div><a href="<?php echo admin_url('shra/rider/' . $r->id); ?>" class="name"><?php echo html_escape($r->full_name); ?></a><div class="meta"><?php echo html_escape($r->rider_no); ?><?php echo $r->membership_no ? ' · ' . html_escape($r->membership_no) : ''; ?></div></div></div></td>
             <td><?php echo html_escape($r->mobile); ?><span class="sub"><?php echo html_escape($r->email ?: ($r->guardian_name ? 'Guardian: ' . $r->guardian_name : '')); ?></span></td>
             <td><?php echo $r->age !== null ? $r->age . ' yrs' : '—'; ?><span class="sub"><?php echo html_escape($r->riding_level); ?><?php echo $r->is_minor ? ' · minor' : ''; ?></span></td>

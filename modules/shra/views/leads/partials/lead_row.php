@@ -38,6 +38,7 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>"
     data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>"
     data-paid-num="<?php echo $money['paid'] + 0; ?>" data-deal-num="<?php echo $money['deal'] + 0; ?>" data-pkg="<?php echo (int) $l->interest_package_id; ?>" data-s="<?php echo html_escape($hay); ?>">
+    <?php if (is_admin()) { ?><td class="shra-r-sel"><input type="checkbox" class="shra-bulk-cb" value="<?php echo (int) $l->id; ?>" title="Select for bulk delete"></td><?php } ?>
     <td class="shra-r-name">
         <a href="<?php echo shra_lead_url($l->id); ?>"><?php echo html_escape($l->name); ?></a>
         <span class="shra-r-sub">

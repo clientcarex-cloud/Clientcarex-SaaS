@@ -371,6 +371,66 @@
     });
   };
 
+  /* ───────── Bulk select & delete (superadmin only — the bar is only rendered for them) ─────────
+     A page opts in by printing #shra-bulkbar with data-url / data-confirm; the row
+     checkboxes are .shra-bulk-cb (value = id) and each table head carries one
+     .shra-bulk-all. Filtered-out rows (.is-off) never count, and the leads work
+     list drops their ticks via the shra:filtered event. */
+  S.bulkInit = function () {
+    var $bar = $('#shra-bulkbar');
+    if (!$bar.length || S._bulkReady) { return; }
+    S._bulkReady = true;
+    var busy = false;
+
+    function boxes() { return $('.shra-bulk-cb').filter(function () { return $(this).closest('tr').is(':visible'); }); }
+    function ids() {
+      var seen = {}, out = [];
+      boxes().filter(':checked').each(function () { if (!seen[this.value]) { seen[this.value] = 1; out.push(this.value); } });
+      return out;
+    }
+
+    function sync() {
+      var n = ids().length;
+      $bar.prop('hidden', !n).find('.shra-bulk-count').text(n);
+      $('.shra-bulk-cb').each(function () { $(this).closest('tr').toggleClass('shra-row-picked', this.checked); });
+      $('.shra-bulk-all').each(function () {
+        var $t = $(this).closest('table').find('.shra-bulk-cb').filter(function () { return $(this).closest('tr').is(':visible'); });
+        this.checked = $t.length > 0 && $t.filter(':checked').length === $t.length;
+      });
+    }
+
+    $(document).on('change', '.shra-bulk-all', function () {
+      var on = this.checked;
+      $(this).closest('table').find('.shra-bulk-cb').filter(function () { return $(this).closest('tr').is(':visible'); }).prop('checked', on);
+      sync();
+    });
+    $(document).on('change', '.shra-bulk-cb', sync);
+    $(document).on('shra:filtered', function () {
+      $('.shra-bulk-cb').filter(function () { return $(this).closest('tr').hasClass('is-off'); }).prop('checked', false);
+      sync();
+    });
+    $bar.on('click', '.shra-bulk-clear', function () { $('.shra-bulk-cb, .shra-bulk-all').prop('checked', false); sync(); });
+
+    $bar.on('click', '.shra-bulk-del', function () {
+      var list = ids();
+      if (!list.length || busy) { return; }
+      if (!confirm(String($bar.data('confirm') || 'Permanently delete {n} records? This cannot be undone.').replace('{n}', list.length))) { return; }
+      busy = true;
+      var $b = $(this).prop('disabled', true), html = $b.html();
+      $b.html('<i class="fa fa-circle-notch fa-spin"></i> Deleting…');
+      $.post($bar.data('url'), S.csrf($.param({ ids: list })), function (res) {
+        if (res.success) {
+          alert_float('success', res.message);
+          setTimeout(function () { location.reload(); }, 600);
+        } else {
+          busy = false; $b.prop('disabled', false).html(html);
+          alert_float('danger', res.message || 'Could not delete.');
+        }
+      }, 'json').fail(function () { busy = false; $b.prop('disabled', false).html(html); alert_float('danger', 'Request failed.'); });
+    });
+  };
+  $(S.bulkInit);
+
   /* ───────── No "Leave site?" prompts on SHRA pages ─────────
      Perfex binds jquery.are-you-sure to every admin form; the counter screens
      are transactional (saved via AJAX or one click), so the prompt only annoys. */

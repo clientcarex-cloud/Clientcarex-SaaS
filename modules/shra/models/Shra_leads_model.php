@@ -774,6 +774,35 @@ class Shra_leads_model extends App_Model
     }
 
     /**
+     * Permanently remove a lead: its SHRA desk data (calls, payments + screenshots,
+     * revenue credit, extension row) and then the core lead itself — which takes the
+     * notes, reminders, tasks and attachments with it. Superadmin only (the controller
+     * gates it); a won lead loses its attributed revenue from the reports.
+     */
+    public function delete_lead($id)
+    {
+        $id = (int) $id;
+        $p  = db_prefix();
+
+        foreach ($this->db->where('lead_id', $id)->get($p . 'shra_lead_payments')->result() as $pay) {
+            if ($pay->file) {
+                $abs = FCPATH . 'uploads/shra/lead_payments/' . basename($pay->file);
+                if (is_file($abs)) {
+                    @unlink($abs);
+                }
+            }
+        }
+        $this->db->where('lead_id', $id)->delete($p . 'shra_lead_payments');
+        $this->db->where('lead_id', $id)->delete($p . 'shra_lead_events');
+        $this->db->where('lead_id', $id)->delete($p . 'shra_lead_attribution');
+        $this->db->where('lead_id', $id)->delete($p . 'shra_lead_ext');
+
+        $this->load->model('leads_model');
+
+        return $this->leads_model->delete($id);
+    }
+
+    /**
      * Move to a stage with validation. $ctx may carry: next_action_at, visit_date, visit_slot,
      * package_id, expected_value, reason, note, silent_next (skip the next-action requirement).
      */

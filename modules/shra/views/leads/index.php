@@ -151,6 +151,7 @@
         <table class="shra-table shra-wt">
             <thead>
                 <tr>
+                    <?php if (is_admin()) { ?><th class="shra-r-sel"><input type="checkbox" class="shra-bulk-all" title="Select every lead shown"></th><?php } ?>
                     <th class="shra-r-name">Lead</th>
                     <th class="shra-r-phone">Phone</th>
                     <th class="shra-r-stage">Stage</th>
@@ -181,6 +182,16 @@
             </span>
         </div>
     </div>
+
+    <?php if (is_admin()) { // superadmin only: bulk delete bar, shown once something is ticked ?>
+    <div id="shra-bulkbar" class="shra-bulkbar" hidden
+         data-url="<?php echo admin_url('shra/shra_leads/bulk_delete'); ?>"
+         data-confirm="Permanently delete {n} lead(s)? Their call history, payments and revenue credit are removed too. This cannot be undone.">
+        <span><b class="shra-bulk-count">0</b> selected</span>
+        <button type="button" class="shra-btn shra-btn-outline shra-btn-sm shra-bulk-clear">Clear</button>
+        <button type="button" class="shra-btn shra-btn-danger shra-btn-sm shra-bulk-del"><i class="fa fa-trash"></i> Delete selected</button>
+    </div>
+    <?php } ?>
 
     <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>

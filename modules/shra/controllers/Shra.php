@@ -234,6 +234,35 @@ class Shra extends AdminController
         redirect(admin_url('shra/riders'));
     }
 
+    /** Bulk delete from the riders list. Superadmin only — deliberately not a staff permission. */
+    public function bulk_delete_riders()
+    {
+        if (!is_admin() || $this->input->method() !== 'post') {
+            $this->json(['success' => false, 'message' => 'Only a superadmin can delete riders.']);
+
+            return;
+        }
+        $ids = $this->input->post('ids');
+        $ids = is_array($ids) ? array_unique(array_filter(array_map('intval', $ids))) : [];
+        if (!count($ids)) {
+            $this->json(['success' => false, 'message' => 'Nothing selected.']);
+
+            return;
+        }
+        $done = 0;
+        foreach ($ids as $id) {
+            if ($this->shra_model->delete_rider($id)) {
+                $done++;
+            }
+        }
+        $this->json([
+            'success' => $done > 0,
+            'message' => $done > 0
+                ? 'Deleted ' . $done . ' rider' . ($done === 1 ? '' : 's') . ($done < count($ids) ? ' — ' . (count($ids) - $done) . ' could not be deleted.' : '.')
+                : 'Nothing was deleted.',
+        ]);
+    }
+
     /**
      * AJAX quick-add from the billing screen: name + mobile is enough.
      * Reuses an existing rider when the same mobile + name is already on file.
