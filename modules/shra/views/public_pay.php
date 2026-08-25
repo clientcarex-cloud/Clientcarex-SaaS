@@ -26,8 +26,6 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
 .opt .sub{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
 .opt .tick{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent}
 .opt:has(input:checked) .tick{background:var(--ink);border-color:var(--ink);color:#fff}
-.amtbox{margin-top:12px;display:none}
-.opt:has(input:checked) .amtbox{display:block}
 .gw{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:14px;padding:13px 16px;cursor:pointer;background:#fff;margin-bottom:10px}
 .gw:has(input:checked){border-color:var(--ink);background:var(--cream-2)}
 .gw input{display:none}
@@ -35,8 +33,6 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
 .gw b{font-size:14.5px}
 .test{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--brown);background:#f6ecd2;border-radius:999px;padding:2px 8px}
 .gw .test{margin-left:auto}
-.due{display:flex;justify-content:space-between;font-size:13.5px;padding:12px 2px 0;border-top:1px dashed var(--line);margin-top:14px;color:var(--muted)}
-.due b{color:var(--ink);font-size:15px}
 .skip{display:block;text-align:center;margin-top:14px;font-size:13.5px;color:var(--muted);text-decoration:underline}
 </style>
     <div class="card">
@@ -83,10 +79,7 @@ $old_gw     = (string) ($old['gateway'] ?? key($gateways));
                     <div><b>Pay part now — <?php echo shra_money($min); ?></b><div class="sub"><?php echo html_escape($pay['note']); ?></div></div>
                     <div class="tick"><i class="fa fa-check"></i></div>
                 </div>
-                <div class="amtbox">
-                    <input type="hidden" name="amount" value="<?php echo $min; ?>">
-                    <div class="due"><span>Balance to pay at the desk</span><b><?php echo shra_money(max(0, $total - $min)); ?></b></div>
-                </div>
+                <input type="hidden" name="amount" value="<?php echo $min; ?>">
             </label>
             <?php } ?>
 
