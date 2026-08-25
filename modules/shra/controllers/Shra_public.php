@@ -570,6 +570,8 @@ class Shra_public extends App_Controller
             $e[] = 'Please enter the date of birth.';
         } elseif (strtotime($p['dob']) === false || strtotime($p['dob']) > time()) {
             $e[] = 'The date of birth is not valid.';
+        } elseif (strtotime($p['dob']) > strtotime('-5 years')) {
+            $e[] = 'Riders must be at least 5 years old.';
         }
         if (!empty($p['email']) && !filter_var($p['email'], FILTER_VALIDATE_EMAIL)) {
             $e[] = 'The email address is not valid.';

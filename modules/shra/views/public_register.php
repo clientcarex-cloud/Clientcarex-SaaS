@@ -175,7 +175,7 @@ include __DIR__ . '/_public_head.php';
                 <div class="sec">Rider</div>
                 <div class="f"><label>Rider full name <span class="req">*</span></label><input type="text" name="full_name" value="<?php echo $v('full_name'); ?>" required autocomplete="name"></div>
                 <div class="row">
-                    <div class="f"><label>Date of birth <span class="req">*</span></label><input type="date" name="dob" id="dob" value="<?php echo $v('dob'); ?>" max="<?php echo date('Y-m-d'); ?>" required><div class="hint" id="age-hint"></div></div>
+                    <div class="f"><label>Date of birth <span class="req">*</span></label><input type="date" name="dob" id="dob" value="<?php echo $v('dob'); ?>" max="<?php echo date('Y-m-d', strtotime('-5 years')); ?>" required><div class="hint" id="age-hint"></div></div>
                     <div class="f"><label>Gender <span class="req">*</span></label><div class="chips one-line"><?php foreach (shra_genders() as $k => $l) { ?><label><input type="radio" name="gender" value="<?php echo $k; ?>" <?php echo $v('gender') === $k ? 'checked' : ''; ?>><span><?php echo $l; ?></span></label><?php } ?></div></div>
                 </div>
                 <div class="row">
