@@ -25,6 +25,23 @@
 
   function cardOf(id) { return $('.shra-lead[data-lead="' + id + '"]'); }
 
+  function copyText(text, done) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else {
+      fallback();
+    }
+    function fallback() {
+      // Older browsers / plain http: copy out of a throwaway textarea.
+      var $ta = $('<textarea>').val(text).css({ position: 'fixed', top: '-1000px', opacity: 0 }).appendTo('body');
+      $ta[0].select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      $ta.remove();
+      if (ok) { done(); } else { toast('warning', 'Could not copy automatically — select the message and copy it.'); }
+    }
+  }
+
   /** Replace every rendering of a lead with the fresh HTML, then recount the tabs. */
   function swapCard(id, html) {
     var $new = $(html);
@@ -425,7 +442,7 @@
     phone = phone.replace(/^0+/, '');
     var $m = $('#shra-lead-wa'); $m.find('.shra-m-name').text(name);
     $('#shra-wa-list').html(cfg().templates.map(function (t) {
-      var txt = t.text.replace(/\{name\}/g, name.split(' ')[0]).replace(/\{agent\}/g, cfg().agent).replace(/\{academy\}/g, cfg().academy).replace(/\{visit\}/g, visit);
+      var txt = t.text.replace(/\{name\}/g, name.split(' ')[0]).replace(/\{agent\}/g, cfg().agent).replace(/\{academy\}/g, cfg().academy).replace(/\{visit\}/g, visit).replace(/\{location\}/g, cfg().location || '');
       return '<a class="shra-wa-tpl" target="_blank" rel="noopener" href="https://wa.me/' + cfg().cc + phone + '?text=' + encodeURIComponent(txt) + '"><b>' + esc(t.title) + '</b><span>' + esc(txt) + '</span></a>';
     }).join('') + '<a class="shra-wa-tpl" target="_blank" rel="noopener" href="https://wa.me/' + cfg().cc + phone + '"><b>Blank chat</b><span>Open WhatsApp without a message</span></a>');
     $m.modal('show');
@@ -442,6 +459,26 @@
       }, 400);
     });
   });
+  // Copy button next to WhatsApp — the full pitch on the clipboard, personalised.
+  $(document).on('click', '[data-shra-wa-copy]', function () {
+    var id = $(this).data('shra-wa-copy'), $c = cardOf(id).first(), $b = $(this);
+    var name  = ($c.data('name') || $('#shra-lead-title').data('name') || '').toString();
+    var visit = $c.data('visit') || $('#shra-lead-title').data('visit') || '';
+    var txt = (cfg().copyMsg || '')
+      .replace(/\{name\}/g, name.split(' ')[0])
+      .replace(/\{agent\}/g, cfg().agent)
+      .replace(/\{academy\}/g, cfg().academy)
+      .replace(/\{visit\}/g, visit)
+      .replace(/\{location\}/g, cfg().location || '');
+    if (!txt) { return; }
+    copyText(txt, function () {
+      toast('success', 'Message copied — paste it into WhatsApp.');
+      var $i = $b.find('i');
+      $i.attr('class', 'fa fa-check');
+      setTimeout(function () { $i.attr('class', 'fa fa-copy'); }, 2000);
+    });
+  });
+
   $('#shra-lead-call').on('hidden.bs.modal', function () { $(this).find('[name=channel]').val('call'); resetPayment(); });
 
   // Lead page: drop a wrongly entered payment (managers only — the button is theirs).
@@ -658,26 +695,12 @@
 
     function copy() {
       if (!text) { return; }
-      var done = function () {
+      copyText(text, function () {
         toast('success', 'Report copied — paste it into WhatsApp.');
         var $b = $('#shra-eod-copy');
         $b.html('<i class="fa fa-check"></i> Copied');
         setTimeout(function () { $b.html('<i class="fa fa-copy"></i> Copy message'); }, 2000);
-      };
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(done, fallback);
-      } else {
-        fallback();
-      }
-      function fallback() {
-        // Older browsers / plain http: copy out of a throwaway textarea.
-        var $ta = $('<textarea>').val(text).css({ position: 'fixed', top: '-1000px', opacity: 0 }).appendTo('body');
-        $ta[0].select();
-        var ok = false;
-        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-        $ta.remove();
-        if (ok) { done(); } else { toast('warning', 'Could not copy automatically — select the message and copy it.'); }
-      }
+      });
     }
 
     $(document).on('click', '[data-shra-eod]', function () {

@@ -22,6 +22,7 @@
         <div class="shra-lead-actions" style="margin:0">
             <a href="<?php echo $l->tel_link; ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa fa-phone"></i> Call</a>
             <a href="<?php echo $l->wa_link; ?>" target="_blank" rel="noopener" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-wa="<?php echo $l->id; ?>"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+            <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-wa-copy="<?php echo $l->id; ?>" title="Copy the WhatsApp pitch — paste it into any chat"><i class="fa fa-copy"></i></button>
             <?php if ($l->is_open) { ?>
                 <button type="button" class="shra-btn shra-btn-primary shra-btn-sm" data-shra-act="call" data-lead="<?php echo $l->id; ?>"><i class="fa fa-pen"></i> Log call</button>
                 <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="visit" data-lead="<?php echo $l->id; ?>"><i class="fa fa-calendar-plus"></i> <?php echo $l->stage === 'visit_scheduled' ? 'Reschedule' : 'Schedule visit'; ?></button>

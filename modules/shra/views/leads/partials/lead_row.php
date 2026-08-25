@@ -47,6 +47,7 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     <td class="shra-r-phone">
         <a href="<?php echo $l->tel_link; ?>" class="shra-r-tel"><?php echo html_escape($l->phonenumber); ?></a>
         <a href="<?php echo $l->wa_link; ?>" target="_blank" rel="noopener" class="shra-ic wa xs" title="WhatsApp" data-shra-wa="<?php echo $l->id; ?>"><i class="fa-brands fa-whatsapp"></i></a>
+        <button type="button" class="shra-ic wa-copy xs" title="Copy the WhatsApp pitch" data-shra-wa-copy="<?php echo $l->id; ?>"><i class="fa fa-copy"></i></button>
     </td>
     <td><?php echo shra_lead_stage_badge($l->stage); ?></td>
     <td class="shra-r-due">

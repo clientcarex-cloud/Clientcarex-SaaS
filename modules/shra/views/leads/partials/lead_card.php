@@ -37,6 +37,7 @@ $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->ride
     <div class="shra-lead-actions">
         <a href="<?php echo $l->tel_link; ?>" class="shra-ic" title="Call"><i class="fa fa-phone"></i></a>
         <a href="<?php echo $l->wa_link; ?>" target="_blank" rel="noopener" class="shra-ic wa" title="WhatsApp" data-shra-wa="<?php echo $l->id; ?>"><i class="fa-brands fa-whatsapp"></i></a>
+        <button type="button" class="shra-ic wa-copy" title="Copy the WhatsApp pitch" data-shra-wa-copy="<?php echo $l->id; ?>"><i class="fa fa-copy"></i></button>
         <?php if ($l->is_open) { ?>
             <button type="button" class="shra-btn shra-btn-primary shra-btn-sm" data-shra-act="call" data-lead="<?php echo $l->id; ?>"><i class="fa fa-pen"></i> Log call</button>
             <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="visit" data-lead="<?php echo $l->id; ?>" title="Schedule / reschedule visit"><i class="fa fa-calendar-plus"></i></button>

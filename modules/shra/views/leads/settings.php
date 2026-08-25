@@ -33,7 +33,8 @@
                     <div class="form-group"><label>Visit slots (one per line)</label><textarea name="shra_lead_visit_slots" class="form-control" rows="5"><?php echo html_escape(get_option('shra_lead_visit_slots')); ?></textarea></div>
                     <div class="form-group"><label>Lost reasons (one per line)</label><textarea name="shra_lead_lost_reasons" class="form-control" rows="5"><?php echo html_escape(get_option('shra_lead_lost_reasons')); ?></textarea></div>
                     <div class="form-group"><label>Payment methods <span class="help" style="display:inline">(one per line — offered when an agent takes an advance on a call)</span></label><textarea name="shra_lead_payment_methods" class="form-control" rows="4"><?php echo html_escape(get_option('shra_lead_payment_methods')); ?></textarea></div>
-                    <div class="form-group"><label>WhatsApp templates <span class="help" style="display:inline">Title|Message — {name} {agent} {academy} {visit} {start} {batch} {batches}</span></label><textarea name="shra_lead_wa_templates" class="form-control" rows="5"><?php echo html_escape(get_option('shra_lead_wa_templates')); ?></textarea></div>
+                    <div class="form-group"><label>WhatsApp templates <span class="help" style="display:inline">Title|Message — {name} {agent} {academy} {visit} {location} {start} {batch} {batches}</span></label><textarea name="shra_lead_wa_templates" class="form-control" rows="5"><?php echo html_escape(get_option('shra_lead_wa_templates')); ?></textarea></div>
+                    <div class="form-group"><label>Copy-button message <span class="help" style="display:inline">Behind the <i class="fa fa-copy"></i> next to WhatsApp — same placeholders</span></label><textarea name="shra_lead_wa_copy_msg" class="form-control" rows="6"><?php echo html_escape(shra_lead_wa_copy_msg()); ?></textarea></div>
                 </div>
             </div>
             <div class="shra-card shra-mt">

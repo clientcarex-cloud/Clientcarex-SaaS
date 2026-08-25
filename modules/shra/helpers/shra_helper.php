@@ -615,6 +615,31 @@ function shra_lead_wa_templates()
 }
 
 /**
+ * The ready-to-send pitch behind the copy button next to WhatsApp.
+ * Editable in lead settings; same placeholders as the WA templates.
+ */
+function shra_lead_wa_copy_msg()
+{
+    $msg = trim((string) get_option('shra_lead_wa_copy_msg'));
+    if ($msg !== '') {
+        return $msg;
+    }
+
+    return "Hey {name}! 🐎✨\n\n"
+        . "This is {agent} from *{academy}* — so glad you asked about horse riding with us! 🙌\n\n"
+        . "Here's what's waiting for you:\n"
+        . "🏇 Certified trainers + gentle, well-schooled horses\n"
+        . "🦺 Full safety gear provided (helmet & body protector)\n"
+        . "🧒 Beginners welcome — ages 5 and up\n"
+        . "📍 {location}\n\n"
+        . "*Your next step is easy:*\n"
+        . "1️⃣ Reply *YES* to this message\n"
+        . "2️⃣ I'll book your FREE academy visit\n"
+        . "3️⃣ Meet the horses, watch a class, pick your batch 🎉\n\n"
+        . "⏰ Weekend slots fill up fast — shall I reserve yours today?";
+}
+
+/**
  * Digits-only phone used as the duplicate key. Strips the country code
  * (option shra_lead_phone_country, default 91) and a leading trunk 0.
  */

@@ -276,7 +276,9 @@ window.SHRA_LEADS_CFG = {
         eod: <?php echo json_encode(admin_url('shra/shra_leads/eod')); ?>
     },
     templates: <?php echo json_encode($templates); ?>,
+    copyMsg: <?php echo json_encode(shra_lead_wa_copy_msg()); ?>,
     academy: <?php echo json_encode(get_option('shra_academy_name') ?: 'SHRA'); ?>,
+    location: <?php echo json_encode(get_option('shra_lead_landing_location') ?: ''); ?>,
     agent: <?php echo json_encode(get_staff_full_name(get_staff_user_id())); ?>,
     cc: <?php echo json_encode(preg_replace('/\D+/', '', (string) get_option('shra_lead_phone_country'))); ?>,
     canAll: <?php echo $can_all ? 'true' : 'false'; ?>,
