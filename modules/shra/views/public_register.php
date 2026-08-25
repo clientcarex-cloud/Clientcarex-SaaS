@@ -48,6 +48,7 @@ include __DIR__ . '/_public_head.php';
 .pick b{font-family:'Cormorant Garamond',Georgia,serif;font-size:17px}
 .pick a{font-size:12px;color:var(--brown)}
 .learner-only{display:none}.is-learner .learner-only{display:block}
+.learner-only>.sec:first-child{margin-top:20px}
 .row.learner-only{display:none}.is-learner .row.learner-only{display:grid}
 .safety-btn{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 14px;border:1.5px solid var(--gold-2);border-radius:999px;background:#fff;color:var(--brown);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none}
 .safety-btn:hover{background:var(--cream-2);border-color:var(--gold)}
