@@ -39,8 +39,8 @@
 .shra-poster .step b{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:17px;font-weight:700;color:var(--ink);line-height:1.15}
 .shra-poster .step small{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.35}
 .shra-poster .powered{margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
-.shra-poster .powered .shra-powered{color:var(--muted)}
-.shra-poster .powered .shra-powered img{height:20px;width:auto;border-radius:0;box-shadow:none}
+.shra-poster .powered .shra-powered{color:var(--muted);font-size:13px}
+.shra-poster .powered .shra-powered img{height:40px;width:auto;border-radius:0;box-shadow:none;image-rendering:-webkit-optimize-contrast}
 .shra-poster[data-theme="midnight"] .powered .shra-powered img,
 .shra-poster[data-theme="emerald"] .powered .shra-powered img,
 .shra-poster[data-theme="navy"] .powered .shra-powered img{background:#fff;padding:2px 6px;border-radius:3px}
