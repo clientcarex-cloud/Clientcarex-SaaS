@@ -1908,11 +1908,12 @@ class Shra_leads_model extends App_Model
         //    rider, keep the lead. A self-registered rider with no enrollment
         //    after the grace window paid neither online nor at the desk, so the
         //    rider row goes and the linked lead stays with its agent, who is
-        //    nudged to follow up. Blank option = 48 h; 0 switches the reclaim off.
-        $hours = get_option('shra_join_reclaim_hours');
-        $hours = ($hours === '' || $hours === false || $hours === null) ? 48 : (int) $hours;
-        if ($hours > 0) {
-            $rcut      = date('Y-m-d H:i:s', time() - $hours * 3600);
+        //    nudged to follow up. Blank option = 2880 min (48 h); 0 switches the
+        //    reclaim off.
+        $mins = get_option('shra_join_reclaim_minutes');
+        $mins = ($mins === '' || $mins === false || $mins === null) ? 2880 : (int) $mins;
+        if ($mins > 0) {
+            $rcut      = date('Y-m-d H:i:s', time() - $mins * 60);
             $abandoned = $this->db->query("SELECT r.id, r.rider_no, r.full_name, x.lead_id, l.assigned
                 FROM {$p}shra_riders r
                 JOIN {$p}shra_lead_ext x ON x.rider_id = r.id
