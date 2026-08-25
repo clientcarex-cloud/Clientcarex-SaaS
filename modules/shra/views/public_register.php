@@ -46,6 +46,7 @@ include __DIR__ . '/_public_head.php';
 .nav .btn.ghost{flex:0 0 auto;padding-left:18px;padding-right:18px}
 .pick{background:var(--cream-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:flex;justify-content:space-between;gap:10px;align-items:center}
 .pick b{font-family:'Cormorant Garamond',Georgia,serif;font-size:17px}
+.pick #pick-total{font-family:'Inter',system-ui,sans-serif;font-size:15px;letter-spacing:-.2px}
 .pick a{font-size:12px;color:var(--brown)}
 .learner-only{display:none}.is-learner .learner-only{display:block}
 .learner-only>.sec:first-child{margin-top:20px}
@@ -180,7 +181,7 @@ include __DIR__ . '/_public_head.php';
                     <div class="f"><label>Gender <span class="req">*</span></label><div class="chips one-line"><?php foreach (shra_genders() as $k => $l) { ?><label><input type="radio" name="gender" value="<?php echo $k; ?>" <?php echo $v('gender') === $k ? 'checked' : ''; ?>><span><?php echo $l; ?></span></label><?php } ?></div></div>
                 </div>
                 <div class="row">
-                    <div class="f"><label>Mobile number <span class="req">*</span></label><input type="tel" name="mobile" value="<?php echo $v('mobile'); ?>" required inputmode="tel" autocomplete="tel"></div>
+                    <div class="f"><label>Mobile number <span class="req">*</span></label><input type="tel" name="mobile" value="<?php echo $v('mobile'); ?>" required inputmode="numeric" autocomplete="tel" maxlength="14" pattern="[0-9]{10}" placeholder="10-digit mobile number"></div>
                     <div class="f"><label>Email</label><input type="email" name="email" value="<?php echo $v('email'); ?>" inputmode="email" autocomplete="email"></div>
                 </div>
                 <div class="row learner-only">
@@ -408,6 +409,15 @@ include __DIR__ . '/_public_head.php';
         go(+b.dataset.next);
     }); });
     document.querySelectorAll('[data-prev]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); go(+b.dataset.prev); }); });
+    var mob = form.querySelector('[name=mobile]');
+    function normMobile() {
+        var d = mob.value.replace(/\D+/g, '');
+        if (d.length > 10 && d.indexOf('91') === 0) d = d.slice(2);
+        d = d.replace(/^0+/, '');
+        mob.value = d.slice(0, 10);
+    }
+    mob.addEventListener('input', normMobile);
+    mob.addEventListener('blur', normMobile);
     dob.addEventListener('change', updateMinor); dob.addEventListener('input', updateMinor);
     gname.addEventListener('input', function () { if (!by.value || by.dataset.auto) { by.value = gname.value; by.dataset.auto = '1'; } });
     by.addEventListener('input', function () { delete by.dataset.auto; });
@@ -431,6 +441,13 @@ include __DIR__ . '/_public_head.php';
             var first = bad[0] ? (bad[0].closest('.f') || bad[0].closest('.accept') || bad[0]) : this.querySelector('[name=gender]').closest('.f');
             first.scrollIntoView({ behavior: 'smooth', block: 'center' });
             alert('Please fill all the required fields' + (!gender ? ' (gender)' : '') + '.');
+            return;
+        }
+        normMobile();
+        if (mob.value.length !== 10) {
+            e.preventDefault();
+            mob.closest('.f').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            alert('Please enter a valid 10-digit mobile number.');
         }
     });
 

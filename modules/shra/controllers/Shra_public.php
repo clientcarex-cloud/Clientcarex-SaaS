@@ -562,9 +562,9 @@ class Shra_public extends App_Controller
         if (trim((string) ($p['full_name'] ?? '')) === '') {
             $e[] = 'Please enter the rider\'s full name.';
         }
-        $mobile = preg_replace('/\D+/', '', (string) ($p['mobile'] ?? ''));
-        if (strlen($mobile) < 8) {
-            $e[] = 'Please enter a valid mobile number.';
+        $mobile = shra_phone_norm((string) ($p['mobile'] ?? ''));
+        if (strlen($mobile) !== 10) {
+            $e[] = 'Please enter a valid 10-digit mobile number.';
         }
         if (empty($p['dob'])) {
             $e[] = 'Please enter the date of birth.';

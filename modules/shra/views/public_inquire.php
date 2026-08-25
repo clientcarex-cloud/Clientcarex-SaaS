@@ -180,7 +180,7 @@ section{padding:52px 0}
 .try b{display:block;font-size:15px}
 .try small{color:var(--muted);font-size:13px}
 .try .pr{margin-left:auto;text-align:right;white-space:nowrap}
-.try .pr b{font-size:20px;font-family:'Cormorant Garamond',Georgia,serif}
+.try .pr b{font-size:18px;font-family:'Inter',system-ui,sans-serif;letter-spacing:-.2px}
 .try .pr a{font-size:12.5px;color:var(--brown);font-weight:600}
 .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .plan{position:relative;background:var(--cream-2);border:1.5px solid var(--line);border-radius:18px;padding:20px 18px;display:flex;flex-direction:column}
@@ -189,7 +189,7 @@ section{padding:52px 0}
 .plan h3{font-size:17px;font-weight:700}
 .plan .ss{font-size:12.5px;color:var(--muted);margin-top:2px}
 .plan .pr{margin:14px 0 4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.plan .now{font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:700;line-height:1}
+.plan .now{font-family:'Inter',system-ui,sans-serif;font-size:24px;font-weight:700;line-height:1;letter-spacing:-.3px}
 .plan .was{font-size:13px;color:var(--muted);text-decoration:line-through}
 .plan .per{font-size:13px;color:var(--ink-2);margin-bottom:14px}
 .plan .per b{color:var(--green)}
