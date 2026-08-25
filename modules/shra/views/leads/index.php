@@ -17,9 +17,9 @@
     foreach ($no_shows as $l) {
         if (!isset($seen[$l->id])) { $ns[] = $l; }
     }
-    // "All agents" only exists on the all-leads scope; the queue always belongs to somebody.
+    // agent 0 = "All staff" — everyone's leads at once, both scopes. Admins land on it.
     $agent_param = (string) $this->input->get('agent');
-    $sel_agent   = ($all && $agent_param === '') ? '' : (string) $agent;
+    $sel_agent   = ($all && $agent_param === '') ? '' : ($agent ? (string) $agent : '');
 
     $qs = function (array $extra = []) use ($scope, $sel_agent, $filters) {
         $q = array_merge([
@@ -45,9 +45,9 @@
         </div>
         <?php
         // One strip: the month's numbers, how each tracks against target, and the
-        // EOD button. The numbers always belong to one agent — own, or the one
-        // picked in the filter — so the targets under them do too.
-        $tg_name = '';
+        // EOD button. The numbers follow the agent filter — one agent's month, or
+        // the whole team's totals on "All staff" — and so do the targets under them.
+        $tg_name = $agent ? '' : 'All staff';
         foreach ($agents as $a) {
             if ((int) $a->staffid === (int) $agent) { $tg_name = $a->full_name; }
         }
@@ -130,7 +130,7 @@
                 <input type="hidden" name="scope" value="<?php echo $scope; ?>">
                 <?php if ($can_all) { ?>
                 <select name="agent" class="form-control" onchange="this.form.submit()" title="Whose leads">
-                    <?php if ($all) { ?><option value="" <?php echo $sel_agent === '' ? 'selected' : ''; ?>>All agents</option><?php } ?>
+                    <option value="" <?php echo $sel_agent === '' ? 'selected' : ''; ?>>All staff</option>
                     <?php foreach ($agents as $a) { ?><option value="<?php echo $a->staffid; ?>" <?php echo (string) $a->staffid === $sel_agent ? 'selected' : ''; ?>><?php echo html_escape($a->full_name); ?><?php echo $a->staffid == get_staff_user_id() ? ' (me)' : ''; ?></option><?php } ?>
                 </select>
                 <?php } ?>

@@ -100,7 +100,9 @@ class Shra_leads extends AdminController
     public function index()
     {
         $me    = get_staff_user_id();
-        $agent = (int) $this->input->get('agent') ?: $me;
+        // agent 0 = "All staff". Admins land there; agents land on their own queue.
+        $agent_param = $this->input->get('agent');
+        $agent       = $agent_param === null ? (is_admin() ? 0 : (int) $me) : (int) $agent_param;
         if ($agent !== (int) $me && !shra_leads_can('all')) {
             $agent = $me;
         }

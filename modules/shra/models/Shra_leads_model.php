@@ -161,10 +161,17 @@ class Shra_leads_model extends App_Model
     public function queues_for($staff_id, $include_unassigned = false)
     {
         $p    = db_prefix();
-        // Managers also see unassigned leads (public form with an empty agent pool) so nothing is invisible
-        $who  = $include_unassigned ? '(l.assigned = ? OR l.assigned = 0 OR l.assigned IS NULL)' : 'l.assigned = ?';
+        // Managers also see unassigned leads (public form with an empty agent pool) so nothing is invisible.
+        // $staff_id 0 = the whole team's queue ("All staff"), unassigned included.
+        if ((int) $staff_id === 0) {
+            $who  = '1=1';
+            $bind = [];
+        } else {
+            $who  = $include_unassigned ? '(l.assigned = ? OR l.assigned = 0 OR l.assigned IS NULL)' : 'l.assigned = ?';
+            $bind = [(int) $staff_id];
+        }
         $rows = $this->db->query($this->base_select() . " WHERE $who AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won'
-            ORDER BY x.next_action_at IS NULL DESC, x.next_action_at ASC LIMIT 800", [(int) $staff_id])->result();
+            ORDER BY x.next_action_at IS NULL DESC, x.next_action_at ASC LIMIT 800", $bind)->result();
         $out  = ['overdue' => [], 'today' => [], 'upcoming' => [], 'later' => [], 'unset' => []];
         $now  = time();
         foreach ($rows as $r) {
@@ -1422,11 +1429,14 @@ class Shra_leads_model extends App_Model
             WHERE l.lost = 1 AND l.last_status_change BETWEEN ? AND ? GROUP BY x.lost_reason ORDER BY c DESC", [$from . ' 00:00:00', $to . ' 23:59:59'])->result();
     }
 
-    /** Agent-level KPIs for My Day header (this month, or the month $in falls in). */
+    /** Agent-level KPIs for My Day header (this month, or the month $in falls in). $staff_id 0 = whole team. */
     public function my_month($staff_id, $in = null)
     {
         $ts   = $in && strtotime($in) ? strtotime($in) : time();
         $rows = $this->team_stats(date('Y-m-01', $ts), date('Y-m-t', $ts));
+        if ((int) $staff_id === 0) {
+            return $this->team_totals($rows);
+        }
         foreach ($rows as $r) {
             if ((int) $r->staffid === (int) $staff_id) {
                 return $r;
@@ -1434,6 +1444,27 @@ class Shra_leads_model extends App_Model
         }
 
         return null;
+    }
+
+    /** Every agent's month rolled into one row, for the All-staff header. */
+    private function team_totals(array $rows)
+    {
+        $keys = ['assigned', 'calls', 'contacted', 'visits_booked', 'visited', 'confirmed', 'won', 'renewals',
+            'revenue', 'collected', 'open_now', 'overdue_now', 'stale_now', 'lost', 'calls_target', 'visits_target', 'revenue_target'];
+        $t = (object) array_fill_keys($keys, 0);
+        foreach ($rows as $r) {
+            foreach ($keys as $k) {
+                $t->$k += (float) ($r->$k ?? 0);
+            }
+        }
+        $t->staffid      = 0;
+        $t->name         = 'All staff';
+        $t->contact_rate = $t->assigned > 0 ? round($t->contacted / $t->assigned * 100) : 0;
+        $t->show_rate    = $t->visits_booked > 0 ? round($t->visited / $t->visits_booked * 100) : 0;
+        $t->win_rate     = $t->assigned > 0 ? round($t->won / $t->assigned * 100) : 0;
+        $t->avg_days     = null;
+
+        return $t;
     }
 
     /**
