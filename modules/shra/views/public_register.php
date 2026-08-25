@@ -106,6 +106,11 @@ include __DIR__ . '/_public_head.php';
 .sf-alert i{margin-top:2px}
 .sf-foot{padding:12px 22px 16px;border-top:1px solid var(--line);background:var(--cream-2)}
 .sf-foot .btn{padding:13px 20px;font-size:15px}
+.chips.one-line{flex-wrap:nowrap}
+.chips.one-line label{flex:1;min-width:0;padding:11px 6px;white-space:nowrap}
+@media(max-width:360px){.chips.one-line label{font-size:12.5px;padding:11px 4px}}
+#guardian-wrap{display:none}
+#guardian-wrap.show{display:block}
 </style>
     <div class="card" id="wiz">
         <div class="card-head" style="padding-bottom:14px">
@@ -171,7 +176,7 @@ include __DIR__ . '/_public_head.php';
                 <div class="f"><label>Rider full name <span class="req">*</span></label><input type="text" name="full_name" value="<?php echo $v('full_name'); ?>" required autocomplete="name"></div>
                 <div class="row">
                     <div class="f"><label>Date of birth <span class="req">*</span></label><input type="date" name="dob" id="dob" value="<?php echo $v('dob'); ?>" max="<?php echo date('Y-m-d'); ?>" required><div class="hint" id="age-hint"></div></div>
-                    <div class="f"><label>Gender <span class="req">*</span></label><div class="chips"><?php foreach (shra_genders() as $k => $l) { ?><label><input type="radio" name="gender" value="<?php echo $k; ?>" <?php echo $v('gender') === $k ? 'checked' : ''; ?>><span><?php echo $l; ?></span></label><?php } ?></div></div>
+                    <div class="f"><label>Gender <span class="req">*</span></label><div class="chips one-line"><?php foreach (shra_genders() as $k => $l) { ?><label><input type="radio" name="gender" value="<?php echo $k; ?>" <?php echo $v('gender') === $k ? 'checked' : ''; ?>><span><?php echo $l; ?></span></label><?php } ?></div></div>
                 </div>
                 <div class="row">
                     <div class="f"><label>Mobile number <span class="req">*</span></label><input type="tel" name="mobile" value="<?php echo $v('mobile'); ?>" required inputmode="tel" autocomplete="tel"></div>
@@ -184,13 +189,15 @@ include __DIR__ . '/_public_head.php';
                 <div class="f learner-only"><label>Full address <span class="req">*</span></label><textarea name="address" rows="2" autocomplete="street-address"><?php echo $v('address'); ?></textarea></div>
                 <div class="f learner-only"><label>Riding level</label><div class="chips"><?php foreach ($levels as $i => $l) { ?><label><input type="radio" name="riding_level" value="<?php echo html_escape($l); ?>" <?php echo $v('riding_level', $levels[0]) === $l ? 'checked' : ''; ?>><span><?php echo html_escape($l); ?></span></label><?php } ?></div></div>
 
+                <div id="guardian-wrap">
                 <div class="sec">Parent / guardian</div>
                 <div class="guardian" id="guardian-box">
-                    <div class="note" id="guardian-note">Required for riders under <?php echo $minor_age; ?>. Optional otherwise — an emergency contact is always welcome.</div>
+                    <div class="note" id="guardian-note"></div>
                     <div class="row">
-                        <div class="f"><label>Guardian name <span class="req g-req" style="display:none">*</span></label><input type="text" name="guardian_name" id="guardian_name" value="<?php echo $v('guardian_name'); ?>"></div>
+                        <div class="f"><label>Guardian name <span class="req g-req">*</span></label><input type="text" name="guardian_name" id="guardian_name" value="<?php echo $v('guardian_name'); ?>"></div>
                         <div class="f"><label>Relationship</label><select name="guardian_relationship"><option value="">Select</option><?php foreach (shra_relationships() as $l) { ?><option value="<?php echo $l; ?>" <?php echo $v('guardian_relationship') === $l ? 'selected' : ''; ?>><?php echo $l; ?></option><?php } ?></select></div>
                     </div>
+                </div>
                 </div>
 
                 <div class="sec">Terms &amp; conditions</div>
@@ -382,10 +389,10 @@ include __DIR__ . '/_public_head.php';
         var a = age(), minor = a !== null && a < minorAge;
         hint.textContent = a === null ? '' : (a + ' years · ' + (minor ? 'Children plans' : 'Adult plans'));
         if (a !== null) { var want = minor ? 'children' : 'adults'; if (aud() !== want) { form.querySelector('[name=audience][value=' + want + ']').checked = true; filterPlans(); } }
-        document.querySelectorAll('.g-req').forEach(function (el) { el.style.display = minor ? '' : 'none'; });
+        document.getElementById('guardian-wrap').classList.toggle('show', minor);
         gname.required = minor; by.required = minor;
         byWrap.style.display = minor ? '' : 'none';
-        gnote.textContent = minor ? 'The rider is under ' + minorAge + ' — a parent / guardian must be named and accept the terms on the rider\'s behalf.' : 'Required for riders under ' + minorAge + '. Optional otherwise — an emergency contact is always welcome.';
+        gnote.textContent = 'The rider is under ' + minorAge + ' — a parent / guardian must be named and accept the terms on the rider\'s behalf.';
         acceptText.innerHTML = minor ? 'As the parent / guardian named above, I have read and accept the terms &amp; conditions on behalf of the rider.' : 'I have read and accept the terms &amp; conditions of the academy.';
     }
 
