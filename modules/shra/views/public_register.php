@@ -184,6 +184,9 @@ include __DIR__ . '/_public_head.php';
                     <div class="f"><label>Mobile number <span class="req">*</span></label><input type="tel" name="mobile" value="<?php echo $v('mobile'); ?>" required inputmode="numeric" autocomplete="tel" maxlength="14" pattern="[0-9]{10}" placeholder="10-digit mobile number"></div>
                     <div class="f"><label>Email</label><input type="email" name="email" value="<?php echo $v('email'); ?>" inputmode="email" autocomplete="email"></div>
                 </div>
+                <?php if (count($sources)) { ?>
+                <div class="f"><label>How did you get to know about us? <span class="req">*</span></label><select name="lead_source" required><option value="">Select</option><?php foreach ($sources as $s) { ?><option value="<?php echo (int) $s->id; ?>" <?php echo $v('lead_source') === (string) $s->id ? 'selected' : ''; ?>><?php echo html_escape($s->name); ?></option><?php } ?></select></div>
+                <?php } ?>
                 <div class="row learner-only">
                     <div class="f"><label>Place of birth</label><input type="text" name="place_of_birth" value="<?php echo $v('place_of_birth'); ?>"></div>
                     <div class="f"><label>Rider status</label><select name="marital_status"><option value="">Select</option><?php foreach (shra_marital_statuses() as $k => $l) { ?><option value="<?php echo $k; ?>" <?php echo $v('marital_status') === $k ? 'selected' : ''; ?>><?php echo $l; ?></option><?php } ?></select></div>

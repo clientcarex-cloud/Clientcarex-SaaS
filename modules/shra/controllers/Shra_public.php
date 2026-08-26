@@ -86,6 +86,7 @@ class Shra_public extends App_Controller
             'plans'     => $plans,
             'offer'     => shra_offer(),
             'minor_age' => (int) get_option('shra_minor_age'),
+            'sources'   => $this->db->order_by('name', 'ASC')->get(db_prefix() . 'leads_sources')->result(),
             'errors'    => [],
             'old'       => [],
         ];
@@ -115,7 +116,15 @@ class Shra_public extends App_Controller
                 // the rider the moment the gateway confirms money. Unpaid = lead only.
                 $this->load->model('shra/shra_leads_model');
                 $payable = $post['preferred_package_id'] && count(shra_pay_gateways());
-                $src     = $this->db->where('name', 'Website QR')->get(db_prefix() . 'leads_sources')->row();
+                // "How did you get to know about us?" — the same sources the leads
+                // settings page manages, so the answer feeds the source funnel/ROI
+                // reports directly. Website QR stays the fallback for old/blank posts.
+                $src = !empty($post['lead_source'])
+                    ? $this->db->where('id', (int) $post['lead_source'])->get(db_prefix() . 'leads_sources')->row()
+                    : null;
+                if (!$src) {
+                    $src = $this->db->where('name', 'Website QR')->get(db_prefix() . 'leads_sources')->row();
+                }
                 $res     = $this->shra_leads_model->capture([
                     'name'                 => $post['full_name'],
                     'phone'                => $post['mobile'],
@@ -578,6 +587,9 @@ class Shra_public extends App_Controller
         }
         if (empty($p['gender'])) {
             $e[] = 'Please select a gender.';
+        }
+        if (empty($p['lead_source']) && $this->db->count_all(db_prefix() . 'leads_sources') > 0) {
+            $e[] = 'Please tell us how you got to know about us.';
         }
         if ($learner && trim((string) ($p['address'] ?? '')) === '') {
             $e[] = 'Please enter the full address.';
