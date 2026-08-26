@@ -220,12 +220,17 @@
       $(this).addClass('selected');
       pkg = cfg.packages[$(this).data('id')];
       $('#shra-package-id').val(pkg.id);
+      if (+pkg.is_guest === 1) { $('#shra-bill-form input[name=batch][value=""]').prop('checked', true); }
+      // Guest rides ride now — preselect "Mark 1st session now" unless the user chose otherwise
+      var $mark = $('#shra-bill-form input[name=mark_now]');
+      if (!$mark.data('touched')) { $mark.prop('checked', +pkg.is_guest === 1); }
       if (!$discount.data('touched')) { $discount.val(cfg.offer.active ? cfg.offer.percent : 0); }
       summary();
     });
 
     $discount.on('input', function () { $(this).data('touched', true); summary(); });
     $paid.on('input', function () { $(this).data('touched', true); summary(); });
+    $('#shra-bill-form input[name=mark_now]').on('change', function () { $(this).data('touched', true); });
 
     function scheduleLine() {
       var d = $('#shra-start-date').val(), $b = $('#shra-bill-form input[name=batch]:checked'), out = [];
@@ -239,6 +244,8 @@
     $(document).on('change', '#shra-start-date, #shra-bill-form input[name=batch]', summary);
 
     function summary() {
+      // Schedule (start date + batch) shows only once a non-guest package is chosen
+      $('#shra-schedule').toggle(!!pkg && +pkg.is_guest !== 1);
       if (!pkg) {
         $sum.html('<div class="shra-empty" style="padding:30px 10px"><i class="fa-solid fa-horse"></i>Pick a rider and a package</div>');
         $btn.prop('disabled', true);
@@ -293,6 +300,7 @@
           $('#shra-bill-done').html(res.html).show();
           if (res.duplicate) { alert_float('warning', 'That bill was already created — nothing was charged twice.'); }
           $form[0].reset(); $discount.data('touched', false); $paid.data('touched', false);
+          $('#shra-bill-form input[name=mark_now]').data('touched', false);
           newToken(); $('#shra-bill-force').val(0);
           rider = null; pkg = null;
           $picked.hide(); $('#shra-rider-wrap').show(); $('#shra-rider-flags').empty();
