@@ -43,6 +43,15 @@
     });
   };
 
+  // Phones show the nav as one swipeable row — bring the active tab into view
+  $(function () {
+    var active = document.querySelector('.shra-nav a.active');
+    var nav = active && active.parentElement;
+    if (nav && nav.scrollWidth > nav.clientWidth) {
+      nav.scrollLeft = Math.max(0, active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2);
+    }
+  });
+
   /**
    * Rider search picker.
    * $input: text input, $results: dropdown container, onPick(rider)

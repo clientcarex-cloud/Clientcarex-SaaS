@@ -491,3 +491,55 @@ tr.shra-row-picked td{background:#fdf3f2!important}
 .shra-bulkbar .shra-btn-outline:hover{background:rgba(246,239,224,.12)}
 .shra-bulkbar .shra-btn-danger{background:var(--red);border-color:var(--red);color:#fff!important}
 .shra-bulkbar .shra-btn-danger:hover{filter:brightness(1.1)}
+
+/* ═══════════ v1.4 — Mobile-first pass (app is used ~90% on phones) ═══════════ */
+.shra-head-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* batch picker: full-width row on desktop, stacked list on phones */
+.shra-seg-stack{display:flex}
+
+@media(max-width:767px){
+  /* header — one tight brand row; actions become a swipeable strip */
+  .shra-head{gap:8px;margin-bottom:10px}
+  .shra-brand{gap:10px}
+  .shra-brand img{width:38px;height:38px}
+  .shra-brand h3{font-size:18px;line-height:1.15}
+  .shra-brand small{display:none}
+  .shra-head-actions{width:100%;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 1px}
+  .shra-head-actions::-webkit-scrollbar{display:none}
+  .shra-head-actions .shra-btn{flex:none}
+  .shra-title{font-size:20px}
+
+  /* nav — one swipeable row instead of a five-row pill cloud */
+  .shra-nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:14px}
+  .shra-nav::-webkit-scrollbar{display:none}
+  .shra-nav a{flex:none;padding:9px 13px}
+
+  /* cards — reclaim horizontal space */
+  .shra-card-body{padding:14px}
+  .shra-card-head{padding:12px 14px}
+  .shra-bill,.shra-att,.shra-profile{gap:12px}
+  .shra-mt{margin-top:12px}
+
+  /* forms — 16px stops the iOS focus-zoom; slightly taller touch targets */
+  .shra .form-control,.shra select.form-control{font-size:16px;padding:10px 12px}
+  .shra .form-group{margin-bottom:12px}
+
+  /* segmented controls stretch edge-to-edge; keep the checked pill aligned */
+  .shra-seg{display:flex;width:100%}
+  .shra-seg label{flex:1;text-align:center;padding:8px 6px}
+  .shra-seg input:checked+span{margin:-8px -6px;padding:8px 6px}
+  .shra-seg-stack{flex-direction:column;align-items:stretch}
+
+  /* step headers (number + title + audience toggle) wrap cleanly */
+  .shra-step{flex-wrap:wrap;gap:8px 10px}
+
+  /* packages — two tight columns */
+  .shra-pkgs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .shra-pkg{padding:12px 12px 10px}
+  .shra-pkg .pk-now{font-size:16px}
+
+  /* summary flows after the form; sticky is a desktop trick */
+  .shra-summary{position:static}
+
+  .shra-footer{padding:16px 0 4px;margin-top:12px}
+}

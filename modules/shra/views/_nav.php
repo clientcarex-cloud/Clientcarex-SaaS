@@ -39,7 +39,7 @@ if (is_admin()) {
             <small><?php echo html_escape(get_option('shra_tagline')); ?></small>
         </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="shra-head-actions">
         <?php if (shra_can('view')) { ?>
             <a href="<?php echo admin_url('shra/qr'); ?>" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa-solid fa-qrcode"></i> Registration QR</a>
         <?php } ?>
