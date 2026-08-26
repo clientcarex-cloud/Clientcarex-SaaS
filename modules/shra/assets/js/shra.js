@@ -59,6 +59,12 @@
           $results.html('<div class="none">Keep typing — mobile matches appear after 5 digits.</div>').addClass('open');
           return;
         }
+        // A full unknown mobile number → let the page take over (billing auto-opens quick add)
+        if (digits.length === 10 && digits.length >= q.length - 2) {
+          var ev = $.Event('shra:riderNotFound');
+          $(document).trigger(ev, [digits]);
+          if (ev.isDefaultPrevented()) { $results.removeClass('open').empty(); return; }
+        }
         $results.html('<div class="none">No rider found. ' + ($('#shra-quick').length ? '<a href="#" class="shra-quick-open" data-q="' + S.esc(q) + '">Quick add "' + S.esc(q) + '"</a> · ' : '') + '<a href="' + S.urls.newRider + '" target="_blank">Full form</a></div>').addClass('open');
         return;
       }
@@ -170,6 +176,20 @@
       summary();
     });
     $('#shra-quick-name').on('input', summary);
+
+    // Searched a full mobile number with no match → open quick add with it prefilled
+    var lastAutoQuick = '';
+    $(document).on('shra:riderNotFound', function (e, digits) {
+      e.preventDefault();
+      if (digits === lastAutoQuick) { return; }
+      lastAutoQuick = digits;
+      if (!$quick.is(':visible')) { $quick.slideDown(120); }
+      if (!$('#shra-quick-mobile').val() || !$.trim($('#shra-quick-name').val())) { $('#shra-quick-mobile').val(digits); }
+      $('#shra-quick-name').focus();
+      summary();
+    });
+    $(document).on('shra:riderPicked', function () { lastAutoQuick = ''; });
+
     $('#shra-quick-dob').on('change', function () {
       var a = S.age(this.value);
       if (this.value && (a === null || a < 5)) {
