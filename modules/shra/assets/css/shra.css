@@ -139,8 +139,13 @@
 .shra-pkg.selected .pk-check{display:inline-flex}
 .shra-summary{position:sticky;top:70px}
 .shra-summary .row-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}
-.shra-summary .row-line.total{border:0;padding-top:14px;font-family:'Inter',system-ui,sans-serif;font-size:22px;font-weight:700}
-.shra-summary .row-line.total .amt{color:var(--red)}
+.shra-summary .row-line.total{border-bottom:1px dashed var(--line);padding-top:14px;font-family:'Inter',system-ui,sans-serif;font-size:20px;font-weight:700}
+.shra-summary .row-line.total .amt{color:var(--ink)}
+.shra-summary .row-line.pay,.shra-summary .row-line.due{font-size:14px;font-weight:600}
+.shra-summary .row-line.pay .v{color:var(--green);font-weight:700}
+.shra-summary .row-line.due{border-bottom:0}
+.shra-summary .row-line.due .v{color:var(--red);font-weight:700}
+.shra-summary .row-line.due.ok .v{color:var(--green)}
 .shra-offer{display:flex;align-items:center;gap:10px;background:#fbeeee;border:1px dashed #e8b9b6;color:var(--red);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600}
 .shra-offer .stamp{background:var(--red);color:#fff;border-radius:6px;padding:2px 7px;font-size:11px;transform:rotate(-4deg)}
 .shra-picked{display:flex;align-items:center;gap:12px;background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
