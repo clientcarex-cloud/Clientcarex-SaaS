@@ -115,6 +115,10 @@
 /* billing */
 .shra-bill{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:18px}
 @media(max-width:991px){.shra-bill{grid-template-columns:1fr}}
+.shra-amtmode{display:flex}
+.shra-amtmode input{flex:1;min-width:0;border-top-right-radius:0!important;border-bottom-right-radius:0!important}
+.shra-amtmode select{width:auto;max-width:46%;border-top-left-radius:0!important;border-bottom-left-radius:0!important;border-left:0;background:var(--cream)}
+.shra-amtmode input:focus,.shra-amtmode select:focus{position:relative;z-index:1}
 .shra-step{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .shra-step .n{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--cream);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
 .shra-step h5{margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:19px;font-weight:700}

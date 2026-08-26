@@ -79,11 +79,15 @@
                 <div class="shra-step"><span class="n">3</span><h5>Payment</h5></div>
                 <div class="row">
                     <div class="col-md-3"><div class="form-group"><label>Discount %</label><input type="number" step="0.01" min="0" max="100" name="discount_percent" id="shra-discount" class="form-control" value="<?php echo $offer['active'] ? $offer['percent'] + 0 : 0; ?>"></div></div>
-                    <div class="col-md-3"><div class="form-group"><label>Amount received</label><input type="number" step="0.01" min="0" name="paid_amount" id="shra-paid" class="form-control" placeholder="Enter amount" required autocomplete="off"></div></div>
-                    <div class="col-md-3"><div class="form-group"><label>Payment mode</label><select name="payment_mode" class="form-control">
-                        <?php foreach ($payment_modes as $m) { ?><option value="<?php echo $m->id; ?>" <?php echo $m->selected_by_default ? 'selected' : ''; ?>><?php echo html_escape($m->name); ?></option><?php } ?>
-                    </select></div></div>
-                    <div class="col-md-3"><div class="form-group"><label>Reference / UPI txn</label><input type="text" name="reference" class="form-control" placeholder="optional"></div></div>
+                    <div class="col-md-5"><div class="form-group"><label>Amount received &amp; mode</label>
+                        <div class="shra-amtmode">
+                            <input type="number" step="0.01" min="0" name="paid_amount" id="shra-paid" class="form-control" placeholder="Enter amount" required autocomplete="off">
+                            <select name="payment_mode" id="shra-mode" class="form-control" title="Payment mode">
+                                <?php foreach ($payment_modes as $m) { ?><option value="<?php echo $m->id; ?>" <?php echo $m->selected_by_default ? 'selected' : ''; ?>><?php echo html_escape($m->name); ?></option><?php } ?>
+                            </select>
+                        </div>
+                    </div></div>
+                    <div class="col-md-4" id="shra-ref-wrap" style="display:none"><div class="form-group"><label>UPI txn reference</label><input type="text" name="reference" id="shra-ref" class="form-control" placeholder="optional"></div></div>
                 </div>
                 <div class="row">
                     <div class="col-md-6"><div class="form-group"><label>Note on this bill</label><input type="text" name="notes" class="form-control" placeholder="optional"></div></div>

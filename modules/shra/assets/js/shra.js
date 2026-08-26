@@ -232,6 +232,15 @@
     $paid.on('input', function () { $(this).data('touched', true); summary(); });
     $('#shra-bill-form input[name=mark_now]').on('change', function () { $(this).data('touched', true); });
 
+    // Reference input only applies to UPI payments
+    function upiToggle() {
+      var isUpi = /upi/i.test($('#shra-mode option:selected').text());
+      $('#shra-ref-wrap').toggle(isUpi);
+      if (!isUpi) { $('#shra-ref').val(''); }
+    }
+    $('#shra-mode').on('change', upiToggle);
+    upiToggle();
+
     function scheduleLine() {
       var d = $('#shra-start-date').val(), $b = $('#shra-bill-form input[name=batch]:checked'), out = [];
       if (d) {
@@ -301,6 +310,7 @@
           if (res.duplicate) { alert_float('warning', 'That bill was already created — nothing was charged twice.'); }
           $form[0].reset(); $discount.data('touched', false); $paid.data('touched', false);
           $('#shra-bill-form input[name=mark_now]').data('touched', false);
+          upiToggle();
           newToken(); $('#shra-bill-force').val(0);
           rider = null; pkg = null;
           $picked.hide(); $('#shra-rider-wrap').show(); $('#shra-rider-flags').empty();
