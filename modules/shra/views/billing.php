@@ -23,12 +23,11 @@
                     <div class="help" style="margin-top:8px">You can also scan the membership card. Walk-in? <a href="#" id="shra-quick-toggle">Quick add with name &amp; mobile</a> — no form needed.</div>
                     <div id="shra-quick" class="shra-quick" style="display:none">
                         <div class="row">
-                            <div class="col-sm-4"><div class="form-group"><label>Name *</label><input type="text" id="shra-quick-name" class="form-control" placeholder="Rider name"></div></div>
-                            <div class="col-sm-3"><div class="form-group"><label>Mobile *</label><input type="tel" id="shra-quick-mobile" class="form-control" placeholder="10-digit mobile" inputmode="numeric" maxlength="10" pattern="[0-9]{10}"></div></div>
-                            <div class="col-sm-2"><div class="form-group"><label>DOB</label><input type="date" id="shra-quick-dob" class="form-control" max="<?php echo date('Y-m-d', strtotime('-5 years')); ?>"></div></div>
-                            <div class="col-sm-3"><div class="form-group"><label>Type</label><select id="shra-quick-type" class="form-control"><option value="guest">Guest rider</option><option value="learner">Learner (member)</option></select></div></div>
+                            <div class="col-sm-5"><div class="form-group"><label>Name *</label><input type="text" id="shra-quick-name" class="form-control" placeholder="Rider name"></div></div>
+                            <div class="col-sm-4"><div class="form-group"><label>Mobile *</label><input type="tel" id="shra-quick-mobile" class="form-control" placeholder="10-digit mobile" inputmode="numeric" maxlength="10" pattern="[0-9]{10}"></div></div>
+                            <div class="col-sm-3"><div class="form-group"><label>DOB</label><input type="date" id="shra-quick-dob" class="form-control" max="<?php echo date('Y-m-d', strtotime('-5 years')); ?>"></div></div>
                         </div>
-                        <span class="help" style="margin:0;display:block">The rider is added automatically when you collect the bill. DOB picks Children/Adult pricing; leave blank for adults. Learners get a membership number.</span>
+                        <span class="help" style="margin:0;display:block">The rider is added automatically when you collect the bill — a guest package creates a guest rider, any other package a learner with a membership number. DOB picks Children/Adult pricing; leave blank for adults.</span>
                     </div>
                 </div>
                 <div id="shra-picked" class="shra-picked" style="display:none"></div>

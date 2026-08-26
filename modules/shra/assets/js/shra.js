@@ -313,7 +313,7 @@
         if (!quickReady()) return;
         inflight = true;
         $btn.prop('disabled', true).addClass('disabled');
-        $.post(cfg.urls.quick, { full_name: $('#shra-quick-name').val(), mobile: $('#shra-quick-mobile').val(), dob: $('#shra-quick-dob').val(), rider_type: $('#shra-quick-type').val() }, function (res) {
+        $.post(cfg.urls.quick, { full_name: $('#shra-quick-name').val(), mobile: $('#shra-quick-mobile').val(), dob: $('#shra-quick-dob').val(), rider_type: +pkg.is_guest === 1 ? 'guest' : 'learner' }, function (res) {
           inflight = false;
           if (!res.success) { alert_float('danger', res.message || 'Could not add the rider.'); $btn.removeClass('disabled').prop('disabled', false); return; }
           adoptQuickRider(res.rider, res.existing);
