@@ -280,8 +280,8 @@ class Shra extends AdminController
         $type   = $this->input->post('rider_type') === 'learner' ? 'learner' : 'guest';
         $dob    = (string) $this->input->post('dob');
 
-        if ($name === '' || strlen(preg_replace('/\D+/', '', $mobile)) < 8) {
-            $this->json(['success' => false, 'message' => 'Name and a valid mobile number are required.']);
+        if ($name === '' || strlen(preg_replace('/\D+/', '', $mobile)) !== 10) {
+            $this->json(['success' => false, 'message' => 'Name and a 10-digit mobile number are required.']);
 
             return;
         }

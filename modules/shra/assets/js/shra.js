@@ -106,13 +106,18 @@
 
     S.riderPicker($('#shra-rider-q'), $('#shra-rider-results'), setRider);
 
-    function setRider(r) {
-      rider = r;
+    function showPicked(r) {
       var aud = (r.age !== null && r.age !== undefined && r.age < cfg.minorAge) ? 'children' : 'adults';
       $picked.html('<span class="shra-avatar">' + S.esc(S.initials(r.full_name)) + '</span><div><div style="font-weight:700">' + S.esc(r.full_name) + ' <span class="shra-muted" style="font-weight:400;font-size:12px">' + S.esc(r.rider_no) + '</span></div>' +
         '<div class="shra-muted" style="font-size:12px">' + S.esc(r.mobile) + ' · ' + (r.age !== null && r.age !== undefined ? r.age + ' yrs · ' : '') + (aud === 'children' ? 'Children' : 'Adults') + ' pricing · ' + S.esc(r.rider_type === 'guest' ? 'Guest rider' : 'Learner') + '</div></div>' +
         '<span class="x" title="Change rider"><i class="fa fa-times"></i></span>').show();
       $('#shra-rider-wrap').hide();
+      return aud;
+    }
+
+    function setRider(r) {
+      rider = r;
+      var aud = showPicked(r);
       $('input[name=audience][value=' + aud + ']').prop('checked', true);
       $('#shra-rider-id').val(r.id);
       $('#shra-bill-force').val(0);
@@ -139,27 +144,38 @@
       summary();
     }
 
-    // Quick add (name + mobile)
+    // Quick add (name + mobile) — the rider is created automatically on Collect & bill
     var $quick = $('#shra-quick');
     $('#shra-quick-toggle').on('click', function (e) { e.preventDefault(); $quick.slideToggle(120); $('#shra-quick-name').focus(); });
     $(document).on('click', '.shra-quick-open', function (e) {
       e.preventDefault();
       var q = $(this).data('q') || '';
       $quick.show();
-      if (/^[\d+ -]+$/.test(q)) { $('#shra-quick-mobile').val(q); $('#shra-quick-name').focus(); } else { $('#shra-quick-name').val(q); $('#shra-quick-mobile').focus(); }
+      if (/^[\d+ -]+$/.test(q)) { $('#shra-quick-mobile').val(String(q).replace(/\D+/g, '').slice(0, 10)); $('#shra-quick-name').focus(); } else { $('#shra-quick-name').val(q); $('#shra-quick-mobile').focus(); }
       $('#shra-rider-results').removeClass('open');
+      summary();
     });
-    $('#shra-quick-save').on('click', function () {
-      var $b = $(this).prop('disabled', true);
-      $.post(cfg.urls.quick, { full_name: $('#shra-quick-name').val(), mobile: $('#shra-quick-mobile').val(), dob: $('#shra-quick-dob').val(), rider_type: $('#shra-quick-type').val() }, function (res) {
-        $b.prop('disabled', false);
-        if (!res.success) { alert_float('danger', res.message || 'Could not add the rider.'); return; }
-        alert_float('success', res.existing ? 'Existing rider selected.' : 'Rider added.');
-        $('#shra-quick-name, #shra-quick-mobile, #shra-quick-dob').val('');
-        $quick.hide();
-        setRider(res.rider);
-      }, 'json').fail(function () { $b.prop('disabled', false); alert_float('danger', 'Request failed.'); });
+    $('#shra-quick-mobile').on('input', function () {
+      var v = this.value.replace(/\D+/g, '').slice(0, 10);
+      if (this.value !== v) { this.value = v; }
+      summary();
     });
+    $('#shra-quick-name').on('input', summary);
+
+    function quickReady() {
+      return $quick.is(':visible') && $.trim($('#shra-quick-name').val()) !== '' && /^\d{10}$/.test($('#shra-quick-mobile').val());
+    }
+
+    function adoptQuickRider(r, existing) {
+      rider = r;
+      $('#shra-rider-id').val(r.id);
+      $('#shra-bill-force').val(0);
+      showPicked(r);
+      $quick.hide();
+      $('#shra-quick-name, #shra-quick-mobile, #shra-quick-dob').val('');
+      alert_float('success', existing ? 'Existing rider selected.' : 'Rider added.');
+      $(document).trigger('shra:riderPicked', [r]);
+    }
 
     $picked.on('click', '.x', function () {
       rider = null; pkg = null;
@@ -223,7 +239,7 @@
         (!entered ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Enter the amount received to continue.</div>' :
           (due > 0 ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Partial payment — ' + S.money(due) + ' will stay due on the invoice.</div>' : ''))
       );
-      $btn.prop('disabled', !rider || !entered).find('.amt').text(entered ? S.money(paid) : '');
+      $btn.prop('disabled', (!rider && !quickReady()) || !entered).find('.amt').text(entered ? S.money(paid) : '');
     }
 
     var inflight = false;
@@ -233,10 +249,23 @@
     }
     $('#shra-bill-form').on('submit', function (e) {
       e.preventDefault();
-      if (!rider || !pkg || inflight) return;
+      if (inflight || !pkg) return;
+      var $form = $(this);
+      if (!rider) {
+        // Quick-add fields filled instead of picking a rider — create them first, then bill.
+        if (!quickReady()) return;
+        inflight = true;
+        $btn.prop('disabled', true).addClass('disabled');
+        $.post(cfg.urls.quick, { full_name: $('#shra-quick-name').val(), mobile: $('#shra-quick-mobile').val(), dob: $('#shra-quick-dob').val(), rider_type: $('#shra-quick-type').val() }, function (res) {
+          inflight = false;
+          if (!res.success) { alert_float('danger', res.message || 'Could not add the rider.'); $btn.removeClass('disabled').prop('disabled', false); return; }
+          adoptQuickRider(res.rider, res.existing);
+          $form.trigger('submit');
+        }, 'json').fail(function () { inflight = false; alert_float('danger', 'Request failed.'); $btn.removeClass('disabled').prop('disabled', false); });
+        return;
+      }
       inflight = true;
       $btn.prop('disabled', true).addClass('disabled');
-      var $form = $(this);
       $.post(cfg.urls.bill, S.csrf($form.serialize()), function (res) {
         inflight = false;
         if (res.success) {
