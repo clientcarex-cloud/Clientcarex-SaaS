@@ -25,7 +25,7 @@
                         <div class="row">
                             <div class="col-xs-12 col-sm-5"><div class="form-group"><label>Name *</label><input type="text" id="shra-quick-name" class="form-control" placeholder="Rider name"></div></div>
                             <div class="col-xs-6 col-sm-4"><div class="form-group"><label>Mobile *</label><input type="tel" id="shra-quick-mobile" class="form-control" placeholder="10-digit mobile" inputmode="numeric" maxlength="10" pattern="[0-9]{10}"></div></div>
-                            <div class="col-xs-6 col-sm-3"><div class="form-group"><label>DOB</label><input type="date" id="shra-quick-dob" class="form-control" max="<?php echo date('Y-m-d', strtotime('-5 years')); ?>"></div></div>
+                            <div class="col-xs-6 col-sm-3"><div class="form-group"><label>DOB</label><input type="date" id="shra-quick-dob" class="form-control" max="<?php echo date('Y-m-d', strtotime('-5 years')); ?>"><div class="help" id="shra-quick-age" style="display:none"></div></div></div>
                         </div>
                         <span class="help" style="margin:0;display:block">The rider is added automatically when you collect the bill — a guest package creates a guest rider, any other package a learner with a membership number. DOB picks Children/Adult pricing; leave blank for adults.</span>
                     </div>

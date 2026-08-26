@@ -33,6 +33,19 @@
     return a;
   };
 
+  // Age broken into calendar years / months / days (null for empty, invalid or future dates)
+  S.ageParts = function (dob) {
+    if (!dob) { return null; }
+    var d = new Date(dob + 'T00:00:00');
+    if (isNaN(d)) { return null; }
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    if (d > t) { return null; }
+    var y = t.getFullYear() - d.getFullYear(), m = t.getMonth() - d.getMonth(), days = t.getDate() - d.getDate();
+    if (days < 0) { m--; days += new Date(t.getFullYear(), t.getMonth(), 0).getDate(); }
+    if (m < 0) { m += 12; y--; }
+    return { y: y, m: m, d: days };
+  };
+
   S.initials = function (name) {
     return (name || '').split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0); }).join('').toUpperCase();
   };
@@ -212,6 +225,15 @@
       }
     });
 
+    // Live age readout under the DOB field — years, months & days as of today
+    function quickAge() {
+      var $out = $('#shra-quick-age'), p = S.ageParts($('#shra-quick-dob').val());
+      if (!p) { $out.hide().empty(); return; }
+      var txt = p.y + ' year' + (p.y === 1 ? '' : 's') + ' ' + p.m + ' month' + (p.m === 1 ? '' : 's') + ' ' + p.d + ' day' + (p.d === 1 ? '' : 's');
+      $out.html('<b>' + txt + '</b> · ' + (p.y < cfg.minorAge ? 'Children' : 'Adults') + ' pricing').show();
+    }
+    $('#shra-quick-dob').on('input change', quickAge);
+
     function quickReady() {
       return $quick.is(':visible') && $.trim($('#shra-quick-name').val()) !== '' && /^\d{10}$/.test($('#shra-quick-mobile').val());
     }
@@ -223,6 +245,7 @@
       showPicked(r);
       $quick.hide();
       $('#shra-quick-name, #shra-quick-mobile, #shra-quick-dob').val('');
+      $('#shra-quick-age').hide().empty();
       alert_float('success', existing ? 'Existing rider selected.' : 'Rider added.');
       $(document).trigger('shra:riderPicked', [r]);
     }
@@ -342,6 +365,7 @@
           $form[0].reset(); $discount.data('touched', false); $paid.data('touched', false);
           $('#shra-bill-form input[name=mark_now]').data('touched', false);
           upiToggle();
+          $('#shra-quick-age').hide().empty();
           newToken(); $('#shra-bill-force').val(0);
           rider = null; pkg = null;
           $picked.hide(); $('#shra-rider-wrap').show(); $('#shra-rider-flags').empty();

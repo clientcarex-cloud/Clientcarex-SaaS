@@ -9,8 +9,6 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap">
             <a href="<?php echo admin_url('shra/receipt_pdf/' . $e->id); ?>" target="_blank" class="shra-btn shra-btn-gold shra-btn-sm"><i class="fa-solid fa-receipt"></i> Receipt</a>
             <?php if ($e->due > 0.009 && shra_can_billing()) { ?><button type="button" class="shra-btn shra-btn-outline shra-btn-sm shra-collect" data-id="<?php echo $e->id; ?>" data-due="<?php echo $e->due; ?>" data-name="<?php echo html_escape($e->full_name); ?>"><i class="fa-solid fa-hand-holding-dollar"></i> Collect <?php echo shra_money($e->due); ?></button><?php } ?>
-            <a href="<?php echo site_url('invoice/' . $e->invoice_id . '/' . $e->invoice_hash); ?>" target="_blank" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa fa-print"></i> Invoice</a>
-            <a href="<?php echo admin_url('invoices/list_invoices/' . $e->invoice_id); ?>" target="_blank" class="shra-btn shra-btn-outline shra-btn-sm" title="Open in Sales"><i class="fa fa-file-invoice"></i></a>
             <?php if ($e->rider_type === 'learner') { ?><a href="<?php echo admin_url('shra/membership_pdf/' . $e->rider_id); ?>" target="_blank" class="shra-btn shra-btn-outline shra-btn-sm"><i class="fa-solid fa-id-card"></i> Membership</a><?php } ?>
             <?php if ($e->sessions_used < $e->sessions_total && $e->status === 'active') { ?><a href="<?php echo admin_url('shra/attendance?rider=' . $e->rider_id); ?>" class="shra-btn shra-btn-primary shra-btn-sm"><i class="fa-solid fa-clipboard-check"></i> Mark session</a><?php } else { ?><span class="shra-badge shra-badge-green" style="align-self:center"><i class="fa fa-check"></i> Session marked</span><?php } ?>
         </div>
