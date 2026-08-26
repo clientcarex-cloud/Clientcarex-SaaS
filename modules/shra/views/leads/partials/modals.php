@@ -149,20 +149,26 @@ foreach ($packages as $pk) {
     </form>
 </div></div></div>
 
-<!-- Confirm (visited & confirmed) — package, balance due, collect, close the sale -->
+<!-- Arrived & confirm — one dialog: the arrival (backdatable), the package, the money, the sale -->
 <div class="modal fade shra" id="shra-lead-confirm" tabindex="-1"><div class="modal-dialog" style="width:520px;max-width:95vw"><div class="modal-content">
     <form id="shra-lead-confirm-form" enctype="multipart/form-data">
     <input type="hidden" name="lead_id">
     <input type="hidden" name="complete" value="0">
     <input type="hidden" name="force" value="0">
     <input type="hidden" name="bill_token" value="">
-    <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-thumbs-up"></i> Confirmed &middot; <span class="shra-m-name"></span></h4></div>
+    <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-thumbs-up"></i> Arrived &amp; confirm &middot; <span class="shra-m-name"></span></h4></div>
     <div class="modal-body">
         <div class="shra-m-head"><span class="shra-m-phone"></span><span class="shra-m-money"></span></div>
-        <label>Package chosen</label>
+        <label>Arrived on <span class="shra-muted" style="font-weight:400">&mdash; pick the real day if the entry was missed</span></label>
+        <div class="shra-chips" style="margin-bottom:8px">
+            <button type="button" class="shra-chip on" data-cf-date="<?php echo date('Y-m-d'); ?>">Today</button>
+            <button type="button" class="shra-chip" data-cf-date="<?php echo date('Y-m-d', strtotime('-1 day')); ?>">Yesterday</button>
+            <button type="button" class="shra-chip" data-cf-date="<?php echo date('Y-m-d', strtotime('-2 days')); ?>"><?php echo date('D d M', strtotime('-2 days')); ?></button>
+        </div>
+        <input type="date" name="entry_date" class="form-control" max="<?php echo date('Y-m-d'); ?>" value="<?php echo date('Y-m-d'); ?>" required>
+
+        <label style="margin-top:12px">Package chosen</label>
         <select name="package_id" class="form-control"><option value="">Not decided</option><?php foreach ($packages as $pk) { ?><option value="<?php echo $pk->id; ?>" data-price="<?php echo $pkg_total[$pk->id]; ?>"><?php echo ucfirst($pk->audience) . ' &middot; ' . html_escape($pk->name) . ' &middot; ' . shra_money($pkg_total[$pk->id]); ?></option><?php } ?></select>
-        <label style="margin-top:12px">Expected amount</label>
-        <input type="number" name="expected_value" class="form-control" step="1" min="0" placeholder="Leave blank to use the package price">
 
         <!-- What this lead owes right now: the deal, the advances already taken, the balance. -->
         <div class="shra-cf-bill" id="shra-cf-bill">
@@ -171,10 +177,10 @@ foreach ($packages as $pk) {
             <div class="shra-cf-line grand"><span>Balance to collect</span><b id="shra-cf-due">&mdash;</b></div>
         </div>
 
-        <label class="shra-pay-switch"><input type="checkbox" id="shra-cf-pay-on"> <i class="fa-solid fa-indian-rupee-sign"></i> Collect payment now <span class="shra-muted">&mdash; full or part</span></label>
-        <div class="shra-pay-box" id="shra-cf-pay-box" hidden>
+        <label style="margin-top:12px"><i class="fa-solid fa-indian-rupee-sign"></i> Collect payment <span class="shra-muted" style="font-weight:400">&mdash; leave the amount empty if nothing was taken</span></label>
+        <div class="shra-pay-box" id="shra-cf-pay-box">
             <div class="row">
-                <div class="col-xs-6"><div class="form-group"><label>Amount collected *</label>
+                <div class="col-xs-6"><div class="form-group"><label>Amount collected</label>
                     <div class="input-group"><span class="input-group-addon"><?php echo html_escape($cur_sym); ?></span>
                     <input type="number" name="paid_amount" class="form-control" min="1" step="1" inputmode="decimal"></div></div></div>
                 <div class="col-xs-6"><div class="form-group"><label>Paid by</label>
@@ -183,14 +189,11 @@ foreach ($packages as $pk) {
                     </select></div></div>
             </div>
             <div class="form-group"><label>Reference / UPI ID <span class="shra-muted" style="font-weight:400">&mdash; optional</span></label><input type="text" name="paid_reference" class="form-control" placeholder="Transaction or receipt number"></div>
-            <div class="form-group">
-                <label>Payment screenshot</label>
-                <label class="shra-pay-file" for="shra-cf-proof"><i class="fa fa-paperclip"></i> <span>Attach the screenshot the customer sent</span></label>
+            <div class="form-group" style="margin-bottom:0">
+                <label class="shra-pay-file" for="shra-cf-proof"><i class="fa fa-paperclip"></i> <span>Attach the payment screenshot &mdash; optional</span></label>
                 <input type="file" name="payment_proof" id="shra-cf-proof" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
                 <div id="shra-cf-preview" hidden><img alt="" id="shra-cf-thumb"><span id="shra-cf-fname"></span><button type="button" class="shra-ic xs" id="shra-cf-clear" title="Remove"><i class="fa fa-xmark"></i></button></div>
-                <div class="help">JPG, PNG, WEBP or PDF up to 5 MB.</div>
             </div>
-            <div class="form-group" style="margin-bottom:0"><label>Payment note</label><input type="text" name="paid_note" class="form-control" placeholder="Optional"></div>
         </div>
 
         <?php if ($can_bill) { ?>
@@ -200,7 +203,11 @@ foreach ($packages as $pk) {
 
         <div class="form-group" style="margin-top:12px"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Optional"></div>
     </div>
-    <div class="modal-footer"><button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button><button type="submit" class="shra-btn shra-btn-gold"><i class="fa fa-check"></i> <span id="shra-cf-submit-txt">Confirm</span></button></div>
+    <div class="modal-footer">
+        <button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button>
+        <button type="button" class="shra-btn shra-btn-outline" id="shra-cf-arrived"><i class="fa fa-person-walking"></i> Arrived only</button>
+        <button type="submit" class="shra-btn shra-btn-gold"><i class="fa fa-check"></i> <span id="shra-cf-submit-txt">Confirm</span></button>
+    </div>
     </form>
 </div></div></div>
 

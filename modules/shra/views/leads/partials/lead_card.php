@@ -41,11 +41,8 @@ $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->ride
         <?php if ($l->is_open) { ?>
             <button type="button" class="shra-btn shra-btn-primary shra-btn-sm" data-shra-act="call" data-lead="<?php echo $l->id; ?>"><i class="fa fa-pen"></i> Log call</button>
             <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="visit" data-lead="<?php echo $l->id; ?>" title="Schedule / reschedule visit"><i class="fa fa-calendar-plus"></i></button>
-            <?php if ($can_all && in_array($l->stage, ['visit_scheduled', 'followup', 'contacted', 'new'])) { ?>
-                <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="visited" data-lead="<?php echo $l->id; ?>" title="Arrived at the academy"><i class="fa fa-person-walking"></i> Arrived</button>
-            <?php } ?>
-            <?php if ($can_all && in_array($l->stage, ['visited'])) { ?>
-                <button type="button" class="shra-btn shra-btn-gold shra-btn-sm" data-shra-act="confirm" data-lead="<?php echo $l->id; ?>"><i class="fa fa-thumbs-up"></i> Confirm</button>
+            <?php if ($can_all && $l->stage !== 'confirmed') { ?>
+                <button type="button" class="shra-btn <?php echo $l->stage === 'visited' ? 'shra-btn-gold' : 'shra-btn-outline'; ?> shra-btn-sm" data-shra-act="confirm" data-lead="<?php echo $l->id; ?>" title="Arrived at the academy — backdate & collect in one step"><i class="fa fa-person-walking"></i> <?php echo $l->stage === 'visited' ? 'Confirm' : 'Arrived'; ?></button>
             <?php } ?>
             <?php if ($l->stage === 'confirmed' && (shra_can_billing() || $can_all)) { ?>
                 <a href="<?php echo admin_url('shra/shra_leads/bill_now/' . $l->id); ?>" class="shra-btn shra-btn-gold shra-btn-sm"><i class="fa-solid fa-cash-register"></i> Bill now</a>

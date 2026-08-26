@@ -55,7 +55,8 @@ $(function () {
         t = setTimeout(function () {
             $.getJSON(<?php echo json_encode(admin_url('shra/shra_leads/check_phone')); ?>, { phone: v }, function (r) {
                 if (r.exists) {
-                    $('#shra-visit-hit').html('<div class="shra-alert shra-alert-warn" style="display:flex;gap:10px;align-items:center"><span>Lead <a href="' + r.url + '"><b>' + SHRA.esc(r.name) + '</b></a> · ' + SHRA.esc(r.stage) + ' · ' + SHRA.esc(r.agent) + '</span><button type="button" class="shra-btn shra-btn-primary shra-btn-sm" data-shra-act="visited" data-lead="' + r.id + '"><i class="fa fa-person-walking"></i> Arrived</button></div>').show();
+                    // The hidden holder feeds the Arrived & confirm dialog the same data a lead card carries.
+                    $('#shra-visit-hit').html('<div class="shra-lead" hidden data-lead="' + r.id + '" data-stage="' + SHRA.esc(r.stage_key || '') + '" data-name="' + SHRA.esc(r.name) + '" data-phone="' + SHRA.esc(r.phone || '') + '" data-paid="' + SHRA.esc(r.paid || '') + '" data-due="' + SHRA.esc(r.due || '') + '" data-paid-num="' + (r.paid_num || 0) + '" data-pkg="' + (r.pkg || '') + '"></div><div class="shra-alert shra-alert-warn" style="display:flex;gap:10px;align-items:center"><span>Lead <a href="' + r.url + '"><b>' + SHRA.esc(r.name) + '</b></a> · ' + SHRA.esc(r.stage) + ' · ' + SHRA.esc(r.agent) + '</span><button type="button" class="shra-btn shra-btn-primary shra-btn-sm" data-shra-act="visited" data-lead="' + r.id + '"><i class="fa fa-person-walking"></i> Arrived</button></div>').show();
                 } else {
                     $('#shra-visit-hit').html('<div class="shra-alert shra-alert-ok" style="display:flex;gap:10px;align-items:center"><span>Not a lead yet.</span><button type="button" class="shra-btn shra-btn-gold shra-btn-sm" id="shra-walkin-add"><i class="fa fa-plus"></i> Add as walk-in</button></div>').show();
                 }

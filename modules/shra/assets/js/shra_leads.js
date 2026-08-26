@@ -80,12 +80,12 @@
    * Same contract as post(), for a form that carries a file (the payment screenshot).
    * $.ajaxSetup's CSRF default is dropped once data is a FormData, so the token goes in by hand.
    */
-  function postForm(url, $f, done) {
+  function postForm(url, $f, done, $btn) {
     var id = $f.find('[name=lead_id]').val();
     var fd = new FormData($f[0]);
     fd.append('fmt', cardOf(id).first().is('tr') ? 'row' : 'card');
     if (typeof csrfData !== 'undefined' && csrfData.token_name) { fd.append(csrfData.token_name, csrfData.hash); }
-    var $b = $f.find('[type=submit]').prop('disabled', true), html = $b.html();
+    var $b = ($btn && $btn.length ? $btn : $f.find('[type=submit]')).prop('disabled', true), html = $b.html();
     $b.html('<i class="fa fa-circle-notch fa-spin"></i> Saving…');
     $.ajax({ url: url, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json' })
       .done(function (res) { handleRes(res, id, done); })
@@ -194,9 +194,7 @@
       case 'lost': openModal('#shra-lead-lost', id).find('[name=reason]').val(''); break;
       case 'confirm': openConfirm(id); break;
       case 'reassign': openModal('#shra-lead-reassign', id); break;
-      case 'visited':
-        if (confirm('Mark as visited (arrived at the academy)?')) { post(cfg().urls.visited, { lead_id: id }); }
-        break;
+      case 'visited': openConfirm(id); break; // arrival lives in the Arrived & confirm dialog now
       case 'no_show':
         if (confirm('Record a no-show? The agent will be asked to follow up today.')) { post(cfg().urls.no_show, { lead_id: id }); }
         break;
@@ -297,7 +295,7 @@
     post(cfg().urls.lost, d, function () { $('#shra-lead-lost').modal('hide'); });
   });
 
-  /* ───────── Confirm: package, balance, collect, close the sale ───────── */
+  /* ───────── Arrived & confirm: one dialog — the arrival (backdatable), the money, the sale ───────── */
   function cfClearProof() {
     var el = document.getElementById('shra-cf-proof');
     if (el) { el.value = ''; }
@@ -311,23 +309,20 @@
     var $m = $('#shra-lead-confirm');
     var paid = parseFloat($m.data('paidNum')) || 0;
     var pkg  = parseFloat($m.find('[name=package_id] :selected').data('price')) || 0;
-    var exp  = parseFloat($m.find('[name=expected_value]').val());
-    var deal = exp > 0 ? exp : pkg;
-    var due  = Math.max(0, Math.round((deal - paid) * 100) / 100);
+    var due  = Math.max(0, Math.round((pkg - paid) * 100) / 100);
+    var now  = parseFloat($m.find('[name=paid_amount]').val()) || 0;
 
-    $('#shra-cf-total').text(deal > 0 ? money(deal) : '—');
+    $('#shra-cf-total').text(pkg > 0 ? money(pkg) : '—');
     $('#shra-cf-paid').text(money(paid));
-    $('#shra-cf-due').text(deal > 0 ? money(due) : '—');
-    $m.find('[name=paid_amount]').attr('placeholder', due > 0 ? money(due) : 'Amount');
-    $m.find('[name=expected_value]').attr('placeholder', pkg > 0 ? 'Package price ' + money(pkg) : 'Leave blank to use the package price');
+    $('#shra-cf-due').text(pkg > 0 ? money(due) : '—');
+    $m.find('[name=paid_amount]').attr('placeholder', due > 0 ? money(due) : 'Nothing collected');
 
-    var $c = $('#shra-cf-complete');
-    if (!$c.length) { return; }
-    var on  = $c.is(':checked');
-    var now = $('#shra-cf-pay-on').is(':checked') ? (parseFloat($m.find('[name=paid_amount]').val()) || 0) : 0;
+    var $c = $('#shra-cf-complete'), on = $c.length && $c.is(':checked');
     $m.find('[name=complete]').val(on ? '1' : '0');
-    $('#shra-cf-submit-txt').text(on ? (now > 0 ? 'Collect ' + money(now) + ' & complete' : 'Bill & complete') : 'Confirm');
-    // The invoice is always raised for the package, never for a hand-typed expected value.
+    $('#shra-cf-submit-txt').text(on
+      ? (now > 0 ? 'Collect ' + money(now) + ' & complete' : 'Bill & complete')
+      : (now > 0 ? 'Collect ' + money(now) + ' & confirm' : 'Confirm'));
+    if (!$c.length) { return; }
     var got = Math.min(pkg, paid + now);
     var msg = !pkg
       ? 'Pick the package — the invoice is raised for it.'
@@ -337,45 +332,67 @@
     $('#shra-cf-complete-help').prop('hidden', !on).html(msg);
   }
 
+  /**
+   * The amount field follows the balance (package changes included) until the cashier
+   * types their own figure — an empty field or the previous auto-fill is fair to replace.
+   */
+  function cfAutoFill() {
+    var $m = $('#shra-lead-confirm'), $a = $m.find('[name=paid_amount]');
+    var due = cfDue(), prev = parseFloat($m.data('autoAmount')) || 0;
+    if (!$a.prop('disabled') && ($a.val() === '' || parseFloat($a.val()) === prev)) {
+      $a.val(due > 0 ? due : '');
+    }
+    $m.data('autoAmount', due);
+  }
+
   function openConfirm(id) {
     var $m = openModal('#shra-lead-confirm', id);
     $m.data('paidNum', parseFloat(leadData(id, 'paidNum')) || 0);
     $m.find('[name=complete],[name=force]').val('0');
     $m.find('[name=bill_token]').val('cf' + id + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6));
-    $m.find('[name=expected_value],[name=note],[name=paid_amount],[name=paid_reference],[name=paid_note]').val('');
+    $m.find('[name=note],[name=paid_amount],[name=paid_reference]').val('');
+    $m.find('[name=paid_amount],[name=paid_reference]').prop('disabled', false);
     $m.find('[name=package_id]').val(String(leadData(id, 'pkg') || ''));
-    $('#shra-cf-pay-on').prop('checked', false).prop('disabled', false);
-    $('#shra-cf-pay-box').prop('hidden', true);
+    // Today, unless the desk backdates a missed entry.
+    $m.find('[name=entry_date]').val($m.find('[data-cf-date]').first().data('cf-date')).trigger('change');
     $('#shra-cf-complete').prop('checked', false);
+    // Once the lead is already past arrival, the arrived-only shortcut has nothing to add.
+    $('#shra-cf-arrived').toggle(['visited', 'confirmed'].indexOf(stageOf(id)) === -1);
+    $m.data('autoAmount', 0);
     cfClearProof();
+    cfAutoFill();
     cfRefresh();
   }
 
-  $('#shra-lead-confirm').on('change keyup', '[name=package_id],[name=expected_value],[name=paid_amount]', cfRefresh);
+  $('#shra-lead-confirm').on('change', '[name=package_id]', function () { cfAutoFill(); cfRefresh(); });
+  $('#shra-lead-confirm').on('change keyup', '[name=paid_amount]', cfRefresh);
   $('#shra-cf-complete').on('change', cfRefresh);
-  $('#shra-cf-pay-on').on('change', function () {
-    var on = $(this).is(':checked');
-    $('#shra-cf-pay-box').prop('hidden', !on);
-    if (on) {
-      var $a = $('#shra-lead-confirm [name=paid_amount]');
-      var due = cfDue();
-      if (!$a.val() && due > 0) { $a.val(due); }
-      setTimeout(function () { $a.focus().select(); }, 50);
-    } else {
-      $('#shra-lead-confirm [name=paid_amount]').val('');
-      cfClearProof();
-    }
-    cfRefresh();
+  // Date chips ↔ the date input, kept in step both ways.
+  $('#shra-lead-confirm').on('click', '[data-cf-date]', function () {
+    $('#shra-lead-confirm [name=entry_date]').val($(this).data('cf-date'));
+    $(this).addClass('on').siblings().removeClass('on');
+  });
+  $('#shra-lead-confirm').on('change', '[name=entry_date]', function () {
+    var v = $(this).val();
+    $('#shra-lead-confirm [data-cf-date]').each(function () { $(this).toggleClass('on', String($(this).data('cf-date')) === v); });
   });
   /** The balance as a plain number — what the amount field is pre-filled with. */
   function cfDue() {
     var $m = $('#shra-lead-confirm');
     var paid = parseFloat($m.data('paidNum')) || 0;
     var pkg  = parseFloat($m.find('[name=package_id] :selected').data('price')) || 0;
-    var exp  = parseFloat($m.find('[name=expected_value]').val());
-    var deal = exp > 0 ? exp : pkg;
 
-    return Math.max(0, Math.round((deal - paid) * 100) / 100);
+    return Math.max(0, Math.round((pkg - paid) * 100) / 100);
+  }
+  /** Blank = nothing taken (fine); anything typed must be a real amount. */
+  function cfAmountOk($f) {
+    var raw = $.trim($f.find('[name=paid_amount]').val() || '');
+    if (raw !== '' && !(parseFloat(raw) > 0)) {
+      toast('warning', 'Enter the amount collected, or leave it empty.');
+      $f.find('[name=paid_amount]').focus();
+      return false;
+    }
+    return true;
   }
   $('#shra-cf-clear').on('click', cfClearProof);
   $('#shra-cf-proof').on('change', function () {
@@ -395,21 +412,17 @@
 
   /** Money already banked must never be posted twice when the bill is re-tried. */
   function cfLockPayment(paidNum) {
-    $('#shra-lead-confirm').data('paidNum', paidNum);
-    $('#shra-cf-pay-on').prop('checked', false).prop('disabled', true);
-    $('#shra-cf-pay-box').prop('hidden', true);
-    $('#shra-lead-confirm [name=paid_amount],#shra-lead-confirm [name=paid_reference],#shra-lead-confirm [name=paid_note]').val('');
+    var $m = $('#shra-lead-confirm');
+    $m.data('paidNum', paidNum).data('autoAmount', 0);
+    $m.find('[name=paid_amount],[name=paid_reference]').val('').prop('disabled', true);
     cfClearProof();
+    cfRefresh();
   }
 
   $('#shra-lead-confirm-form').on('submit', function (e) {
     e.preventDefault();
     var $f = $(this);
-    if ($('#shra-cf-pay-on').is(':checked') && !(parseFloat($f.find('[name=paid_amount]').val()) > 0)) {
-      toast('warning', 'Enter the amount collected, or untick "Collect payment now".');
-      $f.find('[name=paid_amount]').focus();
-      return;
-    }
+    if (!cfAmountOk($f)) { return; }
     if ($f.find('[name=complete]').val() === '1' && !$f.find('[name=package_id]').val()) {
       toast('warning', 'Pick the package — the invoice is raised for it.');
       $f.find('[name=package_id]').focus();
@@ -426,6 +439,13 @@
       if (res.redirect) { location.href = res.redirect; return; }
       if (res.bill_url && !res.warning && confirm('Confirmed. Open the counter to bill now?')) { location.href = res.bill_url; }
     });
+  });
+
+  // Arrived but not confirmed yet — same dialog, same date and payment fields, lighter outcome.
+  $('#shra-cf-arrived').on('click', function () {
+    var $f = $('#shra-lead-confirm-form');
+    if (!cfAmountOk($f)) { return; }
+    postForm(cfg().urls.visited, $f, function () { $('#shra-lead-confirm').modal('hide'); }, $(this));
   });
 
   // Reassign

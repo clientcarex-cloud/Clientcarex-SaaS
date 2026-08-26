@@ -73,6 +73,21 @@ class Shra_leads extends AdminController
         return $m ? $m->name : '';
     }
 
+    /**
+     * The backdate picked in the Arrived & confirm dialog ("the entry was missed
+     * yesterday"). Only a valid past date counts — today and anything else mean
+     * "stamp it now", so the normal timestamps stay untouched.
+     */
+    private function entry_date()
+    {
+        $d = trim((string) $this->input->post('entry_date'));
+        if ($d === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) || !strtotime($d)) {
+            return '';
+        }
+
+        return $d < date('Y-m-d') ? $d : '';
+    }
+
     private function common()
     {
         return [
@@ -276,8 +291,14 @@ class Shra_leads extends AdminController
 
             return;
         }
+        // The money/stage context lets the visits board open the Arrived & confirm
+        // dialog on a search hit with the same knowledge a lead card carries.
+        $money = shra_lead_money($l);
         $this->json(['exists' => true, 'id' => $l->id, 'name' => $l->name, 'agent' => $l->agent_name ?: 'Unassigned', 'stage' => shra_lead_stage_label($l->stage),
-            'url' => shra_lead_url($l->id), 'mine' => $this->leads->can_access($l)]);
+            'url' => shra_lead_url($l->id), 'mine' => $this->leads->can_access($l),
+            'stage_key' => $l->stage, 'phone' => $l->phonenumber, 'pkg' => (int) $l->interest_package_id,
+            'paid' => $money['paid'] > 0 ? shra_money($money['paid']) : '', 'due' => $money['due'] > 0 ? shra_money($money['due']) : '',
+            'paid_num' => $money['paid'] + 0]);
     }
 
     public function add()
@@ -374,7 +395,7 @@ class Shra_leads extends AdminController
      * [" · ₹500 collected" | "", " warning text" | ""] — the call itself is already logged,
      * so a payment problem is reported next to it rather than failing the whole action.
      */
-    private function collect_payment($lead_id, $method = null)
+    private function collect_payment($lead_id, $method = null, $when = '')
     {
         // "4,500" / "4 500" must not become ₹4 — strip the grouping before casting.
         $raw = str_replace([',', ' ', "\xc2\xa0"], '', trim((string) $this->input->post('paid_amount')));
@@ -393,7 +414,8 @@ class Shra_leads extends AdminController
             trim((string) $this->input->post('paid_reference')),
             trim((string) $this->input->post('paid_note')),
             $file,
-            $file_name
+            $file_name,
+            $when
         );
         if (!is_int($pay)) {
             if ($file !== '') {
@@ -550,9 +572,19 @@ class Shra_leads extends AdminController
     public function visited()
     {
         $this->need('all');
-        $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
-        $res = $this->leads->mark_visited($l->id, trim((string) $this->input->post('note')));
-        $this->result($res, 'Marked as visited.', ['card' => $this->card($l->id)]);
+        $l    = $this->lead_or_fail($this->input->post('lead_id'), true);
+        $when = $this->entry_date();
+        $res  = $this->leads->mark_visited($l->id, trim((string) $this->input->post('note')), $when);
+        if ($res !== true) {
+            $this->result($res);
+
+            return;
+        }
+
+        // The Arrived & confirm dialog collects money in the same breath — record it too.
+        [$paid, $pay_warning] = $this->collect_payment($l->id, $this->payment_mode_name($this->input->post('payment_mode')), $when);
+        $this->json(['success' => true, 'warning' => (bool) $pay_warning, 'card' => $this->card($l->id),
+            'message' => 'Marked as arrived' . ($when !== '' ? ' on ' . date('D d M', strtotime($when)) : '') . $paid . '.' . $pay_warning]);
     }
 
     public function no_show()
@@ -575,7 +607,8 @@ class Shra_leads extends AdminController
         // A forced retry (the counter asked "bill anyway?" and the agent said yes) re-posts the
         // same dialog — the lead is already confirmed, so don't log it or ping the agent twice.
         $retry = (int) $this->input->post('force') === 1 && $l->stage === 'confirmed';
-        $res   = $retry ? true : $this->leads->confirm($l->id, (int) $this->input->post('package_id'), $this->input->post('expected_value'), trim((string) $this->input->post('note')));
+        $when  = $this->entry_date();
+        $res   = $retry ? true : $this->leads->confirm($l->id, (int) $this->input->post('package_id'), $this->input->post('expected_value'), trim((string) $this->input->post('note')), $when);
         if ($res !== true) {
             $this->result($res);
 
@@ -585,7 +618,7 @@ class Shra_leads extends AdminController
         // Money handed over in the dialog. Recorded even when the bill below cannot be
         // raised, so nothing collected is ever lost.
         $mode = $this->payment_mode_name($this->input->post('payment_mode'));
-        [$paid, $pay_warning] = $this->collect_payment($l->id, $mode);
+        [$paid, $pay_warning] = $this->collect_payment($l->id, $mode, $when);
 
         $fresh = $this->leads->get($l->id);
         $state = [

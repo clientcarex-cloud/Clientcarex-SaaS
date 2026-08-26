@@ -675,9 +675,11 @@ class Shra_leads_model extends App_Model
      * Record an advance the agent collected on the call ("pay 50% now" offers), with the
      * payment screenshot the customer sent back. Money is not a bill yet — it is proof the
      * lead has committed; the counter still raises the real invoice at billing time.
-     * $file is the stored name inside uploads/shra/lead_payments/. Returns the payment id | error string.
+     * $file is the stored name inside uploads/shra/lead_payments/. $when: a past 'Y-m-d'
+     * backdates the entry (money taken yesterday, entered today); '' stamps it now.
+     * Returns the payment id | error string.
      */
-    public function add_payment($lead_id, $amount, $method = '', $reference = '', $note = '', $file = '', $file_name = '')
+    public function add_payment($lead_id, $amount, $method = '', $reference = '', $note = '', $file = '', $file_name = '', $when = '')
     {
         $l = $this->get($lead_id);
         if (!$l) {
@@ -694,6 +696,7 @@ class Shra_leads_model extends App_Model
         if (!$this->db->table_exists($p . 'shra_lead_payments')) {
             return 'Payments are not set up yet — reactivate the SHRA module under Setup → Modules.';
         }
+        $stamp = $when !== '' ? $when . ' ' . date('H:i:s') : date('Y-m-d H:i:s');
         $this->db->insert($p . 'shra_lead_payments', [
             'lead_id'    => (int) $lead_id,
             'staff_id'   => $this->staff_id(),
@@ -703,18 +706,21 @@ class Shra_leads_model extends App_Model
             'note'       => $note !== '' ? substr($note, 0, 255) : null,
             'file'       => $file !== '' ? $file : null,
             'file_name'  => $file_name !== '' ? substr($file_name, 0, 160) : null,
-            'created_at' => date('Y-m-d H:i:s'),
+            'created_at' => $stamp,
         ]);
         $id = (int) $this->db->insert_id();
         if (!$id) {
             return 'Could not save the payment.';
         }
-        $this->update_lead($lead_id, [], ['paid_amount' => (float) $l->paid_amount + $amount, 'last_payment_at' => date('Y-m-d H:i:s')]);
+        // A backdated entry must not pull last_payment_at behind a newer payment.
+        $last = $l->last_payment_at && $l->last_payment_at > $stamp ? $l->last_payment_at : $stamp;
+        $this->update_lead($lead_id, [], ['paid_amount' => (float) $l->paid_amount + $amount, 'last_payment_at' => $last]);
         $this->event($lead_id, 'payment', [
             'to'   => $amount,
             'note' => $note,
             'meta' => ['payment_id' => $id, 'method' => $method, 'reference' => $reference, 'file' => $file !== '' ? 1 : 0],
-            'log'  => 'Payment collected: ' . shra_money($amount) . ($method ? ' · ' . $method : '') . ($reference ? ' · ref ' . $reference : '') . ($file !== '' ? ' · screenshot attached' : ''),
+            'log'  => 'Payment collected: ' . shra_money($amount) . ($method ? ' · ' . $method : '') . ($reference ? ' · ref ' . $reference : '')
+                . ($file !== '' ? ' · screenshot attached' : '') . ($when !== '' ? ' · dated ' . date('D d M', strtotime($when)) . ' (entered late)' : ''),
         ]);
 
         return $id;
@@ -911,7 +917,8 @@ class Shra_leads_model extends App_Model
         return true;
     }
 
-    public function mark_visited($lead_id, $note = '')
+    /** $when: a past 'Y-m-d' backdates the arrival (a missed entry); '' stamps it now. */
+    public function mark_visited($lead_id, $note = '', $when = '')
     {
         $l = $this->get($lead_id);
         if (!$l) {
@@ -920,13 +927,14 @@ class Shra_leads_model extends App_Model
         if (!$l->is_open) {
             return 'This lead is closed. Reopen it first.';
         }
-        $today = date('Y-m-d');
+        $stamp = $when !== '' ? $when . ' ' . date('H:i:s') : date('Y-m-d H:i:s');
         $this->update_lead($lead_id,
-            ['status' => shra_lead_stage_id('visited'), 'last_status_change' => date('Y-m-d H:i:s'), 'lastcontact' => date('Y-m-d H:i:s')],
-            ['stage_key' => 'visited', 'visited_at' => date('Y-m-d H:i:s'), 'visited_by' => $this->staff_id(),
-             'visit_date' => $l->visit_date ?: $today, 'visit_slot' => $l->visit_slot ?: 'Walk-in',
+            ['status' => shra_lead_stage_id('visited'), 'last_status_change' => date('Y-m-d H:i:s'), 'lastcontact' => $stamp],
+            ['stage_key' => 'visited', 'visited_at' => $stamp, 'visited_by' => $this->staff_id(),
+             'visit_date' => $when !== '' ? $when : ($l->visit_date ?: date('Y-m-d')), 'visit_slot' => $l->visit_slot ?: 'Walk-in',
              'next_action_at' => date('Y-m-d H:i:s', strtotime('tomorrow 10:00')), 'next_action_type' => 'call', 'is_stale' => 0]);
-        $this->event($lead_id, 'visited', ['from' => $l->stage, 'note' => $note, 'log' => 'Visited the academy']);
+        $this->event($lead_id, 'visited', ['from' => $l->stage, 'note' => $note,
+            'log' => 'Visited the academy' . ($when !== '' ? ' on ' . date('D d M', strtotime($when)) . ' (entered late)' : '')]);
         if ($l->assigned) {
             $this->notify($l->assigned, 'shra_not_lead_visited', [$l->name], $lead_id);
         }
@@ -955,14 +963,16 @@ class Shra_leads_model extends App_Model
         return true;
     }
 
-    public function confirm($lead_id, $package_id = 0, $expected_value = null, $note = '')
+    /** $when: a past 'Y-m-d' backdates the arrival & confirmation (a missed entry); '' stamps it now. */
+    public function confirm($lead_id, $package_id = 0, $expected_value = null, $note = '', $when = '')
     {
         $l = $this->get($lead_id);
         if (!$l) {
             return 'Lead not found.';
         }
-        if (!in_array($l->stage, ['visited', 'visit_scheduled', 'confirmed'])) {
-            return 'Mark the lead as visited first.';
+        // Arrival and confirmation are one step now — any open lead can walk in and confirm.
+        if (!$l->is_open) {
+            return 'This lead is closed (' . shra_lead_stage_label($l->stage) . '). Reopen it first.';
         }
         $p      = db_prefix();
         $pkg_id = (int) $package_id ?: $l->interest_package_id;
@@ -974,15 +984,18 @@ class Shra_leads_model extends App_Model
                 $expect = (float) $this->shra_model->quote($pk)['total'];
             }
         }
-        $ext = ['stage_key' => 'confirmed', 'confirmed_at' => date('Y-m-d H:i:s'), 'interest_package_id' => $pkg_id ?: null, 'expected_value' => $expect,
+        $stamp = $when !== '' ? $when . ' ' . date('H:i:s') : date('Y-m-d H:i:s');
+        $ext   = ['stage_key' => 'confirmed', 'confirmed_at' => $stamp, 'interest_package_id' => $pkg_id ?: null, 'expected_value' => $expect,
             'next_action_at' => date('Y-m-d H:i:s', strtotime('+1 hour')), 'next_action_type' => 'other', 'is_stale' => 0];
         if ($l->stage !== 'visited' && empty($l->visited_at)) {
-            $ext['visited_at'] = date('Y-m-d H:i:s');
+            $ext['visited_at'] = $stamp;
             $ext['visited_by'] = $this->staff_id();
-            $ext['visit_date'] = $l->visit_date ?: date('Y-m-d');
+            $ext['visit_date'] = $when !== '' ? $when : ($l->visit_date ?: date('Y-m-d'));
+            $ext['visit_slot'] = $l->visit_slot ?: 'Walk-in';
         }
         $this->update_lead($lead_id, ['status' => shra_lead_stage_id('confirmed'), 'last_status_change' => date('Y-m-d H:i:s'), 'lead_value' => $expect], $ext);
-        $this->event($lead_id, 'confirmed', ['from' => $l->stage, 'to' => $expect, 'note' => $note, 'log' => 'Visited & confirmed · expected ' . shra_money($expect)]);
+        $this->event($lead_id, 'confirmed', ['from' => $l->stage, 'to' => $expect, 'note' => $note,
+            'log' => 'Visited & confirmed · expected ' . shra_money($expect) . ($when !== '' ? ' · on ' . date('D d M', strtotime($when)) . ' (entered late)' : '')]);
         if ($l->assigned) {
             $this->notify($l->assigned, 'shra_not_lead_confirmed', [$l->name], $lead_id);
         }

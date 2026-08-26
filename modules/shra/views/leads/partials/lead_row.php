@@ -94,11 +94,8 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
             <button type="button" class="shra-ic xs muted" data-shra-more="<?php echo $l->id; ?>" title="More"><i class="fa fa-ellipsis"></i></button>
             <div class="shra-r-menu" hidden>
                 <a href="<?php echo shra_lead_url($l->id); ?>"><i class="fa fa-arrow-right"></i> Open lead</a>
-                <?php if ($can_all && in_array($l->stage, ['visit_scheduled', 'followup', 'contacted', 'new', 'prospect', 'enquired', 'callback_request', 'no_response'])) { ?>
-                    <button type="button" data-shra-act="visited" data-lead="<?php echo $l->id; ?>"><i class="fa fa-person-walking"></i> Mark arrived</button>
-                <?php } ?>
-                <?php if ($can_all && $l->stage === 'visited') { ?>
-                    <button type="button" data-shra-act="confirm" data-lead="<?php echo $l->id; ?>"><i class="fa fa-thumbs-up"></i> Confirm</button>
+                <?php if ($can_all && $l->stage !== 'confirmed') { ?>
+                    <button type="button" data-shra-act="confirm" data-lead="<?php echo $l->id; ?>"><i class="fa fa-person-walking"></i> <?php echo $l->stage === 'visited' ? 'Confirm' : 'Arrived / confirm'; ?></button>
                 <?php } ?>
                 <?php if ($l->stage === 'confirmed' && (shra_can_billing() || $can_all)) { ?>
                     <a href="<?php echo admin_url('shra/shra_leads/bill_now/' . $l->id); ?>"><i class="fa-solid fa-cash-register"></i> Bill now</a>
