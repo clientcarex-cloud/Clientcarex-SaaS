@@ -45,7 +45,6 @@
                         <div><div class="k">Preferred start</div><div class="v"><?php echo $r->preferred_start_date ? date('D d M Y', strtotime($r->preferred_start_date)) : '—'; ?></div></div>
                         <div><div class="k">Class batch</div><div class="v"><?php echo html_escape($r->batch_label ?: '—'); ?></div></div>
                         <?php if ($r->preferred_package) { ?><div class="full"><div class="k">Plan chosen on the form</div><div class="v"><?php echo html_escape($r->preferred_package->name); ?> · <?php echo ucfirst($r->preferred_package->audience); ?> — <?php echo shra_money($this->shra_model->quote($r->preferred_package)['total']); ?> <span class="shra-muted" style="font-weight:400">(pay at desk)</span></div></div><?php } ?>
-                        <?php if ($r->client_id) { ?><div class="full"><div class="k">CRM customer</div><div class="v"><a href="<?php echo admin_url('clients/client/' . $r->client_id); ?>">Open customer profile →</a></div></div><?php } ?>
                         <?php if ($r->notes) { ?><div class="full"><div class="k">Notes</div><div class="v" style="font-weight:400"><?php echo nl2br(html_escape($r->notes)); ?></div></div><?php } ?>
                     </div>
                 </div>
