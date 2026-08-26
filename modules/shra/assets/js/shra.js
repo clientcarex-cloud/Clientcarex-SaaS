@@ -45,14 +45,19 @@
       items = list; hl = -1;
       if (!list.length) {
         var q = $.trim($input.val());
+        var digits = q.replace(/\D+/g, '');
+        if (digits.length && digits.length < 5 && digits.length >= q.length - 2) {
+          $results.html('<div class="none">Keep typing — mobile matches appear after 5 digits.</div>').addClass('open');
+          return;
+        }
         $results.html('<div class="none">No rider found. ' + ($('#shra-quick').length ? '<a href="#" class="shra-quick-open" data-q="' + S.esc(q) + '">Quick add "' + S.esc(q) + '"</a> · ' : '') + '<a href="' + S.urls.newRider + '" target="_blank">Full form</a></div>').addClass('open');
         return;
       }
       var html = list.map(function (r, i) {
         var left = r.sessions_left > 0 ? '<span class="shra-badge shra-badge-green">' + r.sessions_left + ' left</span>' : '';
         return '<div class="item" data-i="' + i + '"><span class="shra-avatar">' + S.esc(S.initials(r.full_name)) + '</span>' +
-          '<div style="flex:1"><div class="name" style="font-weight:600">' + S.esc(r.full_name) + ' <span class="shra-muted" style="font-weight:400;font-size:12px">' + S.esc(r.rider_no) + '</span></div>' +
-          '<div class="meta" style="font-size:11.5px;color:#7a6f5e">' + S.esc(r.mobile) + ' · ' + (r.age !== null && r.age !== undefined ? r.age + ' yrs · ' : '') + S.esc(r.rider_type === 'guest' ? 'Guest' : 'Learner') + ' · ' + S.esc(r.riding_level || '') + '</div></div>' + left + '</div>';
+          '<div class="body"><div class="name">' + S.esc(r.full_name) + ' <span class="no">' + S.esc(r.rider_no) + '</span></div>' +
+          '<div class="meta">' + S.esc(r.mobile) + ' · ' + (r.age !== null && r.age !== undefined ? r.age + ' yrs · ' : '') + S.esc(r.rider_type === 'guest' ? 'Guest' : 'Learner') + ' · ' + S.esc(r.riding_level || '') + '</div></div>' + left + '</div>';
       }).join('');
       $results.html(html).addClass('open');
     }

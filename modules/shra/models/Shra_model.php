@@ -121,7 +121,9 @@ class Shra_model extends App_Model
     public function search_riders($q, $limit = 12)
     {
         $p = db_prefix();
-        $q = $this->db->escape_like_str(trim((string) $q));
+        $raw    = trim((string) $q);
+        $digits = preg_replace('/\D+/', '', $raw);
+        $q      = $this->db->escape_like_str($raw);
 
         $today = date('Y-m-d');
         $this->db->select("r.id, r.rider_no, r.full_name, r.mobile, r.dob, r.rider_type, r.riding_level, r.membership_no, r.status, r.preferred_package_id, r.preferred_start_date, r.preferred_batch,
@@ -131,7 +133,14 @@ class Shra_model extends App_Model
             ->from($p . 'shra_riders r');
 
         if ($q !== '') {
-            $this->db->where("(r.full_name LIKE '%{$q}%' OR r.mobile LIKE '%{$q}%' OR r.rider_no LIKE '%{$q}%' OR r.membership_no LIKE '%{$q}%')");
+            $where = "r.full_name LIKE '%{$q}%' OR r.mobile LIKE '%{$q}%' OR r.rider_no LIKE '%{$q}%' OR r.membership_no LIKE '%{$q}%'";
+            // Stored mobiles may contain spaces/dashes ("87904 77424"), so a partially
+            // typed number never hits the plain LIKE above — match digits-only from 5 digits on.
+            if (strlen($digits) >= 5) {
+                $d = $this->db->escape_like_str($digits);
+                $where .= " OR REPLACE(REPLACE(REPLACE(r.mobile,' ',''),'-',''),'+','') LIKE '%{$d}%'";
+            }
+            $this->db->where("({$where})");
         }
 
         $rows = $this->db->order_by('r.full_name', 'ASC')->limit($limit)->get()->result();

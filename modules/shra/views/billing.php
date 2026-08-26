@@ -18,9 +18,9 @@
             <div class="shra-card"><div class="shra-card-body">
                 <div class="shra-step"><span class="n">1</span><h5>Rider</h5></div>
                 <div id="shra-rider-wrap" style="position:relative">
-                    <div class="shra-search"><i class="fa fa-search"></i><input type="text" id="shra-rider-q" class="form-control" placeholder="Type name, mobile or rider no. — or scan the membership card" autocomplete="off" autofocus></div>
+                    <div class="shra-search"><i class="fa fa-search"></i><input type="text" id="shra-rider-q" class="form-control" placeholder="Search name, mobile or rider no." autocomplete="off" autofocus></div>
                     <div id="shra-rider-results" class="shra-results"></div>
-                    <div class="help" style="margin-top:8px">Walk-in? <a href="#" id="shra-quick-toggle">Quick add with name &amp; mobile</a> — no form needed.</div>
+                    <div class="help" style="margin-top:8px">You can also scan the membership card. Walk-in? <a href="#" id="shra-quick-toggle">Quick add with name &amp; mobile</a> — no form needed.</div>
                     <div id="shra-quick" class="shra-quick" style="display:none">
                         <div class="row">
                             <div class="col-sm-4"><div class="form-group"><label>Name *</label><input type="text" id="shra-quick-name" class="form-control" placeholder="Rider name"></div></div>
