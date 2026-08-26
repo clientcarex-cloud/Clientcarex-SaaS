@@ -286,6 +286,12 @@ class Shra extends AdminController
             return;
         }
 
+        if ($dob !== '' && strtotime($dob) > strtotime('-5 years')) {
+            $this->json(['success' => false, 'message' => 'Riders must be at least 5 years old.']);
+
+            return;
+        }
+
         $existing = $this->shra_model->find_rider_by_mobile($mobile);
         if ($existing && mb_strtolower(trim($existing->full_name)) === mb_strtolower($name)) {
             $this->json(['success' => true, 'rider' => $this->shra_model->search_riders($existing->rider_no, 1)[0] ?? $existing, 'existing' => true]);

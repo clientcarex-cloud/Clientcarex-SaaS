@@ -24,6 +24,15 @@
     return serialized ? serialized + '&' + t : t;
   };
 
+  S.age = function (dob) {
+    if (!dob) { return null; }
+    var d = new Date(dob + 'T00:00:00');
+    if (isNaN(d)) { return null; }
+    var t = new Date(), a = t.getFullYear() - d.getFullYear();
+    if (t.getMonth() < d.getMonth() || (t.getMonth() === d.getMonth() && t.getDate() < d.getDate())) { a--; }
+    return a;
+  };
+
   S.initials = function (name) {
     return (name || '').split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0); }).join('').toUpperCase();
   };
@@ -161,6 +170,18 @@
       summary();
     });
     $('#shra-quick-name').on('input', summary);
+    $('#shra-quick-dob').on('change', function () {
+      var a = S.age(this.value);
+      if (this.value && (a === null || a < 5)) {
+        alert_float('warning', 'Riders must be at least 5 years old.');
+        this.value = '';
+        return;
+      }
+      if (this.value) {
+        var $r = $('input[name=audience][value=' + (a < cfg.minorAge ? 'children' : 'adults') + ']');
+        if (!$r.prop('checked')) { $r.prop('checked', true).trigger('change'); }
+      }
+    });
 
     function quickReady() {
       return $quick.is(':visible') && $.trim($('#shra-quick-name').val()) !== '' && /^\d{10}$/.test($('#shra-quick-mobile').val());
