@@ -236,7 +236,7 @@ include __DIR__ . '/_public_head.php';
             <div class="sf-title"><span class="em">🎒</span><div><h4>1. Get ready like a pro</h4><small>What to wear before you come</small></div></div>
             <div class="sf-grid">
                 <div class="sf-card do"><span class="em">⛑️</span><div><b>Helmet — always!</b><span>A helmet is your superhero shield. Strap it under your chin every single time. The academy gives you one. <b>No helmet = no ride.</b></span></div></div>
-                <div class="sf-card do"><span class="em">👖</span><div><b>Long pants</b><span>Jeans, jodhpurs or leggings. They stop the saddle from rubbing your legs.</span></div></div>
+                <div class="sf-card do"><span class="em">👖</span><div><b>Long pants</b><span>Breeches, riding tights, or specialized riding jeans made with stretchy, seamless fabrics and reinforced grip to prevent chafing and improve stability in the saddle.</span></div></div>
                 <div class="sf-card do"><span class="em">👢</span><div><b>Closed shoes with a little heel</b><span>Boots or sturdy shoes so your foot never slips through the stirrup.</span></div></div>
                 <div class="sf-card dont"><span class="em">🩴</span><div><b>No sandals, slippers or crocs</b><span>They can get stuck in the stirrup or fall off.</span></div></div>
                 <div class="sf-card dont"><span class="em">🧣</span><div><b>No loose scarves, jewellery or strings</b><span>Flappy things can scare the horse or get caught. Tie long hair back too!</span></div></div>

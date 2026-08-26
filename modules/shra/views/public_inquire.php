@@ -25,7 +25,7 @@ $faq = [
     ['Is horse riding safe for children?', 'Yes. Every lesson is one-on-one with a trained instructor who stays with the rider throughout. We start on calm, well-schooled horses at a walk and only progress when the rider is confident. Children from ' . (int) $landing['min_age'] . ' years can join.'],
     ['I have never ridden before — can I join?', 'Absolutely. Most of our riders start with zero experience. Your first session covers mounting, balance and control at a walk. Book a Guest Ride to try it before choosing a package.'],
     ['When are the lessons?', 'There are two batches every day — ' . $batch_line . '. Pick the one that suits you on the booking form and tell us the date you want to start. Seats in each batch go first come, first served.'],
-    ['What should I wear?', 'Full-length trousers (jeans or track pants) and closed shoes — no sandals. Ask our team about safety gear when you book.'],
+    ['What should I wear?', 'Breeches, riding tights, or specialized riding jeans made with stretchy, seamless fabrics and reinforced grip to prevent chafing and improve stability in the saddle. Closed shoes — no sandals. Ask our team about safety gear when you book.'],
     ['Do I get a certificate?', 'Yes — riders who complete a package receive a certificate from ' . $academy . ' with a QR code for verification.'],
     ['Where is the academy?', ($landing['location'] ?: 'Hyderabad') . '. The exact location and directions are on the map below.'],
 ];
