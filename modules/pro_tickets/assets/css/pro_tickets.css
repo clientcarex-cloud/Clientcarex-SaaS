@@ -1,0 +1,1413 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Pro Tickets — module UI
+   All rules scoped under .ptk-wrap so the admin theme is never affected.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ptk-wrap {
+    --ptk-bg: #f8fafc;
+    --ptk-card: #ffffff;
+    --ptk-border: #e2e8f0;
+    --ptk-text: #0f172a;
+    --ptk-muted: #64748b;
+    --ptk-primary: #4f46e5;
+    --ptk-primary-soft: #eef2ff;
+    --ptk-success: #16a34a;
+    --ptk-success-soft: #f0fdf4;
+    --ptk-warning: #d97706;
+    --ptk-warning-soft: #fffbeb;
+    --ptk-danger: #dc2626;
+    --ptk-danger-soft: #fef2f2;
+    --ptk-radius: 12px;
+    --ptk-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+    color: var(--ptk-text);
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+.ptk-wrap * { box-sizing: border-box; }
+
+/* ── Header / nav ─────────────────────────────────────────────────────── */
+.ptk-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+.ptk-title {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+}
+.ptk-title i { color: var(--ptk-primary); margin-right: 6px; }
+.ptk-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: var(--ptk-shadow);
+}
+.ptk-tab {
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ptk-muted);
+    text-decoration: none;
+    transition: all .15s;
+}
+.ptk-tab:hover { color: var(--ptk-text); text-decoration: none; }
+.ptk-tab.active { background: var(--ptk-primary); color: #fff; }
+.ptk-tab.active:hover { color: #fff; }
+.ptk-header-actions { margin-left: auto; display: flex; gap: 8px; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.ptk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .15s;
+    line-height: 1.3;
+}
+.ptk-btn:hover { text-decoration: none; }
+.ptk-btn-primary { background: var(--ptk-primary); color: #fff; }
+.ptk-btn-primary:hover, .ptk-btn-primary:focus { background: #4338ca; color: #fff; }
+.ptk-btn-light { background: var(--ptk-card); border-color: var(--ptk-border); color: var(--ptk-text); }
+.ptk-btn-light:hover, .ptk-btn-light.active { border-color: var(--ptk-primary); color: var(--ptk-primary); }
+.ptk-btn-danger-light { background: var(--ptk-danger-soft); color: var(--ptk-danger); }
+.ptk-btn-danger-light:hover { background: var(--ptk-danger); color: #fff; }
+/* Shortcut chip inside a button ("Report an issue  Alt+Shift+N"). */
+.ptk-kbd-hint {
+    display: inline-block;
+    padding: 2px 6px;
+    border: 1px solid var(--ptk-border);
+    border-radius: 5px;
+    background: var(--ptk-bg);
+    color: var(--ptk-muted);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.ptk-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--ptk-border);
+    background: var(--ptk-card);
+    color: var(--ptk-muted);
+    cursor: pointer;
+    transition: all .15s;
+}
+.ptk-icon-btn:hover { color: var(--ptk-primary); border-color: var(--ptk-primary); text-decoration: none; }
+.ptk-icon-danger:hover { color: var(--ptk-danger); border-color: var(--ptk-danger); }
+
+/* ── KPI strip ────────────────────────────────────────────────────────── */
+.ptk-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.ptk-kpi {
+    position: relative;
+    display: block;
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-radius: var(--ptk-radius);
+    padding: 14px 16px;
+    box-shadow: var(--ptk-shadow);
+    color: inherit;
+    text-decoration: none;
+    overflow: hidden;
+    transition: all .15s;
+}
+a.ptk-kpi:hover { border-color: var(--ptk-primary); text-decoration: none; color: inherit; transform: translateY(-1px); }
+.ptk-kpi-value { font-size: 24px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.ptk-kpi-label { font-size: 12px; color: var(--ptk-muted); margin-top: 3px; font-weight: 500; }
+.ptk-kpi-icon { position: absolute; right: 13px; top: 13px; font-size: 17px; color: var(--ptk-border); }
+.ptk-kpi-warn { border-color: #fcd34d; background: var(--ptk-warning-soft); }
+.ptk-kpi-warn .ptk-kpi-value, .ptk-kpi-warn .ptk-kpi-icon { color: var(--ptk-warning); }
+.ptk-kpi-danger { border-color: #fca5a5; background: var(--ptk-danger-soft); }
+.ptk-kpi-danger .ptk-kpi-value, .ptk-kpi-danger .ptk-kpi-icon { color: var(--ptk-danger); }
+.ptk-kpi-good { border-color: #86efac; background: var(--ptk-success-soft); }
+.ptk-kpi-good .ptk-kpi-value, .ptk-kpi-good .ptk-kpi-icon { color: var(--ptk-success); }
+.ptk-kpi-unit { font-size: 14px; font-weight: 600; opacity: .6; margin-left: 1px; }
+
+/* ── Cards & grids ────────────────────────────────────────────────────── */
+.ptk-card {
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-radius: var(--ptk-radius);
+    padding: 18px;
+    box-shadow: var(--ptk-shadow);
+    margin-bottom: 16px;
+}
+.ptk-card-flush { padding: 0; overflow: hidden; }
+.ptk-card-title {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ptk-card-title i { color: var(--ptk-primary); }
+/* Buttons inside a card title (e.g. "Add To-Do") keep their own icon colour */
+.ptk-card-title .ptk-btn i { color: inherit; }
+.ptk-grid { display: grid; gap: 16px; margin-bottom: 0; }
+.ptk-grid .ptk-card { margin-bottom: 0; }
+.ptk-grid { margin-bottom: 16px; }
+.ptk-grid-2-1 { grid-template-columns: 2fr 1fr; }
+.ptk-grid-1-1 { grid-template-columns: 1fr 1fr; }
+@media (max-width: 992px) {
+    .ptk-grid-2-1, .ptk-grid-1-1 { grid-template-columns: 1fr; }
+}
+.ptk-chart-box { position: relative; height: 260px; }
+
+/* ── Tables ───────────────────────────────────────────────────────────── */
+.ptk-table-scroll { overflow-x: auto; }
+.ptk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ptk-table th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ptk-muted);
+    font-weight: 600;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--ptk-border);
+    white-space: nowrap;
+}
+.ptk-table td { padding: 11px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.ptk-table tr:last-child td { border-bottom: none; }
+.ptk-table-hover tbody tr { cursor: pointer; transition: background .1s; }
+.ptk-table-hover tbody tr:hover { background: #f8fafc; }
+.ptk-table .text-right { text-align: right; }
+.ptk-row-unread td { background: var(--ptk-primary-soft); }
+.ptk-row-unread .ptk-subject { font-weight: 700; }
+.ptk-row-inactive { opacity: .5; }
+.ptk-subject { color: var(--ptk-text); font-weight: 600; text-decoration: none; }
+.ptk-subject:hover { color: var(--ptk-primary); text-decoration: none; }
+.ptk-nowrap { white-space: nowrap; }
+
+/* ── Chips / badges ───────────────────────────────────────────────────── */
+.ptk-pill {
+    display: inline-block;
+    min-width: 22px;
+    text-align: center;
+    background: var(--ptk-primary-soft);
+    color: var(--ptk-primary);
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+.ptk-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    color: var(--st, #64748b);
+    background: color-mix(in srgb, var(--st, #64748b) 12%, #fff);
+    white-space: nowrap;
+}
+.ptk-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--st, #64748b); }
+.ptk-priority {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--ptk-muted);
+    white-space: nowrap;
+}
+.ptk-priority-2 { background: var(--ptk-warning-soft); color: var(--ptk-warning); }
+.ptk-priority-3 { background: var(--ptk-danger-soft); color: var(--ptk-danger); }
+.ptk-sla {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.ptk-sla-ok { background: var(--ptk-success-soft); color: var(--ptk-success); }
+.ptk-sla-met { background: var(--ptk-success-soft); color: var(--ptk-success); }
+.ptk-sla-warn { background: var(--ptk-warning-soft); color: var(--ptk-warning); }
+.ptk-sla-breach { background: var(--ptk-danger-soft); color: var(--ptk-danger); }
+.ptk-sla-none { background: #f1f5f9; color: var(--ptk-muted); }
+.ptk-unassigned { color: var(--ptk-warning); font-weight: 600; font-size: 12.5px; }
+
+/* ── CSAT stars ───────────────────────────────────────────────────────── */
+.ptk-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.5px;
+    font-size: 11px;
+    white-space: nowrap;
+    cursor: help;
+}
+.ptk-stars i.fa-regular { color: var(--ptk-border); }
+.ptk-stars-good i.fa-solid { color: #f59e0b; }
+.ptk-stars-okay i.fa-solid { color: #d97706; }
+.ptk-stars-bad i.fa-solid { color: var(--ptk-danger); }
+.ptk-stars i.ptk-stars-note { color: var(--ptk-muted); margin-left: 5px; font-size: 10.5px; }
+.ptk-csat-score { font-weight: 700; font-size: 12px; white-space: nowrap; }
+.ptk-csat-comment { color: var(--ptk-text); margin-left: 6px; }
+.ptk-badge-soft {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--ptk-muted);
+}
+/* Who wrote the message — one badge on every thread entry so an agent reply
+   is never mistaken for a client one at a glance. */
+.ptk-badge-staff,
+.ptk-badge-client {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin: 0 6px;
+}
+.ptk-badge-staff {
+    background: var(--ptk-primary-soft);
+    color: var(--ptk-primary);
+}
+.ptk-badge-client {
+    background: var(--ptk-success-soft);
+    color: var(--ptk-success);
+}
+.ptk-muted { color: var(--ptk-muted); }
+.ptk-small { font-size: 12px; }
+.ptk-center { text-align: center; }
+
+/* ── Filters bar ──────────────────────────────────────────────────────── */
+.ptk-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 14px;
+}
+.ptk-search {
+    position: relative;
+    flex: 1 1 220px;
+    min-width: 200px;
+}
+.ptk-search i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ptk-muted);
+    font-size: 13px;
+}
+.ptk-search input {
+    width: 100%;
+    padding: 8px 12px 8px 34px;
+    border: 1px solid var(--ptk-border);
+    border-radius: 9px;
+    font-size: 13px;
+    background: var(--ptk-card);
+    outline: none;
+}
+.ptk-search input:focus { border-color: var(--ptk-primary); }
+.ptk-select, .ptk-input, .ptk-textarea {
+    padding: 8px 12px;
+    border: 1px solid var(--ptk-border);
+    border-radius: 9px;
+    font-size: 13px;
+    background: var(--ptk-card);
+    color: var(--ptk-text);
+    outline: none;
+    max-width: 100%;
+}
+.ptk-select:focus, .ptk-input:focus, .ptk-textarea:focus { border-color: var(--ptk-primary); }
+.ptk-input-xs { width: 90px; }
+.ptk-dept-agents-table td { vertical-align: top; }
+.ptk-dept-agents-select { width: 100%; padding: 6px 8px; }
+.ptk-dept-agents-select option { padding: 3px 6px; }
+.ptk-results-count { font-size: 12.5px; color: var(--ptk-muted); margin-left: auto; font-weight: 600; }
+
+/* ── Empty state / pagination ─────────────────────────────────────────── */
+.ptk-empty { text-align: center; padding: 60px 20px; color: var(--ptk-muted); }
+.ptk-empty i { font-size: 42px; opacity: .3; display: block; margin-bottom: 12px; }
+.ptk-pagination { display: flex; gap: 5px; justify-content: center; margin: 18px 0; flex-wrap: wrap; }
+.ptk-page {
+    min-width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--ptk-border);
+    background: var(--ptk-card);
+    color: var(--ptk-text);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0 8px;
+}
+.ptk-page:hover { border-color: var(--ptk-primary); color: var(--ptk-primary); text-decoration: none; }
+.ptk-page.active { background: var(--ptk-primary); border-color: var(--ptk-primary); color: #fff; }
+.ptk-page-dots { align-self: center; color: var(--ptk-muted); }
+
+/* ── Kanban ───────────────────────────────────────────────────────────── */
+.ptk-board {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    align-items: flex-start;
+    padding-bottom: 10px;
+}
+.ptk-col {
+    flex: 0 0 300px;
+    max-width: 300px;
+    background: #f1f5f9;
+    border-radius: var(--ptk-radius);
+    border: 1px solid var(--ptk-border);
+}
+.ptk-col-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 700;
+}
+.ptk-col-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--st, #64748b); }
+.ptk-col-count { margin-left: auto; background: var(--ptk-card); border: 1px solid var(--ptk-border); border-radius: 999px; font-size: 11px; padding: 1px 8px; color: var(--ptk-muted); }
+.ptk-col-body { padding: 0 10px 10px; min-height: 60px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 320px); overflow-y: auto; }
+.ptk-kcard {
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-radius: 10px;
+    padding: 11px 12px;
+    box-shadow: var(--ptk-shadow);
+    cursor: grab;
+}
+.ptk-kcard.dragging { opacity: .4; }
+.ptk-col.drag-over { outline: 2px dashed var(--ptk-primary); outline-offset: -2px; }
+.ptk-kcard-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 5px; }
+.ptk-kcard-subject { display: block; font-size: 13px; font-weight: 600; color: var(--ptk-text); text-decoration: none; margin-bottom: 7px; line-height: 1.35; }
+.ptk-kcard-subject:hover { color: var(--ptk-primary); text-decoration: none; }
+.ptk-kcard-meta { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--ptk-muted); margin-bottom: 8px; }
+.ptk-kcard-meta i { width: 14px; text-align: center; }
+.ptk-kcard-bottom { display: flex; justify-content: space-between; align-items: center; }
+
+/* ── Ticket detail ────────────────────────────────────────────────────── */
+.ptk-ticket-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+/* The title block absorbs the free space and shrinks (min-width:0) rather than
+   wrapping, so the action buttons stay on the subject line as the meta band grows. */
+.ptk-ticket-head-main { display: flex; gap: 12px; align-items: flex-start; flex: 1 1 320px; min-width: 0; }
+.ptk-ticket-head-main > div { min-width: 0; }
+.ptk-ticket-head-actions { flex: 0 0 auto; }
+.ptk-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--ptk-border);
+    background: var(--ptk-card);
+    color: var(--ptk-muted);
+    text-decoration: none;
+    margin-top: 2px;
+}
+.ptk-back:hover { color: var(--ptk-primary); border-color: var(--ptk-primary); text-decoration: none; }
+.ptk-ticket-subject { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+/* Title row — subject and state badges on one wrapping line, so the header is
+   two rows: what it is + how it stands, then who it involves. */
+.ptk-titlerow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-bottom: 5px;
+}
+/* Owner strip — customer, SaaS instance and the two people, directly under it */
+.ptk-ticket-owner { display: flex; gap: 4px 10px; flex-wrap: wrap; align-items: center; }
+.ptk-owner-company {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ptk-text);
+    text-decoration: none;
+}
+.ptk-owner-company i { color: var(--ptk-muted); font-size: 11px; flex: none; }
+.ptk-owner-cname { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ptk-owner-company:hover { color: var(--ptk-primary); text-decoration: underline; }
+.ptk-owner-tenant {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--ptk-primary-soft);
+    color: var(--ptk-primary);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    text-decoration: none;
+}
+.ptk-owner-tenant i { font-size: 10px; }
+.ptk-owner-tenant:hover { color: var(--ptk-primary); filter: brightness(.96); }
+.ptk-owner-slug { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11.5px; }
+/* Tenant user / assigned agent — a quiet label + login username pair rather
+   than another pill, so the coloured state badges keep all the emphasis. */
+.ptk-owner-user,
+.ptk-owner-agent {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    color: var(--ptk-muted);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    min-width: 0;
+}
+.ptk-owner-user i, .ptk-owner-agent i { font-size: 11px; align-self: center; }
+.ptk-owner-uname {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    font-size: 12.5px;
+    color: var(--ptk-text);
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ptk-owner-none { font-size: 12.5px; color: var(--ptk-muted); }
+/* Requester mobile in the owner band — reads like the username chips next to it. */
+.ptk-owner-mobile { font-size: 12.5px; font-weight: 600; color: var(--ptk-text); }
+.ptk-owner-mobile i { font-size: 12px; color: var(--ptk-muted); }
+.ptk-owner-mobile.ptk-mobile-empty { font-weight: 500; color: var(--ptk-muted); }
+@media (max-width: 780px) {
+    .ptk-owner-uname { max-width: 170px; }
+    .ptk-owner-cname { max-width: 150px; }
+}
+.ptk-owner-none i { margin-right: 5px; }
+.ptk-ticket-badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ptk-ticket-head-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.ptk-ticket-layout { display: grid; grid-template-columns: 1fr 330px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .ptk-ticket-layout { grid-template-columns: 1fr; } }
+
+/* Ticket tabs — simple horizontal tab bar splitting the ticket into panels */
+.ptk-ttabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-radius: var(--ptk-radius);
+    padding: 5px;
+    margin-bottom: 16px;
+    box-shadow: var(--ptk-shadow);
+}
+.ptk-ttab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 0;
+    background: transparent;
+    color: var(--ptk-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    line-height: 1;
+    transition: background .15s, color .15s;
+}
+.ptk-ttab i { font-size: 13px; }
+.ptk-ttab:hover { background: var(--ptk-bg); color: var(--ptk-text); }
+.ptk-ttab.active { background: var(--ptk-primary); color: #fff; }
+.ptk-ttab.active i { color: #fff; }
+.ptk-ttab .ptk-pill {
+    background: rgba(100, 116, 139, .16);
+    color: var(--ptk-muted);
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+}
+.ptk-ttab.active .ptk-pill { background: rgba(255, 255, 255, .25); color: #fff; }
+
+.ptk-ttab-panel { display: none; }
+.ptk-ttab-panel.active { display: block; animation: ptk-fade-in .18s ease; }
+@keyframes ptk-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Two-up card grid used inside the Details panel */
+.ptk-tabgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-items: start; }
+.ptk-tabgrid .ptk-card { margin-bottom: 0; }
+@media (max-width: 900px) { .ptk-tabgrid { grid-template-columns: 1fr; } }
+
+/* Conversation tab: composer + thread stacked in the LEFT column, linked
+   module data (Smart Forms / Calls / Emails / PDF) in the right column
+   spanning both rows — so a long call/email history never pushes the
+   conversation below it (that rendered as a huge blank gap under the
+   composer with the thread stranded at the bottom of the page). */
+.ptk-conv-top { margin-bottom: 4px; }
+.ptk-conv-top-split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.ptk-conv-top-split .ptk-conv-reply,
+.ptk-conv-top-split .ptk-conv-thread { grid-column: 1; min-width: 0; }
+.ptk-conv-top-split .ptk-conv-linked { grid-column: 2; grid-row: 1 / span 2; }
+.ptk-conv-reply .ptk-composer { margin-bottom: 0; }
+.ptk-conv-linked { display: flex; flex-direction: column; gap: 16px; }
+.ptk-conv-linked .ptk-card { margin-bottom: 0; }
+/* Keep the linked cards compact — long histories scroll inside their card. */
+.ptk-conv-linked .ptk-form-list,
+.ptk-conv-linked .ptk-call-list,
+.ptk-conv-linked .ptk-email-list { max-height: 300px; overflow-y: auto; padding-right: 4px; }
+.ptk-conv-thread { margin-top: 16px; }
+/* Inside the split grid the row gap already provides the spacing. */
+.ptk-conv-top-split .ptk-conv-thread { margin-top: 0; }
+@media (max-width: 900px) {
+    .ptk-conv-top-split { grid-template-columns: 1fr; }
+    .ptk-conv-top-split .ptk-conv-reply,
+    .ptk-conv-top-split .ptk-conv-thread,
+    .ptk-conv-top-split .ptk-conv-linked { grid-column: auto; grid-row: auto; }
+}
+
+@media (max-width: 600px) {
+    .ptk-ttab span:not(.ptk-pill) { display: none; }
+    .ptk-ttab { padding: 9px 12px; }
+    .ptk-ttab i { font-size: 15px; }
+}
+
+/* Small button + a header-aligned action button */
+.ptk-btn-sm { padding: 5px 10px; font-size: 12px; }
+.ptk-card-title-action { margin-left: auto; }
+
+/* Field label used inside the modal form */
+.ptk-field-label { display: block; font-size: 12px; font-weight: 600; color: var(--ptk-muted); margin: 10px 0 4px; }
+.ptk-field-label:first-child { margin-top: 0; }
+.ptk-field-label i { color: var(--ptk-primary); }
+
+/* Lightweight modal */
+.ptk-modal { position: fixed; inset: 0; z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.ptk-modal[hidden] { display: none; }
+.ptk-modal-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, .5); animation: ptk-fade-in .15s ease; }
+.ptk-modal-dialog {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: var(--ptk-card);
+    color: var(--ptk-text);
+    border: 1px solid var(--ptk-border);
+    border-radius: var(--ptk-radius);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, .25);
+    animation: ptk-modal-pop .18s ease;
+}
+@keyframes ptk-modal-pop { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+.ptk-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--ptk-border); }
+.ptk-modal-head h4 { margin: 0; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.ptk-modal-head h4 i { color: var(--ptk-primary); }
+.ptk-modal-x { border: 0; background: transparent; color: var(--ptk-muted); font-size: 17px; cursor: pointer; line-height: 1; padding: 4px; border-radius: 6px; }
+.ptk-modal-x:hover { background: var(--ptk-bg); color: var(--ptk-text); }
+.ptk-modal-body { padding: 18px; }
+.ptk-modal-body .ptk-input, .ptk-modal-body .ptk-select { width: 100%; }
+.ptk-modal-body .ptk-todo-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
+.ptk-modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--ptk-border); }
+
+/* Messages */
+.ptk-msg {
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-radius: var(--ptk-radius);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--ptk-shadow);
+}
+.ptk-msg-staff { border-left: 3px solid var(--ptk-primary); }
+.ptk-msg-client { border-left: 3px solid #cbd5e1; }
+.ptk-msg-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ptk-msg-head strong { font-size: 13.5px; }
+.ptk-msg-head .ptk-small { margin-left: 8px; }
+
+/* Per-message HealthO AI trigger. Icon-only (its full label is reused as the popup
+   title, and shown here as a tooltip), parked at the far right of the message header
+   and faded until the message is hovered — otherwise a long thread reads as a wall
+   of gradient buttons. Kept visible on touch and on keyboard focus.
+   Must stay scoped to .ptk-wrap: `.ptk-wrap .proai-magic-btn` below sets this
+   module's button metrics and would otherwise win on source order. */
+.ptk-msg-ai { margin-left: auto; line-height: 0; }
+.ptk-wrap .ptk-msg-ai .ptk-msg-ai-btn {
+    padding: 6px 9px;
+    margin-right: 0;
+    font-size: 12px;
+    border-radius: 999px;
+    box-shadow: none;
+    opacity: .35;
+    animation: none;
+    transition: opacity .15s, transform .15s, box-shadow .2s;
+}
+.ptk-wrap .ptk-msg-ai .ptk-msg-ai-btn > span:not(.proai-spark) { display: none; }
+.ptk-msg:hover .ptk-msg-ai .ptk-msg-ai-btn,
+.ptk-wrap .ptk-msg-ai .ptk-msg-ai-btn:hover,
+.ptk-wrap .ptk-msg-ai .ptk-msg-ai-btn:focus-visible { opacity: 1; }
+.ptk-wrap .ptk-msg-ai .ptk-msg-ai-btn:hover { box-shadow: 0 4px 14px rgba(124, 58, 237, .35); }
+@media (hover: none) {
+    .ptk-wrap .ptk-msg-ai .ptk-msg-ai-btn { opacity: 1; }
+}
+.ptk-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: var(--ptk-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.ptk-avatar-staff { background: var(--ptk-primary-soft); color: var(--ptk-primary); }
+.ptk-avatar-img { overflow: hidden; padding: 0; }
+.ptk-avatar-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+
+/* ── Customer feedback card (rating + message on the ticket page) ─────── */
+.ptk-fb-card {
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-left: 3px solid var(--ptk-warning);
+    border-radius: var(--ptk-radius);
+    box-shadow: var(--ptk-shadow);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+.ptk-fb-good { border-left-color: var(--ptk-success); }
+.ptk-fb-okay { border-left-color: var(--ptk-warning); }
+.ptk-fb-bad { border-left-color: var(--ptk-danger); }
+.ptk-fb-head { display: flex; align-items: flex-start; gap: 10px; }
+.ptk-fb-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    background: var(--ptk-warning-soft);
+    color: #f59e0b;
+}
+.ptk-fb-good .ptk-fb-icon { background: var(--ptk-success-soft); color: var(--ptk-success); }
+.ptk-fb-bad .ptk-fb-icon { background: var(--ptk-danger-soft); color: var(--ptk-danger); }
+.ptk-fb-main { flex: 1; min-width: 0; }
+.ptk-fb-title { font-size: 13px; font-weight: 700; }
+.ptk-fb-stars { display: flex; align-items: center; gap: 3px; margin-top: 3px; }
+.ptk-fb-stars .fa-star { font-size: 13px; color: var(--ptk-border); }
+.ptk-fb-stars .fa-star.is-on { color: #f59e0b; }
+.ptk-fb-label { font-size: 12px; font-weight: 600; color: var(--ptk-muted); margin-left: 5px; }
+.ptk-fb-when { flex-shrink: 0; }
+.ptk-fb-comment {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--ptk-bg);
+    font-size: 13px;
+    line-height: 1.55;
+    word-break: break-word;
+}
+.ptk-fb-meta { margin-top: 8px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ptk-fb-meta i { margin-right: 3px; }
+.ptk-msg-body { font-size: 13.5px; line-height: 1.6; word-break: break-word; }
+.ptk-msg-body img { max-width: 100%; }
+
+/* Auto-detected links inside message bodies / notes. Long report URLs are
+   common here, so they wrap instead of stretching the thread column. */
+.ptk-link {
+    color: var(--ptk-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+.ptk-link:hover, .ptk-link:focus { color: var(--ptk-primary); text-decoration: underline; opacity: .82; }
+.ptk-msg-attachments { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.ptk-attachment {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: var(--ptk-text);
+    text-decoration: none;
+}
+.ptk-attachment:hover { background: var(--ptk-primary-soft); color: var(--ptk-primary); text-decoration: none; }
+.ptk-attach-img {
+    display: inline-block;
+    border: 1px solid var(--ptk-border);
+    border-radius: 10px;
+    overflow: hidden;
+    line-height: 0;
+}
+.ptk-attach-img img {
+    display: block;
+    max-height: 150px;
+    max-width: 240px;
+    object-fit: cover;
+    cursor: zoom-in;
+    transition: transform .15s ease;
+}
+.ptk-attach-img:hover img { transform: scale(1.04); }
+
+/* HealthO AI (Pro AI) trigger — match this module's button metrics */
+.ptk-wrap .proai-magic-btn {
+    margin-right: 0;
+    padding: 8px 16px;
+    border-radius: 9px;
+    line-height: 1.3;
+}
+/* The wand icon sits on the button's dark gradient — keep it white, beating
+   the `.ptk-card-title i` indigo that otherwise wins inside card headers. */
+.ptk-wrap .proai-magic-btn i { color: #fff; }
+
+/* Composer
+   The canned-reply strip is a toolbar welded onto the top of the editor
+   (shared border, no gap) so the composer reads as one field instead of a
+   full-width select floating above a separate box. */
+.ptk-composer-head {
+    border: 1px solid var(--ptk-border);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    background: var(--ptk-bg);
+}
+.ptk-composer-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+}
+/* Canned picker — a compact chip, sized to the toolbar rather than the card.
+   It shrinks ahead of the button so the strip never wraps to two rows. */
+.ptk-canned-pick { position: relative; display: inline-flex; align-items: center; flex: 0 1 320px; min-width: 110px; }
+.ptk-canned-pick .ptk-canned-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 11.5px;
+    color: var(--ptk-primary);
+    pointer-events: none;
+}
+select.ptk-canned {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 100%;
+    padding: 6px 27px 6px 27px;
+    border: 1px solid var(--ptk-border);
+    border-radius: 8px;
+    background: var(--ptk-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center / 9px 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ptk-text);
+    line-height: 1.4;
+    cursor: pointer;
+    outline: none;
+    text-overflow: ellipsis;
+    transition: border-color .15s, box-shadow .15s;
+}
+select.ptk-canned:hover { border-color: #cbd5e1; }
+select.ptk-canned:focus { border-color: var(--ptk-primary); box-shadow: 0 0 0 3px var(--ptk-primary-soft); }
+/* Ghost toolbar button — quiet until hovered, tinted while its row is open. */
+.ptk-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 6px 11px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ptk-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+}
+.ptk-bar-btn i { font-size: 12px; }
+.ptk-bar-btn:hover { background: var(--ptk-card); border-color: var(--ptk-border); color: var(--ptk-text); }
+.ptk-bar-btn[aria-expanded="true"] { background: var(--ptk-primary-soft); color: var(--ptk-primary); }
+.ptk-canned-save-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px 8px;
+    animation: ptk-fade-in .15s ease;
+}
+.ptk-canned-save-row[hidden] { display: none; }
+.ptk-canned-save-row .ptk-input { flex: 1; min-width: 0; padding: 6px 10px; font-size: 12.5px; border-radius: 8px; }
+.ptk-canned-save-row .ptk-btn-sm { flex-shrink: 0; }
+.ptk-canned-save-row .ptk-icon-btn { flex-shrink: 0; width: 28px; height: 28px; }
+/* On a phone the strip keeps the picker; the save button drops to its icon. */
+@media (max-width: 600px) {
+    .ptk-bar-btn span { display: none; }
+    .ptk-bar-btn { padding: 6px 9px; }
+}
+/* Weld the editor (TinyMCE, or the raw textarea if it never boots) to the strip. */
+.ptk-composer .tox-tinymce { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; margin-top: 0 !important; }
+.ptk-composer .ptk-textarea { border-top-left-radius: 0; border-top-right-radius: 0; display: block; }
+.ptk-textarea { width: 100%; resize: vertical; font-family: inherit; }
+.ptk-composer-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+.ptk-composer-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* HealthO AI trigger lives in the composer card header, right-aligned next to the
+   title. Icon-only — its label is carried by the tooltip instead. */
+.ptk-composer .ptk-card-title { align-items: center; min-height: 30px; }
+.ptk-composer .ptk-card-title-action { margin-left: auto; font-weight: 400; line-height: 0; }
+.ptk-composer .ptk-card-title-action .proai-magic-btn {
+    font-size: 13px;
+    padding: 7px 10px;
+    border-radius: 999px;
+}
+.ptk-composer .ptk-card-title-action .proai-magic-btn > span:not(.proai-spark) { display: none; }
+
+/* New-ticket message composer: the one-click "AI correct" trigger rendered as
+   an icon-only pill, matching the reply composer's instant button. */
+.ptk-wrap .proai-magic-btn.ptk-ai-instant-icon { padding: 7px 10px; border-radius: 999px; }
+.ptk-wrap .proai-magic-btn.ptk-ai-instant-icon > span:not(.proai-spark) { display: none; }
+
+/* Split "Send Reply | <status> ▾" button — submit and set-status-on-reply
+   merged into one control. The right segment is the real <select name=status>
+   restyled to look like part of the button. */
+.ptk-send-split {
+    display: inline-flex;
+    align-items: stretch;
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--ptk-primary);
+    transition: box-shadow .15s;
+}
+.ptk-send-split:focus-within { box-shadow: 0 0 0 3px var(--ptk-primary-soft); }
+.ptk-send-main {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: background .15s;
+}
+.ptk-send-main:hover { background: #4338ca; }
+.ptk-send-divider { width: 1px; background: rgba(255, 255, 255, .3); margin: 6px 0; }
+select.ptk-send-status {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: 0;
+    outline: none;
+    cursor: pointer;
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    padding: 8px 26px 8px 12px;
+    max-width: 150px;
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center / 10px 7px;
+    transition: background-color .15s;
+}
+select.ptk-send-status:hover { background-color: #4338ca; }
+/* Keep the native dropdown list readable (options don't inherit the white-on-purple). */
+select.ptk-send-status option { color: #0f172a; background: #fff; font-weight: 400; }
+.ptk-file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--ptk-muted);
+    cursor: pointer;
+    border: 1px dashed var(--ptk-border);
+    padding: 7px 12px;
+    border-radius: 9px;
+    font-weight: 500;
+    margin: 0;
+}
+.ptk-file-label:hover { border-color: var(--ptk-primary); color: var(--ptk-primary); }
+.ptk-file-label input[type="file"] { display: none; }
+/* Picked filenames can be long — keep the label on one tidy line. */
+.ptk-file-label span { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* New-ticket composer: it sits inside a stacked form field (which spaces its
+   rows), so drop the gap and space the label by hand — otherwise the canned
+   strip floats above the editor instead of being welded to it. */
+.ptk-form-field.ptk-composer { gap: 0; }
+.ptk-form-field.ptk-composer .ptk-composer-label { margin-bottom: 6px; }
+
+/* Merge-tag legend under the new-ticket message composer. */
+.ptk-tpl-hint { margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+.ptk-tpl-hint i { color: var(--ptk-primary); }
+
+/* Notes */
+.ptk-note-form { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 14px; }
+.ptk-note-form .ptk-textarea { flex: 1; }
+.ptk-note { border-top: 1px solid #f1f5f9; padding: 10px 0; }
+.ptk-note-head { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
+.ptk-note-body { font-size: 13px; line-height: 1.55; background: var(--ptk-warning-soft); border-radius: 8px; padding: 9px 12px; }
+
+/* Timeline */
+.ptk-timeline, .ptk-feed { display: flex; flex-direction: column; }
+.ptk-timeline-item, .ptk-feed-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f5f9;
+    text-decoration: none;
+    color: inherit;
+}
+.ptk-feed-item:hover { text-decoration: none; color: inherit; background: #f8fafc; }
+.ptk-timeline-item:last-child, .ptk-feed-item:last-child { border-bottom: none; }
+.ptk-feed-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+.ptk-act-created { background: var(--ptk-primary); }
+.ptk-act-staff_reply, .ptk-act-client_reply { background: #0ea5e9; }
+.ptk-act-sla_warning { background: var(--ptk-warning); }
+.ptk-act-sla_breach, .ptk-act-priority_escalated { background: var(--ptk-danger); }
+.ptk-act-auto_assigned, .ptk-act-assigned { background: #8b5cf6; }
+.ptk-act-auto_closed, .ptk-act-status_changed { background: var(--ptk-success); }
+.ptk-feed-body { display: flex; flex-direction: column; gap: 2px; }
+.ptk-feed-text { font-size: 12.5px; font-weight: 500; line-height: 1.4; }
+.ptk-feed-meta { font-size: 11.5px; color: var(--ptk-muted); }
+
+/* Sidebar props */
+.ptk-props { display: flex; flex-direction: column; gap: 4px; }
+.ptk-props label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--ptk-muted); font-weight: 600; margin: 8px 0 3px; }
+.ptk-props label:first-child { margin-top: 0; }
+.ptk-props .ptk-select { width: 100%; }
+.ptk-prop-saved { border-color: var(--ptk-success) !important; }
+.ptk-sla-rows { display: flex; flex-direction: column; gap: 10px; }
+.ptk-sla-row { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.ptk-sla-row-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--ptk-muted); font-weight: 600; }
+.ptk-requester { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+/* Requester mobile — masked until the eye is clicked. */
+.ptk-mobile { display: inline-flex; align-items: center; gap: 6px; }
+.ptk-mobile-empty .ptk-mobile-value { font-style: italic; }
+.ptk-mobile-value { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.ptk-mobile-toggle {
+    border: 0;
+    background: none;
+    padding: 0 2px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--ptk-muted);
+    opacity: .7;
+    transition: color .15s, opacity .15s;
+}
+.ptk-mobile-toggle:hover, .ptk-mobile-toggle[aria-pressed="true"] { color: var(--ptk-primary); opacity: 1; }
+/* "Link to tenant / customer" picker, shown only while a ticket belongs to no account. */
+.ptk-link-client { display: flex; flex-direction: column; gap: 4px; }
+.ptk-link-client .ptk-select { font-size: 12.5px; padding: 6px 10px; }
+.ptk-watchers { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ptk-watcher {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 4px 11px;
+}
+.ptk-watcher-remove { cursor: pointer; color: var(--ptk-muted); }
+.ptk-watcher-remove:hover { color: var(--ptk-danger); }
+#ptk-watcher-add { width: 100%; }
+.ptk-cc { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ptk-border); }
+.ptk-cc-title { font-size: 12px; font-weight: 600; color: var(--ptk-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 7px; }
+#ptk-cc-add { width: 100%; }
+
+/* ── Todo module integration ── */
+.ptk-card-title-link { margin-left: auto; font-size: 12px; color: var(--ptk-muted); }
+.ptk-card-title-link:hover { color: var(--ptk-primary); }
+.ptk-todo-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.ptk-todo { display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border: 1px solid var(--ptk-border); border-radius: 9px; }
+.ptk-todo-toggle { margin-top: 2px; cursor: pointer; }
+.ptk-todo-body { flex: 1; min-width: 0; }
+.ptk-todo-delete { border: 0; background: none; color: var(--ptk-muted); cursor: pointer; padding: 2px 4px; margin-top: -1px; border-radius: 6px; line-height: 1; opacity: .6; transition: all .15s; }
+.ptk-todo-delete:hover { color: var(--ptk-danger); background: var(--ptk-danger-soft); opacity: 1; }
+.ptk-todo-title { font-size: 13px; font-weight: 600; }
+.ptk-todo-desc { color: var(--ptk-muted); margin: 2px 0 3px; white-space: pre-line; }
+.ptk-todo-done .ptk-todo-desc { text-decoration: line-through; }
+
+/* ── To-do progress bar ── */
+.ptk-todo-progress { margin-bottom: 12px; }
+.ptk-todo-progress-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--ptk-muted); margin-bottom: 5px; }
+.ptk-todo-progress-head strong { font-size: 13px; color: var(--ptk-text); }
+.ptk-todo-progress-head .ptk-todo-progress-done { color: var(--ptk-success); }
+.ptk-todo-progress-track { height: 7px; border-radius: 999px; background: var(--ptk-border); overflow: hidden; }
+.ptk-todo-progress-bar { display: block; height: 100%; border-radius: 999px; background: var(--ptk-primary); transition: width .35s ease; }
+.ptk-todo-progress-bar.is-complete { background: var(--ptk-success); }
+
+/* ── Smart Forms integration ── */
+.ptk-form-list { display: flex; flex-direction: column; gap: 8px; }
+.ptk-form-item { display: block; padding: 9px 11px; border: 1px solid var(--ptk-border); border-radius: 9px; text-decoration: none; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.ptk-form-item:hover { border-color: var(--ptk-primary); box-shadow: 0 1px 4px rgba(79,70,229,.12); text-decoration: none; color: inherit; }
+.ptk-form-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 7px; }
+.ptk-form-title { font-size: 13px; font-weight: 600; color: var(--ptk-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ptk-form-status { flex: none; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; padding: 2px 7px; border-radius: 999px; }
+.ptk-form-status-pending { color: var(--ptk-muted); background: var(--ptk-bg); }
+.ptk-form-status-in_progress { color: var(--ptk-warning); background: var(--ptk-warning-soft); }
+.ptk-form-status-completed { color: var(--ptk-success); background: var(--ptk-success-soft); }
+.ptk-form-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.ptk-form-target { padding: 1px 6px; border-radius: 6px; background: var(--ptk-bg); }
+.ptk-form-overdue { color: var(--ptk-danger); font-weight: 600; }
+.ptk-todo-done .ptk-todo-title { text-decoration: line-through; color: var(--ptk-muted); font-weight: 400; }
+.ptk-todo-priority { font-weight: 600; }
+.ptk-todo-priority-1 { color: var(--ptk-muted); }
+.ptk-todo-priority-2 { color: #2563eb; }
+.ptk-todo-priority-3 { color: #d97706; }
+.ptk-todo-priority-4 { color: var(--ptk-danger); }
+.ptk-todo-form input[type="text"] { width: 100%; margin-bottom: 7px; }
+.ptk-todo-form-row { display: flex; gap: 7px; margin-bottom: 7px; }
+.ptk-todo-form-row .ptk-input, .ptk-todo-form-row .ptk-select { flex: 1; min-width: 0; }
+.ptk-todo-create { border: 1px dashed var(--ptk-border); border-radius: 10px; padding: 12px 14px; }
+.ptk-todo-create-check { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 0; cursor: pointer; }
+.ptk-todo-create #ptk-create-todo-fields { margin-top: 12px; }
+
+/* ── Caller module integration ── */
+.ptk-call-list { display: flex; flex-direction: column; gap: 8px; }
+.ptk-call { display: flex; align-items: flex-start; gap: 9px; }
+.ptk-call-icon {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0; margin-top: 2px;
+}
+.ptk-call-incoming { background: var(--ptk-success-soft); color: var(--ptk-success); }
+.ptk-call-outgoing { background: var(--ptk-primary-soft); color: var(--ptk-primary); }
+.ptk-call-missed, .ptk-call-rejected, .ptk-call-blocked, .ptk-call-unknown { background: var(--ptk-danger-soft); color: var(--ptk-danger); }
+.ptk-call-body { flex: 1; min-width: 0; }
+.ptk-call-top { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; }
+.ptk-contact-calls { max-width: 480px; margin-top: 10px; border: 1px solid var(--ptk-border); border-radius: 10px; padding: 10px 13px; background: var(--ptk-card); }
+
+/* ── Mailbox module integration ── */
+.ptk-email-list { display: flex; flex-direction: column; gap: 10px; }
+.ptk-email { display: flex; align-items: flex-start; gap: 9px; }
+.ptk-email-icon {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0; margin-top: 2px;
+}
+.ptk-email-incoming { background: var(--ptk-success-soft); color: var(--ptk-success); }
+.ptk-email-outgoing { background: var(--ptk-primary-soft); color: var(--ptk-primary); }
+.ptk-email-body { flex: 1; min-width: 0; }
+.ptk-email-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 13px; font-weight: 600; }
+.ptk-email-subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ptk-email-snippet { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Smart PDF module integration ── */
+#ptk-pdf-template { width: 100%; }
+#ptk-pdf-fields { margin-top: 10px; }
+#ptk-pdf-fields .ptk-form-field { margin-bottom: 10px; }
+#ptk-pdf-fields .ptk-input, #ptk-pdf-fields .ptk-select, #ptk-pdf-fields .ptk-textarea { width: 100%; }
+.ptk-pdf-actions { display: flex; gap: 7px; margin-top: 4px; }
+.ptk-pdf-actions .ptk-btn { flex: 1; justify-content: center; }
+
+/* ── Forms ────────────────────────────────────────────────────────────── */
+.ptk-form-card { max-width: 900px; }
+.ptk-form-section { margin-bottom: 18px; }
+.ptk-form-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+.ptk-form-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 13px; flex: 1 1 180px; }
+.ptk-form-field-xs { flex: 0 0 auto; }
+.ptk-form-field > label { font-size: 12px; font-weight: 600; color: var(--ptk-text); margin: 0; }
+.ptk-form-inline { flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ptk-form-actions { display: flex; gap: 8px; margin-top: 6px; }
+.ptk-form-subtitle { font-size: 13px; font-weight: 700; margin: 16px 0 10px; }
+.ptk-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; cursor: pointer; margin: 0; }
+.ptk-check input { margin: 0; }
+.ptk-grid-settings { align-items: start; }
+
+/* Requester toggle + contact search */
+.ptk-toggle-group { display: inline-flex; gap: 4px; background: #f1f5f9; border-radius: 10px; padding: 4px; margin-bottom: 12px; }
+.ptk-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ptk-muted);
+    cursor: pointer;
+    margin: 0;
+}
+.ptk-toggle input { display: none; }
+.ptk-toggle.active { background: var(--ptk-card); color: var(--ptk-primary); box-shadow: var(--ptk-shadow); }
+.ptk-contact-search { position: relative; max-width: 480px; }
+.ptk-contact-search > i { position: absolute; left: 12px; top: 15px; color: var(--ptk-muted); font-size: 13px; }
+.ptk-contact-search input[type="text"] {
+    width: 100%;
+    padding: 10px 12px 10px 34px;
+    border: 1px solid var(--ptk-border);
+    border-radius: 9px;
+    font-size: 13px;
+    outline: none;
+}
+.ptk-contact-search input[type="text"]:focus { border-color: var(--ptk-primary); }
+.ptk-contact-search input.ptk-contact-picked { border-color: var(--ptk-success); background: var(--ptk-success-soft); }
+.ptk-contact-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+    z-index: 50;
+    max-height: 340px;
+    overflow-y: auto;
+    display: none;
+}
+.ptk-contact-results.open { display: block; }
+.ptk-contact-result { padding: 9px 13px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+.ptk-contact-result:last-child { border-bottom: none; }
+.ptk-contact-result:hover { background: var(--ptk-primary-soft); }
+.ptk-contact-result .ptk-small { display: block; }
+.ptk-contact-selected {
+    max-width: 480px;
+    margin-top: 10px;
+    border: 1px solid var(--ptk-border);
+    border-radius: 10px;
+    background: var(--ptk-card);
+    overflow: hidden;
+}
+.ptk-contact-selected-company {
+    padding: 8px 13px;
+    font-size: 12.5px;
+    font-weight: 600;
+    background: var(--ptk-primary-soft);
+    color: var(--ptk-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ptk-contact-selected-company > span:first-of-type { white-space: nowrap; }
+.ptk-contact-selected-company .ptk-small { font-weight: 400; margin-left: auto; text-align: right; }
+.ptk-contact-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 13px;
+    font-size: 13px;
+    border-top: 1px solid #f1f5f9;
+}
+.ptk-contact-chip:first-child { border-top: none; }
+.ptk-contact-chip .ptk-chip-name { font-weight: 600; }
+.ptk-contact-chip .ptk-chip-name i { color: var(--ptk-muted); font-size: 11px; margin-right: 3px; }
+.ptk-contact-chip .ptk-small i { font-size: 11px; }
+.ptk-chip-remove {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: var(--ptk-muted);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+.ptk-chip-remove:hover { color: var(--ptk-danger); background: var(--ptk-danger-soft); }
+
+/* Unified smart requester picker */
+#ptk-req-search { max-width: 560px; }
+#ptk-req-selected { max-width: 560px; }
+.ptk-req-result { display: flex; align-items: center; gap: 10px; }
+.ptk-req-result .ptk-req-result-main { min-width: 0; flex: 1 1 auto; }
+.ptk-req-result .ptk-req-result-main strong { display: block; }
+.ptk-req-tag {
+    flex: none;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ptk-req-tag i { font-size: 10px; margin-right: 3px; }
+.ptk-req-tag-staff { background: var(--ptk-primary-soft); color: var(--ptk-primary); }
+.ptk-req-tag-contact { background: var(--ptk-bg); color: var(--ptk-muted); }
+.ptk-req-group-label {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 7px 13px 5px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ptk-muted);
+    background: var(--ptk-bg);
+    border-bottom: 1px solid var(--ptk-border);
+}
+.ptk-req-group-label i { margin-right: 5px; color: var(--ptk-primary); }
+/* Keyboard-highlighted row in the requester picker dropdowns (arrow-key navigation) */
+.ptk-contact-result.ptk-req-result-active {
+    background: var(--ptk-primary-soft);
+    box-shadow: inset 2px 0 0 var(--ptk-primary);
+}
+/* Tenant-first requester flow: already-picked staff rows + the status line under the picker */
+.ptk-req-result-picked { cursor: default; opacity: .55; background: var(--ptk-bg); }
+.ptk-req-result-picked:hover { background: var(--ptk-bg); }
+.ptk-req-staff-status { margin-top: 6px; }
+.ptk-req-group-count {
+    float: right;
+    background: var(--ptk-card);
+    border: 1px solid var(--ptk-border);
+    border-radius: 999px;
+    padding: 0 7px;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+.ptk-req-chip { flex-wrap: wrap; }
+.ptk-req-role {
+    flex: none;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+}
+.ptk-req-role-to { background: var(--ptk-primary-soft); color: var(--ptk-primary); }
+.ptk-req-role-cc { background: var(--ptk-bg); color: var(--ptk-muted); }
+.ptk-req-chip .ptk-req-chip-email { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ptk-req-chip .ptk-req-chip-type { flex: none; }
+.ptk-req-chip .ptk-req-chip-type i { font-size: 10px; margin-right: 3px; }
+.ptk-req-manual { max-width: 560px; margin-top: 10px; }
+.ptk-req-manual-toggle {
+    margin-top: 8px;
+    border: none;
+    background: transparent;
+    color: var(--ptk-primary);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 0;
+}
+.ptk-req-manual-toggle:hover { text-decoration: underline; }
+.ptk-req-manual-toggle i { font-size: 11px; margin-right: 4px; }
+
+/* ── @mentions (tag a colleague on a reply or internal note) ───────────── */
+.ptk-mention {
+    color: var(--ptk-primary, #4f46e5);
+    background: var(--ptk-primary-soft, #eef2ff);
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 0 3px;
+    white-space: nowrap;
+}
+.ptk-mention-hint {
+    margin-right: auto;
+    color: var(--ptk-muted);
+    font-size: 12px;
+}
+.ptk-mention-hint i { margin-right: 4px; opacity: .8; }
+.ptk-act-mentioned { background: #8b5cf6; }
+
+/* The picker is appended to <body> so it can escape the composer's overflow —
+   it therefore cannot rely on the variables scoped to .ptk-wrap. */
+.ptk-mention-menu {
+    position: absolute;
+    z-index: 100000;
+    min-width: 250px;
+    max-width: 340px;
+    max-height: 244px;
+    overflow-y: auto;
+    padding: 4px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+    font-size: 13px;
+    color: #0f172a;
+}
+.ptk-mention-menu[hidden] { display: none; }
+.ptk-mention-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+.ptk-mention-item.is-active { background: #eef2ff; }
+.ptk-mention-avatar {
+    flex: 0 0 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #4f46e5;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ptk-mention-name { font-weight: 600; white-space: nowrap; }
+.ptk-mention-mail {
+    margin-left: auto;
+    color: #64748b;
+    font-size: 11.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
