@@ -1043,6 +1043,258 @@ class Companies extends AdminController
     }
 
     /**
+     * TEMPORARY diagnostics page for the client-portal iframe bridge ("This
+     * content is blocked" on billing/my_account?redirect=clients/pro_tickets).
+     * Open at admin/billing/bridge_debug while logged in as a tenant admin.
+     * Tests every layer at once — deployed-code fingerprints, the outer page's
+     * own headers (PHP-side and as the browser received them), server-side
+     * probes of the master URLs, and two live instrumented iframes — so the
+     * blocking layer identifies itself. Remove once the bridge is verified.
+     *
+     * @return void
+     */
+    public function tenant_bridge_debug()
+    {
+        if (!perfex_saas_is_tenant() || !is_admin()) {
+            echo 'Not a tenant admin context.';
+            return;
+        }
+
+        // Lightweight probe target for the received-headers check below: return
+        // before generating a magic-auth code, so the re-fetch can't invalidate
+        // the code the live iframe test is using. admin_init already emitted the
+        // same security headers a full page gets.
+        if ($this->input->get('hdrs')) {
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'ok';
+            return;
+        }
+
+        $tenant = perfex_saas_tenant();
+        $master = rtrim(perfex_saas_default_base_url(), '/');
+
+        // ── 1) Deployed-code fingerprints — catches a partial upload ──────────
+        $files = [
+            'ccx_security/ccx_security.php'                   => ['path' => FCPATH . 'modules/ccx_security/ccx_security.php',                   'marker' => 'ccx_security_clients_area_frame_headers'],
+            'perfex_saas/hooks/client_tenant_bridge.php'      => ['path' => FCPATH . 'modules/perfex_saas/hooks/client_tenant_bridge.php',      'marker' => 'bridgeLoaded'],
+            'perfex_saas/views/client_portal_framer.php'      => ['path' => FCPATH . 'modules/perfex_saas/views/client_portal_framer.php',      'marker' => 'psf-blocked'],
+            'perfex_saas/controllers/admin/Companies.php'     => ['path' => FCPATH . 'modules/perfex_saas/controllers/admin/Companies.php',     'marker' => 'newtab'],
+            'ccx_security/views/partials/security_headers.php' => ['path' => FCPATH . 'modules/ccx_security/views/partials/security_headers.php', 'marker' => 'frame-src'],
+        ];
+        $deploy = [];
+        foreach ($files as $label => $f) {
+            if (!is_file($f['path'])) {
+                $deploy[$label] = 'MISSING';
+                continue;
+            }
+            $has = strpos((string) file_get_contents($f['path']), $f['marker']) !== false;
+            $deploy[$label] = ($has ? 'has fix' : 'STALE (marker "' . $f['marker'] . '" absent)')
+                . ' · modified ' . date('Y-m-d H:i', (int) filemtime($f['path']))
+                . ' · md5 ' . substr(md5_file($f['path']), 0, 10);
+        }
+        $deploy['runtime: ccx_security_clients_area_frame_headers()'] = function_exists('ccx_security_clients_area_frame_headers') ? 'loaded' : 'NOT LOADED';
+        $deploy['runtime: ccx_security_frame_ancestors()']            = function_exists('ccx_security_frame_ancestors') ? 'loaded' : 'NOT LOADED';
+        $deploy['modules/pro_support present']                        = is_file(FCPATH . 'modules/pro_support/helpers/pro_support_helper.php') ? 'yes' : 'no';
+
+        // ── 2) Config the bridge depends on ──────────────────────────────────
+        $conf = [
+            'APP_BASE_URL_DEFAULT'         => defined('APP_BASE_URL_DEFAULT') ? APP_BASE_URL_DEFAULT : '(undefined)',
+            'perfex_saas_default_base_url' => perfex_saas_default_base_url(),
+            'saas_default_host'            => (string) perfex_saas_get_saas_default_host(),
+            'frame_ancestors_allowlist'    => function_exists('ccx_security_frame_ancestors') ? ccx_security_frame_ancestors() : '(helper missing)',
+            'tenant_slug'                  => $tenant->slug ?? '(none)',
+            'http_identification_type'     => $tenant->http_identification_type ?? '(none)',
+            'client_bridge enabled'        => perfex_saas_tenant_is_enabled('client_bridge') ? 'yes' : 'no',
+            'instance_switch enabled'      => perfex_saas_tenant_is_enabled('instance_switch') ? 'yes' : 'no',
+            'cross_domain_bridge enabled'  => perfex_saas_tenant_is_enabled('cross_domain_bridge') ? 'yes' : 'no',
+            'ccx_security http_headers'    => function_exists('ccx_security_is_enabled') ? (ccx_security_is_enabled('http_headers_enabled') ? 'on' : 'off') : '(helper missing)',
+            'ccx_security csp_mode'        => (string) (get_option('ccx_security_csp_mode') ?: '(unset → permissive)'),
+            'ccx_security x_frame option'  => (string) (get_option('ccx_security_x_frame_options') ?: '(unset → SAMEORIGIN)'),
+        ];
+
+        // ── 3) Headers THIS page sends, as PHP emitted them ──────────────────
+        // admin_init has already fired, so this shows the exact CSP/XFO the real
+        // billing/my_account page would carry from PHP. (Anything a later layer
+        // — LiteSpeed/Apache/Cloudflare — adds shows up in the JS check below.)
+        $php_headers = headers_list();
+
+        // ── 4) Server-side probes of the master over HTTP ────────────────────
+        $probe = function ($url, $follow = false) {
+            if (!function_exists('curl_init')) {
+                return ['error' => 'php-curl unavailable'];
+            }
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HEADER         => true,
+                CURLOPT_NOBODY         => false,
+                CURLOPT_FOLLOWLOCATION => $follow,
+                CURLOPT_MAXREDIRS      => 5,
+                CURLOPT_TIMEOUT        => 12,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_USERAGENT      => 'CCX-BridgeDebug/1.0',
+            ]);
+            $raw = curl_exec($ch);
+            if ($raw === false) {
+                $out = ['error' => curl_error($ch)];
+                curl_close($ch);
+                return $out;
+            }
+            $status      = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $final_url   = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+            $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+            curl_close($ch);
+            $header_blob = substr($raw, 0, $header_size);
+            // Keep only the framing-relevant lines of each hop, plus status lines.
+            $lines = [];
+            foreach (preg_split('/\r?\n/', $header_blob) as $line) {
+                if ($line === '') continue;
+                if (preg_match('~^HTTP/|^(x-frame-options|content-security-policy(-report-only)?|location|cf-mitigated|cf-cache-status|server|set-cookie)\s*:~i', $line)) {
+                    // Truncate cookies — only their presence matters here.
+                    if (stripos($line, 'set-cookie') === 0) $line = substr($line, 0, 60) . '…';
+                    $lines[] = $line;
+                }
+            }
+            return ['status' => $status, 'final_url' => $final_url, 'headers' => $lines];
+        };
+
+        $probes = [
+            'master /authentication/login (no follow)'         => $probe($master . '/authentication/login'),
+            'master magic_auth bad-code (no follow)'           => $probe($master . '/billing/my_account/magic_auth?auth_code=debugprobe&redirect=' . rawurlencode('clients/pro_tickets')),
+            'master /clients/pro_tickets (follow redirects)'   => $probe($master . '/clients/pro_tickets', true),
+        ];
+
+        // ── 5) Real bridge URL for the live iframe test ──────────────────────
+        $bridge_url = '';
+        $bridge_err = '';
+        try {
+            $auth_code = perfex_saas_generate_magic_auth_code($tenant->clientid);
+            if ($auth_code) {
+                $bridge_url = perfex_saas_default_base_url(
+                    'billing/my_account/magic_auth?auth_code=' . urlencode($auth_code)
+                    . '&redirect=' . urlencode('clients/pro_tickets')
+                    . '&source_url=' . urlencode(current_url())
+                );
+                $actor_token = perfex_saas_portal_actor_token();
+                if ($actor_token !== '') {
+                    $bridge_url .= '&actor=' . urlencode($actor_token);
+                }
+            } else {
+                $bridge_err = 'perfex_saas_generate_magic_auth_code() returned empty (clientid=' . (int) $tenant->clientid . ')';
+            }
+        } catch (\Throwable $e) {
+            $bridge_err = $e->getMessage();
+        }
+
+        $login_frame_url = $master . '/authentication/login';
+
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!doctype html><meta charset="utf-8"><title>Bridge debug</title>';
+        echo '<style>body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;max-width:1000px;margin:30px auto;padding:0 16px;color:#0f172a}h1{font-size:20px}h2{font-size:16px;margin-top:28px}table{border-collapse:collapse;width:100%;margin:10px 0}td,th{border:1px solid #e2e8f0;padding:6px 10px;text-align:left;vertical-align:top;font-size:13px}th{background:#f8fafc;width:320px}pre{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto;font-size:12px}.ok{color:#16a34a;font-weight:700}.bad{color:#dc2626;font-weight:700}.warn{color:#d97706;font-weight:700}iframe{width:100%;height:260px;border:2px solid #94a3b8;border-radius:6px;background:#fff}</style>';
+        echo '<h1>Client-portal bridge debug</h1>';
+        echo '<p>Temporary diagnostics for the "This content is blocked" iframe issue. Delete <code>tenant_bridge_debug()</code> + its route once fixed.</p>';
+
+        echo '<h2>1 · Deployed code on this server</h2><table>';
+        foreach ($deploy as $k => $v) {
+            $cls = (strpos($v, 'STALE') !== false || strpos($v, 'MISSING') !== false || strpos($v, 'NOT LOADED') !== false) ? 'bad' : 'ok';
+            echo '<tr><th>' . htmlspecialchars($k) . '</th><td class="' . $cls . '">' . htmlspecialchars($v) . '</td></tr>';
+        }
+        echo '</table>';
+
+        echo '<h2>2 · Bridge configuration</h2><table>';
+        foreach ($conf as $k => $v) {
+            echo '<tr><th>' . htmlspecialchars($k) . '</th><td>' . htmlspecialchars((string) $v) . '</td></tr>';
+        }
+        echo '</table>';
+
+        echo '<h2>3 · Headers this page sends (as emitted by PHP)</h2>';
+        echo '<pre>' . htmlspecialchars(implode("\n", $php_headers)) . '</pre>';
+        echo '<p>Headers the browser ACTUALLY received for this page (includes anything Cloudflare / the web server added after PHP):</p><pre id="ownhdrs">loading…</pre>';
+
+        echo '<h2>4 · Server-side probes of the master</h2>';
+        foreach ($probes as $label => $r) {
+            echo '<h3 style="font-size:14px">' . htmlspecialchars($label) . '</h3>';
+            if (isset($r['error'])) {
+                echo '<pre class="bad">ERROR: ' . htmlspecialchars($r['error']) . '</pre>';
+            } else {
+                echo '<pre>status ' . (int) $r['status'] . '  final: ' . htmlspecialchars($r['final_url']) . "\n" . htmlspecialchars(implode("\n", $r['headers'])) . '</pre>';
+            }
+        }
+
+        echo '<h2>5 · Live iframe tests (this is the decisive part)</h2>';
+        echo '<p>Frame A = plain master login page (no auth). Frame B = the REAL magic-auth bridge to <code>clients/pro_tickets</code>. Compare their verdicts below and screenshot this whole page.</p>';
+        echo '<table><tr><th>Frame A (master login)</th><td id="verdA" class="warn">waiting…</td></tr>'
+            . '<tr><th>Frame B (magic-auth bridge)</th><td id="verdB" class="warn">' . ($bridge_err !== '' ? 'NOT TESTED — auth code error: ' . htmlspecialchars($bridge_err) : 'waiting…') . '</td></tr></table>';
+        echo '<p style="font-size:12px;color:#64748b">Frame A URL: <code>' . htmlspecialchars($login_frame_url) . '</code><br>Frame B URL (open directly in a new tab to compare): <code id="burl">' . htmlspecialchars($bridge_url) . '</code></p>';
+        echo '<div><iframe id="frA" src="' . htmlspecialchars($login_frame_url) . '"></iframe></div>';
+        if ($bridge_url !== '') {
+            echo '<div style="margin-top:10px"><iframe id="frB" src="' . htmlspecialchars($bridge_url) . '"></iframe></div>';
+        }
+
+        echo '<h2>6 · Environment</h2><pre id="envout">…</pre>';
+
+        $own_url = json_encode(admin_url('billing/bridge_debug?hdrs=1'));
+        echo '<script>var OWN_URL = ' . $own_url . ';</script>';
+        echo <<<'JS'
+<script>
+(function () {
+    var st = { A: { load: false }, B: { load: false, bridgeMsg: false } };
+
+    // Headers the browser actually received for THIS page.
+    fetch(OWN_URL, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
+        var keep = ['content-security-policy', 'content-security-policy-report-only', 'x-frame-options', 'cf-mitigated', 'cf-cache-status', 'server'];
+        var out = 'HTTP ' + r.status + '\n';
+        keep.forEach(function (h) { var v = r.headers.get(h); if (v !== null) out += h + ': ' + v + '\n'; });
+        document.getElementById('ownhdrs').textContent = out;
+    }).catch(function (e) { document.getElementById('ownhdrs').textContent = 'fetch failed: ' + e; });
+
+    var frA = document.getElementById('frA');
+    var frB = document.getElementById('frB');
+    if (frA) frA.addEventListener('load', function () { st.A.load = true; });
+    if (frB) frB.addEventListener('load', function () { st.B.load = true; });
+
+    window.addEventListener('message', function (ev) {
+        if (ev.data && ev.data.message === 'bridgeLoaded') { st.B.bridgeMsg = true; }
+    });
+
+    // CSP violations on THIS page (frame-src blocks fire here, with the exact directive).
+    var cspViolations = [];
+    document.addEventListener('securitypolicyviolation', function (e) {
+        cspViolations.push(e.violatedDirective + ' blocked ' + e.blockedURI + ' (policy: ' + (e.originalPolicy || '').substring(0, 120) + '…)');
+    });
+
+    function verdict(loaded, extra) {
+        if (extra) return extra;
+        return loaded
+            ? 'load event fired — if the frame above shows the block message anyway, the RESPONSE was blocked (X-Frame-Options / frame-ancestors on the master reply). If it shows a page, framing works.'
+            : 'NO load event — blocked before any response rendered: parent CSP frame-src, an extension, or network failure. Check the CSP-violation list below.';
+    }
+
+    setTimeout(function () {
+        var a = document.getElementById('verdA');
+        var b = document.getElementById('verdB');
+        a.textContent = verdict(st.A.load);
+        a.className = st.A.load ? 'ok' : 'bad';
+        if (b && frB) {
+            if (st.B.bridgeMsg) {
+                b.textContent = 'bridgeLoaded received — the portal rendered inside the iframe. The bridge WORKS on this browser.';
+                b.className = 'ok';
+            } else {
+                b.textContent = verdict(st.B.load) + ' (no bridgeLoaded message)';
+                b.className = st.B.load ? 'warn' : 'bad';
+            }
+        }
+        document.getElementById('envout').textContent =
+            'userAgent: ' + navigator.userAgent + '\n' +
+            'page origin: ' + location.origin + '\n' +
+            'CSP violations seen on this page: ' + (cspViolations.length ? '\n  ' + cspViolations.join('\n  ') : '(none)');
+    }, 9000);
+})();
+</script>
+JS;
+    }
+
+    /**
      * Get the status of modules in the tenant's database.
      *
      * @param object $company

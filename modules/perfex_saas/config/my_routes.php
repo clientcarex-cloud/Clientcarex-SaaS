@@ -62,6 +62,8 @@ if (perfex_saas_is_tenant()) {
     $route['admin/billing/support_pin'] = 'perfex_saas/admin/companies/tenant_support_pin';
     // TEMPORARY: Support badge diagnostics page (remove once verified)
     $route['admin/billing/support_debug'] = 'perfex_saas/admin/companies/tenant_support_debug';
+    // TEMPORARY: Client-portal iframe bridge diagnostics (remove once verified)
+    $route['admin/billing/bridge_debug'] = 'perfex_saas/admin/companies/tenant_bridge_debug';
 
     $route['billing/my_account/magic_auth'] = 'perfex_saas/authentication/tenant_admin_magic_auth';
 

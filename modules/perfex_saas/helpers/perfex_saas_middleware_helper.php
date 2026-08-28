@@ -128,7 +128,7 @@ function perfex_saas_tenant_middleware()
             // Check if the active module is allowed for the tenant
             $exempted = ($activeModule === PERFEX_SAAS_MODULE_NAME &&
                 (
-                    ($controller === 'companies' && in_array($method, ['client_portal_bridge', 'tenant_support_unread', 'tenant_support_debug', 'tenant_smart_ticket_submit', 'tenant_support_pin']) && (perfex_saas_tenant_is_enabled('client_bridge') || perfex_saas_tenant_is_enabled('instance_switch'))) ||
+                    ($controller === 'companies' && in_array($method, ['client_portal_bridge', 'tenant_support_unread', 'tenant_support_debug', 'tenant_bridge_debug', 'tenant_smart_ticket_submit', 'tenant_support_pin']) && (perfex_saas_tenant_is_enabled('client_bridge') || perfex_saas_tenant_is_enabled('instance_switch'))) ||
                     // Pro AI Chat floating assistant — availability is governed by the
                     // master's pro_ai_chat options; the endpoint enforces its own guards.
                     ($controller === 'companies' && $method === 'tenant_ai_chat') ||
