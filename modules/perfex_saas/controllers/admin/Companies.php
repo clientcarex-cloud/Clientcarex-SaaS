@@ -1164,6 +1164,90 @@ class Companies extends AdminController
             'master /clients/pro_tickets (follow redirects)'   => $probe($master . '/clients/pro_tickets', true),
         ];
 
+        // ── 4b) AUTHENTICATED chain probe — the decisive server-side test ────
+        // Mint a real magic-auth code and walk the exact chain the iframe walks
+        // (magic_auth → login_as_client → clients/pro_tickets) with a cookie
+        // jar, recording EVERY header of EVERY hop and what page finally came
+        // back. This is the only way to see the authenticated portal response —
+        // the browser can't report it cross-origin. Runs BEFORE the iframe's
+        // code is generated below, because each generation overwrites the
+        // previous stored code.
+        $chain = ['error' => 'not run'];
+        try {
+            $chain_code = perfex_saas_generate_magic_auth_code($tenant->clientid);
+            if (!$chain_code) {
+                $chain = ['error' => 'could not generate magic auth code (clientid=' . (int) $tenant->clientid . ')'];
+            } elseif (!function_exists('curl_init')) {
+                $chain = ['error' => 'php-curl unavailable'];
+            } else {
+                $chain_url = $master . '/billing/my_account/magic_auth?auth_code=' . urlencode($chain_code)
+                    . '&redirect=' . rawurlencode('clients/pro_tickets')
+                    . '&source_url=' . rawurlencode(current_url());
+                $chain_actor = perfex_saas_portal_actor_token();
+                if ($chain_actor !== '') {
+                    $chain_url .= '&actor=' . urlencode($chain_actor);
+                }
+
+                $ch = curl_init($chain_url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HEADER         => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_MAXREDIRS      => 6,
+                    CURLOPT_TIMEOUT        => 15,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_COOKIEFILE     => '', // in-memory cookie jar across the redirect chain
+                    CURLOPT_USERAGENT      => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                    CURLOPT_HTTPHEADER     => ['Accept: text/html,application/xhtml+xml', 'Accept-Language: en'],
+                ]);
+                $raw = curl_exec($ch);
+                if ($raw === false) {
+                    $chain = ['error' => curl_error($ch)];
+                    curl_close($ch);
+                } else {
+                    $status      = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+                    $final_url   = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+                    $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+                    curl_close($ch);
+
+                    // With FOLLOWLOCATION + HEADER, every hop's header block is
+                    // concatenated ahead of the final body.
+                    $header_blob = substr($raw, 0, $header_size);
+                    $body        = substr($raw, $header_size);
+                    $hops        = array_values(array_filter(preg_split('/\r?\n\r?\n/', trim($header_blob))));
+                    $hop_out     = [];
+                    foreach ($hops as $i => $hop) {
+                        $lines = [];
+                        foreach (preg_split('/\r?\n/', $hop) as $line) {
+                            if ($line === '') continue;
+                            if (stripos($line, 'set-cookie') === 0) $line = substr($line, 0, 60) . '…';
+                            $lines[] = $line;
+                        }
+                        $hop_out['hop ' . ($i + 1)] = $lines;
+                    }
+
+                    $text = html_entity_decode(strip_tags($body), ENT_QUOTES, 'UTF-8');
+                    $text = trim(preg_replace('/\s+/', ' ', $text));
+                    $chain = [
+                        'status'    => $status,
+                        'final_url' => $final_url,
+                        'hops'      => $hop_out,
+                        'body_size' => strlen($body),
+                        'markers'   => [
+                            'bridgeLoaded sender present'   => strpos($body, 'bridgeLoaded') !== false ? 'YES' : 'NO',
+                            'pro-tickets portal markup'     => (strpos($body, 'pro-tickets-portal') !== false || strpos($body, 'pro_tickets') !== false) ? 'YES' : 'NO',
+                            'looks like login page'         => (stripos($body, 'authentication/login') !== false && stripos($text, 'login') !== false && strpos($body, 'pro-tickets-portal') === false) ? 'YES' : 'no',
+                            'looks like auth error page'    => stripos($text, 'Authentication error') !== false ? 'YES' : 'no',
+                            'looks like marketing homepage' => (stripos($body, 'homepage') !== false && stripos($text, 'login') === false) ? 'maybe' : 'no',
+                        ],
+                        'body_text_first_300' => function_exists('mb_substr') ? mb_substr($text, 0, 300) : substr($text, 0, 300),
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            $chain = ['error' => $e->getMessage()];
+        }
+
         // ── 5) Real bridge URL for the live iframe test ──────────────────────
         $bridge_url = '';
         $bridge_err = '';
@@ -1219,6 +1303,27 @@ class Companies extends AdminController
             } else {
                 echo '<pre>status ' . (int) $r['status'] . '  final: ' . htmlspecialchars($r['final_url']) . "\n" . htmlspecialchars(implode("\n", $r['headers'])) . '</pre>';
             }
+        }
+
+        echo '<h2>4b · Authenticated chain probe (server-side, full headers)</h2>';
+        echo '<p>Walks the exact iframe chain — magic_auth → signed-in portal → <code>clients/pro_tickets</code> — with cookies, like a browser would. The final hop below is the authenticated portal response the browser sees inside the iframe.</p>';
+        if (isset($chain['error'])) {
+            echo '<pre class="bad">ERROR: ' . htmlspecialchars($chain['error']) . '</pre>';
+        } else {
+            echo '<pre>final status ' . (int) $chain['status'] . '  final url: ' . htmlspecialchars($chain['final_url']) . '  body: ' . (int) $chain['body_size'] . ' bytes</pre>';
+            foreach ($chain['hops'] as $hopName => $lines) {
+                echo '<h3 style="font-size:13px;margin:10px 0 4px">' . htmlspecialchars($hopName) . '</h3>';
+                echo '<pre>' . htmlspecialchars(implode("\n", $lines)) . '</pre>';
+            }
+            echo '<h3 style="font-size:13px;margin:10px 0 4px">What the final page is</h3><table>';
+            foreach ($chain['markers'] as $k => $v) {
+                $cls = '';
+                if ($k === 'bridgeLoaded sender present') $cls = $v === 'YES' ? 'ok' : 'bad';
+                if ($k === 'pro-tickets portal markup')   $cls = $v === 'YES' ? 'ok' : 'bad';
+                echo '<tr><th>' . htmlspecialchars($k) . '</th><td class="' . $cls . '">' . htmlspecialchars($v) . '</td></tr>';
+            }
+            echo '</table>';
+            echo '<pre>' . htmlspecialchars($chain['body_text_first_300']) . '</pre>';
         }
 
         echo '<h2>5 · Live iframe tests (this is the decisive part)</h2>';
