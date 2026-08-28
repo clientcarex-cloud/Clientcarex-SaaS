@@ -59,10 +59,13 @@ function perfex_saas_support_unread_count($force = false)
             // is "unread" when it is newer than the client's last reply on that
             // ticket (or the ticket creation, if the client hasn't replied) and
             // the ticket is still flagged unread for the client (clientread=0).
+            // merged_ticket_id IS NULL: a ticket merged away keeps clientread=0
+            // forever (the portal only ever opens the surviving ticket), so
+            // counting it would leave a phantom badge that can never clear.
             $sql = "SELECT COUNT(*) AS c
                       FROM {$prefix}ticket_replies r
                       JOIN {$prefix}tickets t ON t.ticketid = r.ticketid
-                     WHERE t.userid = ? AND t.clientread = 0 AND r.admin IS NOT NULL
+                     WHERE t.userid = ? AND t.clientread = 0 AND t.merged_ticket_id IS NULL AND r.admin IS NOT NULL
                        AND r.date > COALESCE(
                              (SELECT MAX(r2.date) FROM {$prefix}ticket_replies r2 WHERE r2.ticketid = t.ticketid AND r2.admin IS NULL),
                              t.date
@@ -113,7 +116,7 @@ function perfex_saas_support_unread_items($limit = 6)
         $sql = "SELECT t.ticketid AS id, t.subject AS subject, t.lastreply AS lastreply, t.date AS date,
                     COALESCE((SELECT r.message FROM {$p}ticket_replies r WHERE r.ticketid = t.ticketid ORDER BY r.id DESC LIMIT 1), t.message) AS last_message
                 FROM {$p}tickets t
-                WHERE t.userid = ? AND t.clientread = 0
+                WHERE t.userid = ? AND t.clientread = 0 AND t.merged_ticket_id IS NULL
                 ORDER BY (t.lastreply IS NULL) ASC, t.lastreply DESC, t.ticketid DESC
                 LIMIT {$limit}";
 

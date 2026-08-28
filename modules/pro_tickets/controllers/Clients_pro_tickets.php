@@ -709,10 +709,15 @@ class Clients_pro_tickets extends ClientsController
 
         $meta = $this->db->where('ticket_id', $ticket_id)->get($p . 'pro_tickets_meta')->row();
 
+        // Bridge sessions sign everyone in as the primary contact — attribute
+        // the rating to the real person behind the session, like open()/ticket()
+        // do (a contact-less author lands as 0, same as tickets/replies).
+        $author = $this->portal_author();
+
         $this->db->insert($p . 'pro_tickets_feedback', [
             'ticket_id'       => $ticket_id,
             'userid'          => (int) $ticket->userid,
-            'contactid'       => (int) get_contact_user_id(),
+            'contactid'       => $author ? (int) $author['contactid'] : (int) get_contact_user_id(),
             'agent_id'        => (int) $ticket->assigned,
             'rating'          => $rating,
             'comment'         => $comment !== '' ? $comment : null,

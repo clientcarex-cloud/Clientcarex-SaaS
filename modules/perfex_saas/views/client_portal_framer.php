@@ -53,12 +53,25 @@
             <?php endif; ?>
 
             <div style="flex: 1 1 auto; position: relative;">
-                <iframe class="tw-w-full tw-h-full" style="border:none; position:absolute; inset:0;" src="<?= $url; ?>"></iframe>
+                <iframe id="psf-frame" class="tw-w-full tw-h-full" style="border:none; position:absolute; inset:0;" src="<?= $url; ?>"></iframe>
+                <?php if (!empty($newtab_url)) : ?>
+                <!-- Shown only when the embed doesn't render (e.g. a stray
+                     X-Frame-Options/CSP from a layer outside the app blocks the
+                     cross-subdomain iframe) so the portal stays reachable. -->
+                <div id="psf-blocked" style="display:none; position:absolute; left:50%; bottom:24px; transform:translateX(-50%); align-items:center; gap:12px; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 8px 24px rgba(15,23,42,.12); padding:10px 16px; z-index:5; max-width:calc(100% - 32px);">
+                    <span style="font-size:13px; color:#334155;"><?= _l('perfex_saas_portal_frame_blocked'); ?></span>
+                    <a href="<?= $newtab_url; ?>" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="white-space:nowrap;">
+                        <i class="fa fa-arrow-up-right-from-square"></i> <?= _l('perfex_saas_portal_open_new_tab'); ?>
+                    </a>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
 <script>
+var psfBridgeLoaded = false;
+
 window.onmessage = function(event) {
     if (event.data.message === "closedBridge") {
         window.location.href = window.location.href.split('?')[0] + '?paying_outstanding';
@@ -71,7 +84,24 @@ window.onmessage = function(event) {
     if (event.data.message === "openInParent") {
         window.location.href = event.data.value;
     }
+
+    // The framed master portal announces itself once rendered (see
+    // client_tenant_bridge.php). Until that arrives we cannot tell a healthy
+    // cross-origin frame from one the browser refused to render.
+    if (event.data.message === "bridgeLoaded") {
+        psfBridgeLoaded = true;
+        var blocked = document.getElementById('psf-blocked');
+        if (blocked) blocked.style.display = 'none';
+    }
 };
+
+// If the portal never announces itself, the embed was almost certainly blocked
+// (stray X-Frame-Options/CSP, challenge page, network failure) — surface the
+// open-in-new-tab fallback instead of a dead grey rectangle.
+setTimeout(function () {
+    var blocked = document.getElementById('psf-blocked');
+    if (blocked && !psfBridgeLoaded) blocked.style.display = 'flex';
+}, 6000);
 </script>
 
 <?php if (!empty($show_support_pin)) : ?>

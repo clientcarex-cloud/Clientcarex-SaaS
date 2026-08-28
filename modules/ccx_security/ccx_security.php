@@ -150,6 +150,40 @@ function ccx_security_inject_headers()
     }
 }
 
+// ─── Customer-area framing policy (SaaS client-portal bridge) ───
+// The tenant admin's billing/my_account page frames the MASTER's customer area
+// (client_portal_framer → billing/my_account/magic_auth → clients/pro_tickets etc.).
+// admin_init never fires on those framed pages, so they ship with NO framing policy
+// of their own — and any stray `X-Frame-Options: SAMEORIGIN` added around the app
+// (web-server/panel config, a server-only module) then blocks the cross-subdomain
+// embed: the tenant sees "This content is blocked. Contact the site owner to fix
+// the issue." where the support portal should be.
+//
+// Emitting an explicit CSP `frame-ancestors` allowlist here fixes that in both
+// directions at once: browsers that see a frame-ancestors directive IGNORE
+// X-Frame-Options entirely (CSP3), so the allowlist wins over any stray header a
+// layer we don't control may add — while simultaneously adding clickjacking
+// protection the customer area never had (today it is frameable by ANY site).
+// header_remove() additionally drops an XFO that PHP-level code may have set.
+//
+// Deliberately NOT gated on the http_headers_enabled toggle: this header is
+// required for a core SaaS flow (raising support tickets from a tenant), not an
+// optional hardening feature.
+hooks()->add_action('clients_init', 'ccx_security_clients_area_frame_headers');
+function ccx_security_clients_area_frame_headers()
+{
+    if (headers_sent()) {
+        return;
+    }
+
+    $frame_ancestors = function_exists('ccx_security_frame_ancestors')
+        ? ccx_security_frame_ancestors()
+        : "'self'";
+
+    header_remove('X-Frame-Options');
+    header("Content-Security-Policy: frame-ancestors {$frame_ancestors};");
+}
+
 // ─── Inject DevTools Protection JS ───
 hooks()->add_action('app_admin_footer', 'ccx_security_inject_devtools_block');
 function ccx_security_inject_devtools_block()

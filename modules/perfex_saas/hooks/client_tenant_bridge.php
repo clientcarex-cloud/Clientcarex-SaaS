@@ -5,6 +5,44 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $client_bridge = $is_tenant ? perfex_saas_tenant_is_enabled('client_bridge') : (int)perfex_saas_get_options('perfex_saas_enable_client_bridge');
 if ($client_bridge) {
 
+    if (!$is_tenant) {
+        // The tenant admin frames this master customer area cross-subdomain
+        // (client_portal_framer → billing/my_account/magic_auth → clients/…).
+        // These pages carry no framing policy of their own, so any stray
+        // `X-Frame-Options: SAMEORIGIN` added by a layer outside the app
+        // (web-server/panel config, a server-only module) makes the browser
+        // refuse the embed: the tenant sees "This content is blocked. Contact
+        // the site owner to fix the issue." instead of the support portal.
+        // A CSP `frame-ancestors` allowlist wins over X-Frame-Options in every
+        // modern browser, so emit one on every master customer-area response.
+        // ccx_security registers the same header from clients_init when active
+        // (identical value — PHP header() replaces, so no duplicates); this
+        // copy guarantees the bridge works even without that module.
+        hooks()->add_action('clients_init', function () {
+            if (headers_sent()) {
+                return;
+            }
+
+            if (function_exists('ccx_security_frame_ancestors')) {
+                $frame_ancestors = ccx_security_frame_ancestors();
+            } else {
+                $frame_ancestors = "'self'";
+                $host = strtolower((string) perfex_saas_get_saas_default_host());
+                $host = explode(':', $host, 2)[0];
+                if ($host !== '') {
+                    $frame_ancestors .= ' ' . $host;
+                    // Tenants live on subdomains of the master host.
+                    if (strpos($host, '.') !== false && !filter_var($host, FILTER_VALIDATE_IP)) {
+                        $frame_ancestors .= ' *.' . $host;
+                    }
+                }
+            }
+
+            header_remove('X-Frame-Options');
+            header("Content-Security-Policy: frame-ancestors {$frame_ancestors};");
+        });
+    }
+
     if ($is_tenant) {
         // Add account menu items for saas management — merged into profile dropdown.
         hooks()->add_action('admin_init', function () use ($CI) {
@@ -163,6 +201,16 @@ if ($client_bridge) {
         hooks()->add_action('after_left_panel_invoicehtml', function ($invoice) use ($CI) {
             if ($CI->session->has_userdata('magic_auth')) {
                 echo '<script>document.querySelector(".action-button.go-to-portal").remove();</script>';
+            }
+        });
+
+        // Tell the tenant-side framer (client_portal_framer.php) the portal actually
+        // rendered inside its iframe. If this signal never arrives the framer shows
+        // its open-in-new-tab fallback, so a blocked embed no longer strands the
+        // tenant on "This content is blocked".
+        hooks()->add_action('app_customers_footer', function () use ($CI) {
+            if ($CI->session->has_userdata('magic_auth')) {
+                echo '<script>if (window.parent !== window) { try { window.parent.postMessage({ message: "bridgeLoaded" }, "*"); } catch (e) {} }</script>';
             }
         });
     }

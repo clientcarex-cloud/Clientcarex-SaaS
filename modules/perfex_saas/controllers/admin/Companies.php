@@ -546,8 +546,19 @@ class Companies extends AdminController
                         return redirect($url);
                     }
 
+                    // Escape hatch for the framed portal: ?newtab=1 skips the iframe and
+                    // sends the browser straight to the master portal (fresh auth code,
+                    // top-level navigation). The framer view links here so that when a
+                    // browser/proxy layer refuses the cross-subdomain embed ("This content
+                    // is blocked"), the user can still reach the support portal.
+                    if ($this->input->get('newtab')) {
+                        return redirect($url . '&cross_domain=1');
+                    }
+
                     $data = [
                         'url' => $url,
+                        // Same-page bridge link rebuilt with newtab=1 for the fallback link.
+                        'newtab_url' => admin_url('billing/my_account?redirect=' . urlencode((string) $redirect) . '&newtab=1'),
                         // Support PIN card (pro_support "Tenant Access" gate) — only on
                         // the Pro Tickets / customer-success page (redirect=clients/pro_tickets),
                         // and only when the shared codebase ships the pro_support module.
