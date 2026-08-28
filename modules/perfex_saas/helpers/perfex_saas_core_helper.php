@@ -564,7 +564,16 @@ function perfex_saas_default_base_url($path = '')
     if (!perfex_saas_is_tenant() && defined('APP_BASE_URL') && APP_BASE_URL !== APP_BASE_URL_DEFAULT) {
         $base = APP_BASE_URL;
     }
-    return $base . $path;
+
+    // Never trust the .env value to carry a trailing slash. With
+    // APP_BASE_URL=https://clientcarex.com (no slash), raw concatenation turned
+    // every master link built here into a dead host — e.g. the client-portal
+    // bridge iframe pointed at https://clientcarex.combilling/my_account/…,
+    // which the browser renders as a blocked/failed frame ("This content is
+    // blocked") on every tenant.
+    $base = rtrim($base, '/') . '/';
+
+    return $base . ltrim((string) $path, '/');
 }
 
 /**
