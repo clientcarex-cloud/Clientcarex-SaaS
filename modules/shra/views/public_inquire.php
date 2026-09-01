@@ -16,7 +16,11 @@ $from_raw = null;
 foreach ($plans as $p) { if (!$p['is_guest'] && $p['sessions'] > 0) { $ps = $p['total_raw'] / $p['sessions']; if ($from_raw === null || $ps < $from_raw) { $from_raw = $ps; } } }
 $from     = $from_raw !== null ? shra_money($from_raw) : '';
 $batches  = shra_batches();
-$batch_line = implode(' · ', array_map(function ($b) { return $b['label'] . ' ' . $b['time']; }, $batches));
+/* "6AM - 9AM (Morning) & 4PM - 9PM (Evening)" — how the academy quotes its hours. Built from
+   the batch settings so the page can never drift from what Settings actually says. */
+$batch_line = implode(' & ', array_map(function ($b) {
+    return str_replace([' AM', ' PM', ' – '], ['AM', 'PM', ' - '], $b['time']) . ' (' . $b['label'] . ')';
+}, $batches));
 $live     = !empty($landing['latest_reels']);
 $reels    = $live ? array_slice($landing['latest_reels'], 0, 8) : array_map(function ($id) { return ['id' => $id, 'thumb' => '', 'views' => 0, 'likes' => 0, 'taken' => 0, 'caption' => '']; }, array_slice($landing['reels'], 0, 6));
 $fmt      = function ($n) { return $n >= 1000000 ? round($n / 1000000, 1) . 'M' : ($n >= 1000 ? round($n / 1000, $n >= 10000 ? 0 : 1) . 'K' : (string) $n); };
@@ -442,7 +446,7 @@ section{padding:52px 0}
             <?php } else { ?>
             <div class="st"><h3>Request a call back</h3><p>Fill the 30-second form and our team calls you the same day with packages and timings.</p></div>
             <?php } ?>
-            <div class="st"><h3>Visit the academy</h3><p>Come see the horses, meet the instructors and take a Guest Ride — any day except Monday, 6–9 AM or 4–6 PM.</p></div>
+            <div class="st"><h3>Visit the academy</h3><p>Come see the horses, meet the instructors and take a Guest Ride — any day except Monday, <?php echo html_escape($batch_line); ?>.</p></div>
             <div class="st"><h3>Pick a package &amp; start</h3><p>Choose the plan that fits, get your membership card and start your sessions. Certificate on completion.</p></div>
         </div>
     </div>
@@ -461,7 +465,7 @@ section{padding:52px 0}
                 <h3><?php echo html_escape($academy); ?></h3>
                 <?php if ($landing['location']) { ?><div class="addr"><i class="fa-solid fa-location-dot" style="color:var(--gold)"></i> <?php echo html_escape($landing['location']); ?></div><?php } ?>
                 <ul>
-                    <li><i class="fa-solid fa-clock"></i><span><b>Visits:</b> all days except Monday, 6–9 AM &amp; 4–6 PM — <?php echo $can_pay ? 'book online and your slot is confirmed straight away' : 'book a slot and we confirm the timing with you'; ?>.</span></li>
+                    <li><i class="fa-solid fa-clock"></i><span><b>Visits:</b> all days except Monday, <?php echo html_escape($batch_line); ?> — <?php echo $can_pay ? 'book online and your slot is confirmed straight away' : 'book a slot and we confirm the timing with you'; ?>.</span></li>
                     <?php if ($landing['phone']) { ?><li><i class="fa-solid fa-phone"></i><span><b>Reception:</b> <b style="color:var(--brown)"><?php echo html_escape($landing['phone']); ?></b></span></li><?php } ?>
                     <li><i class="fa-solid fa-car"></i><span>Tap <b>Get directions</b> for the easiest route from wherever you are.</span></li>
                 </ul>
