@@ -44,7 +44,7 @@
                 <div class="shra-card-head"><h4><i class="fa fa-rocket" style="color:var(--gold)"></i> Ad landing page <span class="help" style="display:inline;font-weight:400">&nbsp;<a href="<?php echo site_url('inquire'); ?>" target="_blank"><?php echo site_url('inquire'); ?> <i class="fa fa-external-link"></i></a></span></h4></div>
                 <div class="shra-card-body">
                     <div class="row">
-                        <div class="col-sm-4"><div class="form-group"><label>Call / WhatsApp number</label><input type="text" name="shra_lead_landing_phone" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_phone')); ?>" placeholder="9908480010"></div></div>
+                        <div class="col-sm-4"><div class="form-group"><label>Call / WhatsApp number</label><input type="text" name="shra_lead_landing_phone" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_phone')); ?>" placeholder="+91 77300 34313"></div></div>
                         <div class="col-sm-5"><div class="form-group"><label>Location line</label><input type="text" name="shra_lead_landing_location" class="form-control" value="<?php echo html_escape(get_option('shra_lead_landing_location')); ?>" placeholder="The Wilderness Retreat, Kokapet"></div></div>
                         <div class="col-sm-3"><div class="form-group"><label>Minimum rider age</label><input type="number" name="shra_lead_landing_min_age" class="form-control" value="<?php echo (int) get_option('shra_lead_landing_min_age'); ?>" min="1"></div></div>
                     </div>

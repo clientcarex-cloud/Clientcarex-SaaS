@@ -592,7 +592,7 @@ $lead_defaults = [
     'shra_lead_public_enabled'       => '1',
     'shra_lead_import_map'           => '{}',
     // Ad landing page (/inquire)
-    'shra_lead_landing_phone'        => '9908480010',
+    'shra_lead_landing_phone'        => '+91 77300 34313',
     'shra_lead_landing_location'     => 'The Wilderness Retreat, Kokapet, Hyderabad',
     'shra_lead_landing_maps_url'     => '',
     'shra_lead_landing_instagram'    => 'https://www.instagram.com/stallionhorseriding/',
@@ -610,6 +610,11 @@ $lead_defaults = [
 ];
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);
+}
+// One-time default bump: the reception number changed (add_option keeps the old stored value,
+// so only a tenant still on the previous seeded default is moved across)
+if (get_option('shra_lead_landing_phone') === '9908480010') {
+    update_option('shra_lead_landing_phone', '+91 77300 34313');
 }
 // One-time default bump: minimum rider age went 3/4 → 5 (add_option keeps the old stored value)
 if (in_array(get_option('shra_lead_landing_min_age'), ['3', '4'], true)) {
