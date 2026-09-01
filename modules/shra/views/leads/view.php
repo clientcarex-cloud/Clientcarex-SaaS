@@ -48,7 +48,7 @@
 
     <?php if ($l->is_open) { ?>
     <div class="shra-alert <?php echo $l->is_overdue ? 'shra-alert-bad' : 'shra-alert-ok'; ?>" style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <b>Next action:</b> <?php echo ucfirst($l->next_action_type); ?> · <?php echo shra_lead_due_text($l->next_action_at); ?>
+        <b>Next action:</b> <?php echo $l->is_timed ? ucfirst($l->next_action_type) . ' · ' : 'Join · '; ?><?php echo shra_lead_next_text($l); ?>
         <?php if ($l->visit_date) { ?><span class="shra-pill"><i class="fa fa-calendar-check"></i> Visit <?php echo date('D d M', strtotime($l->visit_date)); ?> · <?php echo html_escape(shra_slot($l->visit_slot)); ?></span><?php } ?>
         <?php if ($l->schedule) { ?><span class="shra-pill"><i class="fa-solid fa-user-clock"></i> <?php echo html_escape($l->schedule); ?></span><?php } ?>
         <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red"><?php echo (int) $l->no_show_count; ?> no-show<?php echo $l->no_show_count > 1 ? 's' : ''; ?></span><?php } ?>

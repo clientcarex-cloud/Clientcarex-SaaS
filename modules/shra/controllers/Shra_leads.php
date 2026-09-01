@@ -159,7 +159,7 @@ class Shra_leads extends AdminController
         } else {
             $queues = $this->leads->queues_for($agent, $agent === (int) $me && shra_leads_can('all'));
             $rows   = [];
-            foreach (['unset', 'overdue', 'today', 'upcoming', 'later'] as $k) {
+            foreach (['unset', 'overdue', 'today', 'upcoming', 'later', 'joining'] as $k) {
                 foreach ($queues[$k] as $l) {
                     $rows[] = $l;
                 }

@@ -259,6 +259,7 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-due{display:inline-flex;align-items:center;gap:5px;font-weight:600;font-size:12px;color:var(--brown)}
 .shra-due-over{color:var(--red)}
 .shra-due-today{color:var(--gold)}
+.shra-due-ok{color:var(--green)}
 .shra-stage{text-transform:none;letter-spacing:0;font-size:10.5px;white-space:nowrap}
 .shra-row-over td{background:#fffafa}
 .shra-funnel-item{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)!important;text-decoration:none!important;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#fff}
@@ -423,6 +424,8 @@ button.shra-wa-tpl{width:100%;text-align:left;background:#fff;cursor:pointer;fon
 .shra-tab.t-red.on{background:var(--red);color:#fff}
 .shra-tab.t-gold{color:var(--brown)}
 .shra-tab.t-gold.on{background:var(--gold);color:#fff}
+.shra-tab.t-green{color:var(--green)}
+.shra-tab.t-green.on{background:var(--green);color:#fff}
 
 /* the table itself — tight rows, sticky header.
    Wide screens keep the header sticky to the viewport; narrow ones trade that for

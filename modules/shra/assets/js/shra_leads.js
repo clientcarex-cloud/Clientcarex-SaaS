@@ -587,6 +587,7 @@
       ['unset',    'No date',     't-red'],
       ['upcoming', 'Next 7 days', ''],
       ['later',    'Later',       ''],
+      ['joining',  'To join',     't-green'],
       ['noshow',   'No-show',     't-red'],
       ['open',     'Open',        ''],
       ['closed',   'Closed',      ''],

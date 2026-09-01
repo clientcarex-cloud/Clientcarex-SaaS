@@ -666,3 +666,10 @@ $pay_defaults = [
 foreach ($pay_defaults as $k => $v) {
     add_option($k, $v);
 }
+
+// v1.4.6 — a confirmed lead has paid and only waits for its start date, so it carries no
+// follow-up clock. confirm() used to plant one an hour out, which every such lead then sat
+// past forever and read as "overdue". Clear the leftovers so the work list is honest.
+if ($CI->db->table_exists($p . 'shra_lead_ext')) {
+    $CI->db->query("UPDATE `{$p}shra_lead_ext` SET `next_action_at` = NULL WHERE `stage_key` = 'confirmed' AND `next_action_at` IS NOT NULL");
+}

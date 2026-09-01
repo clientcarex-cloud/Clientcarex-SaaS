@@ -462,6 +462,32 @@ function shra_lead_open_stages()
     return ['new', 'prospect', 'enquired', 'contacted', 'no_response', 'callback_request', 'followup', 'visit_scheduled', 'visited', 'confirmed'];
 }
 
+/**
+ * Open stages that carry no follow-up clock. A confirmed lead has visited, paid and is only
+ * waiting for its start date — nobody owes it a call, so it must never read as overdue.
+ * It leaves this list the moment it is billed and becomes a customer.
+ */
+function shra_lead_untimed_stages()
+{
+    return ['confirmed'];
+}
+
+/** SQL: the lead's stage is one an agent still has to chase. */
+function shra_lead_chased_sql($x = 'x')
+{
+    return "{$x}.stage_key NOT IN ('" . implode("','", array_merge(['won'], shra_lead_untimed_stages())) . "')";
+}
+
+/**
+ * WHERE fragment for "this lead owes somebody a follow-up and is late". Single source of
+ * truth for every overdue count so the dashboard, the team board and the digest agree.
+ * $now is a 'Y-m-d H:i:s' stamp the caller builds — never user input.
+ */
+function shra_lead_overdue_where($now, $l = 'l', $x = 'x')
+{
+    return "{$l}.lost = 0 AND {$l}.junk = 0 AND " . shra_lead_chased_sql($x) . " AND {$x}.next_action_at < '{$now}'";
+}
+
 /** key => tblleads_status.id */
 function shra_lead_stage_ids()
 {
@@ -944,6 +970,22 @@ function shra_lead_eod_message(array $d)
     $L[] = '_Sent from ' . (get_option('companyname') ?: 'ClientCareX') . ' · SHRA Leads_';
 
     return implode("\n", $L);
+}
+
+/**
+ * The "next action" cell for one lead. Untimed stages (see shra_lead_untimed_stages) print
+ * what they are actually waiting for instead of a countdown that would always read overdue.
+ */
+function shra_lead_next_text($l)
+{
+    if (in_array($l->stage, shra_lead_untimed_stages())) {
+        $start = $l->preferred_start_date ?? null;
+
+        return '<span class="shra-due shra-due-ok"><i class="fa fa-flag-checkered"></i> '
+             . ($start ? 'starts ' . date('D d M', strtotime($start)) : 'ready to join') . '</span>';
+    }
+
+    return shra_lead_due_text($l->next_action_at);
 }
 
 /** Humanised "in 2 h" / "3 d overdue". */

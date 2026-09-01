@@ -47,8 +47,11 @@ class Shra_leads_model extends App_Model
         }
         $l->stage = $l->junk ? 'junk' : ($l->lost ? 'lost' : $l->stage_key);
         $l->is_open = in_array($l->stage, shra_lead_open_stages());
-        $l->is_overdue = $l->is_open && !empty($l->next_action_at) && strtotime($l->next_action_at) < time();
-        $l->is_today   = $l->is_open && !empty($l->next_action_at) && date('Y-m-d', strtotime($l->next_action_at)) === date('Y-m-d');
+        // A confirmed lead has paid and only waits for its start date, so no follow-up clock
+        // runs on it — it can never be overdue or due today. See shra_lead_untimed_stages().
+        $l->is_timed   = $l->is_open && !in_array($l->stage, shra_lead_untimed_stages());
+        $l->is_overdue = $l->is_timed && !empty($l->next_action_at) && strtotime($l->next_action_at) < time();
+        $l->is_today   = $l->is_timed && !empty($l->next_action_at) && date('Y-m-d', strtotime($l->next_action_at)) === date('Y-m-d');
         $l->age_days   = (int) floor((time() - strtotime($l->dateadded)) / 86400);
         $l->wa_link    = shra_wa_link($l->phonenumber);
         $l->tel_link   = 'tel:' . preg_replace('/[^\d+]/', '', (string) $l->phonenumber);
@@ -142,7 +145,7 @@ class Shra_leads_model extends App_Model
             $b[] = $f['visit_date'];
         }
         if (!empty($f['overdue'])) {
-            $w[] = "l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.next_action_at < '{$now}'";
+            $w[] = shra_lead_overdue_where($now);
         }
         if (!empty($f['stale'])) {
             $w[] = 'x.is_stale = 1';
@@ -172,11 +175,14 @@ class Shra_leads_model extends App_Model
         }
         $rows = $this->db->query($this->base_select() . " WHERE $who AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won'
             ORDER BY l.dateadded DESC LIMIT 800", $bind)->result();
-        $out  = ['overdue' => [], 'today' => [], 'upcoming' => [], 'later' => [], 'unset' => []];
+        $out  = ['overdue' => [], 'today' => [], 'upcoming' => [], 'later' => [], 'unset' => [], 'joining' => []];
         $now  = time();
         foreach ($rows as $r) {
             $this->decorate($r);
-            if (empty($r->next_action_at)) {
+            if (!$r->is_timed) {
+                // Confirmed & paid — waiting on its start date, not on an agent.
+                $out['joining'][] = $r;
+            } elseif (empty($r->next_action_at)) {
                 $out['unset'][] = $r;
             } elseif (strtotime($r->next_action_at) < $now) {
                 $out['overdue'][] = $r;
@@ -985,8 +991,10 @@ class Shra_leads_model extends App_Model
             }
         }
         $stamp = $when !== '' ? $when . ' ' . date('H:i:s') : date('Y-m-d H:i:s');
+        // No next_action_at: the lead has paid and the only thing left is its start date, so a
+        // follow-up clock here would just tick over into a permanent "overdue" nobody can clear.
         $ext   = ['stage_key' => 'confirmed', 'confirmed_at' => $stamp, 'interest_package_id' => $pkg_id ?: null, 'expected_value' => $expect,
-            'next_action_at' => date('Y-m-d H:i:s', strtotime('+1 hour')), 'next_action_type' => 'other', 'is_stale' => 0];
+            'next_action_at' => null, 'next_action_type' => 'other', 'is_stale' => 0];
         if ($l->stage !== 'visited' && empty($l->visited_at)) {
             $ext['visited_at'] = $stamp;
             $ext['visited_by'] = $this->staff_id();
@@ -1436,7 +1444,7 @@ class Shra_leads_model extends App_Model
             (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.credited_at BETWEEN ? AND ?) AS revenue,
             (SELECT COALESCE(SUM(a.amount_paid),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.credited_at BETWEEN ? AND ?) AS collected,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_now,
-            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.next_action_at < '{$now}') AS overdue_now,
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND " . shra_lead_overdue_where($now) . ") AS overdue_now,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND x.is_stale = 1 AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS stale_now,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.assigned = s.staffid AND l.lost = 1 AND l.last_status_change BETWEEN ? AND ?) AS lost,
             (SELECT AVG(TIMESTAMPDIFF(HOUR, l.dateadded, x.won_at)) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND x.won_at BETWEEN ? AND ?) AS avg_hours_to_win,
@@ -1585,8 +1593,8 @@ class Shra_leads_model extends App_Model
             {$pay_sql} AS advance,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.assigned = ? AND l.last_status_change BETWEEN ? AND ? AND l.lost = 1) AS lost,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_now,
-            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.next_action_at < ?) AS overdue_now,
-            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND DATE(x.next_action_at) = ?) AS due_tomorrow";
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND " . shra_lead_chased_sql() . " AND x.next_action_at < ?) AS overdue_now,
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND " . shra_lead_chased_sql() . " AND DATE(x.next_action_at) = ?) AS due_tomorrow";
 
         $b = [];
         for ($i = 0, $triples = $has_pay ? 16 : 15; $i < $triples; $i++) {
@@ -1623,7 +1631,7 @@ class Shra_leads_model extends App_Model
         $wk = shra_lead_weekend_dates();
         $r  = (array) $this->db->query("SELECT
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_leads,
-            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.next_action_at < '{$now}') AS overdue,
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE " . shra_lead_overdue_where($now) . ") AS overdue,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.lost = 0 AND l.junk = 0 AND x.stage_key = 'visit_scheduled' AND x.visit_date IN (?, ?)) AS weekend_visits,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.dateadded >= ?) AS new_month,
             (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.credited_at >= ?) AS revenue_month,
@@ -2000,7 +2008,7 @@ class Shra_leads_model extends App_Model
             $wk   = shra_lead_weekend_dates();
             $sum  = $this->summary();
             $over = $this->db->query("SELECT CONCAT(s.firstname,' ',s.lastname) AS name, COUNT(*) AS c FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
-                LEFT JOIN {$p}staff s ON s.staffid = l.assigned WHERE l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.next_action_at < '{$now}' GROUP BY l.assigned ORDER BY c DESC LIMIT 5")->result();
+                LEFT JOIN {$p}staff s ON s.staffid = l.assigned WHERE " . shra_lead_overdue_where($now) . " GROUP BY l.assigned ORDER BY c DESC LIMIT 5")->result();
             $parts = [];
             foreach ($over as $o) {
                 $parts[] = ($o->name ?: 'Unassigned') . ' ' . $o->c;

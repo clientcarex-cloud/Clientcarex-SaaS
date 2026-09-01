@@ -12,6 +12,8 @@ if (!empty($force_bucket)) {
     $bucket = $force_bucket;
 } elseif (!$l->is_open) {
     $bucket = 'closed';
+} elseif (!$l->is_timed) {
+    $bucket = 'joining';   // confirmed & paid — waiting on its start date, not on an agent
 } elseif (empty($l->next_action_at)) {
     $bucket = 'unset';
 } elseif (strtotime($l->next_action_at) < time()) {
@@ -54,7 +56,7 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     <td><?php echo shra_lead_stage_badge($l->stage); ?></td>
     <td class="shra-r-due">
         <?php if ($l->is_open) { ?>
-            <?php echo shra_lead_due_text($l->next_action_at); ?>
+            <?php echo shra_lead_next_text($l); ?>
         <?php } elseif ($l->stage === 'won') { ?>
             <span class="shra-badge shra-badge-green"><i class="fa fa-check"></i> Joined<?php echo $l->won_at ? ' ' . date('d M', strtotime($l->won_at)) : ''; ?></span>
         <?php } else { ?>
