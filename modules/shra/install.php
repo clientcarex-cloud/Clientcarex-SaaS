@@ -702,3 +702,176 @@ if ($CI->db->table_exists($p . 'shra_enrollments') && !$CI->db->field_exists('bi
 if ($CI->db->table_exists($p . 'shra_lead_ext')) {
     $CI->db->query("UPDATE `{$p}shra_lead_ext` SET `next_action_at` = NULL WHERE `stage_key` = 'confirmed' AND `next_action_at` IS NOT NULL");
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * v1.5.0 — Self-Training (sales course with per-user progress & quizzes)
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+// ── Course modules (fully editable — nothing is hard-coded in a view) ──
+if (!$CI->db->table_exists($p . 'shra_training_modules')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_training_modules` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `slug` VARCHAR(60) NOT NULL COMMENT 'stable key — seeding and badges match on this',
+        `title` VARCHAR(120) NOT NULL,
+        `emoji` VARCHAR(16) NOT NULL DEFAULT '📘',
+        `icon` VARCHAR(60) NOT NULL DEFAULT 'fa-solid fa-book-open',
+        `tagline` VARCHAR(255) DEFAULT NULL,
+        `intro` TEXT DEFAULT NULL,
+        `pass_percent` INT(11) NOT NULL DEFAULT 70,
+        `quiz_count` INT(11) NOT NULL DEFAULT 8 COMMENT 'questions drawn per attempt; 0 = ask them all',
+        `sort_order` INT(11) NOT NULL DEFAULT 0,
+        `active` TINYINT(1) NOT NULL DEFAULT 1,
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `slug` (`slug`),
+        KEY `active_sort` (`active`, `sort_order`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Lessons ──
+if (!$CI->db->table_exists($p . 'shra_training_lessons')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_training_lessons` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `module_id` INT(11) UNSIGNED NOT NULL,
+        `title` VARCHAR(160) NOT NULL,
+        `emoji` VARCHAR(16) NOT NULL DEFAULT '📖',
+        `body` MEDIUMTEXT DEFAULT NULL COMMENT 'shra_training_render() markup + {tokens}',
+        `takeaway` VARCHAR(400) DEFAULT NULL COMMENT 'the one line to remember',
+        `sort_order` INT(11) NOT NULL DEFAULT 0,
+        `active` TINYINT(1) NOT NULL DEFAULT 1,
+        PRIMARY KEY (`id`),
+        KEY `module_sort` (`module_id`, `sort_order`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Quiz questions ──
+if (!$CI->db->table_exists($p . 'shra_training_questions')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_training_questions` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `module_id` INT(11) UNSIGNED NOT NULL,
+        `question` VARCHAR(500) NOT NULL,
+        `options` TEXT NOT NULL COMMENT 'JSON array of answer strings',
+        `correct` TINYINT(4) NOT NULL DEFAULT 0 COMMENT 'index into options',
+        `explanation` VARCHAR(600) DEFAULT NULL COMMENT 'shown after answering, right or wrong',
+        `sort_order` INT(11) NOT NULL DEFAULT 0,
+        `active` TINYINT(1) NOT NULL DEFAULT 1,
+        PRIMARY KEY (`id`),
+        KEY `module_sort` (`module_id`, `sort_order`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Per-user lesson progress (one row per staff member per lesson) ──
+if (!$CI->db->table_exists($p . 'shra_training_progress')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_training_progress` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `staff_id` INT(11) NOT NULL,
+        `module_id` INT(11) UNSIGNED NOT NULL,
+        `lesson_id` INT(11) UNSIGNED NOT NULL,
+        `seconds` INT(11) NOT NULL DEFAULT 0 COMMENT 'time spent reading, for the manager view',
+        `completed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `staff_lesson` (`staff_id`, `lesson_id`),
+        KEY `staff_module` (`staff_id`, `module_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// ── Per-user quiz attempts (every attempt is kept — the best one counts) ──
+if (!$CI->db->table_exists($p . 'shra_training_attempts')) {
+    $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}shra_training_attempts` (
+        `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `staff_id` INT(11) NOT NULL,
+        `module_id` INT(11) UNSIGNED NOT NULL,
+        `total` INT(11) NOT NULL DEFAULT 0,
+        `correct` INT(11) NOT NULL DEFAULT 0,
+        `percent` INT(11) NOT NULL DEFAULT 0,
+        `passed` TINYINT(1) NOT NULL DEFAULT 0,
+        `answers` TEXT DEFAULT NULL COMMENT 'JSON [{q,picked,correct}] — so a review can be replayed',
+        `seconds` INT(11) NOT NULL DEFAULT 0,
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `staff_module` (`staff_id`, `module_id`),
+        KEY `module_passed` (`module_id`, `passed`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+/**
+ * Seed the default course.
+ *
+ * Matched on `slug`, so this is safe to re-run: a module the academy has since
+ * rewritten (or deliberately deleted... see below) is never overwritten, and only
+ * genuinely missing modules are planted. `shra_training_seeded` records which
+ * slugs have ever been installed, so deleting a module keeps it deleted instead
+ * of having it grow back on the next schema self-heal.
+ */
+$seed_file = __DIR__ . '/data/training_seed.php';
+if (is_file($seed_file) && $CI->db->table_exists($p . 'shra_training_modules')) {
+    $seeded = json_decode((string) get_option('shra_training_seeded'), true);
+    $seeded = is_array($seeded) ? $seeded : [];
+    $course = include $seed_file;
+    $order  = 10;
+    $added  = [];
+
+    foreach ((array) $course as $m) {
+        $order += 10;
+        if (in_array($m['slug'], $seeded, true)) {
+            continue;   // installed once already — the academy owns it now
+        }
+        if ($CI->db->where('slug', $m['slug'])->get($p . 'shra_training_modules')->row()) {
+            $added[] = $m['slug'];
+            continue;
+        }
+
+        $CI->db->insert($p . 'shra_training_modules', [
+            'slug'         => $m['slug'],
+            'title'        => $m['title'],
+            'emoji'        => $m['emoji'],
+            'icon'         => $m['icon'],
+            'tagline'      => $m['tagline'],
+            'intro'        => $m['intro'],
+            'pass_percent' => (int) $m['pass_percent'],
+            'quiz_count'   => (int) $m['quiz_count'],
+            'sort_order'   => $order,
+            'active'       => 1,
+        ]);
+        $mid = $CI->db->insert_id();
+        if (!$mid) {
+            continue;
+        }
+        $added[] = $m['slug'];
+
+        $ls = 0;
+        foreach ($m['lessons'] as $l) {
+            $ls += 10;
+            $CI->db->insert($p . 'shra_training_lessons', [
+                'module_id'  => $mid,
+                'title'      => $l['title'],
+                'emoji'      => $l['emoji'],
+                'body'       => $l['body'],
+                'takeaway'   => $l['takeaway'],
+                'sort_order' => $ls,
+                'active'     => 1,
+            ]);
+        }
+
+        $qs = 0;
+        foreach ($m['questions'] as $q) {
+            $qs += 10;
+            $CI->db->insert($p . 'shra_training_questions', [
+                'module_id'   => $mid,
+                'question'    => $q['q'],
+                'options'     => json_encode($q['o'], JSON_UNESCAPED_UNICODE),
+                'correct'     => (int) $q['c'],
+                'explanation' => $q['e'],
+                'sort_order'  => $qs,
+                'active'      => 1,
+            ]);
+        }
+    }
+
+    if (count($added)) {
+        update_option('shra_training_seeded', json_encode(array_values(array_unique(array_merge($seeded, $added)))));
+    }
+}
+
+add_option('shra_training_enabled', '1');
+add_option('shra_training_seeded', '[]');

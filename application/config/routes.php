@@ -212,6 +212,12 @@ $route['admin/shra_leads/(:any)']                      = 'shra/shra_leads/$1';
 $route['admin/shra_leads/(:any)/(:any)']               = 'shra/shra_leads/$1/$2';
 $route['admin/shra_leads/(:any)/(:any)/(:any)']        = 'shra/shra_leads/$1/$2/$3';
 
+// Self-Training has its own controller too - same aliasing, so admin/shra_training/<method>
+// works alongside the canonical admin/shra/shra_training/<method>.
+$route['admin/shra_training']                          = 'shra/shra_training/index';
+$route['admin/shra_training/(:any)']                   = 'shra/shra_training/$1';
+$route['admin/shra_training/(:any)/(:any)']            = 'shra/shra_training/$1/$2';
+
 // Short URLs for public live voting (voting module)
 // /vote/{code} = telecast screen (question + QR + live results)
 // /v/{code}    = voter ballot (vote only, no results exposed)

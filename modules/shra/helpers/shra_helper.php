@@ -1305,3 +1305,330 @@ function shra_pay_min_amount($total)
 
     return round(max(1, min($total, $min)), 2);
 }
+
+/* ═══════════════════════ Self-Training (v1.5.0) ═══════════════════════ */
+
+/** Anyone who can open the module can train — the course is for the whole desk. */
+function shra_training_can()
+{
+    return shra_can_access();
+}
+
+/** Only admins write the course. */
+function shra_training_can_manage()
+{
+    return is_admin();
+}
+
+function shra_training_url($path = '')
+{
+    return admin_url('shra/shra_training' . ($path !== '' ? '/' . ltrim($path, '/') : ''));
+}
+
+/**
+ * Live values a lesson body can pull in with {token}.
+ *
+ * This is what makes the course "dynamic": the price table, the trainer roster,
+ * the running offer and the batch timings are read from the academy's own
+ * records every time a lesson is opened, so a salesperson is never revising a
+ * price that changed last month.
+ *
+ * Values are HTML — they are substituted AFTER the author's text has been
+ * escaped, so they are the only trusted markup in a lesson.
+ *
+ * @return array token => html
+ */
+function shra_training_tokens()
+{
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $CI = &get_instance();
+    $e  = 'html_escape';
+
+    /* ── Packages: the live price list, grouped by audience ── */
+    $CI->load->model('shra/shra_model');
+    $packages = $CI->shra_model->get_packages(true);
+    $offer    = shra_offer();
+    $groups   = ['children' => [], 'adults' => []];
+    foreach ($packages as $pk) {
+        $groups[$pk->audience === 'adults' ? 'adults' : 'children'][] = $pk;
+    }
+
+    $table = function ($rows) use ($e, $offer) {
+        if (!count($rows)) {
+            return '';
+        }
+        $h = '<div class="shra-tr-table-wrap"><table class="shra-tr-table"><thead><tr>'
+            . '<th>Package</th><th class="num">Sessions</th><th class="num">Per session</th><th class="num">Price</th>'
+            . ($offer['active'] ? '<th class="num">After offer</th>' : '') . '</tr></thead><tbody>';
+        foreach ($rows as $pk) {
+            $after = $offer['active'] ? (float) $pk->price * (100 - (float) $offer['percent']) / 100 : 0;
+            $h .= '<tr>'
+                . '<td><span class="strong">' . $e($pk->name) . '</span>'
+                . ($pk->is_featured ? ' <span class="shra-badge shra-badge-gold">Best value</span>' : '')
+                . ($pk->is_guest ? ' <span class="shra-badge shra-badge-muted">Try it</span>' : '')
+                . '<span class="sub">' . (int) $pk->duration_min . ' min'
+                . ($pk->validity_days ? ' · valid ' . (int) $pk->validity_days . ' days' : '')
+                . '</span></td>'
+                . '<td class="num">' . (int) $pk->sessions . '</td>'
+                . '<td class="num">' . shra_money($pk->per_session) . '</td>'
+                . '<td class="num strong">' . shra_money($pk->price) . '</td>'
+                . ($offer['active'] ? '<td class="num" style="color:var(--green);font-weight:700">' . shra_money($after) . '</td>' : '')
+                . '</tr>';
+        }
+
+        return $h . '</tbody></table></div>';
+    };
+
+    $pack_block = '';
+    foreach (['children' => '🧒 Children', 'adults' => '🧑 Adults'] as $k => $label) {
+        if (count($groups[$k])) {
+            $pack_block .= '<h5 class="shra-tr-h5">' . $label . '</h5>' . $table($groups[$k]);
+        }
+    }
+    if ($pack_block === '') {
+        $pack_block = '<div class="shra-tr-note muted">No packages are set up yet — ask an admin to add the price list.</div>';
+    }
+
+    /* ── Trainers: the live roster ── */
+    $trainers = $CI->shra_model->get_trainers(true);
+    if (count($trainers)) {
+        $t = '<div class="shra-tr-people">';
+        foreach ($trainers as $tr) {
+            $t .= '<div class="shra-tr-person"><span class="shra-avatar">' . $e(strtoupper(mb_substr($tr->name, 0, 1))) . '</span>'
+                . '<div><div class="name">' . $e($tr->name) . '</div>'
+                . '<div class="meta">' . $e($tr->specialty ?: 'Riding instructor') . '</div></div></div>';
+        }
+        $t .= '</div>';
+    } else {
+        $t = '<div class="shra-tr-note muted">No trainers have been added yet — add them under SHRA → Trainers so this list fills itself in.</div>';
+    }
+
+    /* ── Offer: the honest, current answer ── */
+    if ($offer['active']) {
+        $off = '<div class="shra-tr-call ok"><b>🔥 Running right now: ' . ((float) $offer['percent'] + 0) . '% OFF</b>'
+            . ($offer['label'] !== '' ? ' — ' . $e($offer['label']) : '')
+            . ($offer['ends'] !== '' ? ' · ends ' . $e(_d($offer['ends'])) : ' · no end date set')
+            . '<br><span class="sub">This is the only discount you may quote.</span></div>';
+    } else {
+        $off = '<div class="shra-tr-call warn"><b>No offer is running right now.</b><br><span class="sub">Sell on value — do not invent a discount.</span></div>';
+    }
+
+    /* ── Lists ── */
+    $ul = function ($items, $bullet = '') use ($e) {
+        if (!count($items)) {
+            return '';
+        }
+        $h = '<ul class="shra-tr-ul">';
+        foreach ($items as $i) {
+            $h .= '<li>' . ($bullet !== '' ? $bullet . ' ' : '') . $e($i) . '</li>';
+        }
+
+        return $h . '</ul>';
+    };
+
+    $stages = '<div class="shra-tr-stages">';
+    foreach (shra_lead_stage_defs() as $k => $d) {
+        $stages .= '<span class="shra-tr-stage" style="--c:' . $e($d[2]) . '"><i></i>' . $e($d[0]) . '</span>';
+    }
+    $stages .= '</div>';
+
+    $terms = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) get_option('shra_terms')))));
+    $terms = count($terms)
+        ? '<ol class="shra-tr-ol">' . implode('', array_map(function ($l) { return '<li>' . html_escape(preg_replace('/^\d+\.\s*/', '', $l)) . '</li>'; }, $terms)) . '</ol>'
+        : '';
+
+    $location = trim((string) get_option('shra_lead_landing_location'));
+    $phone    = trim((string) get_option('shra_lead_landing_phone'));
+    $maps     = shra_lead_maps_url();
+    $sla      = (int) get_option('shra_lead_sla_minutes') ?: 30;
+
+    $cache = [
+        '{academy}'      => $e(get_option('shra_academy_name') ?: 'Stallion Horse Riding Academy'),
+        '{tagline}'      => $e(get_option('shra_tagline')),
+        '{packages}'     => $pack_block,
+        '{trainers}'     => $t,
+        '{offer}'        => $off,
+        '{batches}'      => '<div class="shra-tr-call"><b>🕕 ' . $e(shra_batch_line(' · ')) . '</b></div>',
+        '{fcfs}'         => ($f = shra_fcfs_note()) !== '' ? '<div class="shra-tr-note">' . $e($f) . '</div>' : '',
+        '{levels}'       => implode(' → ', array_map(function ($l) { return '<b>' . html_escape($l) . '</b>'; }, shra_riding_levels())),
+        '{visit_slots}'  => $ul(shra_lead_visit_slots(), '📅'),
+        '{lost_reasons}' => $ul(shra_lead_lost_reasons(), '•'),
+        '{stages}'       => $stages,
+        '{terms}'        => $terms,
+        '{location}'     => $location !== ''
+            ? '<div class="shra-tr-call"><b>📍 ' . $e($location) . '</b>' . ($phone !== '' ? '<br><span class="sub">☎️ ' . $e($phone) . '</span>' : '') . '</div>'
+            : '<div class="shra-tr-note muted">The location line is not set yet — add it under Leads → Settings.</div>',
+        '{phone}'        => $e($phone),
+        '{maps}'         => $maps !== ''
+            ? '<p><a class="shra-btn shra-btn-outline shra-btn-sm" href="' . $e($maps) . '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open the map link we send</a></p>'
+            : '',
+        '{join}'         => '<p><a class="shra-btn shra-btn-outline shra-btn-sm" href="' . $e(shra_join_url()) . '" target="_blank" rel="noopener"><i class="fa-solid fa-link"></i> ' . $e(shra_join_url()) . '</a></p>',
+        '{inquire}'      => $e(site_url('inquire')),
+        '{sla}'          => '<div class="shra-tr-call"><b>⏱️ Call every new lead within ' . $sla . ' minutes.</b><br><span class="sub">That is the academy\'s first-response rule, and the system flags you the moment you are late.</span></div>',
+        '{wa_pitch}'     => '<pre class="shra-tr-msg">' . $e(shra_lead_wa_master_msg()) . '</pre>',
+    ];
+
+    return $cache;
+}
+
+/** Inline markup inside one line: escaped first, so only our own tags survive. */
+function shra_training_inline($s)
+{
+    $s = html_escape((string) $s);
+    $s = preg_replace('/`([^`]+)`/', '<code>$1</code>', $s);
+    $s = preg_replace('/\*\*([^*]+)\*\*/', '<strong>$1</strong>', $s);
+    $s = preg_replace('/(?<![\*\w])\*([^*\n]+)\*(?!\*)/', '<em>$1</em>', $s);
+    $s = preg_replace('/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/', '<a href="$2" target="_blank" rel="noopener">$1</a>', $s);
+
+    return $s;
+}
+
+/**
+ * Lesson body → HTML.
+ *
+ * Deliberately a tiny, line-based markup rather than real Markdown or raw HTML:
+ * the academy edits lessons in a plain textarea, and nothing an author types can
+ * inject markup (every line is escaped before any tag is added). {tokens} are
+ * expanded last because they are the only trusted HTML in the output.
+ */
+function shra_training_render($body)
+{
+    $lines = preg_split('/\r\n|\r|\n/', (string) $body);
+    $out   = '';
+    $list  = '';   // 'ul' | 'ol' | ''
+    $para  = [];
+
+    $flush_para = function () use (&$para, &$out) {
+        if (count($para)) {
+            $out .= '<p>' . implode('<br>', array_map('shra_training_inline', $para)) . '</p>';
+            $para = [];
+        }
+    };
+    $close_list = function () use (&$list, &$out) {
+        if ($list !== '') {
+            $out .= '</' . $list . '>';
+            $list = '';
+        }
+    };
+
+    foreach ($lines as $raw) {
+        $line = rtrim($raw);
+        $t    = trim($line);
+
+        if ($t === '') {
+            $flush_para();
+            $close_list();
+            continue;
+        }
+
+        // Lists
+        if (preg_match('/^[-*]\s+(.*)$/', $t, $m)) {
+            $flush_para();
+            if ($list !== 'ul') {
+                $close_list();
+                $out .= '<ul class="shra-tr-ul">';
+                $list = 'ul';
+            }
+            $out .= '<li>' . shra_training_inline($m[1]) . '</li>';
+            continue;
+        }
+        if (preg_match('/^\d+[.)]\s+(.*)$/', $t, $m)) {
+            $flush_para();
+            if ($list !== 'ol') {
+                $close_list();
+                $out .= '<ol class="shra-tr-ol">';
+                $list = 'ol';
+            }
+            $out .= '<li>' . shra_training_inline($m[1]) . '</li>';
+            continue;
+        }
+
+        $flush_para();
+        $close_list();
+
+        if (preg_match('/^###\s+(.*)$/', $t, $m)) {
+            $out .= '<h5 class="shra-tr-h5">' . shra_training_inline($m[1]) . '</h5>';
+        } elseif (preg_match('/^##\s+(.*)$/', $t, $m)) {
+            $out .= '<h4 class="shra-tr-h4">' . shra_training_inline($m[1]) . '</h4>';
+        } elseif (preg_match('/^---+$/', $t)) {
+            $out .= '<hr class="shra-tr-hr">';
+        } elseif (preg_match('/^»\s*(.*)$/u', $t, $m)) {
+            // A line the agent actually says out loud.
+            $out .= '<div class="shra-tr-say"><span class="q">“</span>' . shra_training_inline($m[1]) . '</div>';
+        } elseif (preg_match('/^!>\s*(.*)$/', $t, $m)) {
+            $out .= '<div class="shra-tr-call warn"><b>⚠️ Watch out</b><br>' . shra_training_inline($m[1]) . '</div>';
+        } elseif (preg_match('/^>\s*(.*)$/', $t, $m)) {
+            $out .= '<div class="shra-tr-call tip">' . shra_training_inline($m[1]) . '</div>';
+        } else {
+            $para[] = $line;
+        }
+    }
+    $flush_para();
+    $close_list();
+
+    $tokens = shra_training_tokens();
+
+    return strtr($out, $tokens);
+}
+
+/** Plain-text preview of a lesson body (module cards, search, tooltips). */
+function shra_training_excerpt($body, $len = 150)
+{
+    $s = preg_replace('/\{[a-z_]+\}/', '', (string) $body);
+    $s = preg_replace('/^\s*(#{2,3}|[-*>»]|!>|\d+[.)])\s*/m', '', $s);
+    $s = trim(preg_replace('/\s+/', ' ', strip_tags($s)));
+
+    return mb_strlen($s) > $len ? mb_substr($s, 0, $len - 1) . '…' : $s;
+}
+
+/**
+ * Badges are earned, not stored — they are derived from progress so they can
+ * never drift out of step with what the trainee has actually done.
+ *
+ * @param  array $o Overall stats from Shra_training_model::overall()
+ * @return array
+ */
+function shra_training_badges(array $o)
+{
+    $done    = (int) ($o['modules_done'] ?? 0);
+    $total   = max(1, (int) ($o['modules'] ?? 0));
+    $passed  = (int) ($o['quizzes_passed'] ?? 0);
+    $perfect = (int) ($o['perfect_quizzes'] ?? 0);
+    $streak  = (int) ($o['streak'] ?? 0);
+
+    return [
+        ['key' => 'first_steps', 'emoji' => '🐣', 'name' => 'First Steps',  'hint' => 'Finish your first lesson',        'earned' => (int) ($o['lessons_done'] ?? 0) > 0],
+        ['key' => 'quiz_taker',  'emoji' => '🧠', 'name' => 'Quiz Taker',   'hint' => 'Pass your first quiz',            'earned' => $passed >= 1],
+        ['key' => 'in_the_seat', 'emoji' => '🏇', 'name' => 'In the Seat',  'hint' => 'Complete any 2 modules',          'earned' => $done >= 2],
+        ['key' => 'sharpshooter','emoji' => '🎯', 'name' => 'Sharpshooter', 'hint' => 'Score 100% on any quiz',          'earned' => $perfect >= 1],
+        ['key' => 'on_a_roll',   'emoji' => '🔥', 'name' => 'On a Roll',    'hint' => 'Train 3 days in a row',           'earned' => $streak >= 3],
+        ['key' => 'closer',      'emoji' => '🤝', 'name' => 'The Closer',   'hint' => 'Pass the Call Script quiz',       'earned' => !empty($o['passed_slugs']) && in_array('call-script', (array) $o['passed_slugs'], true)],
+        ['key' => 'stallion',    'emoji' => '🏆', 'name' => 'Stallion Pro', 'hint' => 'Complete every module',           'earned' => $done >= $total && $total > 0],
+    ];
+}
+
+/** Encouragement that reads like a person wrote it, not a progress bar. */
+function shra_training_cheer($percent, $name = '')
+{
+    $first = trim(explode(' ', trim($name))[0] ?? '');
+    $you   = $first !== '' ? $first : 'there';
+
+    if ($percent >= 100) {
+        return ['🏆', 'Course complete, ' . $you . ' — you know this academy better than most people who work here.'];
+    }
+    if ($percent >= 75) {
+        return ['🔥', 'Nearly there, ' . $you . '. Finish the last stretch and the trophy is yours.'];
+    }
+    if ($percent >= 40) {
+        return ['💪', 'Good going, ' . $you . ' — you are past halfway on the hard part.'];
+    }
+    if ($percent > 0) {
+        return ['🌱', 'Nice start, ' . $you . '. Ten minutes a day is all this takes.'];
+    }
+
+    return ['👋', 'Welcome, ' . $you . '! Start with lesson one — it takes about five minutes.'];
+}

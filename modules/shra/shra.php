@@ -5,12 +5,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: SHRA
 Description: Stallion Horse Riding Academy — rider self-registration via QR, premium membership & course-completion PDFs, one-screen package billing, trainer attendance and a leakage-proof leads desk for calling agents.
-Version: 1.3.3
+Version: 1.5.0
 Requires at least: 2.3.*
 */
 
 define('SHRA_MODULE_NAME', 'shra');
-define('SHRA_MODULE_VERSION', '1.4.9');
+define('SHRA_MODULE_VERSION', '1.5.0');
 
 register_language_files(SHRA_MODULE_NAME, [SHRA_MODULE_NAME]);
 
@@ -177,7 +177,7 @@ function shra_module_action_links($actions)
 
 function shra_is_module_page()
 {
-    return in_array(get_instance()->router->fetch_class(), ['shra', 'shra_leads']);
+    return in_array(get_instance()->router->fetch_class(), ['shra', 'shra_leads', 'shra_training']);
 }
 
 function shra_asset_ver($relative)
@@ -214,6 +214,55 @@ function shra_add_footer_components()
 
     echo '<script src="' . module_dir_url(SHRA_MODULE_NAME, 'assets/js/shra.js') . '?v=' . shra_asset_ver('assets/js/shra.js') . '"></script>';
     echo '<script src="' . module_dir_url(SHRA_MODULE_NAME, 'assets/js/shra_leads.js') . '?v=' . shra_asset_ver('assets/js/shra_leads.js') . '"></script>';
+
+    if (get_instance()->router->fetch_class() === 'shra_training') {
+        echo '<script src="' . module_dir_url(SHRA_MODULE_NAME, 'assets/js/shra_training.js') . '?v=' . shra_asset_ver('assets/js/shra_training.js') . '"></script>';
+    }
+}
+
+/* ───────────────────────────── Self-Training ─────────────────────────── */
+
+/**
+ * The Self-Training card, ready to echo on a home screen.
+ *
+ * Deliberately self-contained — it loads its own model and renders its own
+ * partial — so a host view adds the whole feature with a single echo and no
+ * controller change. Returns '' (and costs one table_exists) whenever the
+ * feature is off, the tables have not landed yet, or the viewer cannot train.
+ *
+ * @return string
+ */
+function shra_training_card()
+{
+    if (!function_exists('shra_training_can') || !shra_training_can()) {
+        return '';
+    }
+    if (get_option('shra_training_enabled') === '0') {
+        return '';
+    }
+
+    $CI = &get_instance();
+    if (!$CI->db->table_exists(db_prefix() . 'shra_training_modules')) {
+        return '';
+    }
+
+    $CI->load->model('shra/shra_training_model', 'shra_training');
+    $me = (int) get_staff_user_id();
+
+    $modules = $CI->shra_training->modules(true);
+    if (!count($modules)) {
+        return '';
+    }
+
+    $overall = $CI->shra_training->overall($me);
+    $stats   = $CI->shra_training->module_stats($me);
+    $badges  = shra_training_badges($overall);
+    $cheer   = shra_training_cheer($overall['percent'], get_staff_full_name($me));
+
+    ob_start();
+    include module_dir_path(SHRA_MODULE_NAME, 'views/training/_card.php');
+
+    return ob_get_clean();
 }
 
 /* ───────────────────────────── Leads ↔ core CRM hooks ───────────────── */

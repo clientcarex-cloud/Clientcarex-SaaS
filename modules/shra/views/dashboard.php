@@ -8,6 +8,8 @@
         <div class="shra-offer" style="margin-bottom:18px"><span class="stamp"><?php echo $offer['percent'] + 0; ?>% OFF</span> <?php echo html_escape($offer['label'] ?: 'Offer'); ?> is live on all packages<?php echo $offer['ends'] ? ' until ' . _d($offer['ends']) : ''; ?>. <a href="<?php echo admin_url('shra/settings'); ?>" style="margin-left:auto">Manage</a></div>
     <?php } ?>
 
+    <?php echo shra_training_card(); ?>
+
     <div class="shra-stats">
         <div class="shra-stat"><div class="shra-stat-icon"><i class="fa-solid fa-clipboard-check"></i></div><div class="shra-stat-label">Sessions today</div><div class="shra-stat-value"><?php echo (int) $summary['sessions_today']; ?></div><div class="shra-stat-sub"><?php echo (int) $summary['sessions_month']; ?> this month</div></div>
         <div class="shra-stat"><div class="shra-stat-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div><div class="shra-stat-label">Collected today</div><div class="shra-stat-value"><?php echo shra_money($summary['revenue_today']); ?></div><div class="shra-stat-sub"><?php echo shra_money($summary['revenue_month']); ?> this month<?php if ((float) $summary['total_due'] > 0.009) { ?> · <a href="<?php echo admin_url('shra/riders?view=due'); ?>" style="color:var(--red);font-weight:600"><?php echo shra_money($summary['total_due']); ?> due</a><?php } ?></div></div>

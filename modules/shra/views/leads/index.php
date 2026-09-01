@@ -33,6 +33,14 @@
     };
     ?>
 
+    <?php
+    // The training card lives on the dashboard — but calling agents never see the
+    // dashboard (shra_home_url sends them straight here), so for them this list IS
+    // their home screen and the card belongs on it. Anyone with dashboard access
+    // has already seen it there, so it is not repeated.
+    if (!shra_can('view')) { echo shra_training_card(); }
+    ?>
+
     <!-- ── Funnel + numbers ───────────────────────────────────────── -->
     <div class="shra-hd">
         <div class="shra-funnel-bar">

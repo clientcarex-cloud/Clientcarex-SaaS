@@ -38,3 +38,7 @@ $lang['shra_not_lead_reopened']             = 'Lead reopened: %s';
 $lang['shra_not_lead_sla']                  = 'SLA breach: new lead %s has not been called yet';
 $lang['shra_not_lead_join_unpaid']          = '%s registered on the join page but never paid — follow up on the lead';
 $lang['shra_not_lead_digest']               = 'Leads digest — %s';
+
+/* Self-Training (v1.5) */
+$lang['shra/shra_training']                 = 'Self-Training';
+$lang['shra_training']                      = 'Self-Training';
