@@ -34,6 +34,7 @@
                 <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="reopen" data-lead="<?php echo $l->id; ?>"><i class="fa fa-rotate-left"></i> Reopen</button>
             <?php } ?>
             <?php if ($can_manage) { ?><button type="button" class="shra-btn shra-btn-outline shra-btn-sm" data-shra-act="reassign" data-lead="<?php echo $l->id; ?>"><i class="fa fa-headset"></i> Reassign</button><?php } ?>
+            <?php if (is_admin()) { // superadmin only, same rule as the work list's bulk delete ?><button type="button" class="shra-btn shra-btn-danger shra-btn-sm" id="shra-lead-del" data-lead="<?php echo $l->id; ?>" title="Permanently delete this lead"><i class="fa fa-trash"></i> Delete lead</button><?php } ?>
         </div>
     </div>
 

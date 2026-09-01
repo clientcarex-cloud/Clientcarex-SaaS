@@ -564,6 +564,21 @@
   $('#shra-lead-details-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.details, formObj($(this)), function () { location.reload(); }); });
   $('#shra-lead-note-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.note, formObj($(this)), function () { location.reload(); }); });
 
+  /* Delete the whole lead — the button is only printed for a superadmin, and the
+     endpoint checks is_admin() again. Confirmed by name first — the delete takes
+     the call history, payments and revenue credit with it. */
+  $(document).on('click', '#shra-lead-del', function () {
+    var $b = $(this), name = $('#shra-lead-title').data('name') || 'this lead';
+    if (!confirm('Permanently delete ' + name + '? Their call history, payments and revenue credit are removed too. This cannot be undone.')) { return; }
+    var html = $b.prop('disabled', true).html();
+    $b.html('<i class="fa fa-circle-notch fa-spin"></i> Deleting\u2026');
+    $.post(cfg().urls.lead_del, csrf($.param({ lead_id: $b.data('lead') })), function (res) {
+      if (!res.success) { $b.prop('disabled', false).html(html); toast('danger', res.message || 'Could not delete.'); return; }
+      toast('success', res.message);
+      setTimeout(function () { window.location.href = res.redirect; }, 600);
+    }, 'json').fail(function () { $b.prop('disabled', false).html(html); toast('danger', 'Request failed.'); });
+  });
+
   /* ───────── datetime-local fields echo the picked time in 12-hour form ─────────
      The native picker renders in the browser's locale (24h on many of them), so SHRA
      spells the chosen moment out underneath it. */

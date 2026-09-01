@@ -300,7 +300,8 @@ window.SHRA_LEADS_CFG = {
         payment_proof: <?php echo json_encode(admin_url('shra/shra_leads/attach_proof')); ?>,
         call_log: <?php echo json_encode(admin_url('shra/shra_leads/call_log')); ?>,
         details: <?php echo json_encode(admin_url('shra/shra_leads/update_details')); ?>,
-        eod: <?php echo json_encode(admin_url('shra/shra_leads/eod')); ?>
+        eod: <?php echo json_encode(admin_url('shra/shra_leads/eod')); ?>,
+        lead_del: <?php echo json_encode(admin_url('shra/shra_leads/delete_lead')); ?>
     },
     templates: <?php echo json_encode($templates); ?>,
     copyMsg: <?php echo json_encode(shra_lead_wa_copy_msg()); ?>,

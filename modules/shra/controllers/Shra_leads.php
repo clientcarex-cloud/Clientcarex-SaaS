@@ -562,6 +562,23 @@ class Shra_leads extends AdminController
         ]);
     }
 
+    /** Single-lead delete from the lead page. Superadmin only, exactly like the bulk bar. */
+    public function delete_lead()
+    {
+        if (!is_admin() || $this->input->method() !== 'post') {
+            $this->json(['success' => false, 'message' => 'Only a superadmin can delete leads.']);
+
+            return;
+        }
+        $l = $this->lead_or_fail($this->input->post('lead_id'), true);
+        if (!$this->leads->delete_lead($l->id)) {
+            $this->json(['success' => false, 'message' => 'The lead could not be deleted.']);
+
+            return;
+        }
+        $this->json(['success' => true, 'message' => 'Lead deleted.', 'redirect' => admin_url('shra/shra_leads')]);
+    }
+
     public function schedule_visit()
     {
         $l   = $this->lead_or_fail($this->input->post('lead_id'), true);
