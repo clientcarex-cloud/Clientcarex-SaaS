@@ -147,15 +147,13 @@ h1 em{font-style:italic;background:linear-gradient(100deg,var(--gold-2) 0%,#f3dc
 .pks .pk:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 3px rgba(28,26,23,.08);background:var(--cream-2)}
 .pks .pk .nm{font-size:15px;font-weight:700;line-height:1.2;color:var(--ink)}
 .pks .pk .mt{font-size:12px;font-weight:500;color:var(--muted);margin-top:3px}
-.pks .pk .aud{display:none;font-weight:700;color:var(--brown)}
-.pks.mixed .pk .aud{display:inline}
 .pks .pk .pr{margin-top:9px;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
 .pks .pk .now{font-size:20px;font-weight:700;color:var(--red);letter-spacing:-.2px}
 .pks .pk .was{font-size:12px;color:var(--muted);text-decoration:line-through}
 .pks .pk .per{width:100%;font-size:11px;color:var(--muted)}
 .pks .pk .tag{position:absolute;top:-9px;right:12px;background:var(--green);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.6px;padding:3px 8px;border-radius:999px;text-transform:uppercase}
 .pkoff{display:flex;align-items:center;gap:9px;background:#fbeeee;border:1px dashed #e8b9b6;color:var(--red);border-radius:12px;padding:9px 11px;font-size:12.5px;font-weight:600;margin-bottom:10px}
-.pkoff .st{background:var(--red);color:#fff;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;transform:rotate(-4deg)}
+.pkoff .pct{background:var(--red);color:#fff;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;transform:rotate(-4deg)}
 .pkerr{display:none;margin-top:7px;font-size:12px;font-weight:600;color:var(--red)}
 .pkerr.on{display:block}
 .fcfs{display:flex;gap:8px;align-items:flex-start;background:#f6ecd2;border:1px solid #e6d4a6;color:var(--brown);border-radius:10px;padding:9px 11px;font-size:12px;font-weight:600;line-height:1.45;margin:0 0 12px}
@@ -339,16 +337,15 @@ section{padding:52px 0}
                     <div class="f"><label>Your name <span class="req">*</span></label><input type="text" name="name" value="<?php echo $v('name'); ?>" required autocomplete="name" placeholder="Full name"></div>
                     <div class="f"><label>Mobile number <span class="req">*</span></label><input type="tel" name="phone" id="phone" value="<?php echo $v('phone'); ?>" required inputmode="numeric" autocomplete="tel-national" maxlength="10" pattern="[6-9][0-9]{9}" title="Enter a 10-digit Indian mobile number" placeholder="10-digit mobile number"></div>
                     <div class="f"><label>Who will ride?</label><div class="chips">
-                        <label><input type="radio" name="rider_for" value="self" <?php echo $v('rider_for', 'self') === 'self' ? 'checked' : ''; ?>><span>Myself</span></label>
+                        <label><input type="radio" name="rider_for" value="self" <?php echo $v('rider_for', 'self') !== 'child' ? 'checked' : ''; ?>><span>Myself</span></label>
                         <label><input type="radio" name="rider_for" value="child" <?php echo $v('rider_for') === 'child' ? 'checked' : ''; ?>><span>My child</span></label>
-                        <label><input type="radio" name="rider_for" value="both" <?php echo $v('rider_for') === 'both' ? 'checked' : ''; ?>><span>Both</span></label>
                     </div></div>
                     <?php /* The plan cards are the /join picker: the price, the strike-through
                             and the discount are on the card, so nobody reaches the gateway
                             without knowing the amount. Cards filter on "Who will ride?". */ ?>
                     <div class="f">
                         <label><?php echo $can_pay ? 'Choose your plan <span class="req">*</span>' : 'Interested in'; ?></label>
-                        <?php if ($offer['active']) { ?><div class="pkoff"><span class="st"><?php echo $offer['percent'] + 0; ?>% OFF</span> <?php echo html_escape($offer['label'] ?: 'Limited time offer'); ?> — prices below already include it.</div><?php } ?>
+                        <?php if ($offer['active']) { ?><div class="pkoff"><span class="pct"><?php echo $offer['percent'] + 0; ?>% OFF</span> <?php echo html_escape($offer['label'] ?: 'Limited time offer'); ?> — prices below already include it.</div><?php } ?>
                         <div class="pks" id="pks">
                             <?php if (!$can_pay) { ?>
                             <?php /* No gateway live — "not sure yet" stays a valid answer. */ ?>
@@ -359,7 +356,7 @@ section{padding:52px 0}
                                 <input type="radio" name="package_id" value="<?php echo $p['id']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'checked' : ''; ?>>
                                 <?php if ($p['is_featured']) { ?><span class="tag">Best value</span><?php } ?>
                                 <div class="nm"><?php echo html_escape($p['name']); ?></div>
-                                <div class="mt"><span class="aud"><?php echo $p['audience'] === 'children' ? 'Kids' : 'Adults'; ?> · </span><?php echo $p['is_guest'] ? 'Single ' . $p['duration_min'] . '-min ride · with trainer' : $p['sessions'] . ' sessions · ' . $p['duration_min'] . ' min'; ?></div>
+                                <div class="mt"><?php echo $p['is_guest'] ? 'Single ' . $p['duration_min'] . '-min ride · with trainer' : $p['sessions'] . ' sessions · ' . $p['duration_min'] . ' min'; ?></div>
                                 <div class="pr"><span class="now"><?php echo $p['total']; ?></span><?php if ($p['discount'] > 0) { ?><span class="was"><?php echo $p['price']; ?></span><?php } ?><?php if (!$p['is_guest'] && $p['sessions'] > 1) { ?><span class="per"><?php echo $p['per_session_now']; ?> per session</span><?php } ?></div>
                             </label>
                             <?php } ?>
@@ -612,11 +609,9 @@ section{padding:52px 0}
     function filterPlans(){
         if(!pks){return;}
         var r=document.querySelector('input[name=rider_for]:checked');
-        var want=!r||r.value==='both'?null:(r.value==='child'?'children':'adults');
-        // Both audiences on screen at once: the cards say which is which
-        pks.classList.toggle('mixed',!want);
+        var want=(r&&r.value==='child')?'children':'adults';
         Array.prototype.forEach.call(pks.querySelectorAll('.pk'),function(c){
-            var show=!c.dataset.aud||!want||c.dataset.aud===want;
+            var show=!c.dataset.aud||c.dataset.aud===want;
             c.classList.toggle('show',show);
             // A hidden card must not stay selected — its price is not the one on the button
             var i=c.querySelector('input');
@@ -631,7 +626,7 @@ section{padding:52px 0}
     if(preCard&&preCard.dataset.aud){
         var need=preCard.dataset.aud==='children'?'child':'self';
         var cur=document.querySelector('input[name=rider_for]:checked');
-        if(cur&&cur.value!=='both'&&cur.value!==need){
+        if(cur&&cur.value!==need){
             var pr=document.querySelector('input[name=rider_for][value='+need+']');
             if(pr){pr.checked=true;}
         }
