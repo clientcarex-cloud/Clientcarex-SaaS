@@ -79,6 +79,20 @@
                         <div class="col-xs-6"><div class="form-group"><label>Start date</label><input type="date" name="preferred_start_date" class="form-control" value="<?php echo html_escape($l->preferred_start_date); ?>"></div></div>
                         <div class="col-xs-6"><div class="form-group"><label>Batch</label><select name="preferred_batch" class="form-control"><option value="">Not decided</option><?php foreach (shra_batches() as $bk => $b) { ?><option value="<?php echo $bk; ?>" <?php echo $l->preferred_batch === $bk ? 'selected' : ''; ?>><?php echo html_escape($b['text']); ?></option><?php } ?></select></div></div>
                     </div>
+                    <?php if ($l->visited_at) {
+                        /* The stored slot can be something the settings list does not carry ("Walk-in",
+                           a slot since renamed) — keep it in the picker so saving never rewrites it. */
+                        $slot_opts = $slots;
+                        foreach ([$l->visit_slot, 'Walk-in'] as $extra) {
+                            if ($extra && !in_array($extra, $slot_opts, true)) { array_unshift($slot_opts, $extra); }
+                        }
+                    ?>
+                    <div class="row">
+                        <div class="col-xs-6"><div class="form-group"><label>Visit date</label><input type="date" name="visit_date" class="form-control" max="<?php echo date('Y-m-d'); ?>" value="<?php echo html_escape($l->visit_date); ?>"></div></div>
+                        <div class="col-xs-6"><div class="form-group"><label>Visit slot</label><select name="visit_slot" class="form-control"><?php foreach ($slot_opts as $so) { ?><option value="<?php echo html_escape($so); ?>" <?php echo $l->visit_slot === $so ? 'selected' : ''; ?>><?php echo html_escape(shra_slot($so)); ?></option><?php } ?></select></div></div>
+                    </div>
+                    <div class="help" style="margin:-9px 0 14px">When the rider actually came. Correct it here if the walk-in was entered on the wrong day.</div>
+                    <?php } ?>
                     <div class="row">
                         <div class="col-xs-6"><div class="form-group"><label>Expected ₹</label><input type="number" name="expected_value" class="form-control" value="<?php echo $l->expected_value > 0 ? $l->expected_value + 0 : ''; ?>"></div></div>
                         <div class="col-xs-6"><div class="form-group"><label>Source</label><select name="source" class="form-control"><?php foreach ($sources as $s) { ?><option value="<?php echo $s->id; ?>" <?php echo $l->source == $s->id ? 'selected' : ''; ?>><?php echo html_escape($s->name); ?></option><?php } ?></select></div></div>

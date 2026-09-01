@@ -1127,6 +1127,33 @@ class Shra_leads_model extends App_Model
         if (array_key_exists('preferred_batch', $in)) {
             $ext['preferred_batch'] = shra_batch_key($in['preferred_batch']);
         }
+        // A visit that already happened can be corrected here — a walk-in entered on the wrong
+        // day, a slot typed wrong. Booking or moving a *future* visit still belongs to the visit
+        // dialog, which owns the reminder and the agent notification, so this only fixes arrivals.
+        if (!empty($l->visited_at) && array_key_exists('visit_date', $in) && trim((string) $in['visit_date']) !== '') {
+            $vd = strtotime(trim((string) $in['visit_date']));
+            if (!$vd) {
+                return 'Enter a valid visit date.';
+            }
+            $vd = date('Y-m-d', $vd);
+            if ($vd > date('Y-m-d')) {
+                return 'A visit that has already happened cannot be dated in the future.';
+            }
+            if ($vd !== $l->visit_date) {
+                // The arrival stamp is the same fact — keep it on the day the rider actually came.
+                $ext['visit_date'] = $vd;
+                $ext['visited_at'] = $vd . ' ' . date('H:i:s', strtotime($l->visited_at));
+                $this->event($lead_id, 'note', ['from' => $l->visit_date, 'to' => $vd, 'note' => 'Visit date corrected',
+                    'log' => 'Visit date corrected to ' . date('D d M', strtotime($vd))
+                           . ($l->visit_date ? ' (was ' . date('D d M', strtotime($l->visit_date)) . ')' : '')]);
+            }
+        }
+        if (!empty($l->visited_at) && array_key_exists('visit_slot', $in)) {
+            $vs = substr(trim((string) $in['visit_slot']), 0, 40);
+            if ($vs !== '' && $vs !== $l->visit_slot) {
+                $ext['visit_slot'] = $vs;
+            }
+        }
         if (array_key_exists('expected_value', $in) && $in['expected_value'] !== '') {
             $ext['expected_value'] = round((float) $in['expected_value'], 2);
             $core['lead_value']    = $ext['expected_value'];
