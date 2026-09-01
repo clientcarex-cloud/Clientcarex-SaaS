@@ -1404,8 +1404,10 @@ class Shra_leads_model extends App_Model
                 'enrollment_id' => (int) $enrollment_id,
                 'invoice_id'    => (int) $invoice_id,
                 'kind'          => $kind,
-                'amount_billed' => (float) $e->total,
-                'amount_paid'   => (float) $e->paid_amount,
+                // A group bill hands the agent the whole family's revenue; the caller passes the
+                // totals because the sibling seats do not exist yet when the payer's is written.
+                'amount_billed' => isset($opts['amount_billed']) ? (float) $opts['amount_billed'] : (float) $e->total,
+                'amount_paid'   => isset($opts['amount_paid']) ? (float) $opts['amount_paid'] : (float) $e->paid_amount,
                 'source_id'     => (int) $lead->source,
                 'credited_by'   => $this->staff_id(),
                 'credited_at'   => date('Y-m-d H:i:s'),
@@ -1446,9 +1448,22 @@ class Shra_leads_model extends App_Model
     {
         $p = db_prefix();
         $e = $this->db->where('id', (int) $enrollment_id)->get($p . 'shra_enrollments')->row();
-        if ($e) {
-            $this->db->where('enrollment_id', $e->id)->update($p . 'shra_lead_attribution', ['amount_paid' => (float) $e->paid_amount, 'amount_billed' => (float) $e->total]);
+        if (!$e) {
+            return;
         }
+        // A group bill carries one attribution row, on the payer's seat, covering every rider —
+        // so the figures come from all the seats no matter which one the money landed on.
+        if (!empty($e->bill_group)) {
+            $g = $this->db->select('SUM(total) AS total, SUM(paid_amount) AS paid, GROUP_CONCAT(id) AS ids', false)
+                ->where('bill_group', $e->bill_group)->get($p . 'shra_enrollments')->row();
+            if ($g && $g->ids) {
+                $this->db->where_in('enrollment_id', explode(',', $g->ids))
+                    ->update($p . 'shra_lead_attribution', ['amount_paid' => (float) $g->paid, 'amount_billed' => (float) $g->total]);
+            }
+
+            return;
+        }
+        $this->db->where('enrollment_id', $e->id)->update($p . 'shra_lead_attribution', ['amount_paid' => (float) $e->paid_amount, 'amount_billed' => (float) $e->total]);
     }
 
     /* ═══════════════════════ Stats ═══════════════════════ */

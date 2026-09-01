@@ -4,6 +4,9 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Shra_model extends App_Model
 {
+    /** Payer plus guests on one counter bill. A cap keeps a stuck keypress from billing 400 seats. */
+    const MAX_GROUP_SEATS = 10;
+
     public function __construct()
     {
         parent::__construct();
@@ -113,7 +116,11 @@ class Shra_model extends App_Model
     {
         $p = db_prefix();
 
-        return "(SELECT COALESCE(SUM(GREATEST(0, e.total - COALESCE((SELECT SUM(pr.amount) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = e.invoice_id), e.paid_amount))),0)
+        // A seat on a group bill shares its invoice with the other riders, so its own paid_amount
+        // is the only honest figure; a single-rider bill still reads the invoice.
+        return "(SELECT COALESCE(SUM(GREATEST(0, e.total - IF(e.bill_group IS NULL,
+                COALESCE((SELECT SUM(pr.amount) FROM {$p}invoicepaymentrecords pr WHERE pr.invoiceid = e.invoice_id), e.paid_amount),
+                e.paid_amount))),0)
             FROM {$p}shra_enrollments e WHERE e.rider_id = {$rider_col} AND e.status <> 'cancelled')";
     }
 
@@ -171,6 +178,28 @@ class Shra_model extends App_Model
      * Also creates (or links) the core customer + contact so billing can
      * attach invoices to a real Perfex customer.
      */
+    /**
+     * A rider already on this mobile under this name. Group bills use it so a family coming
+     * back next weekend rides on the same rider rows instead of growing a new set each visit.
+     */
+    public function find_rider_by_mobile_name($mobile, $name)
+    {
+        $digits = preg_replace('/\D+/', '', (string) $mobile);
+        $name   = trim((string) $name);
+        if ($digits === '' || $name === '') {
+            return null;
+        }
+        $r = $this->db
+            ->where("REPLACE(REPLACE(REPLACE(mobile,' ',''),'-',''),'+','') LIKE '%" . $this->db->escape_like_str($digits) . "'", null, false)
+            ->where('LOWER(full_name) = ' . $this->db->escape(mb_strtolower($name)), null, false)
+            ->limit(1)->get(db_prefix() . 'shra_riders')->row();
+        if ($r) {
+            $this->decorate_rider($r);
+        }
+
+        return $r;
+    }
+
     public function add_rider(array $data, $source = 'staff')
     {
         $data = $this->clean_rider_data($data);
@@ -480,7 +509,7 @@ class Shra_model extends App_Model
             $dup = $this->db->where('bill_token', $token)->get(db_prefix() . 'shra_enrollments')->row();
             if ($dup) {
                 // Same form submitted twice (double click / refresh) — return the first result instead of billing again.
-                return ['enrollment_id' => $dup->id, 'invoice_id' => $dup->invoice_id, 'duplicate' => true];
+                return ['enrollment_id' => $dup->id, 'invoice_id' => $dup->invoice_id, 'bill_group' => $dup->bill_group, 'duplicate' => true];
             }
         }
         if (empty($opts['force'])) {
@@ -503,13 +532,33 @@ class Shra_model extends App_Model
             }
         }
 
-        $quote        = $this->quote($package, $opts['discount_percent'] ?? null);
-        $payment_mode = (string) ($opts['payment_mode'] ?? '');
+        // ── Seats: the payer, plus anyone riding with them on the same mobile ──
+        // Only the headcount is needed to price the bill. The guest rider rows are created after
+        // the money checks out, so a rejected bill does not leave half a family on file.
+        $names = is_array($opts['guests'] ?? null)
+            ? array_slice(array_values($opts['guests']), 0, self::MAX_GROUP_SEATS - 1)
+            : [];
+        $seats = 1 + count($names);
+
+        $quote       = $this->quote($package, $opts['discount_percent'] ?? null);
+        $group_total = round($quote['total'] * $seats, 2);
+
         if (!isset($opts['paid_amount']) || trim((string) $opts['paid_amount']) === '' || !is_numeric($opts['paid_amount'])) {
             return 'Enter the amount received (0 is allowed for an unpaid bill).';
         }
-        $paid_amount  = (float) $opts['paid_amount'];
-        $paid_amount  = max(0, min($quote['total'], $paid_amount));
+        $paid_amount = max(0, min($group_total, (float) $opts['paid_amount']));
+
+        // How the money actually arrived — one row per mode, so ₹2,000 UPI + ₹8,000 cash is two records.
+        $splits = $this->payment_splits($opts, $paid_amount);
+        if (is_string($splits)) {
+            return $splits;
+        }
+
+        $guests = $this->group_riders($rider, $package, $names);
+        if (is_string($guests)) {
+            return $guests;
+        }
+        $riders = array_merge([$rider], $guests);
 
         // Ensure a core customer exists (riders created before linking)
         if (!$rider->client_id) {
@@ -524,17 +573,13 @@ class Shra_model extends App_Model
 
         $client = $this->db->where('userid', $rider->client_id)->get(db_prefix() . 'clients')->row();
 
-        $mode_name = $payment_mode;
-        if (is_numeric($payment_mode)) {
-            $m = $this->payment_modes_model->get((int) $payment_mode);
-            $mode_name = $m ? $m->name : $payment_mode;
-        }
-
-        $status = $paid_amount >= $quote['total'] ? 2 : ($paid_amount > 0 ? 3 : 1); // paid | partial | unpaid
+        $status = $paid_amount >= $group_total ? 2 : ($paid_amount > 0 ? 3 : 1); // paid | partial | unpaid
 
         $invoice_data = $this->invoice_payload($rider, $package, $quote, $client, $status, [
             'source'                => 'counter billing',
-            'allowed_payment_modes' => is_numeric($payment_mode) ? [$payment_mode] : [],
+            'allowed_payment_modes' => $this->split_mode_ids($splits),
+            'seats'                 => $seats,
+            'riders'                => $riders,
         ]);
 
         $invoice_id = $this->invoices_model->add($invoice_data);
@@ -542,23 +587,192 @@ class Shra_model extends App_Model
             return 'Could not create the invoice.';
         }
 
-        if ($paid_amount > 0) {
+        foreach ($splits as $s) {
             $this->db->insert(db_prefix() . 'invoicepaymentrecords', [
                 'invoiceid'     => $invoice_id,
-                'amount'        => $paid_amount,
-                'paymentmode'   => $payment_mode,
+                'amount'        => $s['amount'],
+                'paymentmode'   => $s['mode'],
                 'date'          => date('Y-m-d'),
                 'daterecorded'  => date('Y-m-d H:i:s'),
-                'transactionid' => (string) ($opts['reference'] ?? ''),
+                'transactionid' => $s['reference'],
                 'note'          => 'SHRA counter · ' . $package->name,
             ]);
+        }
+        if (count($splits)) {
             update_invoice_status($invoice_id, true);
             $this->invoices_model->save_formatted_number($invoice_id);
         }
 
-        $enrolled = $this->add_enrollment($rider, $package, $quote, $invoice_id, $paid_amount, $mode_name, array_merge($opts, ['bill_token' => $token]));
+        $mode_name = $this->payment_mode_label($splits);
 
-        return $enrolled + ['invoice_id' => $invoice_id, 'quote' => $quote];
+        // One sessions wallet per rider. The money is shared out across the seats so no seat
+        // reads the whole invoice as its own — see decorate_enrollment().
+        $group  = $seats > 1 ? bin2hex(random_bytes(8)) : null;
+        $shares = $this->share_amount($paid_amount, $seats);
+        $first  = null;
+        $ids    = [];
+        foreach ($riders as $i => $r) {
+            $seat = $this->add_enrollment($r, $package, $quote, $invoice_id, $shares[$i], $mode_name, array_merge($opts, [
+                // bill_token is unique per row, so only the payer's seat carries the guard token.
+                'bill_token' => $i === 0 ? $token : '',
+                'bill_group' => $group,
+                // A group is credited once, after the loop, when every seat's total is known.
+                'skip_lead'  => $group !== null,
+            ]));
+            $ids[] = $seat['enrollment_id'];
+            if ($i === 0) {
+                $first = $seat;
+            }
+        }
+
+        if ($group !== null && $first && $this->db->table_exists(db_prefix() . 'shra_lead_attribution')) {
+            $this->load->model('shra/shra_leads_model');
+            $first['lead_id'] = $this->shra_leads_model->credit_revenue($first['enrollment_id'], $invoice_id, $rider, [
+                'lead_id'       => (int) ($opts['lead_id'] ?? 0),
+                'credit_lead'   => isset($opts['credit_lead']) ? (string) $opts['credit_lead'] : '1',
+                'amount_billed' => $group_total,
+                'amount_paid'   => $paid_amount,
+            ]);
+        }
+
+        return $first + ['invoice_id' => $invoice_id, 'quote' => $quote, 'bill_group' => $group,
+            'enrollment_ids' => $ids, 'seats' => $seats, 'group_total' => $group_total];
+    }
+
+    /**
+     * The riders sharing this bill besides the payer. A family walks in on one mobile and four
+     * of them ride: the counter types only the names, everyone lands on the payer's customer
+     * record (ensure_client matches on the mobile) and so on the one invoice. A name already on
+     * that mobile is reused instead of duplicated, so a repeat visit does not pile up riders.
+     *
+     * Each guest still gets their own rider row and their own sessions wallet — attendance,
+     * certificates and history are per person, which is what the rest of the module assumes.
+     *
+     * @return array|string riders, or an error message
+     */
+    private function group_riders($payer, $package, $names)
+    {
+        if (!is_array($names) || !count($names)) {
+            return [];
+        }
+        $out  = [];
+        $seat = 1;
+        foreach (array_slice(array_values($names), 0, self::MAX_GROUP_SEATS - 1) as $raw) {
+            $seat++;
+            $name = substr(trim((string) $raw), 0, 191);
+            if ($name === '') {
+                $name = $payer->full_name . ' · guest ' . $seat;
+            }
+            $existing = $this->find_rider_by_mobile_name($payer->mobile, $name);
+            if ($existing) {
+                $out[] = $existing;
+                continue;
+            }
+            $id = $this->add_rider([
+                'rider_type'   => $package->is_guest ? 'guest' : 'learner',
+                'full_name'    => $name,
+                'mobile'       => $payer->mobile,
+                'address'      => $payer->address,
+                'riding_level' => shra_riding_levels()[0],
+                'status'       => 'active',
+            ], 'staff');
+            if (!$id) {
+                return 'Could not add "' . $name . '" to this bill.';
+            }
+            $out[] = $this->get_rider($id);
+        }
+
+        return $out;
+    }
+
+    /**
+     * One row per payment mode used on this bill, so the counter can take ₹2,000 on UPI and
+     * ₹8,000 in cash against one ₹10,000 package. Callers that know only a single mode (the
+     * online /join checkout, the API) come out of here as a single row.
+     *
+     * paid_amount stays the authority on how much was taken; the split only says how it arrived,
+     * so a set that does not add up is refused rather than quietly rewriting the total.
+     *
+     * @return array|string
+     */
+    private function payment_splits(array $opts, $paid_amount)
+    {
+        $paid_amount = round((float) $paid_amount, 2);
+        $rows        = [];
+        foreach ((array) ($opts['payments'] ?? []) as $r) {
+            $r   = (array) $r;
+            $amt = isset($r['amount']) && is_numeric($r['amount']) ? round((float) $r['amount'], 2) : 0;
+            if ($amt <= 0) {
+                continue;
+            }
+            $rows[] = [
+                'amount'    => $amt,
+                'mode'      => (string) ($r['mode'] ?? ''),
+                'reference' => substr(trim((string) ($r['reference'] ?? '')), 0, 100),
+            ];
+        }
+        if (!count($rows)) {
+            return $paid_amount > 0 ? [[
+                'amount'    => $paid_amount,
+                'mode'      => (string) ($opts['payment_mode'] ?? ''),
+                'reference' => substr(trim((string) ($opts['reference'] ?? '')), 0, 100),
+            ]] : [];
+        }
+        $sum = round(array_sum(array_column($rows, 'amount')), 2);
+        if (abs($sum - $paid_amount) > 0.009) {
+            return 'The payment modes add up to ' . shra_money($sum) . ', but the amount received is ' . shra_money($paid_amount) . '. Make the two match.';
+        }
+
+        return $rows;
+    }
+
+    /** Numeric payment-mode ids on this bill — what the invoice will allow paying with. */
+    private function split_mode_ids(array $splits)
+    {
+        $ids = [];
+        foreach ($splits as $s) {
+            if (is_numeric($s['mode']) && !in_array($s['mode'], $ids, true)) {
+                $ids[] = $s['mode'];
+            }
+        }
+
+        return $ids;
+    }
+
+    /** "Cash" for one mode, "UPI ₹2,000 + Cash ₹8,000" when the bill was split across several. */
+    private function payment_mode_label(array $splits)
+    {
+        $parts = [];
+        foreach ($splits as $s) {
+            $name = $s['mode'];
+            if (is_numeric($name)) {
+                $m    = $this->payment_modes_model->get((int) $name);
+                $name = $m ? $m->name : $name;
+            }
+            $parts[] = ['name' => (string) $name, 'amount' => $s['amount']];
+        }
+        if (!count($parts)) {
+            return '';
+        }
+        if (count($parts) === 1) {
+            return substr($parts[0]['name'], 0, 100);
+        }
+
+        return substr(implode(' + ', array_map(function ($p) {
+            return $p['name'] . ' ' . shra_money($p['amount']);
+        }, $parts)), 0, 100);
+    }
+
+    /** Split an amount across N seats to the cent; any rounding remainder rides on the first seat. */
+    private function share_amount($amount, $seats)
+    {
+        $amount = round((float) $amount, 2);
+        $seats  = max(1, (int) $seats);
+        $each   = round($amount / $seats, 2);
+        $out    = array_fill(0, $seats, $each);
+        $out[0] = round($amount - $each * ($seats - 1), 2);
+
+        return $out;
     }
 
     /**
@@ -596,6 +810,7 @@ class Shra_model extends App_Model
             'payment_mode'     => $mode_name,
             'invoice_id'       => $invoice_id,
             'bill_token'       => $token !== '' ? $token : null,
+            'bill_group'       => !empty($opts['bill_group']) ? $opts['bill_group'] : null,
             'start_date'       => $start,
             'batch'            => $batch,
             'expires_at'       => $expires,
@@ -631,8 +846,10 @@ class Shra_model extends App_Model
         log_activity('SHRA bill created [Invoice #' . $invoice_id . ', ' . $rider->rider_no . ', ' . $package->name . ', ' . shra_money($quote['total']) . ']');
 
         // Leads desk: freeze revenue credit to the agent who brought this rider (never blocks billing)
+        // On a group bill the revenue is credited once, on the payer's seat — the guests ride
+        // on the same invoice and would otherwise multiply the agent's number by the headcount.
         $lead_id = null;
-        if ($enrollment_id && $this->db->table_exists(db_prefix() . 'shra_lead_attribution')) {
+        if ($enrollment_id && empty($opts['skip_lead']) && $this->db->table_exists(db_prefix() . 'shra_lead_attribution')) {
             $this->load->model('shra/shra_leads_model');
             $lead_id = $this->shra_leads_model->credit_revenue($enrollment_id, $invoice_id, $rider, [
                 'lead_id'     => (int) ($opts['lead_id'] ?? 0),
@@ -649,12 +866,23 @@ class Shra_model extends App_Model
      */
     private function invoice_payload($rider, $package, array $quote, $client, $status, array $opts = [])
     {
+        // A group bill is one line at qty = riders, so the invoice totals and the counter agree.
+        $seats = max(1, (int) ($opts['seats'] ?? 1));
+        $who   = 'Rider ' . $rider->rider_no;
+        if ($seats > 1) {
+            $names = [];
+            foreach ((array) ($opts['riders'] ?? []) as $r) {
+                $names[] = $r->full_name . ' (' . $r->rider_no . ')';
+            }
+            $who = $seats . ' riders — ' . implode(', ', $names);
+        }
+
         $items = [[
             'order'            => 1,
             'description'      => ucfirst($package->audience) . ' — ' . $package->name,
             'long_description' => $package->sessions . ' session' . ($package->sessions > 1 ? 's' : '') . ' × ' . $package->duration_min . ' min'
-                . ' · ' . shra_money($package->per_session) . ' per session · Rider ' . $rider->rider_no,
-            'qty'              => 1,
+                . ' · ' . shra_money($package->per_session) . ' per session · ' . $who,
+            'qty'              => $seats,
             'unit'             => '',
             'rate'             => $quote['list_price'],
             'taxname'          => [],
@@ -666,13 +894,14 @@ class Shra_model extends App_Model
             'date'                     => date('Y-m-d'),
             'duedate'                  => date('Y-m-d'),
             'currency'                 => get_base_currency()->id,
-            'subtotal'                 => $quote['list_price'],
-            'total'                    => $quote['total'],
+            'subtotal'                 => round($quote['list_price'] * $seats, 2),
+            'total'                    => round($quote['total'] * $seats, 2),
             'discount_percent'         => $quote['discount_percent'],
-            'discount_total'           => $quote['discount_amount'],
+            'discount_total'           => round($quote['discount_amount'] * $seats, 2),
             'discount_type'            => $quote['discount_percent'] > 0 ? 'before_tax' : '',
             'status'                   => $status,
-            'adminnote'                => 'SHRA ' . ($opts['source'] ?? 'billing') . ' · ' . $rider->rider_no . ' · ' . $package->name,
+            'adminnote'                => 'SHRA ' . ($opts['source'] ?? 'billing') . ' · ' . $rider->rider_no . ' · ' . $package->name
+                . ($seats > 1 ? ' · group of ' . $seats : ''),
             'clientnote'               => $quote['discount_percent'] > 0 ? ($quote['discount_percent'] + 0) . '% ' . (get_option('shra_offer_label') ?: 'offer') . ' applied.' : '',
             'terms'                    => 'Sessions are first-come, first-served with no fixed time slots. Packages are non-transferable.',
             'show_quantity_as'         => 1,
@@ -1000,7 +1229,11 @@ class Shra_model extends App_Model
         if (!$e) {
             return $e;
         }
-        $paid = $e->invoice_id && isset($e->invoice_paid) ? (float) $e->invoice_paid : (float) $e->paid_amount;
+        // A seat on a group bill owns only its share of the invoice, tracked on the row itself.
+        // A single-rider bill reads the invoice, which stays right when a balance is collected later.
+        $paid = empty($e->bill_group) && $e->invoice_id && isset($e->invoice_paid)
+              ? (float) $e->invoice_paid
+              : (float) $e->paid_amount;
         $e->paid_real  = round($paid, 2);
         $e->due        = round(max(0, (float) $e->total - $paid), 2);
         $e->pay_status = $e->status === 'cancelled' ? 'cancelled' : ($e->due <= 0.009 ? 'paid' : ($paid > 0.009 ? 'partial' : 'unpaid'));
@@ -1052,8 +1285,11 @@ class Shra_model extends App_Model
         if ($amount > $e->due + 0.009) {
             return 'Amount exceeds the balance due (' . shra_money($e->due) . ').';
         }
-        // Guard: identical payment recorded in the last 2 minutes = accidental double submit
+        // Guard: identical payment recorded in the last 2 minutes = accidental double submit.
+        // Scoped by enrollment_no, since two seats on a group bill share the invoice and usually
+        // owe exactly the same amount — collecting both in a row is normal, not a double submit.
         $dup = $this->db->where('invoiceid', $e->invoice_id)->where('amount', $amount)
+            ->like('note', $e->enrollment_no)
             ->where('daterecorded >=', date('Y-m-d H:i:s', time() - 120))->get(db_prefix() . 'invoicepaymentrecords')->row();
         if ($dup) {
             return 'An identical payment of ' . shra_money($amount) . ' was recorded moments ago. Refresh to see it.';
@@ -1066,29 +1302,37 @@ class Shra_model extends App_Model
             'date'          => date('Y-m-d'),
             'daterecorded'  => date('Y-m-d H:i:s'),
             'transactionid' => substr(trim((string) $reference), 0, 100),
-            'note'          => 'SHRA counter · balance payment · ' . $e->package_name . ($note !== '' ? ' · ' . substr(trim((string) $note), 0, 200) : ''),
+            'note'          => 'SHRA counter · balance payment · ' . $e->enrollment_no . ' · ' . $e->package_name . ($note !== '' ? ' · ' . substr(trim((string) $note), 0, 200) : ''),
         ]);
         $pid = $this->db->insert_id();
         update_invoice_status($e->invoice_id, true);
         $this->load->model('invoices_model');
         $this->invoices_model->save_formatted_number($e->invoice_id);
-        $this->sync_paid($e->id, $payment_mode);
+        $this->sync_paid($e->id, $payment_mode, $amount);
 
         log_activity('SHRA payment collected [' . shra_money($amount) . ' on ' . $e->enrollment_no . ' / Invoice #' . $e->invoice_id . ']');
 
         return $pid;
     }
 
-    /** Keep enrollment.paid_amount equal to the invoice's recorded payments. */
-    public function sync_paid($enrollment_id, $payment_mode = null)
+    /**
+     * Keep enrollment.paid_amount equal to the invoice's recorded payments. A seat on a group
+     * bill shares its invoice with the other riders, so it cannot take the invoice total as its
+     * own — it moves by $delta, the amount this collection actually put on that seat.
+     */
+    public function sync_paid($enrollment_id, $payment_mode = null, $delta = null)
     {
         $p = db_prefix();
         $e = $this->db->where('id', (int) $enrollment_id)->get($p . 'shra_enrollments')->row();
         if (!$e || !$e->invoice_id) {
             return;
         }
-        $sum = $this->db->select_sum('amount')->where('invoiceid', $e->invoice_id)->get($p . 'invoicepaymentrecords')->row()->amount;
-        $upd = ['paid_amount' => round((float) $sum, 2)];
+        if (!empty($e->bill_group)) {
+            $upd = $delta === null ? [] : ['paid_amount' => round((float) $e->paid_amount + (float) $delta, 2)];
+        } else {
+            $sum = $this->db->select_sum('amount')->where('invoiceid', $e->invoice_id)->get($p . 'invoicepaymentrecords')->row()->amount;
+            $upd = ['paid_amount' => round((float) $sum, 2)];
+        }
         if ($payment_mode !== null && $payment_mode !== '') {
             $name = $payment_mode;
             if (is_numeric($payment_mode)) {
@@ -1097,7 +1341,9 @@ class Shra_model extends App_Model
             }
             $upd['payment_mode'] = $e->payment_mode && stripos($e->payment_mode, $name) === false ? $e->payment_mode . ', ' . $name : $name;
         }
-        $this->db->where('id', $e->id)->update($p . 'shra_enrollments', $upd);
+        if (count($upd)) {
+            $this->db->where('id', $e->id)->update($p . 'shra_enrollments', $upd);
+        }
 
         if ($this->db->table_exists($p . 'shra_lead_attribution')) {
             $this->load->model('shra/shra_leads_model');
@@ -1115,6 +1361,23 @@ class Shra_model extends App_Model
             ->join($p . 'shra_riders r', 'r.id = e.rider_id', 'left')
             ->join($p . 'invoices i', 'i.id = e.invoice_id', 'left')
             ->where('e.id', (int) $id)->get()->row());
+    }
+
+    /** Every seat billed together, payer first. Empty for a plain single-rider bill. */
+    public function group_enrollments($bill_group)
+    {
+        $bill_group = trim((string) $bill_group);
+        if ($bill_group === '') {
+            return [];
+        }
+        $rows = $this->db->select('e.id')->from(db_prefix() . 'shra_enrollments e')
+            ->where('e.bill_group', $bill_group)->order_by('e.id', 'ASC')->get()->result();
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = $this->get_enrollment($r->id);
+        }
+
+        return $out;
     }
 
     public function get_enrollments($filters = [], $limit = 300)

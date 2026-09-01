@@ -521,8 +521,12 @@ class Shra_pdf extends TCPDF
         $this->SetFillColor(...self::WHITE);
         $this->Rect($m, $ty, $cw, 11, 'F');
         $this->txt($m + 4, $ty + 1.5, $cw * 0.6, $bill['package_name'] . ' — ' . ucfirst($bill['audience']), 'helvetica', 'B', 9, self::INK);
-        $this->txt($m + 4, $ty + 6.5, $cw * 0.6, $n . ' × ' . (int) $bill['duration_min'] . ' min riding session' . ($n > 1 ? 's' : '') . ' with trainer', 'helvetica', '', 7.2, self::MUTED);
-        $this->txt($m + $cw * 0.6, $ty + 3, $cw * 0.15, '1', 'helvetica', '', 9, self::INK, 'C');
+        // A group bill lists everyone who rode on it, so one receipt covers the whole family.
+        $line2 = !empty($bill['group_riders'])
+            ? count($bill['group_riders']) . ' riders — ' . implode(', ', $bill['group_riders'])
+            : $n . ' × ' . (int) $bill['duration_min'] . ' min riding session' . ($n > 1 ? 's' : '') . ' with trainer';
+        $this->txt($m + 4, $ty + 6.5, $cw * 0.6, $line2, 'helvetica', '', 7.2, self::MUTED);
+        $this->txt($m + $cw * 0.6, $ty + 3, $cw * 0.15, (string) max(1, (int) ($bill['qty'] ?? 1)), 'helvetica', '', 9, self::INK, 'C');
         $this->txt($m + $cw * 0.75, $ty + 3, $cw * 0.25 - 4, $cur($bill['list_price']), 'dejavusans', '', 8.5, self::INK, 'R');
         $ty += 11;
         $this->SetLineStyle(['width' => 0.2, 'color' => self::SAND]);

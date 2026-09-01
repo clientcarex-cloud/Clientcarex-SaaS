@@ -94,6 +94,7 @@ if (!$CI->db->table_exists($p . 'shra_enrollments')) {
         `paid_amount` DECIMAL(15,2) NOT NULL DEFAULT 0,
         `payment_mode` VARCHAR(100) DEFAULT NULL,
         `invoice_id` INT(11) DEFAULT NULL,
+        `bill_group` VARCHAR(40) DEFAULT NULL COMMENT 'set when several riders were billed on one invoice',
         `start_date` DATE DEFAULT NULL,
         `batch` VARCHAR(10) DEFAULT NULL COMMENT 'morning | evening',
         `expires_at` DATE DEFAULT NULL,
@@ -109,7 +110,8 @@ if (!$CI->db->table_exists($p . 'shra_enrollments')) {
         UNIQUE KEY `enrollment_no` (`enrollment_no`),
         KEY `rider_id` (`rider_id`),
         KEY `status` (`status`),
-        KEY `invoice_id` (`invoice_id`)
+        KEY `invoice_id` (`invoice_id`),
+        KEY `bill_group` (`bill_group`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
@@ -665,6 +667,13 @@ $pay_defaults = [
 ];
 foreach ($pay_defaults as $k => $v) {
     add_option($k, $v);
+}
+
+// v1.4.7 — a group bill (one payer, several guests riding together) writes one enrollment
+// per rider, all sharing the invoice. bill_group ties them together so each seat's own share
+// of the money is tracked instead of every seat reading the whole invoice as its own.
+if ($CI->db->table_exists($p . 'shra_enrollments') && !$CI->db->field_exists('bill_group', $p . 'shra_enrollments')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_enrollments` ADD `bill_group` VARCHAR(40) DEFAULT NULL COMMENT 'set when several riders were billed on one invoice' AFTER `bill_token`, ADD KEY `bill_group` (`bill_group`)");
 }
 
 // v1.4.6 — a confirmed lead has paid and only waits for its start date, so it carries no

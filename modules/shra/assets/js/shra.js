@@ -258,6 +258,73 @@
       summary();
     });
 
+    /* ───── Group bill: the guests riding with the payer, all on the one mobile ─────
+       Only the payer is identified; each extra row still becomes its own rider server-side. */
+    var $guests = $('#shra-guests'), $grows = $('#shra-guest-rows');
+    function proto(id, sel) {
+      var t = document.getElementById(id);
+      return $(t.content ? t.content.querySelector(sel) : $(t).children(sel)[0]).clone();
+    }
+    function seats() { return 1 + $grows.children('.shra-guest-row').length; }
+    function renumberGuests() {
+      $grows.children('.shra-guest-row').each(function (i) {
+        var n = i + 2;
+        $(this).find('.n').text(n);
+        $(this).find('input').attr('placeholder', 'Guest ' + n + ' — name optional');
+      });
+      $('#shra-guest-add').prop('disabled', seats() >= (cfg.maxSeats || 10));
+    }
+    function resetGuests() { $grows.empty(); renumberGuests(); }
+    $('#shra-guest-add').on('click', function () {
+      if (seats() >= (cfg.maxSeats || 10)) { return; }
+      $grows.append(proto('shra-guest-proto', '.shra-guest-row'));
+      renumberGuests(); summary();
+      $grows.children('.shra-guest-row').last().find('input').focus();
+    });
+    $grows.on('click', '[data-guest-del]', function () {
+      $(this).closest('.shra-guest-row').remove(); renumberGuests(); summary();
+    });
+
+    /* ───── Payment: one row per mode, so ₹2,000 UPI + ₹8,000 cash is one bill ───── */
+    var $prows = $('#shra-pay-rows');
+    var MAX_MODES = 5;
+    // The reference box belongs to UPI-style modes only, per row.
+    function payRef($r) {
+      var isUpi = /upi/i.test($r.find('.shra-pay-mode option:selected').text());
+      $r.find('.shra-pay-ref').toggle(isUpi);
+      if (!isUpi) { $r.find('.shra-pay-ref').val(''); }
+    }
+    function syncPayRows() {
+      var $rows = $prows.children('.shra-pay-row');
+      $rows.toggleClass('one', $rows.length === 1);
+      $('#shra-pay-add').prop('disabled', $rows.length >= MAX_MODES);
+    }
+    function addPayRow() {
+      var $r = proto('shra-pay-proto', '.shra-pay-row');
+      $prows.append($r); payRef($r); syncPayRows();
+      return $r;
+    }
+    function resetPayRows() { $prows.empty(); addPayRow(); }
+    // What the counter has entered across every mode.
+    function collected() {
+      var sum = 0, any = false, parts = [];
+      $prows.children('.shra-pay-row').each(function () {
+        var raw = $.trim($(this).find('.shra-pay-amt').val());
+        if (raw === '') { return; }
+        var v = parseFloat(raw) || 0;
+        any = true; sum += v;
+        parts.push($(this).find('.shra-pay-mode option:selected').text() + ' ' + S.money(v));
+      });
+      return { sum: Math.round(sum * 100) / 100, any: any, parts: parts };
+    }
+    $('#shra-pay-add').on('click', function () { addPayRow().find('.shra-pay-amt').focus(); summary(); });
+    $prows.on('click', '[data-pay-del]', function () {
+      $(this).closest('.shra-pay-row').remove(); syncPayRows(); summary();
+    });
+    $prows.on('change', '.shra-pay-mode', function () { payRef($(this).closest('.shra-pay-row')); summary(); });
+    $prows.on('input', '.shra-pay-amt', function () { $paid.data('touched', true); summary(); });
+    resetPayRows();
+
     $('input[name=audience]').on('change', function () { renderPkgs(); pkg = null; summary(); });
 
     function renderPkgs() {
@@ -281,17 +348,7 @@
     });
 
     $discount.on('input', function () { $(this).data('touched', true); summary(); });
-    $paid.on('input', function () { $(this).data('touched', true); summary(); });
     $('#shra-bill-form input[name=mark_now]').on('change', function () { $(this).data('touched', true); });
-
-    // Reference input only applies to UPI payments
-    function upiToggle() {
-      var isUpi = /upi/i.test($('#shra-mode option:selected').text());
-      $('#shra-ref-wrap').toggle(isUpi);
-      if (!isUpi) { $('#shra-ref').val(''); }
-    }
-    $('#shra-mode').on('change', upiToggle);
-    upiToggle();
 
     function scheduleLine() {
       var d = $('#shra-start-date').val(), $b = $('#shra-bill-form input[name=batch]:checked'), out = [];
@@ -307,30 +364,38 @@
     function summary() {
       // Schedule (start date + batch) shows only once a non-guest package is chosen
       $('#shra-schedule').toggle(!!pkg && +pkg.is_guest !== 1);
+      $guests.toggle(!!pkg);
       if (!pkg) {
         $sum.html('<div class="shra-empty" style="padding:30px 10px"><i class="fa-solid fa-horse"></i>Pick a rider and a package</div>');
         $btn.prop('disabled', true);
         return;
       }
+      var n = seats();
       var d = Math.max(0, Math.min(100, parseFloat($discount.val()) || 0));
-      var list = parseFloat(pkg.price), disc = Math.round(list * d) / 100, total = Math.round((list - disc) * 100) / 100;
-      $paid.attr('max', total.toFixed(2)).attr('placeholder', 'Enter amount (max ' + S.money(total) + ')');
-      var raw = $.trim($paid.val());
-      var entered = raw !== '';
-      var paid = entered ? Math.max(0, Math.min(total, parseFloat(raw) || 0)) : 0;
+      var list = parseFloat(pkg.price), disc = Math.round(list * d) / 100;
+      var unit = Math.round((list - disc) * 100) / 100;
+      var total = Math.round(unit * n * 100) / 100;
+      var got = collected();
+      // The rows are what was actually taken — never quietly trimmed to fit the bill.
+      $paid.val(got.any ? got.sum.toFixed(2) : '');
+      var over = got.any && got.sum > total + 0.009;
+      var paid = got.any ? Math.max(0, Math.min(total, got.sum)) : 0;
       var due = Math.round((total - paid) * 100) / 100;
       $sum.html(
         '<div class="row-line"><span>' + S.esc(pkg.name) + ' <span class="shra-muted">(' + S.esc(pkg.audience) + ')</span></span><span>' + S.money(list) + '</span></div>' +
         '<div class="row-line"><span>' + pkg.sessions + ' session' + (pkg.sessions > 1 ? 's' : '') + ' × ' + pkg.duration_min + ' min</span><span class="shra-muted">' + S.money(pkg.per_session) + ' / session</span></div>' +
         (d > 0 ? '<div class="row-line" style="color:#a8322d"><span>Discount ' + d + '%</span><span>− ' + S.money(disc) + '</span></div>' : '') +
+        (n > 1 ? '<div class="row-line"><span><i class="fa-solid fa-users"></i> ' + n + ' riders</span><span class="shra-muted">' + S.money(unit) + ' each</span></div>' : '') +
         (scheduleLine() ? '<div class="row-line"><span><i class="fa-solid fa-calendar-day"></i> Schedule</span><span class="shra-muted">' + S.esc(scheduleLine()) + '</span></div>' : '') +
         '<div class="row-line total"><span>Total</span><span class="amt">' + S.money(total) + '</span></div>' +
-        '<div class="row-line pay"><span>Collecting now</span><span class="v">' + (entered ? S.money(paid) : '—') + '</span></div>' +
-        '<div class="row-line due' + (entered && due <= 0 ? ' ok' : '') + '"><span>Still due</span><span class="v">' + (entered ? (due > 0 ? S.money(due) : S.money(0) + ' · fully paid') : '—') + '</span></div>' +
-        (!entered ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Enter the amount received to continue.</div>' :
-          (due > 0 ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">' + S.money(due) + ' will stay due on the invoice.</div>' : ''))
+        '<div class="row-line pay"><span>Collecting now</span><span class="v">' + (got.any ? S.money(got.sum) : '—') + '</span></div>' +
+        (got.parts.length > 1 ? '<div class="row-line"><span class="shra-muted">Split</span><span class="shra-muted">' + S.esc(got.parts.join(' · ')) + '</span></div>' : '') +
+        '<div class="row-line due' + (got.any && !over && due <= 0 ? ' ok' : '') + '"><span>Still due</span><span class="v">' + (got.any ? (due > 0 ? S.money(due) : S.money(0) + ' · fully paid') : '—') + '</span></div>' +
+        (over ? '<div class="shra-alert shra-alert-bad" style="margin-top:8px">That is ' + S.money(Math.round((got.sum - total) * 100) / 100) + ' more than the bill. Reduce a mode, or add a rider.</div>' :
+          (!got.any ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Enter the amount received to continue.</div>' :
+            (due > 0 ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">' + S.money(due) + ' will stay due on the invoice.</div>' : '')))
       );
-      $btn.prop('disabled', (!rider && !quickReady()) || !entered).find('.amt').text(entered ? S.money(paid) : '');
+      $btn.prop('disabled', (!rider && !quickReady()) || !got.any || over).find('.amt').text(got.any && !over ? S.money(paid) : '');
     }
 
     var inflight = false;
@@ -364,7 +429,7 @@
           if (res.duplicate) { alert_float('warning', 'That bill was already created — nothing was charged twice.'); }
           $form[0].reset(); $discount.data('touched', false); $paid.data('touched', false);
           $('#shra-bill-form input[name=mark_now]').data('touched', false);
-          upiToggle();
+          resetGuests(); resetPayRows();
           $('#shra-quick-age').hide().empty();
           newToken(); $('#shra-bill-force').val(0);
           rider = null; pkg = null;

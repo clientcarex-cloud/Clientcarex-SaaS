@@ -400,6 +400,9 @@ class Shra extends AdminController
             'paid_amount'      => $this->input->post('paid_amount'),
             'payment_mode'     => (string) $this->input->post('payment_mode'),
             'reference'        => (string) $this->input->post('reference'),
+            // Extra riders on the payer's mobile, and how the money was split across modes.
+            'guests'           => $this->post_guests(),
+            'payments'         => $this->post_payments(),
             'notes'            => (string) $this->input->post('notes'),
             'mark_now'         => (int) $this->input->post('mark_now') === 1,
             'trainer_id'       => (int) $this->input->post('trainer_id') ?: null,
@@ -423,10 +426,54 @@ class Shra extends AdminController
             return;
         }
 
-        $e    = $this->shra_model->get_enrollment($res['enrollment_id']);
-        $html = $this->load->view('partials/bill_done', ['e' => $e, 'duplicate' => !empty($res['duplicate'])], true);
+        $e     = $this->shra_model->get_enrollment($res['enrollment_id']);
+        $group = !empty($res['bill_group']) ? $this->shra_model->group_enrollments($res['bill_group']) : [];
+        $html  = $this->load->view('partials/bill_done', ['e' => $e, 'group' => $group, 'duplicate' => !empty($res['duplicate'])], true);
 
         $this->json(['success' => true, 'html' => $html, 'invoice_id' => $res['invoice_id'], 'duplicate' => !empty($res['duplicate'])]);
+    }
+
+    /**
+     * Names of the guests riding with the payer on one bill. Blank rows are kept — the model
+     * numbers them ("Ravi · guest 3") so a counter in a hurry never has to type anything.
+     */
+    private function post_guests()
+    {
+        $names = $this->input->post('guest_name');
+        if (!is_array($names)) {
+            return [];
+        }
+
+        return array_slice(array_map(function ($n) {
+            return substr(trim((string) $n), 0, 191);
+        }, $names), 0, 20);
+    }
+
+    /**
+     * The bill split across payment modes — ₹2,000 UPI + ₹8,000 cash is two rows. Rows with no
+     * amount are dropped here; the model refuses a set that does not add up to what was received.
+     */
+    private function post_payments()
+    {
+        $amounts = $this->input->post('pay_amount');
+        if (!is_array($amounts)) {
+            return [];
+        }
+        $modes = (array) $this->input->post('pay_mode');
+        $refs  = (array) $this->input->post('pay_ref');
+        $out   = [];
+        foreach (array_slice(array_values($amounts), 0, 5) as $i => $amt) {
+            if (trim((string) $amt) === '' || !is_numeric($amt) || (float) $amt <= 0) {
+                continue;
+            }
+            $out[] = [
+                'amount'    => (float) $amt,
+                'mode'      => (string) ($modes[$i] ?? ''),
+                'reference' => (string) ($refs[$i] ?? ''),
+            ];
+        }
+
+        return $out;
     }
 
     /** AJAX: collect a balance payment on an existing bill. */
@@ -467,6 +514,25 @@ class Shra extends AdminController
         require_once(module_dir_path(SHRA_MODULE_NAME, 'libraries/Shra_pdf.php'));
         $pdf = new Shra_pdf($this->brand(), 'P');
         $arr = (array) $e;
+        // A group bill is one invoice paid once, so its receipt covers every seat rather than
+        // showing the payer one quarter of a bill next to the whole invoice's payments.
+        $group = $e->bill_group ? $this->shra_model->group_enrollments($e->bill_group) : [];
+        if (count($group) > 1) {
+            $names = [];
+            foreach ($group as $g) {
+                $names[] = $g->full_name . ' · ' . $g->rider_no;
+            }
+            $arr['group_riders']    = $names;
+            $arr['qty']             = count($group);
+            $arr['list_price']      = round($e->list_price * count($group), 2);
+            $arr['discount_amount'] = round($e->discount_amount * count($group), 2);
+            $arr['total']           = round($e->total * count($group), 2);
+            $arr['sessions_total']  = (int) $e->sessions_total * count($group);
+            $arr['sessions_used']   = array_sum(array_map(function ($g) { return (int) $g->sessions_used; }, $group));
+            $arr['paid_real']       = round(array_sum(array_map(function ($g) { return (float) $g->paid_real; }, $group)), 2);
+            $arr['due']             = round(array_sum(array_map(function ($g) { return (float) $g->due; }, $group)), 2);
+            $arr['pay_status']      = $arr['due'] <= 0.009 ? 'paid' : ($arr['paid_real'] > 0.009 ? 'partial' : 'unpaid');
+        }
         $arr['payments']       = $this->shra_model->get_payments($e->id);
         $arr['invoice_label']  = $e->invoice_id ? format_invoice_number($e->invoice_id) : '';
         $arr['qr_text']        = shra_verify_url($e->rider_no);

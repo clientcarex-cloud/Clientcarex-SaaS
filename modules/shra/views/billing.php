@@ -30,6 +30,17 @@
                     </div>
                 </div>
                 <div id="shra-picked" class="shra-picked" style="display:none"></div>
+
+                <div id="shra-guests" class="shra-guests" style="display:none">
+                    <label style="margin-bottom:8px">Riding with them <span class="shra-muted" style="font-weight:400;font-size:11.5px">— same mobile, one bill</span></label>
+                    <div id="shra-guest-rows"></div>
+                    <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="shra-guest-add"><i class="fa fa-plus"></i> Add a rider</button>
+                    <div class="help" style="margin-top:8px">Only the payer's details are needed. Each guest still gets their own rider number, sessions and attendance — leave a name blank and it is numbered for you.</div>
+                </div>
+                <template id="shra-guest-proto">
+                    <div class="shra-guest-row"><span class="n"></span><input type="text" name="guest_name[]" class="form-control" maxlength="191"><button type="button" class="shra-ic" data-guest-del title="Remove"><i class="fa fa-times"></i></button></div>
+                </template>
+
                 <div id="shra-rider-flags" style="margin-top:10px"></div>
                 <div id="shra-lead-banner" style="margin-top:10px;<?php echo $lead ? '' : 'display:none'; ?>">
                     <?php if ($lead) { ?><div class="shra-alert shra-alert-warn"><i class="fa-solid fa-headset"></i> Billing lead <a href="<?php echo shra_lead_url($lead->id); ?>" target="_blank"><b><?php echo html_escape($lead->name); ?></b></a> · <?php echo shra_lead_stage_label($lead->stage); ?> · revenue will be credited to <b><?php echo html_escape($lead->agent_name ?: 'Unassigned'); ?></b>.</div><?php } ?>
@@ -77,15 +88,23 @@
                 <div class="shra-step"><span class="n">3</span><h5>Payment</h5></div>
                 <div class="row">
                     <div class="col-md-3"><div class="form-group"><label>Discount %</label><input type="number" step="0.01" min="0" max="100" name="discount_percent" id="shra-discount" class="form-control" value="<?php echo $offer['active'] ? $offer['percent'] + 0 : 0; ?>"></div></div>
-                    <div class="col-md-5"><div class="form-group"><label>Amount received &amp; mode</label>
-                        <div class="shra-amtmode">
-                            <input type="number" step="0.01" min="0" name="paid_amount" id="shra-paid" class="form-control" placeholder="Enter amount" required autocomplete="off">
-                            <select name="payment_mode" id="shra-mode" class="form-control" title="Payment mode">
+                    <div class="col-md-9"><div class="form-group"><label>Amount received &amp; mode</label>
+                        <div id="shra-pay-rows"></div>
+                        <!-- paid_amount stays the total the model bills against; the rows only say how it arrived -->
+                        <input type="hidden" name="paid_amount" id="shra-paid">
+                        <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="shra-pay-add"><i class="fa fa-plus"></i> Split across another mode</button>
+                        <div class="help" id="shra-pay-hint" style="margin-top:8px">Taking part in UPI and part in cash? Add a second mode and enter each amount.</div>
+                    </div></div>
+                    <template id="shra-pay-proto">
+                        <div class="shra-pay-row">
+                            <input type="number" step="0.01" min="0" name="pay_amount[]" class="form-control shra-pay-amt" placeholder="Amount" autocomplete="off">
+                            <select name="pay_mode[]" class="form-control shra-pay-mode" title="Payment mode">
                                 <?php foreach ($payment_modes as $m) { ?><option value="<?php echo $m->id; ?>" <?php echo $m->selected_by_default ? 'selected' : ''; ?>><?php echo html_escape($m->name); ?></option><?php } ?>
                             </select>
+                            <input type="text" name="pay_ref[]" class="form-control shra-pay-ref" placeholder="UPI reference (optional)">
+                            <button type="button" class="shra-ic" data-pay-del title="Remove this mode"><i class="fa fa-times"></i></button>
                         </div>
-                    </div></div>
-                    <div class="col-md-4" id="shra-ref-wrap" style="display:none"><div class="form-group"><label>UPI txn reference</label><input type="text" name="reference" id="shra-ref" class="form-control" placeholder="optional"></div></div>
+                    </template>
                 </div>
                 <div class="row">
                     <div class="col-md-6"><div class="form-group"><label>Note on this bill</label><input type="text" name="notes" class="form-control" placeholder="optional"></div></div>
@@ -121,6 +140,7 @@ $(function () {
         packages: <?php echo json_encode($packages_map); ?>,
         offer: <?php echo json_encode($offer); ?>,
         minorAge: <?php echo (int) get_option('shra_minor_age'); ?>,
+        maxSeats: <?php echo (int) Shra_model::MAX_GROUP_SEATS; ?>,
         preselect: <?php echo $preselect ? json_encode($preselect) : 'null'; ?>,
         urls: { bill: <?php echo json_encode(admin_url('shra/bill')); ?>, quick: <?php echo json_encode(admin_url('shra/quick_rider')); ?>, collect: <?php echo json_encode(admin_url('shra/collect')); ?>, attendance: <?php echo json_encode(admin_url('shra/attendance')); ?> }
     });
