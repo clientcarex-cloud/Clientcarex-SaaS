@@ -1,6 +1,10 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 /** Shared lead modals + JS config. Expects $agents, $sources, $packages, $slots, $reasons, $methods, $payment_modes, $templates, $weekend, $can_all, $can_manage */
 $tomorrow = date('Y-m-d\TH:i', strtotime('tomorrow 10:00'));
+/* How long the SLA gives an agent to make the first call — shown as the hint under the
+   (now optional) "First call by" box, since a blank field falls back to exactly this. */
+$sla     = max(5, (int) get_option('shra_lead_sla_minutes'));
+$sla_txt = $sla % 60 === 0 ? ($sla / 60) . ($sla === 60 ? ' hour' : ' hours') : $sla . ' minutes';
 $methods  = isset($methods) ? $methods : shra_lead_payment_methods();
 $cur_sym  = get_base_currency()->symbol;
 /* Counter modes (id => name) for the Confirm dialog. Falls back to the free-text lead
@@ -20,30 +24,37 @@ foreach ($packages as $pk) {
     <input type="hidden" name="mark_visited" value="0">
     <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa-solid fa-phone-volume"></i> New lead</h4></div>
     <div class="modal-body">
+        <div class="shra-sec">Contact</div>
         <div class="row">
-            <div class="col-sm-7"><div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" required placeholder="Parent / rider name"></div></div>
-            <div class="col-sm-5"><div class="form-group"><label>Mobile *</label><input type="tel" name="phone" class="form-control" required inputmode="tel" placeholder="10-digit mobile"><div id="shra-lead-dup" class="help" style="margin-top:4px"></div></div></div>
+            <div class="col-sm-6"><div class="form-group"><label>Name <span class="shra-req">*</span></label><input type="text" name="name" class="form-control" required placeholder="Parent / rider name"></div></div>
+            <div class="col-sm-6"><div class="form-group"><label>Mobile <span class="shra-req">*</span></label><input type="tel" name="phone" class="form-control" required inputmode="tel" placeholder="10-digit mobile"><div id="shra-lead-dup" class="help" style="margin-top:4px"></div></div></div>
         </div>
+        <div class="row">
+            <div class="col-sm-6"><div class="form-group"><label>Email</label><input type="email" name="email" class="form-control" placeholder="name@example.com"></div></div>
+            <div class="col-sm-6"><div class="form-group"><label>City / area</label><input type="text" name="city" class="form-control" placeholder="Where they ride from"></div></div>
+        </div>
+
+        <div class="shra-sec">Interest</div>
         <div class="row">
             <div class="col-sm-4"><div class="form-group"><label>Riding for</label><select name="rider_for" class="form-control"><option value="self">Self (adult)</option><option value="child">My child</option><option value="both">Self + child</option></select></div></div>
             <div class="col-sm-3"><div class="form-group"><label>Rider age</label><input type="number" name="rider_age" class="form-control" min="2" max="90" placeholder="yrs"></div></div>
-            <div class="col-sm-5"><div class="form-group"><label>Source *</label><select name="source" class="form-control" required><option value="">Where did they come from?</option><?php foreach ($sources as $s) { ?><option value="<?php echo $s->id; ?>"><?php echo html_escape($s->name); ?></option><?php } ?></select></div></div>
+            <div class="col-sm-5"><div class="form-group"><label>Source <span class="shra-req">*</span></label><select name="source" class="form-control" required><option value="">Where did they come from?</option><?php foreach ($sources as $s) { ?><option value="<?php echo $s->id; ?>"><?php echo html_escape($s->name); ?></option><?php } ?></select></div></div>
         </div>
+        <div class="form-group"><label>Interested in</label><select name="interest_package_id" class="form-control"><option value="">Not sure yet</option><?php foreach ($packages as $pk) { ?><option value="<?php echo $pk->id; ?>"><?php echo ucfirst($pk->audience) . ' · ' . html_escape($pk->name) . ' · ' . shra_money($pk->price); ?></option><?php } ?></select></div>
+
+        <div class="shra-sec">Schedule preference</div>
         <div class="row">
-            <div class="col-sm-6"><div class="form-group"><label>Interested in</label><select name="interest_package_id" class="form-control"><option value="">Not sure yet</option><?php foreach ($packages as $pk) { ?><option value="<?php echo $pk->id; ?>"><?php echo ucfirst($pk->audience) . ' · ' . html_escape($pk->name) . ' · ' . shra_money($pk->price); ?></option><?php } ?></select></div></div>
-            <div class="col-sm-3"><div class="form-group"><label>City / area</label><input type="text" name="city" class="form-control"></div></div>
-            <div class="col-sm-3"><div class="form-group"><label>Email</label><input type="email" name="email" class="form-control"></div></div>
+            <div class="col-sm-6"><div class="form-group"><label>Start date <span class="shra-opt">optional</span></label><input type="date" name="preferred_start_date" class="form-control" min="<?php echo date('Y-m-d'); ?>"></div></div>
+            <div class="col-sm-6"><div class="form-group"><label>Batch <span class="shra-opt">optional</span></label><select name="preferred_batch" class="form-control"><option value="">Not decided</option><?php foreach (shra_batches() as $bk => $b) { ?><option value="<?php echo $bk; ?>"><?php echo html_escape($b['text']); ?></option><?php } ?></select></div></div>
         </div>
-        <div class="row">
-            <div class="col-sm-4"><div class="form-group"><label>Start date</label><input type="date" name="preferred_start_date" class="form-control" min="<?php echo date('Y-m-d'); ?>"></div></div>
-            <div class="col-sm-4"><div class="form-group"><label>Batch</label><select name="preferred_batch" class="form-control"><option value="">Not decided</option><?php foreach (shra_batches() as $bk => $b) { ?><option value="<?php echo $bk; ?>"><?php echo html_escape($b['text']); ?></option><?php } ?></select></div></div>
-            <div class="col-sm-4"><div class="form-group"><label class="shra-muted" style="font-weight:500">&nbsp;</label><div class="help" style="margin-top:8px"><?php echo html_escape(shra_fcfs_note()); ?></div></div></div>
-        </div>
+        <div class="help" style="margin:-6px 0 4px"><?php echo html_escape(shra_fcfs_note()); ?></div>
+
+        <div class="shra-sec">Follow-up</div>
         <div class="row">
             <?php if ($can_all) { ?>
             <div class="col-sm-6"><div class="form-group"><label>Assign to</label><select name="assigned" class="form-control"><option value="">Auto (round robin)</option><?php foreach ($agents as $a) { ?><option value="<?php echo $a->staffid; ?>" <?php echo $a->staffid == get_staff_user_id() ? 'selected' : ''; ?>><?php echo html_escape($a->full_name); ?></option><?php } ?></select></div></div>
             <?php } ?>
-            <div class="col-sm-6"><div class="form-group"><label>First call by</label><input type="datetime-local" name="next_action_at" class="form-control" value="<?php echo date('Y-m-d\TH:i', time() + max(5, (int) get_option('shra_lead_sla_minutes')) * 60); ?>"></div></div>
+            <div class="col-sm-<?php echo $can_all ? '6' : '12'; ?>"><div class="form-group"><label>First call by <span class="shra-opt">optional</span></label><input type="datetime-local" name="next_action_at" class="form-control"><div class="help">Left blank, the call is scheduled automatically <?php echo html_escape($sla_txt); ?> from now.</div></div></div>
         </div>
         <div class="form-group"><label>Notes</label><textarea name="description" class="form-control" rows="2" placeholder="What they asked, best time to call…"></textarea></div>
     </div>
@@ -64,7 +75,7 @@ foreach ($packages as $pk) {
             <input type="hidden" name="stage" value="">
         </div>
         <div id="shra-call-next">
-            <label style="margin-top:14px">Next follow-up *</label>
+            <label style="margin-top:14px">Next follow-up <span class="shra-req">*</span></label>
             <div class="shra-chips">
                 <button type="button" class="shra-chip" data-plus="2 hours">In 2 h</button>
                 <button type="button" class="shra-chip" data-plus="tomorrow 10:00">Tomorrow 10 AM</button>
@@ -82,7 +93,7 @@ foreach ($packages as $pk) {
             <label class="shra-pay-switch"><input type="checkbox" id="shra-pay-on"> <i class="fa-solid fa-indian-rupee-sign"></i> Payment taken on this call <span class="shra-muted">— advance / part payment</span></label>
             <div class="shra-pay-box" id="shra-pay-box" hidden>
                 <div class="row">
-                    <div class="col-xs-6"><div class="form-group"><label>Amount collected *</label>
+                    <div class="col-xs-6"><div class="form-group"><label>Amount collected <span class="shra-req">*</span></label>
                         <div class="input-group"><span class="input-group-addon"><?php echo html_escape($cur_sym); ?></span>
                         <input type="number" name="paid_amount" class="form-control" min="1" step="1" inputmode="decimal" placeholder="e.g. 50% advance"></div></div></div>
                     <div class="col-xs-6"><div class="form-group"><label>Paid by</label>
@@ -140,7 +151,7 @@ foreach ($packages as $pk) {
     <input type="hidden" name="lead_id">
     <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-xmark"></i> Mark lost · <span class="shra-m-name"></span></h4></div>
     <div class="modal-body">
-        <label>Reason *</label>
+        <label>Reason <span class="shra-req">*</span></label>
         <select name="reason" class="form-control" required><option value="">Pick a reason</option><?php foreach ($reasons as $r) { ?><option><?php echo html_escape($r); ?></option><?php } ?></select>
         <div class="form-group" style="margin-top:12px"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Optional"></div>
         <label style="margin-top:4px"><input type="checkbox" name="as_junk" value="1"> Wrong number / spam (junk instead of lost)</label>

@@ -66,6 +66,9 @@
 .shra .form-control,.shra select.form-control,.shra textarea.form-control{border:1px solid var(--line);border-radius:10px;box-shadow:none;height:auto;padding:9px 12px;font-size:13px;color:var(--ink);background:#fff}
 .shra .form-control:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,146,46,.15)}
 .shra label{font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+.shra .shra-req{color:var(--red);font-weight:700;margin-left:1px}
+.shra .shra-opt{color:var(--muted);font-weight:400;font-size:11px;letter-spacing:0;margin-left:5px}
+.shra .modal-body>.shra-sec:first-child{margin-top:2px}
 .shra .form-group{margin-bottom:14px}
 .shra .help{font-size:11.5px;color:var(--muted);margin-top:4px}
 .shra-search{position:relative}
