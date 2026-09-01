@@ -83,17 +83,116 @@
                     <div style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="text" name="new_source" class="form-control" placeholder="Add a source…"></div>
                 </div>
             </div>
-            <div class="shra-card shra-mt">
-                <div class="shra-card-head"><h4><i class="fa fa-bullseye" style="color:var(--gold)"></i> Targets</h4><input type="month" name="targets_month" class="form-control" style="width:auto" value="<?php echo $month; ?>" onchange="location.href='<?php echo admin_url('shra/shra_leads/settings?month='); ?>'+this.value"></div>
-                <div class="shra-table-wrap"><table class="shra-table">
-                    <thead><tr><th>Agent</th><th>Calls</th><th>Visits</th><th>Revenue</th></tr></thead>
-                    <tbody><?php foreach ($agents as $a) { $t = $targets[(int) $a->staffid] ?? null; ?>
-                        <tr><td><?php echo html_escape($a->full_name); ?></td>
-                            <td><input type="number" name="t[<?php echo $a->staffid; ?>][calls]" class="form-control" style="width:90px" value="<?php echo $t ? (int) $t->calls_target : ''; ?>"></td>
-                            <td><input type="number" name="t[<?php echo $a->staffid; ?>][visits]" class="form-control" style="width:90px" value="<?php echo $t ? (int) $t->visits_target : ''; ?>"></td>
-                            <td><input type="number" name="t[<?php echo $a->staffid; ?>][revenue]" class="form-control" style="width:120px" value="<?php echo $t ? $t->revenue_target + 0 : ''; ?>"></td></tr>
+            <?php
+            /* ── Targets ────────────────────────────────────────────────────────
+             * Targets belong to the calling-agent role only. The calculator above
+             * the table turns money into activity: cost × ROI (or a revenue goal)
+             * ÷ average value per join, walked back up the funnel through the
+             * rates the desk is actually converting at, then split across the
+             * agents on the roster. Everything recalculates as the manager types;
+             * "Fill" writes the result into the rows, which stay editable. */
+            $pkg_prices = array_filter(array_map(function ($p) { return (float) $p->price; }, $packages));
+            $avg_pkg    = count($pkg_prices) ? round(array_sum($pkg_prices) / count($pkg_prices)) : 0;
+            $agent_cost = 0;
+            foreach ($target_agents as $a) { $agent_cost += (float) ($targets[(int) $a->staffid]->cost ?? 0); }
+            // Saved assumption wins; then what was measured; then a starter estimate, flagged as one.
+            $seed = [
+                'cost'     => $calc['cost'] ?: ($agent_cost + $ad_spend),
+                'roi'      => $calc['roi'] ?: 3,
+                'revenue'  => $calc['revenue'],
+                'avg_deal' => $calc['avg_deal'] ?: ($baseline['avg_deal'] ?: $avg_pkg),
+                'book'     => $calc['book'] ?: ($baseline['book'] ?: 25),
+                'show'     => $calc['show'] ?: ($baseline['show'] ?: 65),
+                'close'    => $calc['close'] ?: ($baseline['close'] ?: 35),
+            ];
+            // Sub-line under each rate input: the measured figure, or a warning that it is a guess.
+            $hint = function ($key, $suffix) use ($baseline) {
+                if (!empty($baseline['measured'][$key])) {
+                    $v = $baseline[$key];
+                    return '<span title="' . html_escape($baseline['window']) . '">Live: ' . ($suffix === '%' ? ($v + 0) . '%' : shra_money($v)) . '</span>';
+                }
+                return '<span style="color:var(--red)">No data yet — estimate</span>';
+            };
+            $days_in   = (int) date('t', strtotime($month . '-01'));
+            $days_done = $month === date('Y-m') ? (int) date('j') : ($month < date('Y-m') ? $days_in : 0);
+            ?>
+            <div class="shra-card shra-mt" id="shra-targets" data-agents="<?php echo count($target_agents); ?>">
+                <input type="hidden" name="targets_role" value="<?php echo (int) $agent_role_id; ?>">
+                <div class="shra-card-head">
+                    <h4><i class="fa fa-bullseye" style="color:var(--gold)"></i> Targets <span class="help" style="display:inline;font-weight:400">· calling agents only</span></h4>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <select name="shra_lead_agent_role_id" class="form-control" style="width:auto" title="Whose targets these are">
+                            <?php foreach ($roles as $r) { ?><option value="<?php echo (int) $r->roleid; ?>" <?php echo (int) $r->roleid === (int) $agent_role_id ? 'selected' : ''; ?>><?php echo html_escape($r->name); ?></option><?php } ?>
+                        </select>
+                        <input type="month" name="targets_month" class="form-control" style="width:auto" value="<?php echo $month; ?>" onchange="location.href='<?php echo admin_url('shra/shra_leads/settings?month='); ?>'+this.value">
+                    </div>
+                </div>
+                <?php if (!count($target_agents)) { ?>
+                <div class="shra-card-body">
+                    <div class="shra-empty" style="padding:34px 20px"><i class="fa fa-user-tie"></i>
+                        Nobody is in the <b><?php echo html_escape(($rr = array_filter($roles, function ($r) use ($agent_role_id) { return (int) $r->roleid === (int) $agent_role_id; })) ? reset($rr)->name : 'SHRA Calling Agent'); ?></b> role yet.<br>
+                        <span class="help">Put your callers in that role under <a href="<?php echo admin_url('staff'); ?>">Setup → Staff</a>, or pick the role you use above and save.</span>
+                    </div>
+                </div>
+                <?php } else { ?>
+                <div class="shra-card-body shra-card-cream" style="padding:16px 22px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+                        <b style="font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--gold)">Target calculator</b>
+                        <div class="shra-seg">
+                            <label><input type="radio" name="calc[mode]" value="revenue" class="tc-mode" <?php echo $calc['mode'] !== 'roi' ? 'checked' : ''; ?>><span>From revenue goal</span></label>
+                            <label><input type="radio" name="calc[mode]" value="roi" class="tc-mode" <?php echo $calc['mode'] === 'roi' ? 'checked' : ''; ?>><span>From cost × ROI</span></label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4"><div class="form-group"><label>Monthly cost</label><input type="number" min="0" step="1" name="calc[cost]" id="tc-cost" class="form-control tc-in" value="<?php echo $seed['cost'] > 0 ? $seed['cost'] + 0 : ''; ?>" placeholder="0"><div class="help">Agents <?php echo shra_money($agent_cost); ?> + ad spend <?php echo shra_money($ad_spend); ?></div></div></div>
+                        <div class="col-sm-4" id="tc-roi-wrap"><div class="form-group"><label>Target ROI (×)</label><input type="number" min="0" step="0.1" name="calc[roi]" id="tc-roi" class="form-control tc-in" value="<?php echo $seed['roi'] + 0; ?>"><div class="help">Revenue ÷ cost</div></div></div>
+                        <div class="col-sm-4" id="tc-rev-wrap"><div class="form-group"><label>Revenue goal</label><input type="number" min="0" step="1" name="calc[revenue]" id="tc-revenue" class="form-control tc-in" value="<?php echo $seed['revenue'] > 0 ? $seed['revenue'] + 0 : ''; ?>" placeholder="0"><div class="help">For the whole month, all agents</div></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-3"><div class="form-group"><label>Value per join</label><input type="number" min="0" step="1" name="calc[avg_deal]" id="tc-deal" class="form-control tc-in" value="<?php echo $seed['avg_deal'] > 0 ? $seed['avg_deal'] + 0 : ''; ?>" placeholder="0"><div class="help"><?php echo $hint('avg_deal', ''); ?></div></div></div>
+                        <div class="col-sm-3"><div class="form-group"><label>Call → visit booked</label><input type="number" min="0" max="100" step="0.1" name="calc[book]" id="tc-book" class="form-control tc-in" value="<?php echo $seed['book'] + 0; ?>"><div class="help"><?php echo $hint('book', '%'); ?></div></div></div>
+                        <div class="col-sm-3"><div class="form-group"><label>Visit show-up</label><input type="number" min="0" max="100" step="0.1" name="calc[show]" id="tc-show" class="form-control tc-in" value="<?php echo $seed['show'] + 0; ?>"><div class="help"><?php echo $hint('show', '%'); ?></div></div></div>
+                        <div class="col-sm-3"><div class="form-group"><label>Visit → join</label><input type="number" min="0" max="100" step="0.1" name="calc[close]" id="tc-close" class="form-control tc-in" value="<?php echo $seed['close'] + 0; ?>"><div class="help"><?php echo $hint('close', '%'); ?></div></div></div>
+                    </div>
+                    <div class="shra-tc-out" id="tc-out">
+                        <div><span>Revenue goal</span><b id="tc-o-rev">—</b></div>
+                        <div><span>Joins needed</span><b id="tc-o-joins">—</b></div>
+                        <div><span>Visits attended</span><b id="tc-o-attend">—</b></div>
+                        <div><span>Visits booked</span><b id="tc-o-book">—</b></div>
+                        <div><span>Calls</span><b id="tc-o-calls">—</b></div>
+                        <div><span>Cost per join</span><b id="tc-o-cpa">—</b></div>
+                        <div><span>Margin</span><b id="tc-o-margin">—</b></div>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+                        <button type="button" class="shra-btn shra-btn-gold shra-btn-sm" id="tc-fill"><i class="fa fa-wand-magic-sparkles"></i> Fill all <?php echo count($target_agents); ?> agents</button>
+                        <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="tc-live"><i class="fa fa-rotate"></i> Reset rates to live</button>
+                        <span class="help" id="tc-split" style="margin:0"></span>
+                    </div>
+                </div>
+                <div class="shra-table-wrap"><table class="shra-table" id="tc-table">
+                    <thead><tr><th>Agent</th><th class="num">Cost / mo</th><th class="num">Calls</th><th class="num">Visits</th><th class="num">Revenue</th><th></th></tr></thead>
+                    <tbody><?php foreach ($target_agents as $a) { $sid = (int) $a->staffid; $t = $targets[$sid] ?? null; $l = $live[$sid] ?? null;
+                        $pc = $t && $t->revenue_target > 0 && $l ? min(100, round($l->revenue / $t->revenue_target * 100)) : null; ?>
+                        <tr data-staff="<?php echo $sid; ?>">
+                            <td><div class="strong"><?php echo html_escape($a->full_name); ?></div>
+                                <span class="sub"><?php if ($l) { echo (int) $l->won . ' joined · ' . shra_money($l->revenue) . ($l->roi !== null ? ' · ROI ' . $l->roi . '×' : '') . ($l->cpa !== null ? ' · ' . shra_money($l->cpa) . '/join' : ''); } else { echo 'No activity yet'; } ?></span></td>
+                            <td class="num"><input type="number" min="0" step="1" name="t[<?php echo $sid; ?>][cost]" class="form-control tc-row tc-cost" style="width:110px" value="<?php echo $t ? $t->cost + 0 : ''; ?>" placeholder="0"></td>
+                            <td class="num"><input type="number" min="0" step="1" name="t[<?php echo $sid; ?>][calls]" class="form-control tc-row tc-calls" style="width:90px" value="<?php echo $t ? (int) $t->calls_target : ''; ?>" placeholder="0">
+                                <span class="sub"><?php echo $l ? (int) $l->calls . ' so far' : '—'; ?></span></td>
+                            <td class="num"><input type="number" min="0" step="1" name="t[<?php echo $sid; ?>][visits]" class="form-control tc-row tc-visits" style="width:90px" value="<?php echo $t ? (int) $t->visits_target : ''; ?>" placeholder="0">
+                                <span class="sub"><?php echo $l ? (int) $l->visits_booked . ' booked' : '—'; ?></span></td>
+                            <td class="num"><input type="number" min="0" step="1" name="t[<?php echo $sid; ?>][revenue]" class="form-control tc-row tc-revenue" style="width:120px" value="<?php echo $t ? $t->revenue_target + 0 : ''; ?>" placeholder="0">
+                                <span class="sub"><?php echo $l ? shra_money($l->revenue) . ($pc !== null ? ' · ' . $pc . '%' : '') : '—'; ?></span>
+                                <?php if ($pc !== null) { ?><div class="shra-progress" style="margin-top:4px"><span style="width:<?php echo $pc; ?>%;background:<?php echo $pc >= 100 ? 'var(--green)' : 'var(--gold)'; ?>"></span></div><?php } ?></td>
+                            <td class="num"><button type="button" class="shra-btn shra-btn-outline shra-btn-sm tc-fill-row" title="Fill this agent from the calculator"><i class="fa fa-bolt"></i></button></td>
+                        </tr>
                     <?php } ?></tbody>
+                    <tfoot><tr style="background:var(--cream)">
+                        <td class="strong">Team total<span class="sub"><?php echo $days_done; ?> of <?php echo $days_in; ?> days elapsed</span></td>
+                        <td class="num strong" id="tt-cost">—</td><td class="num strong" id="tt-calls">—</td><td class="num strong" id="tt-visits">—</td><td class="num strong" id="tt-revenue">—</td><td></td>
+                    </tr></tfoot>
                 </table></div>
+                <?php } ?>
             </div>
             <div class="shra-card shra-mt">
                 <div class="shra-card-head"><h4><i class="fa fa-file-arrow-up" style="color:var(--gold)"></i> Import leads</h4></div>
@@ -116,6 +215,112 @@
     <div class="shra-footer"><?php echo shra_powered_by(); ?></div>
 </div>
 </div>
+<script>
+/* Target calculator — money in, activity out, recalculated on every keystroke.
+   Cost × ROI (or a straight revenue goal) ÷ value per join gives the joins the
+   month needs; the funnel rates walk that back up to visits and calls, and the
+   result is split evenly across the calling agents on the roster. Filling a row
+   only writes the inputs — nothing is saved until "Save settings". */
+(function () {
+    var root = document.getElementById('shra-targets');
+    if (!root) { return; }
+    var agents = parseInt(root.getAttribute('data-agents'), 10) || 0;
+    if (!agents) { return; }
+    var SYM  = <?php echo json_encode(get_base_currency()->symbol); ?>;
+    // What the desk is measured at (starter estimates where nothing is measured yet).
+    var LIVE = <?php echo json_encode([
+        'avg_deal' => ($baseline['avg_deal'] ?: $avg_pkg) + 0,
+        'book'     => ($baseline['book'] ?: 25) + 0,
+        'show'     => ($baseline['show'] ?: 65) + 0,
+        'close'    => ($baseline['close'] ?: 35) + 0,
+    ]); ?>;
+    var el   = function (id) { return document.getElementById(id); };
+    var num  = function (id) { var v = parseFloat((el(id) || {}).value); return isFinite(v) && v > 0 ? v : 0; };
+    var fmt  = function (n) { return Math.round(n).toLocaleString(); };
+    var cash = function (n) { return (n < 0 ? '-' : '') + SYM + fmt(Math.abs(n)); };
+    var mode = function () { var m = root.querySelector('.tc-mode:checked'); return m ? m.value : 'revenue'; };
+
+    function plan() {
+        var cost  = num('tc-cost'),
+            goal  = mode() === 'roi' ? cost * num('tc-roi') : num('tc-revenue'),
+            deal  = num('tc-deal'),
+            book  = num('tc-book') / 100,
+            show  = num('tc-show') / 100,
+            close = num('tc-close') / 100,
+            joins = deal > 0 ? Math.ceil(goal / deal) : 0,
+            att   = close > 0 ? Math.ceil(joins / close) : 0,
+            bkd   = show > 0 ? Math.ceil(att / show) : 0,
+            calls = book > 0 ? Math.ceil(bkd / book) : 0;
+
+        return {cost: cost, goal: goal, joins: joins, attend: att, booked: bkd, calls: calls,
+                cpa: joins > 0 ? cost / joins : 0, margin: goal - cost};
+    }
+
+    function put(id, text, cls) {
+        var n = el(id);
+        if (!n) { return; }
+        n.textContent = text;
+        n.className   = cls || '';
+    }
+
+    function draw() {
+        var p = plan(), ok = p.goal > 0 && p.calls > 0;
+        el('tc-roi-wrap').classList.toggle('tc-dim', mode() !== 'roi');
+        el('tc-rev-wrap').classList.toggle('tc-dim', mode() === 'roi');
+        put('tc-o-rev', p.goal > 0 ? cash(p.goal) : '—');
+        put('tc-o-joins', p.joins || '—');
+        put('tc-o-attend', p.attend || '—');
+        put('tc-o-book', p.booked || '—');
+        put('tc-o-calls', p.calls || '—');
+        put('tc-o-cpa', p.cpa > 0 ? cash(p.cpa) : '—');
+        put('tc-o-margin', p.cost > 0 && p.goal > 0 ? cash(p.margin) : '—', p.cost > 0 && p.goal > 0 ? (p.margin >= 0 ? 'pos' : 'neg') : '');
+        el('tc-split').textContent = ok
+            ? 'Per agent (÷ ' + agents + '): ' + fmt(Math.ceil(p.calls / agents)) + ' calls · ' + fmt(Math.ceil(p.booked / agents)) + ' visits · ' + cash(Math.ceil(p.goal / agents)) + ' revenue · ' + cash(Math.ceil(p.cost / agents)) + ' cost'
+            : 'Fill in the cost or revenue goal, the value per join and the three rates to see the plan.';
+        el('tc-fill').disabled = !ok;
+    }
+
+    function fill(row) {
+        var p = plan();
+        if (!(p.goal > 0 && p.calls > 0)) { return; }
+        var set = function (r, sel, v) { var i = r.querySelector(sel); if (i) { i.value = v; } };
+        set(row, '.tc-cost', Math.ceil(p.cost / agents));
+        set(row, '.tc-calls', Math.ceil(p.calls / agents));
+        set(row, '.tc-visits', Math.ceil(p.booked / agents));
+        set(row, '.tc-revenue', Math.ceil(p.goal / agents));
+    }
+
+    function totals() {
+        [['tc-cost', 'tt-cost', 1], ['tc-calls', 'tt-calls', 0], ['tc-visits', 'tt-visits', 0], ['tc-revenue', 'tt-revenue', 1]].forEach(function (t) {
+            var sum = 0;
+            root.querySelectorAll('.' + t[0]).forEach(function (i) { var v = parseFloat(i.value); if (isFinite(v)) { sum += v; } });
+            el(t[1]).textContent = sum > 0 ? (t[2] ? cash(sum) : fmt(sum)) : '—';
+        });
+    }
+
+    root.querySelectorAll('.tc-in, .tc-mode').forEach(function (i) {
+        i.addEventListener('input', draw);
+        i.addEventListener('change', draw);
+    });
+    root.querySelectorAll('.tc-row').forEach(function (i) { i.addEventListener('input', totals); });
+    el('tc-fill').addEventListener('click', function () {
+        root.querySelectorAll('#tc-table tbody tr').forEach(fill);
+        totals();
+    });
+    root.querySelectorAll('.tc-fill-row').forEach(function (b) {
+        b.addEventListener('click', function () { fill(b.closest('tr')); totals(); });
+    });
+    el('tc-live').addEventListener('click', function () {
+        el('tc-deal').value  = LIVE.avg_deal;
+        el('tc-book').value  = LIVE.book;
+        el('tc-show').value  = LIVE.show;
+        el('tc-close').value = LIVE.close;
+        draw();
+    });
+    draw();
+    totals();
+})();
+</script>
 <?php init_tail(); ?>
 </body>
 </html>

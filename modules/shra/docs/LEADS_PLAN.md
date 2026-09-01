@@ -125,11 +125,15 @@ INDEX (agent_id, credited_at), INDEX (lead_id)
 ```
 `amount_paid` is refreshed by `sync_paid()` hook so partial/later payments still credit the same agent. `repeat` rows = renewals by the same rider within `shra_lead_repeat_credit_months` (default 12) — agent keeps earning on renewals (configurable on/off).
 
-**`tblshra_lead_targets`** — monthly targets per agent (for leaderboard)
+**`tblshra_lead_targets`** — monthly targets per calling agent (for leaderboard)
 ```
-id PK, staff_id INT, month CHAR(7) 'YYYY-MM', calls_target INT, visits_target INT,
-revenue_target DECIMAL, UNIQUE(staff_id, month)
+id PK, staff_id INT, month CHAR(7) 'YYYY-MM', cost DECIMAL, calls_target INT,
+visits_target INT, revenue_target DECIMAL, UNIQUE(staff_id, month)
 ```
+Rows exist only for staff in the calling-agent role (`shra_lead_agent_role_id`, defaults to
+the "SHRA Calling Agent" role install.php creates). `cost` is what the agent costs that month
+— salary plus their share of ad spend — and is what cost per join, ROI and margin are figured
+against (v1.5.2).
 
 **`tblshra_lead_sources_meta`** — optional per-source cost for CPL/ROI
 ```
@@ -183,7 +187,11 @@ Header (stage, agent, source, SLA/age), contact actions, timeline (merged `tblsh
 ### 4.5 **Leads → Team** (`shra/leads/team`) — manager leaderboard
 Per agent for selected period: leads assigned · calls · contact rate · visits booked · visited · show rate · confirmed · won · **revenue (billed / collected)** · conversion % · avg days-to-win · overdue count · stale count · target attainment bar. Click agent → drill-down list. Also **Source ROI** table (leads, visits, won, revenue, cost, CPL, ROAS) and **Lost reasons** pie.
 
-### 4.6 **Leads → Settings** (admin) — sources, visit slots, SLA, stale days, lost reasons, outcomes, WhatsApp templates, round-robin agent pool (toggle per staff), targets grid (agent × month), **Import leads** (any sheet: column mapping + dedupe report before commit).
+### 4.6 **Leads → Settings** (admin) — sources, visit slots, SLA, stale days, lost reasons, outcomes, WhatsApp templates, round-robin agent pool (toggle per staff), targets grid (calling agents × month) with the
+live **target calculator** — cost × ROI or a revenue goal, divided by the value per join and
+walked back up the measured funnel (call → visit booked → show-up → join) into the calls,
+visits, revenue and cost each agent carries; recalculated as the manager types and written
+into the rows with one click, **Import leads** (any sheet: column mapping + dedupe report before commit).
 
 ### 4.7 Existing **Dashboard**: add tiles — Open leads, Overdue follow-ups, Visits this weekend, Leads→Revenue this month, top agent.
 

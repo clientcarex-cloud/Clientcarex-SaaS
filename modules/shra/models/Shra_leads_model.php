@@ -1472,6 +1472,10 @@ class Shra_leads_model extends App_Model
     {
         $p   = db_prefix();
         $now = date('Y-m-d H:i:s');
+        // Everyone in the calling-agent role belongs on the leaderboard even before
+        // their first call — that is the roster the targets screen is planning for.
+        $rid    = function_exists('shra_lead_agent_role_id') ? shra_lead_agent_role_id() : 0;
+        $role_w = $rid ? 'OR s.role = ' . (int) $rid : '';
         $f   = $from . ' 00:00:00';
         $t   = $to . ' 23:59:59';
         $sql = "SELECT s.staffid, CONCAT(s.firstname,' ',s.lastname) AS name, s.active,
@@ -1490,11 +1494,12 @@ class Shra_leads_model extends App_Model
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND x.is_stale = 1 AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS stale_now,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.assigned = s.staffid AND l.lost = 1 AND l.last_status_change BETWEEN ? AND ?) AS lost,
             (SELECT AVG(TIMESTAMPDIFF(HOUR, l.dateadded, x.won_at)) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND x.won_at BETWEEN ? AND ?) AS avg_hours_to_win,
-            tg.calls_target, tg.visits_target, tg.revenue_target
+            tg.calls_target, tg.visits_target, tg.revenue_target, COALESCE(tg.cost,0) AS cost
             FROM {$p}staff s
             LEFT JOIN {$p}shra_lead_targets tg ON tg.staff_id = s.staffid AND tg.month = ?
             WHERE s.admin = 1 OR EXISTS (SELECT 1 FROM {$p}staff_permissions sp WHERE sp.staff_id = s.staffid AND sp.feature = 'shra' AND sp.capability IN ('leads_own','leads_all','leads_manage'))
                OR EXISTS (SELECT 1 FROM {$p}shra_lead_attribution a2 WHERE a2.agent_id = s.staffid)
+               {$role_w}
             ORDER BY revenue DESC, won DESC, calls DESC";
         $b = [];
         for ($i = 0; $i < 12; $i++) {
@@ -1507,6 +1512,12 @@ class Shra_leads_model extends App_Model
             $r->show_rate    = $r->visits_booked > 0 ? round($r->visited / $r->visits_booked * 100) : 0;
             $r->win_rate     = $r->assigned > 0 ? round($r->won / $r->assigned * 100) : 0;
             $r->avg_days     = $r->avg_hours_to_win !== null ? round($r->avg_hours_to_win / 24, 1) : null;
+            $r->book_rate    = $r->calls > 0 ? round($r->visits_booked / $r->calls * 100) : 0;
+            $r->close_rate   = $r->visited > 0 ? round($r->won / $r->visited * 100) : 0;
+            $r->cost         = (float) $r->cost;
+            $r->cpa          = $r->cost > 0 && $r->won > 0 ? round($r->cost / $r->won) : null;
+            $r->roi          = $r->cost > 0 ? round($r->revenue / $r->cost, 1) : null;
+            $r->margin       = $r->cost > 0 ? $r->revenue - $r->cost : null;
         }
 
         return $rows;
@@ -1580,7 +1591,7 @@ class Shra_leads_model extends App_Model
     private function team_totals(array $rows)
     {
         $keys = ['assigned', 'calls', 'contacted', 'visits_booked', 'visited', 'confirmed', 'won', 'renewals',
-            'revenue', 'collected', 'open_now', 'overdue_now', 'stale_now', 'lost', 'calls_target', 'visits_target', 'revenue_target'];
+            'revenue', 'collected', 'open_now', 'overdue_now', 'stale_now', 'lost', 'calls_target', 'visits_target', 'revenue_target', 'cost'];
         $t = (object) array_fill_keys($keys, 0);
         foreach ($rows as $r) {
             foreach ($keys as $k) {
@@ -1592,6 +1603,11 @@ class Shra_leads_model extends App_Model
         $t->contact_rate = $t->assigned > 0 ? round($t->contacted / $t->assigned * 100) : 0;
         $t->show_rate    = $t->visits_booked > 0 ? round($t->visited / $t->visits_booked * 100) : 0;
         $t->win_rate     = $t->assigned > 0 ? round($t->won / $t->assigned * 100) : 0;
+        $t->book_rate    = $t->calls > 0 ? round($t->visits_booked / $t->calls * 100) : 0;
+        $t->close_rate   = $t->visited > 0 ? round($t->won / $t->visited * 100) : 0;
+        $t->cpa          = $t->cost > 0 && $t->won > 0 ? round($t->cost / $t->won) : null;
+        $t->roi          = $t->cost > 0 ? round($t->revenue / $t->cost, 1) : null;
+        $t->margin       = $t->cost > 0 ? $t->revenue - $t->cost : null;
         $t->avg_days     = null;
 
         return $t;
@@ -1695,6 +1711,7 @@ class Shra_leads_model extends App_Model
             $data = [
                 'staff_id'       => (int) $staff_id,
                 'month'          => $month,
+                'cost'           => round((float) ($t['cost'] ?? 0), 2),
                 'calls_target'   => (int) ($t['calls'] ?? 0),
                 'visits_target'  => (int) ($t['visits'] ?? 0),
                 'revenue_target' => round((float) ($t['revenue'] ?? 0), 2),
@@ -1716,6 +1733,86 @@ class Shra_leads_model extends App_Model
         }
 
         return $out;
+    }
+
+    /**
+     * What the desk is actually converting right now — the numbers the target
+     * calculator starts from, so a manager plans off measured rates instead of
+     * guesses. The month being planned is used whenever it already carries
+     * enough activity; a month planned in advance is empty by definition, so it
+     * falls back to the last 90 days. Every rate comes back as a percentage and
+     * `measured` says which of them are real (0 = nothing to measure yet, the
+     * screen labels those as an estimate the manager should overwrite).
+     *
+     * @param  string     $month      YYYY-MM
+     * @param  array|null $month_rows team_stats rows for that month, when the caller already has them
+     * @return array
+     */
+    public function target_baseline($month, $month_rows = null)
+    {
+        $keys = ['assigned', 'calls', 'visits_booked', 'visited', 'won', 'revenue'];
+        $sum  = function ($rows) use ($keys) {
+            $t = array_fill_keys($keys, 0);
+            foreach ($rows as $r) {
+                foreach ($keys as $k) {
+                    $t[$k] += (float) ($r->$k ?? 0);
+                }
+            }
+
+            return $t;
+        };
+        $first  = $month . '-01';
+        $t      = $sum(is_array($month_rows) ? $month_rows : $this->team_stats($first, date('Y-m-t', strtotime($first))));
+        $window = 'This month so far';
+        $from   = $first;
+        $to     = date('Y-m-t', strtotime($first));
+        if ($t['calls'] < 20 || $t['won'] < 1) {
+            $f90 = date('Y-m-d', strtotime('-90 days'));
+            $t90 = $sum($this->team_stats($f90, date('Y-m-d')));
+            if ($t90['calls'] > $t['calls'] || $t90['won'] > $t['won']) {
+                $t      = $t90;
+                $window = 'Last 90 days';
+                $from   = $f90;
+                $to     = date('Y-m-d');
+            }
+        }
+
+        return [
+            'window'   => $window,
+            'from'     => $from,
+            'to'       => $to,
+            'totals'   => $t,
+            'avg_deal' => $t['won'] > 0 ? round($t['revenue'] / $t['won']) : 0,
+            'book'     => $t['calls'] > 0 ? round($t['visits_booked'] / $t['calls'] * 100, 1) : 0,
+            'show'     => $t['visits_booked'] > 0 ? round($t['visited'] / $t['visits_booked'] * 100, 1) : 0,
+            'close'    => $t['visited'] > 0 ? round($t['won'] / $t['visited'] * 100, 1) : 0,
+            'measured' => [
+                'avg_deal' => $t['won'] > 0,
+                'book'     => $t['calls'] > 0,
+                'show'     => $t['visits_booked'] > 0,
+                'close'    => $t['visited'] > 0,
+            ],
+        ];
+    }
+
+    /** Month-to-date numbers per agent, keyed by staff id — the live half of the targets screen. */
+    public function targets_live($month)
+    {
+        $first = $month . '-01';
+        $out   = [];
+        foreach ($this->team_stats($first, date('Y-m-t', strtotime($first))) as $r) {
+            $out[(int) $r->staffid] = $r;
+        }
+
+        return $out;
+    }
+
+    /** Total monthly ad / listing spend across all sources — the other half of the cost side. */
+    public function sources_monthly_cost()
+    {
+        $r = $this->db->select_sum('monthly_cost', 'c')->where('active', 1)->get(db_prefix() . 'shra_lead_sources_meta')->row();
+
+        return $r ? (float) $r->c : 0.0;
     }
 
     public function save_source_cost($source_id, $cost)

@@ -874,6 +874,39 @@ class Shra_leads extends AdminController
 
     /* ═══════════════════════ Settings / import ═══════════════════════ */
 
+    /**
+     * The target calculator's saved assumptions (cost, ROI, deal size, funnel
+     * rates). Stored as one option so a manager sets them once and every month
+     * afterwards opens on the same planning basis; anything missing falls back
+     * to a starter estimate the screen flags as such.
+     */
+    private function target_calc()
+    {
+        $saved = json_decode((string) get_option('shra_lead_target_calc'), true);
+
+        return $this->target_calc_clean(is_array($saved) ? $saved : []);
+    }
+
+    private function target_calc_clean(array $in)
+    {
+        $num = function ($v, $max) {
+            $v = (float) str_replace(',', '', (string) $v);
+
+            return $v > 0 ? min($v, $max) : 0.0;
+        };
+
+        return [
+            'mode'     => ($in['mode'] ?? 'revenue') === 'roi' ? 'roi' : 'revenue',
+            'cost'     => round($num($in['cost'] ?? 0, 1000000000), 2),
+            'roi'      => round($num($in['roi'] ?? 0, 1000), 2),
+            'revenue'  => round($num($in['revenue'] ?? 0, 1000000000), 2),
+            'avg_deal' => round($num($in['avg_deal'] ?? 0, 100000000), 2),
+            'book'     => round($num($in['book'] ?? 0, 100), 1),
+            'show'     => round($num($in['show'] ?? 0, 100), 1),
+            'close'    => round($num($in['close'] ?? 0, 100), 1),
+        ];
+    }
+
     public function settings()
     {
         $this->need('manage');
@@ -898,8 +931,21 @@ class Shra_leads extends AdminController
             foreach ((array) ($post['source_cost'] ?? []) as $sid => $cost) {
                 $this->leads->save_source_cost((int) $sid, $cost);
             }
+            if (isset($post['shra_lead_agent_role_id'])) {
+                update_option('shra_lead_agent_role_id', (string) (int) $post['shra_lead_agent_role_id']);
+            }
+            if (isset($post['calc'])) {
+                update_option('shra_lead_target_calc', json_encode($this->target_calc_clean((array) $post['calc'])));
+            }
             if (!empty($post['targets_month']) && isset($post['t'])) {
-                $this->leads->save_targets(substr($post['targets_month'], 0, 7), (array) $post['t']);
+                // Targets belong to the calling-agent role only — anything else that
+                // arrives in the post (a stale form, a role changed mid-edit) is dropped.
+                $role    = (int) ($post['targets_role'] ?? 0);
+                $allowed = array_map(function ($a) { return (int) $a->staffid; }, shra_lead_calling_agents(false, $role ?: null));
+                $rows    = array_intersect_key((array) $post['t'], array_flip($allowed));
+                if (count($rows)) {
+                    $this->leads->save_targets(substr($post['targets_month'], 0, 7), $rows);
+                }
             }
             set_alert('success', 'Lead settings saved.');
             redirect(admin_url('shra/shra_leads/settings?month=' . ($post['targets_month'] ?? date('Y-m'))));
@@ -911,6 +957,15 @@ class Shra_leads extends AdminController
         $data['all_agents'] = shra_lead_agents(false);
         $data['month']      = $month;
         $data['targets']    = $this->leads->get_targets($month);
+        // Targets section: the calling-agent roster, what each of them has done so far
+        // this month, and the conversion maths the calculator opens with.
+        $data['roles']         = shra_lead_roles();
+        $data['agent_role_id'] = shra_lead_agent_role_id();
+        $data['target_agents'] = shra_lead_calling_agents(true);
+        $data['live']          = $this->leads->targets_live($month);
+        $data['baseline']      = $this->leads->target_baseline($month, $data['live']);
+        $data['ad_spend']      = $this->leads->sources_monthly_cost();
+        $data['calc']          = $this->target_calc();
         $data['inquire_url'] = site_url('inquire');
         $data['inquire_qr']  = shra_qr_svg(site_url('inquire'), 5);
         $this->load->view('leads/settings', $data);

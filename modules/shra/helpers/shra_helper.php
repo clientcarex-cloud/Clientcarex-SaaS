@@ -1097,6 +1097,56 @@ function shra_lead_agents($active_only = true)
     return $CI->db->query($q)->result();
 }
 
+/**
+ * The role a calling agent sits in. Monthly targets belong to calling agents
+ * only — managers, trainers and the desk are judged on the team report, not on
+ * a call/visit quota — so every target screen works off this roster rather off
+ * everyone who happens to hold a leads permission. install.php creates the
+ * "SHRA Calling Agent" role; an academy that renamed it (or runs two calling
+ * teams) pins the role it means in Lead settings, stored as an option.
+ */
+function shra_lead_agent_role_id()
+{
+    $CI = &get_instance();
+    $p  = db_prefix();
+    $id = (int) get_option('shra_lead_agent_role_id');
+    if ($id > 0 && $CI->db->where('roleid', $id)->count_all_results($p . 'roles') > 0) {
+        return $id;
+    }
+    $r = $CI->db->where('name', 'SHRA Calling Agent')->get($p . 'roles')->row();
+
+    return $r ? (int) $r->roleid : 0;
+}
+
+/**
+ * Staff sitting in the calling-agent role — the people targets are set for.
+ * $role_id names a role explicitly, which the settings screen uses so a form
+ * submitted just before the role was switched is still checked against the
+ * roster it was drawn for.
+ */
+function shra_lead_calling_agents($active_only = true, $role_id = null)
+{
+    $CI  = &get_instance();
+    $p   = db_prefix();
+    $rid = $role_id !== null ? (int) $role_id : shra_lead_agent_role_id();
+    if (!$rid) {
+        return [];
+    }
+    $q = "SELECT s.staffid, s.firstname, s.lastname, s.email, s.admin, s.active, s.profile_image,
+              CONCAT(s.firstname,' ',s.lastname) AS full_name
+           FROM {$p}staff s
+           WHERE s.role = ? " . ($active_only ? 'AND s.active = 1 ' : '') . "
+           ORDER BY s.firstname ASC";
+
+    return $CI->db->query($q, [$rid])->result();
+}
+
+/** Staff roles, for the "which role is a calling agent" picker in Lead settings. */
+function shra_lead_roles()
+{
+    return get_instance()->db->order_by('name', 'ASC')->get(db_prefix() . 'roles')->result();
+}
+
 /** Managers: staff with leads_manage (or admins). */
 function shra_lead_manager_ids()
 {

@@ -458,12 +458,19 @@ if (!$CI->db->table_exists($p . 'shra_lead_targets')) {
         `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
         `staff_id` INT(11) NOT NULL,
         `month` CHAR(7) NOT NULL COMMENT 'YYYY-MM',
+        `cost` DECIMAL(15,2) NOT NULL DEFAULT 0 COMMENT 'what this agent costs the academy that month — salary + their share of ad spend',
         `calls_target` INT(11) NOT NULL DEFAULT 0,
         `visits_target` INT(11) NOT NULL DEFAULT 0,
         `revenue_target` DECIMAL(15,2) NOT NULL DEFAULT 0,
         PRIMARY KEY (`id`),
         UNIQUE KEY `staff_month` (`staff_id`, `month`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+}
+
+// v1.5.2 — the target calculator works from cost, so the monthly cost of each agent
+// is stored beside their targets (ROI, cost per join and margin all come off it).
+if ($CI->db->table_exists($p . 'shra_lead_targets') && !$CI->db->field_exists('cost', $p . 'shra_lead_targets')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_lead_targets` ADD COLUMN `cost` DECIMAL(15,2) NOT NULL DEFAULT 0 COMMENT 'agent cost for the month' AFTER `month`");
 }
 
 // ── Per-source spend (CPL / ROI) ──
@@ -607,6 +614,9 @@ $lead_defaults = [
     'shra_lead_ig_cache'             => '',
     'shra_lead_landing_map_query'    => 'The Wilderness Retreat, Kokapet, Hyderabad',
     'shra_lead_landing_map_embed'    => '',
+    // Targets: whose targets these are, and the assumptions the calculator starts from
+    'shra_lead_agent_role_id'        => '0',
+    'shra_lead_target_calc'          => '',
 ];
 foreach ($lead_defaults as $k => $v) {
     add_option($k, $v);
