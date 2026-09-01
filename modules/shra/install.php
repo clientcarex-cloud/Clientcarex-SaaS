@@ -794,6 +794,14 @@ if (!$CI->db->table_exists($p . 'shra_training_attempts')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
 
+// CI caches the table list the first time table_exists() is called (line ~14 of
+// this file), and never refreshes it — so every table created by THIS run is
+// invisible to table_exists() for the rest of the request. Without the reset the
+// seed below is skipped on the exact run that creates its tables, and the schema
+// version is then stamped, so it never gets a second chance: five empty tables
+// and no course. Drop the cache so the guards below see reality.
+unset($CI->db->data_cache['table_names']);
+
 /**
  * Seed the default course.
  *
