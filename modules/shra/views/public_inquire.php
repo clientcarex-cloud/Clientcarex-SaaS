@@ -16,11 +16,8 @@ $from_raw = null;
 foreach ($plans as $p) { if (!$p['is_guest'] && $p['sessions'] > 0) { $ps = $p['total_raw'] / $p['sessions']; if ($from_raw === null || $ps < $from_raw) { $from_raw = $ps; } } }
 $from     = $from_raw !== null ? shra_money($from_raw) : '';
 $batches  = shra_batches();
-/* "6AM - 9AM (Morning) & 4PM - 9PM (Evening)" — how the academy quotes its hours. Built from
-   the batch settings so the page can never drift from what Settings actually says. */
-$batch_line = implode(' & ', array_map(function ($b) {
-    return str_replace([' AM', ' PM', ' – '], ['AM', 'PM', ' - '], $b['time']) . ' (' . $b['label'] . ')';
-}, $batches));
+/* "6AM - 9AM (Morning) & 4PM - 9PM (Evening)" — how the academy quotes its hours. */
+$batch_line = shra_batch_line();
 $live     = !empty($landing['latest_reels']);
 $reels    = $live ? array_slice($landing['latest_reels'], 0, 8) : array_map(function ($id) { return ['id' => $id, 'thumb' => '', 'views' => 0, 'likes' => 0, 'taken' => 0, 'caption' => '']; }, array_slice($landing['reels'], 0, 6));
 $fmt      = function ($n) { return $n >= 1000000 ? round($n / 1000000, 1) . 'M' : ($n >= 1000 ? round($n / 1000, $n >= 10000 ? 0 : 1) . 'K' : (string) $n); };

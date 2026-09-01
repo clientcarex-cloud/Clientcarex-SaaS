@@ -311,6 +311,7 @@ window.SHRA_LEADS_CFG = {
     academy: <?php echo json_encode(get_option('shra_academy_name') ?: 'SHRA'); ?>,
     location: <?php echo json_encode(get_option('shra_lead_landing_location') ?: ''); ?>,
     maps: <?php echo json_encode(shra_lead_maps_url()); ?>,
+    batches: <?php echo json_encode(shra_batch_line(' and ')); ?>,
     selfBooking: <?php echo json_encode(site_url('inquire')); ?>,
     joinUrl: <?php echo json_encode(site_url('join')); ?>,
     agent: <?php echo json_encode(get_staff_full_name(get_staff_user_id())); ?>,

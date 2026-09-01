@@ -101,6 +101,18 @@ function shra_batches()
     return $out;
 }
 
+/**
+ * The academy's visiting hours as one line — "6AM - 9AM (Morning) & 4PM - 9PM
+ * (Evening)". Built from the batch settings, so the landing page, the FAQ and
+ * the WhatsApp pitches can never drift from what Settings actually says.
+ */
+function shra_batch_line($sep = ' & ')
+{
+    return implode($sep, array_map(function ($b) {
+        return str_replace([' AM', ' PM', ' – '], ['AM', 'PM', ' - '], $b['time']) . ' (' . $b['label'] . ')';
+    }, shra_batches()));
+}
+
 /** A posted batch, validated. Returns 'morning', 'evening' or null. */
 function shra_batch_key($raw)
 {
@@ -663,7 +675,7 @@ function shra_lead_wa_copy_msg()
         . "2️⃣ I'll book your FREE academy visit\n"
         . "3️⃣ Meet the horses, watch a class, pick your batch 🎉\n\n"
         . "{offer}\n\n"
-        . "⏰ Open all days except Monday · 6–9 AM & 4–6 PM — slots fill fast, shall I reserve yours today?";
+        . "⏰ Open all days except Monday · {batches} — slots fill fast, shall I reserve yours today?";
 }
 
 /**
@@ -682,7 +694,7 @@ function shra_lead_wa_master_msg()
         . "*3 easy ways to get started:*\n"
         . "1️⃣ Book yourself in 2 min 👉 {self_booking}\n"
         . "2️⃣ Reply with your day & time — I'll book it for you ✅\n"
-        . "3️⃣ Walk in — all days except Monday · 6–9 AM & 4–6 PM\n\n"
+        . "3️⃣ Walk in — all days except Monday · {batches}\n\n"
         . "📍 Find us: {maps}\n\n"
         . "{offer}\n\n"
         . "Slots go fast — pick one and I'll make it happen! ⚡";
@@ -755,8 +767,8 @@ function shra_lead_wa_links()
     return [
         ['title' => '📍 Location', 'text' => "Here's how to reach *{academy}*, {name}! 🐎\n\n📍 {maps}\n\nSave the pin — and ping me if you need directions on the way!"],
         ['title' => '🖥️ Self booking', 'text' => "{name}, lock in your slot in under a minute! ⚡\n\n👉 {self_booking}\n\nPick your plan, choose your batch — done! Your confirmation comes instantly 🐎"],
-        ['title' => '🤝 Agent booking', 'text' => "Let me do the work for you, {name}! 🙌 Just reply with:\n\n1️⃣ Day — any day except Monday\n2️⃣ Time — morning (6–9 AM) or evening (4–6 PM)\n\n…and I'll book your visit at *{academy}* right away ✅"],
-        ['title' => '🚶 Direct visit', 'text' => "No booking needed, {name} — just walk in! 🐎\n\n🗓️ Open all days except Monday\n🕐 6–9 AM & 4–6 PM\n📍 {maps}\n\nAsk for *{agent}* at the gate — I'll personally show you around {academy}!"],
+        ['title' => '🤝 Agent booking', 'text' => "Let me do the work for you, {name}! 🙌 Just reply with:\n\n1️⃣ Day — any day except Monday\n2️⃣ Time — {batches}\n\n…and I'll book your visit at *{academy}* right away ✅"],
+        ['title' => '🚶 Direct visit', 'text' => "No booking needed, {name} — just walk in! 🐎\n\n🗓️ Open all days except Monday\n🕐 {batches}\n📍 {maps}\n\nAsk for *{agent}* at the gate — I'll personally show you around {academy}!"],
     ];
 }
 

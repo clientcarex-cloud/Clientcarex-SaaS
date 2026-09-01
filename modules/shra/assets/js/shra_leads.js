@@ -460,6 +460,7 @@
       .replace(/\{visit\}/g, visit || '')
       .replace(/\{location\}/g, cfg().location || '')
       .replace(/\{maps\}/g, cfg().maps || '')
+      .replace(/\{batches\}/g, cfg().batches || '')
       .replace(/\{self_booking\}/g, cfg().selfBooking || '')
       .replace(/\{join\}/g, cfg().joinUrl || '')
       .replace(/\{offer\}/g, cfg().offerLine || '')

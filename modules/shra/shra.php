@@ -10,7 +10,7 @@ Requires at least: 2.3.*
 */
 
 define('SHRA_MODULE_NAME', 'shra');
-define('SHRA_MODULE_VERSION', '1.4.8');
+define('SHRA_MODULE_VERSION', '1.4.9');
 
 register_language_files(SHRA_MODULE_NAME, [SHRA_MODULE_NAME]);
 

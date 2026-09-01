@@ -616,6 +616,21 @@ foreach ($lead_defaults as $k => $v) {
 if (get_option('shra_lead_landing_phone') === '9908480010') {
     update_option('shra_lead_landing_phone', '+91 77300 34313');
 }
+// One-time fix: the WhatsApp copy quoted a hard-coded "4–6 PM" evening that the batch
+// settings had already moved to 4–9 PM. The settings screen prefills its textareas with the
+// resolved default, so one Save was enough to freeze the stale hours into the options table.
+// Only the timing fragment is swapped — for {batches}, which resolves at send time — so any
+// other wording the academy edited into the message survives untouched.
+foreach (['shra_lead_wa_copy_msg', 'shra_lead_wa_master_msg', 'shra_lead_wa_links', 'shra_lead_wa_templates', 'shra_lead_wa_offer_msg'] as $k) {
+    $cur = (string) get_option($k);
+    if ($cur === '') {
+        continue;
+    }
+    $fixed = str_replace(['morning (6–9 AM) or evening (4–6 PM)', '6–9 AM & 4–6 PM'], '{batches}', $cur);
+    if ($fixed !== $cur) {
+        update_option($k, $fixed);
+    }
+}
 // One-time default bump: minimum rider age went 3/4 → 5 (add_option keeps the old stored value)
 if (in_array(get_option('shra_lead_landing_min_age'), ['3', '4'], true)) {
     update_option('shra_lead_landing_min_age', '5');
