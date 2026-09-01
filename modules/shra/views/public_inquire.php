@@ -136,6 +136,28 @@ h1 em{font-style:italic;background:linear-gradient(100deg,var(--gold-2) 0%,#f3dc
 .chips input{display:none}
 .chips label:has(input:checked){background:var(--ink);border-color:var(--ink);color:var(--cream)}
 .chips label small{display:block;font-size:11px;font-weight:600;opacity:.72;margin-top:2px;letter-spacing:.2px}
+/* Plan picker — the same price cards the /join form uses, so the visitor sees
+   what they are about to pay before the checkout opens. */
+.pks{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.pks{grid-template-columns:1fr}}
+.pks .pk{display:none;position:relative;margin-bottom:0;border:1.5px solid var(--line);border-radius:14px;padding:13px 13px 11px;background:#fff;cursor:pointer;transition:.15s}
+.pks .pk.show{display:block}
+.pks .pk:hover{border-color:var(--gold-2)}
+.pks .pk input{display:none}
+.pks .pk:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 3px rgba(28,26,23,.08);background:var(--cream-2)}
+.pks .pk .nm{font-size:15px;font-weight:700;line-height:1.2;color:var(--ink)}
+.pks .pk .mt{font-size:12px;font-weight:500;color:var(--muted);margin-top:3px}
+.pks .pk .aud{display:none;font-weight:700;color:var(--brown)}
+.pks.mixed .pk .aud{display:inline}
+.pks .pk .pr{margin-top:9px;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.pks .pk .now{font-size:20px;font-weight:700;color:var(--red);letter-spacing:-.2px}
+.pks .pk .was{font-size:12px;color:var(--muted);text-decoration:line-through}
+.pks .pk .per{width:100%;font-size:11px;color:var(--muted)}
+.pks .pk .tag{position:absolute;top:-9px;right:12px;background:var(--green);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.6px;padding:3px 8px;border-radius:999px;text-transform:uppercase}
+.pkoff{display:flex;align-items:center;gap:9px;background:#fbeeee;border:1px dashed #e8b9b6;color:var(--red);border-radius:12px;padding:9px 11px;font-size:12.5px;font-weight:600;margin-bottom:10px}
+.pkoff .st{background:var(--red);color:#fff;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;transform:rotate(-4deg)}
+.pkerr{display:none;margin-top:7px;font-size:12px;font-weight:600;color:var(--red)}
+.pkerr.on{display:block}
 .fcfs{display:flex;gap:8px;align-items:flex-start;background:#f6ecd2;border:1px solid #e6d4a6;color:var(--brown);border-radius:10px;padding:9px 11px;font-size:12px;font-weight:600;line-height:1.45;margin:0 0 12px}
 .fcfs i{margin-top:2px}
 .err{background:#fbeeee;border:1px solid #e8b9b6;color:var(--red);border-radius:12px;padding:10px 14px;margin:8px 0 14px;font-size:13.5px}
@@ -321,7 +343,29 @@ section{padding:52px 0}
                         <label><input type="radio" name="rider_for" value="child" <?php echo $v('rider_for') === 'child' ? 'checked' : ''; ?>><span>My child</span></label>
                         <label><input type="radio" name="rider_for" value="both" <?php echo $v('rider_for') === 'both' ? 'checked' : ''; ?>><span>Both</span></label>
                     </div></div>
-                    <div class="f"><label><?php echo $can_pay ? 'Choose your plan' : 'Interested in'; ?></label><select name="package_id" id="pkgsel"><option value=""><?php echo $can_pay ? 'Choose a plan…' : 'Not sure yet'; ?></option><?php foreach ($plans as $p) { ?><option value="<?php echo $p['id']; ?>" data-aud="<?php echo $p['audience']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'selected' : ''; ?>><?php echo ($p['audience'] === 'children' ? 'Kids' : 'Adults') . ' · ' . html_escape($p['name']) . ($p['is_guest'] ? '' : ' · ' . $p['sessions'] . ' sessions'); ?></option><?php } ?></select></div>
+                    <?php /* The plan cards are the /join picker: the price, the strike-through
+                            and the discount are on the card, so nobody reaches the gateway
+                            without knowing the amount. Cards filter on "Who will ride?". */ ?>
+                    <div class="f">
+                        <label><?php echo $can_pay ? 'Choose your plan <span class="req">*</span>' : 'Interested in'; ?></label>
+                        <?php if ($offer['active']) { ?><div class="pkoff"><span class="st"><?php echo $offer['percent'] + 0; ?>% OFF</span> <?php echo html_escape($offer['label'] ?: 'Limited time offer'); ?> — prices below already include it.</div><?php } ?>
+                        <div class="pks" id="pks">
+                            <?php if (!$can_pay) { ?>
+                            <?php /* No gateway live — "not sure yet" stays a valid answer. */ ?>
+                            <label class="pk show"><input type="radio" name="package_id" value="" <?php echo (int) $v('package_id') === 0 ? 'checked' : ''; ?>><div class="nm">Not sure yet</div><div class="mt">We will help you choose on the call.</div></label>
+                            <?php } ?>
+                            <?php foreach ($plans as $p) { ?>
+                            <label class="pk" data-aud="<?php echo $p['audience']; ?>">
+                                <input type="radio" name="package_id" value="<?php echo $p['id']; ?>" <?php echo (string) $v('package_id') === (string) $p['id'] ? 'checked' : ''; ?>>
+                                <?php if ($p['is_featured']) { ?><span class="tag">Best value</span><?php } ?>
+                                <div class="nm"><?php echo html_escape($p['name']); ?></div>
+                                <div class="mt"><span class="aud"><?php echo $p['audience'] === 'children' ? 'Kids' : 'Adults'; ?> · </span><?php echo $p['is_guest'] ? 'Single ' . $p['duration_min'] . '-min ride · with trainer' : $p['sessions'] . ' sessions · ' . $p['duration_min'] . ' min'; ?></div>
+                                <div class="pr"><span class="now"><?php echo $p['total']; ?></span><?php if ($p['discount'] > 0) { ?><span class="was"><?php echo $p['price']; ?></span><?php } ?><?php if (!$p['is_guest'] && $p['sessions'] > 1) { ?><span class="per"><?php echo $p['per_session_now']; ?> per session</span><?php } ?></div>
+                            </label>
+                            <?php } ?>
+                        </div>
+                        <?php if ($can_pay) { ?><div class="pkerr" id="pkerr">Please choose a plan to continue.</div><?php } ?>
+                    </div>
                     <?php $more_open = $v('rider_age') !== '' || $v('preferred_start_date') !== '' || $v('preferred_batch') !== '' || $v('message') !== ''; ?>
                     <details class="more" <?php echo $more_open ? 'open' : ''; ?>>
                         <summary><i class="fa-solid fa-sliders"></i> Age, start date &amp; timing <span class="opt">(optional)</span><i class="fa-solid fa-plus ch"></i></summary>
@@ -518,13 +562,15 @@ section{padding:52px 0}
         document.querySelectorAll('.tabs button').forEach(function(x){x.classList.toggle('on',x===b);});
         document.querySelectorAll('.tabpane').forEach(function(p){p.classList.toggle('on',p.dataset.pane===b.dataset.tab);});
     });});
-    // "Enquire" buttons pre-select the package in the form
-    var sel=document.getElementById('pkgsel');
+    // "Enquire" buttons pre-select the package card in the form
+    var pks=document.getElementById('pks');
     document.querySelectorAll('[data-pick]').forEach(function(a){a.addEventListener('click',function(){
         var r=document.querySelector('input[name=rider_for][value='+(a.closest('[data-pane]')&&a.closest('[data-pane]').dataset.pane==='adults'?'self':'child')+']');
         if(r){r.checked=true;}
         filterPlans();
-        if(sel){sel.value=a.dataset.pick;}
+        var t=pks?pks.querySelector('input[name=package_id][value="'+a.dataset.pick+'"]'):null;
+        if(t){t.checked=true;}
+        syncBook();
         shraTrack('ViewContent',{content_name:'package_'+a.dataset.pick});
     });});
     // Instagram reels — lazy, click-to-load (keeps the page light for ad traffic)
@@ -552,39 +598,42 @@ section{padding:52px 0}
     // Checkout button — carries the price of whichever plan is selected
     var bookable=<?php echo json_encode($bookable, JSON_FORCE_OBJECT); ?>;
     var bk=document.getElementById('bookbtn'),bl=document.getElementById('booklbl');
-    function plan(){return (bk&&sel)?bookable[sel.value]:null;}
+    var err=document.getElementById('pkerr');
+    function picked(){var c=pks?pks.querySelector('input[name=package_id]:checked'):null;return (c&&c.value)?c:null;}
+    function plan(){var c=picked();return (bk&&c)?bookable[c.value]:null;}
     function syncBook(){
+        if(err){err.classList.remove('on');}
         if(!bk){return;}
         var p=plan();
         bl.textContent=p?((p.guest?'Book this guest ride — ':'Book & pay now — ')+p.total):'Choose a plan to continue';
     }
-    if(sel){sel.addEventListener('change',syncBook);}
-    document.querySelectorAll('[data-pick]').forEach(function(a){a.addEventListener('click',syncBook);});
-    // The plan list follows "Who will ride?" — kids plans for a child, adult plans for myself, everything for both
-    var allPlans=sel?Array.prototype.slice.call(sel.options):[];
+    if(pks){pks.addEventListener('change',syncBook);}
+    // The plan cards follow "Who will ride?" — kids plans for a child, adult plans for myself, everything for both
     function filterPlans(){
-        if(!sel){return;}
+        if(!pks){return;}
         var r=document.querySelector('input[name=rider_for]:checked');
         var want=!r||r.value==='both'?null:(r.value==='child'?'children':'adults');
-        var keep=sel.value;
-        sel.innerHTML='';
-        allPlans.forEach(function(o){if(!o.value||!want||o.dataset.aud===want){sel.appendChild(o);}});
-        sel.value=keep;
-        if(sel.value!==keep){sel.value='';}
+        // Both audiences on screen at once: the cards say which is which
+        pks.classList.toggle('mixed',!want);
+        Array.prototype.forEach.call(pks.querySelectorAll('.pk'),function(c){
+            var show=!c.dataset.aud||!want||c.dataset.aud===want;
+            c.classList.toggle('show',show);
+            // A hidden card must not stay selected — its price is not the one on the button
+            var i=c.querySelector('input');
+            if(!show&&i){i.checked=false;}
+        });
         syncBook();
     }
     document.querySelectorAll('input[name=rider_for]').forEach(function(r){r.addEventListener('change',filterPlans);});
     // A plan arriving pre-selected (ad link ?pkg= or a validation re-render) flips the chip
     // to its audience rather than being filtered out of the list
-    if(sel&&sel.value){
-        var pre=sel.options[sel.selectedIndex];
-        if(pre&&pre.dataset.aud){
-            var need=pre.dataset.aud==='children'?'child':'self';
-            var cur=document.querySelector('input[name=rider_for]:checked');
-            if(cur&&cur.value!=='both'&&cur.value!==need){
-                var pr=document.querySelector('input[name=rider_for][value='+need+']');
-                if(pr){pr.checked=true;}
-            }
+    var pre=picked(), preCard=pre?pre.closest('.pk'):null;
+    if(preCard&&preCard.dataset.aud){
+        var need=preCard.dataset.aud==='children'?'child':'self';
+        var cur=document.querySelector('input[name=rider_for]:checked');
+        if(cur&&cur.value!=='both'&&cur.value!==need){
+            var pr=document.querySelector('input[name=rider_for][value='+need+']');
+            if(pr){pr.checked=true;}
         }
     }
     filterPlans();
@@ -595,8 +644,8 @@ section{padding:52px 0}
         // Nothing to charge for yet — send them to the plan picker instead of the gateway
         if(b===bk&&!plan()){
             e.preventDefault();
-            sel.focus();
-            sel.scrollIntoView({block:'center'});
+            if(err){err.classList.add('on');}
+            pks.scrollIntoView({block:'center'});
             return;
         }
         // Booking skips the thank-you page, so the Lead event has to fire here
