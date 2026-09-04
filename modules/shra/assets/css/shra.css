@@ -633,6 +633,26 @@ tr.shra-row-picked td{background:#fdf3f2!important}
 .shra-tr-pip:hover{border-color:var(--gold-2);color:#fff!important}
 .shra-tr-pip.done{background:rgba(124,179,66,.18);border-color:rgba(124,179,66,.42);color:#d7ecc4!important}
 .shra-tr-pip.doing{background:rgba(212,180,92,.18);border-color:rgba(212,180,92,.45);color:#f4e3b4!important}
+
+/* Course finished → the card folds into a one-line strip; the full panel is
+   still there behind the caret, so nothing is lost, it just stops shouting. */
+.shra-tr-card.is-done{padding:0}
+.shra-tr-card.is-done:not([open]):before{display:none}
+.shra-tr-mini{list-style:none;display:flex;align-items:center;gap:11px;padding:11px 16px;cursor:pointer;user-select:none;position:relative}
+.shra-tr-mini::-webkit-details-marker{display:none}
+.shra-tr-mini::marker{content:''}
+.shra-tr-mini-em{flex:none;font-size:16px;line-height:1}
+.shra-tr-mini-txt{flex:1 1 auto;min-width:0;font-size:13px;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shra-tr-mini-txt b{color:#fff;font-weight:700}
+.shra-tr-mini-sub{color:rgba(246,239,224,.6);font-size:12px}
+.shra-tr-mini-link{flex:none;font-size:12px;font-weight:600;color:var(--gold-2)!important;text-decoration:none!important;white-space:nowrap}
+.shra-tr-mini-link:hover{color:#fff!important}
+.shra-tr-mini-caret{flex:none;font-size:11px;color:rgba(246,239,224,.5);transition:transform .18s}
+.shra-tr-mini:hover .shra-tr-mini-caret{color:var(--gold-2)}
+.shra-tr-card.is-done[open] .shra-tr-mini{border-bottom:1px solid rgba(246,239,224,.13)}
+.shra-tr-card.is-done[open] .shra-tr-mini-caret{transform:rotate(180deg)}
+.shra-tr-card.is-done[open] .shra-tr-mini-link{display:none}
+.shra-tr-card.is-done .shra-tr-grid{padding:18px 22px 20px}
 @media(max-width:767px){
   .shra-tr-card{padding:17px 16px}
   .shra-tr-card h3{font-size:23px}
@@ -642,6 +662,10 @@ tr.shra-row-picked td{background:#fdf3f2!important}
   .shra-ring b{font-size:15px}
   .shra-tr-cta{flex:1 1 auto;justify-content:center;padding:12px 14px}
   .shra-tr-cta.ghost{flex:1 1 100%}
+  /* Collapsed strip keeps to one line: drop the stats, keep name + caret. */
+  .shra-tr-mini{padding:10px 13px;gap:9px}
+  .shra-tr-mini-sub,.shra-tr-mini-link{display:none}
+  .shra-tr-card.is-done .shra-tr-grid{padding:15px 16px 17px}
 }
 
 /* — course home — */

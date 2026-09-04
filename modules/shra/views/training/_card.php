@@ -3,6 +3,10 @@
  * The Self-Training card. Rendered by shra_training_card() so it can be dropped
  * on to any home screen with a single echo.
  *
+ * Once the course is finished the card collapses to a one-line strip — the
+ * home screen belongs to the leads, not to a trophy — and the full panel is
+ * still one click away inside the <details>.
+ *
  * @var array  $overall  Shra_training_model::overall()
  * @var array  $modules  active modules
  * @var array  $stats    module_id => per-user stats
@@ -16,7 +20,20 @@ $r     = 38;
 $circ  = 2 * M_PI * $r;
 $earned = array_values(array_filter($badges, function ($b) { return $b['earned']; }));
 ?>
+<?php if ($done) { ?>
+<details class="shra-tr-card is-done">
+    <summary class="shra-tr-mini">
+        <span class="shra-tr-mini-em">🏆</span>
+        <span class="shra-tr-mini-txt">
+            <b>Self-Training complete</b>
+            <span class="shra-tr-mini-sub">100% · <?php echo (int) $overall['modules']; ?> modules · <?php echo (int) $overall['lessons']; ?> lessons<?php if (count($earned)) { ?> · <?php echo count($earned); ?> badges<?php } ?><?php if ((int) $overall['streak'] > 1) { ?> · 🔥 <?php echo (int) $overall['streak']; ?>-day streak<?php } ?></span>
+        </span>
+        <a class="shra-tr-mini-link" href="<?php echo shra_training_url(); ?>" onclick="event.stopPropagation();">Review the course</a>
+        <i class="fa-solid fa-chevron-down shra-tr-mini-caret"></i>
+    </summary>
+<?php } else { ?>
 <div class="shra-tr-card">
+<?php } ?>
     <div class="shra-tr-grid">
         <div class="shra-tr-main">
             <div class="shra-tr-eyebrow"><i class="fa-solid fa-graduation-cap"></i> Self-Training<?php if ((int) $overall['streak'] > 1) { ?> <span style="color:#f4b23c">· 🔥 <?php echo (int) $overall['streak']; ?>-day streak</span><?php } ?></div>
@@ -69,4 +86,4 @@ $earned = array_values(array_filter($badges, function ($b) { return $b['earned']
             <a class="shra-tr-cta ghost" href="<?php echo shra_training_url(); ?>">All modules</a>
         </div>
     </div>
-</div>
+<?php echo $done ? '</details>' : '</div>'; ?>
