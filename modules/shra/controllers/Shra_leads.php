@@ -206,7 +206,10 @@ class Shra_leads extends AdminController
         $data['month']  = $range['on']
             ? $this->leads->stats_for($agent, $from !== '' ? $from : '1970-01-01', $to !== '' ? $to : date('Y-m-d'))
             : $this->leads->my_month($agent);
-        $data['funnel'] = $this->leads->funnel_counts(!shra_leads_can('all'));
+        // The bar answers the same question the rest of the screen is set to: whose leads,
+        // and over which window. $agent is already clamped to the viewer's own id above
+        // when they may not see everyone, so this cannot leak another agent's pipeline.
+        $data['funnel'] = $this->leads->funnel_counts(['agent' => $agent, 'from' => $from, 'to' => $to]);
         // A ₹0 Revenue tile is the single most misread number on this screen. Work out which
         // kind of zero it is (nothing billed / billed but never credited / someone else's
         // credit) so the tile can say it instead of leaving the agent to guess.
@@ -986,7 +989,7 @@ class Shra_leads extends AdminController
         $data['rows']     = $this->leads->team_stats($from, $to);
         $data['sources_stats'] = $this->leads->source_stats($from, $to);
         $data['lost']     = $this->leads->lost_reasons($from, $to);
-        $data['funnel']   = $this->leads->funnel_counts(false);
+        $data['funnel']   = $this->leads->funnel_counts();   // "Funnel (now)" — a live snapshot
         $this->load->view('leads/team', $data);
     }
 

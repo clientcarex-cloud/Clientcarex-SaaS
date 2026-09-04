@@ -59,6 +59,14 @@
 
         return admin_url('shra/shra_leads?' . http_build_query(array_filter(array_map('strval', $q))));
     };
+
+    // Whose screen this is. Every count below — funnel, tiles, targets — is narrowed to
+    // this person, so the name is worked out once, up here, and shown next to each of them.
+    $tg_name = $agent ? '' : 'All staff';
+    foreach ($agents as $a) {
+        if ((int) $a->staffid === (int) $agent) { $tg_name = $a->full_name; }
+    }
+    $fn_who = ($tg_name ?: 'All staff') . ($range['on'] ? ' · ' . $range['label'] : '');
     ?>
 
     <?php
@@ -71,10 +79,11 @@
 
     <!-- ── Funnel + numbers ───────────────────────────────────────── -->
     <div class="shra-hd">
+        <?php // The counts follow the agent picker and the date range, so each pill says whose. ?>
         <div class="shra-funnel-bar">
             <?php foreach (shra_lead_stage_defs() as $k => $d) { if ($k === 'junk') { continue; } $c = (int) ($funnel[$k] ?? 0); ?>
                 <a href="<?php echo $qs(['scope' => 'all', 'stage' => $k]); ?>"
-                   class="shra-fn<?php echo $c ? '' : ' zero'; ?><?php echo $filters['stage'] === $k ? ' on' : ''; ?>" title="Show <?php echo $d[0]; ?> leads">
+                   class="shra-fn<?php echo $c ? '' : ' zero'; ?><?php echo $filters['stage'] === $k ? ' on' : ''; ?>" title="<?php echo html_escape($d[0] . ' · ' . $fn_who); ?> — click to show them">
                     <i style="background:<?php echo $d[2]; ?>"></i><span><?php echo $d[0]; ?></span><b><?php echo $c; ?></b>
                 </a>
             <?php } ?>
@@ -83,10 +92,7 @@
         // One strip: the month's numbers, how each tracks against target, and the
         // EOD button. The numbers follow the agent filter — one agent's month, or
         // the whole team's totals on "All staff" — and so do the targets under them.
-        $tg_name = $agent ? '' : 'All staff';
-        foreach ($agents as $a) {
-            if ((int) $a->staffid === (int) $agent) { $tg_name = $a->full_name; }
-        }
+        // $tg_name is worked out above, where the funnel bar also uses it.
         $pace = shra_lead_target_progress(1, 1, $range['pace_date']); // day / days / % of the month gone
         // Each tile carries the key its drill-down uses, and a line saying what the
         // number actually counts — the two money tiles are read as one thing far too often.

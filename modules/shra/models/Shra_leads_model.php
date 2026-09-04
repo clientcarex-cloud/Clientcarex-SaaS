@@ -1860,15 +1860,37 @@ class Shra_leads_model extends App_Model
         return $rows;
     }
 
-    public function funnel_counts($scope_me = false)
+    /**
+     * How many leads sit at each stage. Every pill in the funnel bar is a link into the
+     * list carrying the agent and date range that are on screen, so the count has to be
+     * narrowed by the same two things — otherwise clicking "New 343" lands on a list of
+     * eleven and the bar looks broken.
+     * $f: agent (0 = everyone), from / to (when the lead came in; '' = any).
+     */
+    public function funnel_counts(array $f = [])
     {
         $p   = db_prefix();
-        $w   = $scope_me ? 'AND l.assigned = ' . (int) get_staff_user_id() : '';
-        $out = array_fill_keys(array_keys(shra_lead_stage_defs()), 0);
+        $w   = '';
+        $b   = [];
+        if (!empty($f['agent'])) {
+            $w    .= ' AND l.assigned = ?';
+            $b[]   = (int) $f['agent'];
+        }
+        if (!empty($f['from'])) {
+            $w    .= ' AND l.dateadded >= ?';
+            $b[]   = $f['from'] . ' 00:00:00';
+        }
+        if (!empty($f['to'])) {
+            $w    .= ' AND l.dateadded <= ?';
+            $b[]   = $f['to'] . ' 23:59:59';
+        }
+        $out  = array_fill_keys(array_keys(shra_lead_stage_defs()), 0);
         $rows = $this->db->query("SELECT CASE WHEN l.junk = 1 THEN 'junk' WHEN l.lost = 1 THEN 'lost' ELSE x.stage_key END AS k, COUNT(*) AS c
-            FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE 1=1 {$w} GROUP BY k")->result();
+            FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE 1=1 {$w} GROUP BY k", $b)->result();
         foreach ($rows as $r) {
-            $out[$r->k] = (int) $r->c;
+            if (isset($out[$r->k])) {
+                $out[$r->k] = (int) $r->c;
+            }
         }
 
         return $out;
