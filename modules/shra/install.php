@@ -562,7 +562,7 @@ foreach ($stage_defs as $key => $d) {
 update_option('shra_lead_stage_map', json_encode($stage_map));
 
 // ── Lead sources ──
-foreach (['Walk-in', 'Phone Inquiry', 'Instagram', 'Facebook', 'Google', 'WhatsApp', 'Referral', 'School Tie-up', 'Event / Camp', 'Justdial', 'Website QR', 'Other'] as $src) {
+foreach (['Walk-in', 'Phone Inquiry', 'Instagram', 'Facebook', 'Google', 'WhatsApp', 'Referral', 'School Tie-up', 'Event / Camp', 'Justdial', 'Website QR', 'Junaid Mkt', 'Other'] as $src) {
     $exists = $CI->db->where('name', $src)->get($p . 'leads_sources')->row();
     if (!$exists) {
         $CI->db->insert($p . 'leads_sources', ['name' => $src]);
