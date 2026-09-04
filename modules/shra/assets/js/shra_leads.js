@@ -238,8 +238,41 @@
     var $m = $('#shra-lead-call');
     $('#shra-pay-on').prop('checked', false);
     $('#shra-pay-box').prop('hidden', true);
-    $m.find('[name=paid_amount],[name=paid_reference],[name=paid_note]').val('');
+    $m.find('[name=paid_amount],[name=paid_reference],[name=paid_note],[name=deal_value]').val('');
+    $m.find('[name=deal_package_id]').val('');
+    $m.removeData('dealAuto');
+    $('#shra-pay-bal').prop('hidden', true).html('');
     clearProof();
+  }
+
+  /** The package total the box is working with — what was typed, else the picked package. */
+  function payDeal() {
+    var $m = $('#shra-lead-call');
+    var typed = $.trim($m.find('[name=deal_value]').val() || '');
+    if (typed !== '') { return parseFloat(typed) || 0; }
+
+    return parseFloat($m.find('[name=deal_package_id] :selected').data('price')) || 0;
+  }
+
+  /** Advance in, balance out — spelled out live, because that balance is the next call. */
+  function payRefresh() {
+    var $m = $('#shra-lead-call');
+    var id = $m.find('[name=lead_id]').val();
+    var deal = payDeal();
+    var paid = parseFloat(leadData(id, 'paidNum')) || 0;
+    var now  = parseFloat($m.find('[name=paid_amount]').val()) || 0;
+    var $b   = $('#shra-pay-bal');
+    if (!deal) {
+      $b.prop('hidden', false).html('<i class="fa fa-circle-info"></i> No package total yet, so this lead will show no balance. '
+        + 'Pick the package above and the Due column fills in.');
+
+      return;
+    }
+    var left = Math.round((deal - paid - now) * 100) / 100;
+    $b.prop('hidden', false).html('<i class="fa fa-scale-balanced"></i> ' + money(deal) + ' total'
+      + (paid > 0 ? ' · ' + money(paid) + ' already in' : '')
+      + (now > 0 ? ' · ' + money(now) + ' now' : '')
+      + ' &rarr; <b>' + (left > 0.009 ? money(left) + ' still due' : 'fully paid') + '</b>');
   }
   function clearProof() {
     var el = document.getElementById('shra-pay-proof');
@@ -250,11 +283,37 @@
   }
   $('#shra-pay-on').on('change', function () {
     var on = $(this).is(':checked');
-    var due = leadData($('#shra-lead-call [name=lead_id]').val(), 'due');
-    $('#shra-lead-call [name=paid_amount]').attr('placeholder', due ? 'Due ' + due : 'e.g. 50% advance');
+    var $m = $('#shra-lead-call'), id = $m.find('[name=lead_id]').val();
+    var due = leadData(id, 'due');
+    $m.find('[name=paid_amount]').attr('placeholder', due ? 'Due ' + due : 'e.g. 50% advance');
     $('#shra-pay-box').prop('hidden', !on);
-    if (on) { setTimeout(function () { $('#shra-lead-call [name=paid_amount]').focus(); }, 50); } else { clearProof(); $('#shra-lead-call [name=paid_amount]').val(''); }
+    if (on) {
+      // Start from what the lead already says it wants — the agent only corrects it.
+      $m.find('[name=deal_package_id]').val(String(leadData(id, 'pkg') || ''));
+      var deal = parseFloat(leadData(id, 'dealNum')) || 0;
+      if (deal > 0) { $m.find('[name=deal_value]').val(deal); $m.data('dealAuto', deal); }
+      payRefresh();
+      setTimeout(function () { $m.find('[name=paid_amount]').focus(); }, 50);
+    } else {
+      clearProof();
+      $m.find('[name=paid_amount]').val('');
+      $('#shra-pay-bal').prop('hidden', true);
+    }
   });
+  /* Picking a package fills the total in. A price the agent typed themselves is theirs —
+     only a value this code put there is overwritten. */
+  $('#shra-pay-pkg').on('change', function () {
+    var $m = $('#shra-lead-call'), $v = $m.find('[name=deal_value]');
+    var price = parseFloat($(this).find(':selected').data('price')) || 0;
+    var cur   = $.trim($v.val() || '');
+    var auto  = $m.data('dealAuto');
+    if (cur === '' || (auto !== undefined && parseFloat(cur) === parseFloat(auto))) {
+      $v.val(price > 0 ? price : '');
+      $m.data('dealAuto', price);
+    }
+    payRefresh();
+  });
+  $('#shra-lead-call').on('input change', '[name=deal_value],[name=paid_amount]', payRefresh);
   $('#shra-pay-clear').on('click', clearProof);
   $('#shra-pay-proof').on('change', function () {
     var f = this.files && this.files[0];

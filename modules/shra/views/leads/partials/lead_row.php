@@ -62,16 +62,25 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     <td class="shra-r-paid num">
         <?php if ($money['paid'] > 0) { ?>
             <span class="shra-r-paid-amt"><?php echo shra_money($money['paid']); ?></span>
-            <?php if ($money['due'] > 0) { ?><span class="shra-r-sub shra-r-paid-due">due <?php echo shra_money($money['due']); ?></span>
-            <?php } elseif ($money['deal'] > 0) { ?><span class="shra-r-sub shra-r-paid-full">full</span><?php } ?>
-        <?php } elseif ($money['due'] > 0) { ?>
-            <span class="shra-r-paid-due">due <?php echo shra_money($money['due']); ?></span>
+            <?php if ($money['deal'] > 0) { ?><span class="shra-r-sub"><?php echo (int) round($money['paid'] / $money['deal'] * 100); ?>% of <?php echo shra_money($money['deal']); ?></span><?php } ?>
         <?php } else { ?><span class="shra-muted">—</span><?php } ?>
+    </td>
+    <?php /* The balance still to collect. It only exists once the lead has a deal value — an
+             expected amount, or the package it asked about — so an empty one says why, rather
+             than printing a zero that would read as "nothing owed". */ ?>
+    <td class="shra-r-dueamt num">
+        <?php if ($money['due'] > 0) { ?>
+            <span class="shra-r-paid-due"><?php echo shra_money($money['due']); ?></span>
+        <?php } elseif ($money['deal'] > 0) { ?>
+            <span class="shra-r-paid-full" title="Paid in full against <?php echo html_escape(shra_money($money['deal'])); ?>"><i class="fa fa-check"></i> full</span>
+        <?php } else { ?>
+            <span class="shra-muted" title="No package total on this lead yet — set one while logging the payment, or on the lead page.">—</span>
+        <?php } ?>
     </td>
     <td class="shra-r-flags">
         <?php if ($l->no_show_count) { ?><span class="shra-badge shra-badge-red" title="No-shows"><?php echo (int) $l->no_show_count; ?> NS</span><?php } ?>
         <?php if ($l->is_stale) { ?><span class="shra-badge shra-badge-muted">Stale</span><?php } ?>
-        <?php if ($l->expected_value > 0) { ?><span class="shra-r-val"><?php echo shra_money($l->expected_value); ?></span><?php } ?>
+        <?php // The deal value used to sit here; Paid ("x% of ₹y") and Due now carry it. ?>
     </td>
     <td class="shra-r-src"><?php echo html_escape($l->source_name ?: '—'); ?><?php if ($can_all) { ?><span class="shra-r-sub"><?php echo html_escape($l->agent_name ?: 'Unassigned'); ?></span><?php } ?></td>
     <td class="shra-r-act">

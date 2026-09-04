@@ -20,6 +20,12 @@
     $adv     = $adv_own + $adv_oth;
     $adv_n   = ($m && isset($m->advance_count) ? (int) $m->advance_count : 0)
              + ($agent && $m && isset($m->advance_others_count) ? (int) $m->advance_others_count : 0);
+    // Balance still owed by leads that have part-paid — the projection. A running figure,
+    // not a period one, so it does not follow the date range the other tiles do.
+    $pipe    = $m && isset($m->pipeline) ? (float) $m->pipeline : 0;
+    $pipe_n  = $m && isset($m->pipeline_count) ? (int) $m->pipeline_count : 0;
+    // Why Revenue reads zero, when it does: a short line for the tile, the whole story on hover.
+    $rev_why = isset($revenue_note) && is_array($revenue_note) ? $revenue_note : [];
     $all   = $scope === 'all';
     // What the numbers cover: the picked range, or this month when none is picked.
     $period = !empty($range['on']) ? $range['label'] : 'this month';
@@ -99,9 +105,20 @@
             // A zero here reads as a fault unless the screen says why, so at zero the tile
             // spells it out instead of showing the per-day pace it would need.
             ['revenue', 'Revenue', 'fa-indian-rupee-sign', $rev, $rev_t, true,
-                $rev > 0 ? 'billed · ' . shra_money((float) $m->collected) . ' paid' : 'no bills raised yet', null,
-                'Billed at the counter — it only moves when a bill is raised, so advances on calls do not count here. Click to see the billed leads.',
+                $rev > 0 ? 'billed · ' . shra_money((float) $m->collected) . ' paid' : ($rev_why['short'] ?? 'no bills raised yet'), null,
+                'Billed at the counter — it only moves when a bill is raised, so advances on calls do not count here. Click to see the billed leads.'
+                    . (isset($rev_why['long']) ? ' — ' . $rev_why['long'] : ''),
                 $rev <= 0],
+            // Not money that has moved: money already promised. Every open lead that paid
+            // something and still owes the rest, added up — what the month should still bring
+            // in if the pipeline closes. Deliberately not clipped to the period: a balance
+            // outstanding since August is still owed today.
+            ['pipeline', 'Pipeline due', 'fa-hourglass-half', $pipe, 0, true,
+                $pipe_n ? 'from ' . $pipe_n . ' part-paid lead' . ($pipe_n == 1 ? '' : 's') : 'nothing part-paid yet',
+                $rev_t > 0 ? (int) round($pipe / $rev_t * 100) : 0,
+                'Projected: what part-paid leads still owe on their package'
+                    . ($pipe_n && $rev_t > 0 ? ' — ' . (int) round($pipe / $rev_t * 100) . '% of the revenue target' : '')
+                    . '. Counted across every open lead, not only this period, because a balance owed since last month is still owed. Click to see them.'],
         ];
         $tg_any = ($tg_on && $m && ($m->calls_target > 0 || $m->visits_target > 0 || $rev_t > 0));
         ?>
@@ -123,18 +140,24 @@
                 </div>
                 <div class="shra-mx-val">
                     <b><?php echo $fmt($x_val); ?><?php if ($pr) { ?><em> / <?php echo $fmt($x_target); ?></em><?php } ?></b>
-                    <span<?php echo $pr && !$pr['done'] && $pr['days_left'] > 0
-                        ? ' title="' . $fmt(ceil($pr['per_day'])) . ' a day for the ' . $pr['days_left'] . ' days left in ' . date('F') . '"' : ''; ?>><?php
-                        if (!$pr || $x_say) {
-                            echo $x_alt;
-                        } elseif ($pr['done']) {
-                            echo 'target hit';
-                        } elseif ($pr['days_left'] > 0) {
-                            echo $fmt(ceil($pr['per_day'])) . '/day';
-                        } else {
-                            echo $fmt($pr['left']) . ' short';
-                        }
-                    ?></span>
+                    <?php
+                    // Six tiles share one strip, so these sub-lines ellipsis on a narrow screen.
+                    // Work the text out once and hand it back as the tooltip too, or a clipped
+                    // line — "2 bills, none credited" — is simply lost.
+                    if (!$pr || $x_say) {
+                        $x_txt = $x_alt;
+                    } elseif ($pr['done']) {
+                        $x_txt = 'target hit';
+                    } elseif ($pr['days_left'] > 0) {
+                        $x_txt = $fmt(ceil($pr['per_day'])) . '/day';
+                    } else {
+                        $x_txt = $fmt($pr['left']) . ' short';
+                    }
+                    $x_tip = !$x_say && $pr && !$pr['done'] && $pr['days_left'] > 0
+                        ? $fmt(ceil($pr['per_day'])) . ' a day for the ' . $pr['days_left'] . ' days left in ' . date('F')
+                        : $x_txt;
+                    ?>
+                    <span title="<?php echo html_escape($x_tip); ?>"><?php echo $x_txt; ?></span>
                 </div>
                 <div class="shra-mx-track">
                     <div class="shra-progress"><span style="width:<?php echo $width; ?>%"></span></div>
@@ -165,10 +188,13 @@
         // A drill-down answers a question about a period, so say which one — the list
         // below is no longer "leads added", it is "leads behind that number".
         $mx_labels = Shra_leads_model::metrics();
-        $mx_from   = $range['on'] ? $range['label'] : date('F Y');
+        // Pipeline due is a running balance, not a period figure — naming a month beside it
+        // would promise a filter that is not there.
+        $mx_from   = $metric === 'pipeline' ? 'still open, any date' : ($range['on'] ? $range['label'] : date('F Y'));
+        $mx_say    = $metric === 'pipeline' ? 'part-paid, still owing' : 'the leads behind that number';
     ?>
     <div class="shra-drill">
-        <span><i class="fa fa-filter"></i> <b><?php echo html_escape($mx_labels[$metric]); ?></b> &middot; the leads behind that number
+        <span><i class="fa fa-filter"></i> <b><?php echo html_escape($mx_labels[$metric]); ?></b> &middot; <?php echo html_escape($mx_say); ?>
             &middot; <?php echo html_escape($tg_name ?: 'All staff'); ?> &middot; <?php echo html_escape($mx_from); ?></span>
         <a href="<?php echo $qs(['metric' => '']); ?>" class="shra-btn shra-btn-outline shra-btn-xs"><i class="fa fa-xmark"></i> Show all leads</a>
     </div>
@@ -219,6 +245,7 @@
                     <th class="shra-r-visit">Visit</th>
                     <th class="shra-r-calls num">Calls</th>
                     <th class="shra-r-paid num">Paid</th>
+                    <th class="shra-r-dueamt num">Due</th>
                     <th class="shra-r-flags"></th>
                     <th class="shra-r-src"><?php echo $can_all ? 'Source / agent' : 'Source'; ?></th>
                     <th class="shra-r-act">Action</th>

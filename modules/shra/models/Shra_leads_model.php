@@ -180,8 +180,20 @@ class Shra_leads_model extends App_Model
             'joined'    => 'Joined',
             'collected' => 'Collected',
             'revenue'   => 'Revenue',
+            'pipeline'  => 'Pipeline due',
         ];
     }
+
+    /**
+     * What a lead is worth (its own expected value, else the list price of the package it
+     * asked about) and what is still owed on it. Kept identical to shra_lead_money() so a
+     * row's Due column and the Pipeline tile can never disagree. Aliases: l / x / pk.
+     */
+    const DEAL_SQL = "COALESCE(NULLIF(x.expected_value,0), pk.price, 0)";
+    const DUE_SQL  = "GREATEST(0, COALESCE(NULLIF(x.expected_value,0), pk.price, 0) - x.paid_amount)";
+    /** An open lead that has part-paid and still owes something — the projection's population. */
+    const PIPELINE_WHERE = "l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.paid_amount > 0
+                        AND COALESCE(NULLIF(x.expected_value,0), pk.price, 0) > x.paid_amount";
 
     /**
      * The leads behind one header tile, matched by the same rule team_stats() counted
@@ -229,6 +241,13 @@ class Shra_leads_model extends App_Model
                         AND pm.created_at BETWEEN ? AND ?"
                         . ($a ? ' AND (pm.staff_id = ? OR l.assigned = ?)' : '') . ')',
                     $a ? [$f, $t, $a, $a] : [$f, $t]];
+
+            // Money still owed, not money already moved: every open lead that has part-paid
+            // and whose deal is bigger than what it has handed over. A running balance, so
+            // unlike the tiles beside it this one is deliberately NOT clipped to the period —
+            // an advance taken in August is still owed in September.
+            case 'pipeline':
+                return [self::PIPELINE_WHERE . ($a ? ' AND l.assigned = ?' : ''), $a ? [$a] : []];
         }
 
         return null;
@@ -814,6 +833,69 @@ class Shra_leads_model extends App_Model
         ]);
 
         return $id;
+    }
+
+    /**
+     * What the whole package will cost, recorded at the moment an advance is taken —
+     * without it a part payment has no balance and the lead's Due reads "not set".
+     * $package_id prices itself off the running offer (the same quote the counter bills);
+     * $amount overrides it for a negotiated price. Silent no-op when neither is given,
+     * and it never lowers a deal that billing has already frozen (a won lead).
+     * Returns true, or an error string.
+     */
+    public function set_deal($lead_id, $package_id = 0, $amount = null)
+    {
+        $l = $this->get($lead_id);
+        if (!$l) {
+            return 'Lead not found.';
+        }
+        $p     = db_prefix();
+        $pkg   = (int) $package_id;
+        $value = null;
+        if ($amount !== null && trim((string) $amount) !== '') {
+            if (!is_numeric($amount) || (float) $amount < 0) {
+                return 'The package total was not a number, so it was not saved.';
+            }
+            $value = round((float) $amount, 2);
+        } elseif ($pkg) {
+            $pk = $this->db->where('id', $pkg)->get($p . 'shra_packages')->row();
+            if ($pk) {
+                $this->load->model('shra/shra_model');
+                $value = (float) $this->shra_model->quote($pk)['total'];
+            }
+        }
+        if ($value === null && !$pkg) {
+            return true;
+        }
+        if ($value !== null && $value > 99999999) {
+            return 'That package total looks wrong — check it and try again.';
+        }
+        if ($l->stage === 'won') {
+            return true; // the invoice is the authority once a bill exists
+        }
+        $ext  = [];
+        $core = [];
+        if ($pkg && (int) $l->interest_package_id !== $pkg) {
+            $ext['interest_package_id'] = $pkg;
+        }
+        if ($value !== null && abs((float) $l->expected_value - $value) > 0.009) {
+            $ext['expected_value'] = $value;
+            $core['lead_value']    = $value;
+        }
+        if (!count($ext) && !count($core)) {
+            return true;
+        }
+        $this->update_lead($lead_id, $core, $ext);
+        if (isset($ext['expected_value'])) {
+            $this->event($lead_id, 'note', [
+                'from' => (float) $l->expected_value ?: null,
+                'to'   => $value,
+                'log'  => 'Package total set to ' . shra_money($value)
+                        . ((float) $l->expected_value > 0 ? ' (was ' . shra_money((float) $l->expected_value) . ')' : ''),
+            ]);
+        }
+
+        return true;
     }
 
     /** Attach (or replace) the screenshot on a payment already recorded. */
@@ -1589,6 +1671,12 @@ class Shra_leads_model extends App_Model
             (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.kind = 'repeat' AND a.credited_at BETWEEN ? AND ?) AS renewals,
             (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.credited_at BETWEEN ? AND ?) AS revenue,
             (SELECT COALESCE(SUM(a.amount_paid),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.credited_at BETWEEN ? AND ?) AS collected,
+            (SELECT COALESCE(SUM(" . self::DUE_SQL . "),0) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
+                LEFT JOIN {$p}shra_packages pk ON pk.id = x.interest_package_id
+                WHERE l.assigned = s.staffid AND " . self::PIPELINE_WHERE . ") AS pipeline,
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
+                LEFT JOIN {$p}shra_packages pk ON pk.id = x.interest_package_id
+                WHERE l.assigned = s.staffid AND " . self::PIPELINE_WHERE . ") AS pipeline_count,
             {$adv_sql}
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_now,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND " . shra_lead_overdue_where($now) . ") AS overdue_now,
@@ -1609,6 +1697,8 @@ class Shra_leads_model extends App_Model
         $b[] = substr($from, 0, 7);
         $rows = $this->db->query($sql, $b)->result();
         foreach ($rows as $r) {
+            $r->pipeline             = (float) $r->pipeline;
+            $r->pipeline_count       = (int) $r->pipeline_count;
             $r->advance              = (float) $r->advance;
             $r->advance_count        = (int) $r->advance_count;
             $r->advance_others       = (float) $r->advance_others;
@@ -1688,7 +1778,7 @@ class Shra_leads_model extends App_Model
     {
         $rows = $this->team_stats($from, $to);
         if ((int) $staff_id === 0) {
-            return $this->team_totals($rows);
+            return $this->team_totals($rows, $from, $to);
         }
         foreach ($rows as $r) {
             if ((int) $r->staffid === (int) $staff_id) {
@@ -1699,17 +1789,92 @@ class Shra_leads_model extends App_Model
         return null;
     }
 
+    /**
+     * Revenue credited to nobody on the roster — a bill raised against a lead that was
+     * never assigned (public form, auto-assign off) lands on agent_id 0, and every
+     * subquery in team_stats() is keyed on s.staffid, so without this the money is real,
+     * frozen in tblshra_lead_attribution, and invisible on every screen.
+     */
+    private function unattributed_credit($from, $to)
+    {
+        $p = db_prefix();
+
+        return $this->db->query("SELECT
+            COALESCE(SUM(a.amount_billed),0) AS revenue,
+            COALESCE(SUM(a.amount_paid),0) AS collected,
+            COALESCE(SUM(a.kind = 'first'),0) AS won,
+            COALESCE(SUM(a.kind = 'repeat'),0) AS renewals
+            FROM {$p}shra_lead_attribution a
+            WHERE a.credited_at BETWEEN ? AND ?
+              AND NOT EXISTS (SELECT 1 FROM {$p}staff s WHERE s.staffid = a.agent_id)",
+            [$from . ' 00:00:00', $to . ' 23:59:59'])->row();
+    }
+
+    /**
+     * Why the Revenue tile reads zero. Three very different facts look identical on the
+     * screen — nothing was billed at all; something was billed but no lead was credited;
+     * or a colleague was credited instead — and only the middle one is a fault worth
+     * chasing. Returns ['short' => tile line, 'long' => the tooltip], or [] when there is
+     * nothing to explain.
+     */
+    public function revenue_zero_reason($staff_id, $from, $to)
+    {
+        $p = db_prefix();
+        $f = $from . ' 00:00:00';
+        $t = $to . ' 23:59:59';
+        $r = $this->db->query("SELECT
+            (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.credited_at BETWEEN ? AND ?) AS team_revenue,
+            (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE e.status <> 'cancelled' AND e.created_at BETWEEN ? AND ?) AS bills,
+            (SELECT COALESCE(SUM(e.total),0) FROM {$p}shra_enrollments e WHERE e.status <> 'cancelled' AND e.created_at BETWEEN ? AND ?) AS billed
+            ", [$f, $t, $f, $t, $f, $t])->row();
+        if (!$r) {
+            return [];
+        }
+        // Someone was credited, just not the agent being looked at.
+        if ((float) $r->team_revenue > 0) {
+            return (int) $staff_id ? [
+                'short' => 'credited to other agents',
+                'long'  => shra_money((float) $r->team_revenue) . ' was billed and credited in this period, but to other agents — '
+                         . 'nothing was credited to this one. Switch the agent filter to All staff to see it.',
+            ] : [];
+        }
+        // Bills exist but none reached a lead: the counter did not match the buyer to one.
+        if ((int) $r->bills > 0) {
+            $n = (int) $r->bills;
+
+            return [
+                'short' => $n . ' bill' . ($n == 1 ? '' : 's') . ', none credited',
+                'long'  => $n . ' bill' . ($n == 1 ? ' was' : 's were') . ' raised in this period (' . shra_money((float) $r->billed)
+                         . '), but not one was credited to a lead. That happens when the counter bills a rider whose mobile does not '
+                         . 'match any lead, or when "credit this lead" was unticked. Check the Billing screen against the leads.',
+            ];
+        }
+
+        return [
+            'short' => 'no bills raised yet',
+            'long'  => 'Nothing has been billed at the counter in this period, so there is no revenue to show. Advances taken on '
+                     . 'calls sit in Collected until a bill is raised.',
+        ];
+    }
+
     /** Every agent's month rolled into one row, for the All-staff header. */
-    private function team_totals(array $rows)
+    private function team_totals(array $rows, $from = '', $to = '')
     {
         $keys = ['assigned', 'calls', 'contacted', 'visits_booked', 'visited', 'confirmed', 'won', 'renewals',
-            'revenue', 'collected', 'advance', 'advance_count', 'advance_others', 'advance_others_count',
+            'revenue', 'collected', 'pipeline', 'pipeline_count', 'advance', 'advance_count', 'advance_others', 'advance_others_count',
             'open_now', 'overdue_now', 'stale_now', 'lost', 'calls_target', 'visits_target', 'revenue_target', 'cost'];
         $t = (object) array_fill_keys($keys, 0);
         foreach ($rows as $r) {
             foreach ($keys as $k) {
                 $t->$k += (float) ($r->$k ?? 0);
             }
+        }
+        // Credit that belongs to no staff row at all is still the team's money.
+        if ($from !== '' && $to !== '' && ($u = $this->unattributed_credit($from, $to))) {
+            $t->revenue   += (float) $u->revenue;
+            $t->collected += (float) $u->collected;
+            $t->won       += (int) $u->won;
+            $t->renewals  += (int) $u->renewals;
         }
         $t->staffid      = 0;
         $t->name         = 'All staff';

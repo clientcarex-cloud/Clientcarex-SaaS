@@ -207,6 +207,12 @@ class Shra_leads extends AdminController
             ? $this->leads->stats_for($agent, $from !== '' ? $from : '1970-01-01', $to !== '' ? $to : date('Y-m-d'))
             : $this->leads->my_month($agent);
         $data['funnel'] = $this->leads->funnel_counts(!shra_leads_can('all'));
+        // A ₹0 Revenue tile is the single most misread number on this screen. Work out which
+        // kind of zero it is (nothing billed / billed but never credited / someone else's
+        // credit) so the tile can say it instead of leaving the agent to guess.
+        $data['revenue_note'] = $data['month'] && (float) $data['month']->revenue > 0
+            ? []
+            : $this->leads->revenue_zero_reason($agent, $mfrom, $mto);
         $this->load->view('leads/index', $data);
     }
 
@@ -266,10 +272,12 @@ class Shra_leads extends AdminController
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="shra-leads-' . date('Ymd') . '.csv"');
         $out = fopen('php://output', 'w');
-        fputcsv($out, ['ID', 'Name', 'Phone', 'Email', 'City', 'Source', 'Agent', 'Stage', 'Rider for', 'Age', 'Interest', 'Start date', 'Batch', 'Expected', 'Next action', 'Visit', 'Calls', 'Lost reason', 'Added', 'Won at']);
+        fputcsv($out, ['ID', 'Name', 'Phone', 'Email', 'City', 'Source', 'Agent', 'Stage', 'Rider for', 'Age', 'Interest', 'Start date', 'Batch', 'Expected', 'Paid', 'Due', 'Next action', 'Visit', 'Calls', 'Lost reason', 'Added', 'Won at']);
         foreach ($list as $l) {
+            // Same two figures as the screen's Paid / Due columns, so the sheet reconciles with it.
+            $money = shra_lead_money($l);
             fputcsv($out, [$l->id, $l->name, $l->phonenumber, $l->email, $l->city, $l->source_name, $l->agent_name, shra_lead_stage_label($l->stage), $l->rider_for, $l->rider_age, $l->package_name, $l->preferred_start_date, $l->batch_label,
-                $l->expected_value, $l->next_action_at, trim($l->visit_date . ' ' . $l->visit_slot), $l->call_attempts, $l->lost_reason, $l->dateadded, $l->won_at]);
+                $l->expected_value, $money['paid'], $money['deal'] > 0 ? $money['due'] : '', $l->next_action_at, trim($l->visit_date . ' ' . $l->visit_slot), $l->call_attempts, $l->lost_reason, $l->dateadded, $l->won_at]);
         }
         fclose($out);
     }
@@ -442,13 +450,28 @@ class Shra_leads extends AdminController
      */
     private function collect_payment($lead_id, $method = null, $when = '')
     {
+        // What the whole package costs, taken alongside the advance — saved first and on its
+        // own, so a total typed without an amount is not thrown away. Its own field names, so
+        // the Confirm dialog's package_id / expected_value are never shadowed by this.
+        $deal_err = '';
+        if ($this->input->post('deal_package_id') !== null || $this->input->post('deal_value') !== null) {
+            $deal = $this->leads->set_deal(
+                $lead_id,
+                (int) $this->input->post('deal_package_id'),
+                $this->input->post('deal_value')
+            );
+            if (is_string($deal)) {
+                $deal_err = ' ' . $deal;
+            }
+        }
+
         // "4,500" / "4 500" must not become ₹4 — strip the grouping before casting.
         $raw = str_replace([',', ' ', "\xc2\xa0"], '', trim((string) $this->input->post('paid_amount')));
         if ($raw === '') {
-            return ['', ''];
+            return ['', $deal_err];
         }
         if (!is_numeric($raw) || (float) $raw <= 0) {
-            return ['', ' The amount collected was not a number, so no payment was recorded.'];
+            return ['', ' The amount collected was not a number, so no payment was recorded.' . $deal_err];
         }
 
         [$file, $file_name, $file_err] = $this->store_payment_proof();
@@ -470,7 +493,13 @@ class Shra_leads extends AdminController
             return ['', ' Payment not saved: ' . (is_string($pay) ? $pay : 'could not save it.')];
         }
 
-        return [' · ' . shra_money($raw) . ' collected', $file_err !== '' ? ' ' . $file_err . ' Attach it from the lead page.' : ''];
+        // The balance is what the agent has to chase next, so say it back to them.
+        $fresh = $this->leads->get($lead_id);
+        $money = $fresh ? shra_lead_money($fresh) : ['due' => 0, 'deal' => 0];
+        $said  = ' · ' . shra_money($raw) . ' collected'
+               . ($money['due'] > 0 ? ' · ' . shra_money($money['due']) . ' still due' : ($money['deal'] > 0 ? ' · fully paid' : ''));
+
+        return [$said, ($file_err !== '' ? ' ' . $file_err . ' Attach it from the lead page.' : '') . $deal_err];
     }
 
     /**

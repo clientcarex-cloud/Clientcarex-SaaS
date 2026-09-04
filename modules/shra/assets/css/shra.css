@@ -332,9 +332,15 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-pay-item .shra-muted{font-size:11.5px}
 .shra-tl.payment .shra-tl-ic,.shra-tl.payment_removed .shra-tl-ic{background:#e7efe0;color:var(--green)}
 .shra-r-paid{width:96px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.shra-r-dueamt{width:88px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .shra-r-paid-amt{color:var(--green);font-weight:700;font-size:12.5px}
-.shra-r-paid-due{color:#a35b18;font-weight:600}
-.shra-r-paid-full{color:var(--muted)}
+.shra-r-paid-due{color:#a35b18;font-weight:700;font-size:12.5px}
+.shra-r-paid-full{color:var(--muted);font-size:12px}
+.shra-r-paid-full i{font-size:9px;color:var(--green)}
+/* the running balance under the Log-call payment box */
+.shra-pay-bal{border-top:1px solid var(--line);margin-top:2px;padding:9px 0 10px;font-size:12px;color:var(--ink-2);line-height:1.5}
+.shra-pay-bal i{color:var(--gold);margin-right:4px}
+.shra-pay-bal b{color:#a35b18}
 /* call history at the foot of the Log call dialog */
 .shra-cl-wrap{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
 .shra-cl-head{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}

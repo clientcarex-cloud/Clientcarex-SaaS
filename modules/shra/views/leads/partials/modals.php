@@ -92,6 +92,17 @@ foreach ($packages as $pk) {
         <div id="shra-call-pay">
             <label class="shra-pay-switch"><input type="checkbox" id="shra-pay-on"> <i class="fa-solid fa-indian-rupee-sign"></i> Payment taken on this call <span class="shra-muted">— advance / part payment</span></label>
             <div class="shra-pay-box" id="shra-pay-box" hidden>
+                <!-- An advance without a package total has no balance behind it: the lead's Due
+                     column and the Pipeline projection both stay blank. So the total is asked
+                     for here, next to the money, rather than waiting for the Confirm dialog. -->
+                <div class="row">
+                    <div class="col-xs-7"><div class="form-group"><label>Package they are buying <span class="shra-muted" style="font-weight:400">&mdash; sets the balance</span></label>
+                        <select name="deal_package_id" id="shra-pay-pkg" class="form-control"><option value="">Not decided</option><?php foreach ($packages as $pk) { ?><option value="<?php echo $pk->id; ?>" data-price="<?php echo $pkg_total[$pk->id]; ?>"><?php echo ucfirst($pk->audience) . ' &middot; ' . html_escape($pk->name) . ' &middot; ' . shra_money($pkg_total[$pk->id]); ?></option><?php } ?></select></div></div>
+                    <div class="col-xs-5"><div class="form-group"><label>Package total <span class="shra-opt">optional</span></label>
+                        <div class="input-group"><span class="input-group-addon"><?php echo html_escape($cur_sym); ?></span>
+                        <input type="number" name="deal_value" id="shra-pay-deal" class="form-control" min="0" step="1" inputmode="decimal" placeholder="Full price"></div>
+                        <div class="help">Override for a negotiated price.</div></div></div>
+                </div>
                 <div class="row">
                     <div class="col-xs-6"><div class="form-group"><label>Amount collected <span class="shra-req">*</span></label>
                         <div class="input-group"><span class="input-group-addon"><?php echo html_escape($cur_sym); ?></span>
@@ -99,6 +110,7 @@ foreach ($packages as $pk) {
                     <div class="col-xs-6"><div class="form-group"><label>Paid by</label>
                         <select name="paid_method" class="form-control"><?php foreach ($methods as $m) { ?><option value="<?php echo html_escape($m); ?>"><?php echo html_escape($m); ?></option><?php } ?></select></div></div>
                 </div>
+                <div class="shra-pay-bal" id="shra-pay-bal" hidden></div>
                 <div class="form-group"><label>Reference / UPI ID <span class="shra-muted" style="font-weight:400">— optional</span></label><input type="text" name="paid_reference" class="form-control" placeholder="Transaction or receipt number"></div>
                 <div class="form-group">
                     <label>Payment screenshot</label>
