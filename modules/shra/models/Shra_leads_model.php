@@ -204,6 +204,59 @@ class Shra_leads_model extends App_Model
                         AND COALESCE(NULLIF(x.expected_value,0), pk.price, 0) > x.paid_amount";
 
     /**
+     * Money on a lead, counted by who owns the lead — not by who happened to be credited on
+     * an invoice. Revenue here is money that actually arrived, in two halves:
+     *
+     *   rev_calls   advances taken on the call, MINUS any that a later bill swallowed. When
+     *               the counter bills a confirmed lead it passes the lead's whole advance
+     *               balance in as money received on the invoice, so counting both ledgers
+     *               would bank the same rupee twice — hence the NOT EXISTS on a bill raised
+     *               at or after the advance.
+     *   rev_counter payments against invoices for enrollments belonging to this lead's rider.
+     *               A group bill is one invoice across several seats, so each seat only takes
+     *               its share of the total; the shares add back up to the invoice.
+     *
+     * The lead-to-rider link is shra_lead_ext.rider_id, which is why none of this depends on
+     * tblshra_lead_attribution any more: reassign a lead and its money moves with it.
+     * {OWNER} is filled in with the ownership test (one agent, or the unassigned pile).
+     */
+    private function money_sql($what, $owner)
+    {
+        $p     = db_prefix();
+        // A seat's share of its invoice: 1 unless the bill covered several riders at once.
+        $share = "(CASE WHEN e2.bill_group IS NULL THEN 1
+                   ELSE e2.total / NULLIF((SELECT SUM(g.total) FROM {$p}shra_enrollments g WHERE g.bill_group = e2.bill_group),0) END)";
+        $sql = [
+            'rev_calls' => "(SELECT COALESCE(SUM(pm.amount),0)
+                FROM {$p}shra_lead_payments pm
+                JOIN {$p}leads l2 ON l2.id = pm.lead_id
+                JOIN {$p}shra_lead_ext x2 ON x2.lead_id = l2.id
+                WHERE {OWNER} AND pm.created_at BETWEEN ? AND ?
+                  AND NOT EXISTS (SELECT 1 FROM {$p}shra_enrollments e2 WHERE e2.rider_id = x2.rider_id
+                                    AND e2.status <> 'cancelled' AND e2.created_at >= pm.created_at))",
+            'rev_counter' => "(SELECT COALESCE(SUM(pr.amount * {$share}),0)
+                FROM {$p}shra_enrollments e2
+                JOIN {$p}shra_lead_ext x2 ON x2.rider_id = e2.rider_id
+                JOIN {$p}leads l2 ON l2.id = x2.lead_id
+                JOIN {$p}invoicepaymentrecords pr ON pr.invoiceid = e2.invoice_id
+                WHERE {OWNER} AND e2.status <> 'cancelled' AND pr.date BETWEEN ? AND ?)",
+            'billed' => "(SELECT COALESCE(SUM(e2.total),0)
+                FROM {$p}shra_enrollments e2
+                JOIN {$p}shra_lead_ext x2 ON x2.rider_id = e2.rider_id
+                JOIN {$p}leads l2 ON l2.id = x2.lead_id
+                WHERE {OWNER} AND e2.status <> 'cancelled' AND e2.created_at BETWEEN ? AND ?)",
+            // Conversions belong to the owner too — a lead that reached Joined in the window.
+            'won' => "(SELECT COUNT(*) FROM {$p}leads l2 JOIN {$p}shra_lead_ext x2 ON x2.lead_id = l2.id
+                WHERE {OWNER} AND x2.won_at BETWEEN ? AND ?)",
+            'renewals' => "(SELECT COUNT(*) FROM {$p}shra_lead_attribution a2
+                JOIN {$p}leads l2 ON l2.id = a2.lead_id
+                WHERE {OWNER} AND a2.kind = 'repeat' AND a2.credited_at BETWEEN ? AND ?)",
+        ];
+
+        return str_replace('{OWNER}', $owner, $sql[$what]);
+    }
+
+    /**
      * The leads behind one header tile, matched by the same rule team_stats() counted
      * them with — so clicking a number lands on exactly the rows that made it.
      * $agent 0 = the whole team. Returns [sql, binds] or null for an unknown metric.
@@ -230,13 +283,24 @@ class Shra_leads_model extends App_Model
                         . ($a ? ' AND l.assigned = ?' : ''),
                     $a ? [$f, $t, $a] : [$f, $t]];
 
+            // A lead this agent owns that reached Joined in the window.
             case 'joined':
-            case 'revenue':
-                return ["EXISTS (SELECT 1 FROM {$p}shra_lead_attribution att WHERE att.lead_id = l.id
-                        AND att.credited_at BETWEEN ? AND ?"
-                        . ($metric === 'joined' ? " AND att.kind = 'first'" : '')
-                        . ($a ? ' AND att.agent_id = ?' : '') . ')',
+                return ['x.won_at BETWEEN ? AND ?' . ($a ? ' AND l.assigned = ?' : ''),
                     $a ? [$f, $t, $a] : [$f, $t]];
+
+            // Money in, on a lead this agent owns — the same two ledgers money_sql() adds up,
+            // so the drill-down lands on exactly the leads behind the Revenue tile.
+            case 'revenue':
+                return ["(EXISTS (SELECT 1 FROM {$p}shra_lead_payments pm WHERE pm.lead_id = l.id
+                            AND pm.created_at BETWEEN ? AND ?
+                            AND NOT EXISTS (SELECT 1 FROM {$p}shra_enrollments e2 WHERE e2.rider_id = x.rider_id
+                                              AND e2.status <> 'cancelled' AND e2.created_at >= pm.created_at))
+                         OR EXISTS (SELECT 1 FROM {$p}shra_enrollments e3
+                                      JOIN {$p}invoicepaymentrecords pr ON pr.invoiceid = e3.invoice_id
+                                     WHERE e3.rider_id = x.rider_id AND e3.status <> 'cancelled'
+                                       AND pr.date BETWEEN ? AND ?))"
+                        . ($a ? ' AND l.assigned = ?' : ''),
+                    $a ? [$f, $t, $f, $t, $a] : [$f, $t, $f, $t]];
 
             // Advances the agent took themselves, plus any taken on their leads by
             // somebody else — the same two sums the Collected tile adds up.
@@ -1681,6 +1745,9 @@ class Shra_leads_model extends App_Model
         // agent recorded themselves; `advance_others` is money someone else took on a lead
         // this agent currently owns — the agent's lead still paid, even if a colleague or the
         // counter recorded it. The table only exists once the module install has run.
+        // Every money figure below is keyed on who owns the lead now, so reassigning a lead
+        // hands its revenue to the new agent — see money_sql().
+        $own     = 'l2.assigned = s.staffid';
         $has_pay = $this->db->table_exists($p . 'shra_lead_payments');
         $adv_sql = $has_pay
             ? "(SELECT COALESCE(SUM(pm.amount),0) FROM {$p}shra_lead_payments pm WHERE pm.staff_id = s.staffid AND pm.created_at BETWEEN ? AND ?) AS advance,
@@ -1695,10 +1762,11 @@ class Shra_leads_model extends App_Model
             (SELECT COUNT(DISTINCT e.lead_id) FROM {$p}shra_lead_events e JOIN {$p}leads l ON l.id = e.lead_id WHERE l.assigned = s.staffid AND e.event_type IN ('visit_scheduled','visit_rescheduled') AND e.created_at BETWEEN ? AND ?) AS visits_booked,
             (SELECT COUNT(DISTINCT e.lead_id) FROM {$p}shra_lead_events e JOIN {$p}leads l ON l.id = e.lead_id WHERE l.assigned = s.staffid AND e.event_type = 'visited' AND e.created_at BETWEEN ? AND ?) AS visited,
             (SELECT COUNT(DISTINCT e.lead_id) FROM {$p}shra_lead_events e JOIN {$p}leads l ON l.id = e.lead_id WHERE l.assigned = s.staffid AND e.event_type = 'confirmed' AND e.created_at BETWEEN ? AND ?) AS confirmed,
-            (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.kind = 'first' AND a.credited_at BETWEEN ? AND ?) AS won,
-            (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.kind = 'repeat' AND a.credited_at BETWEEN ? AND ?) AS renewals,
-            (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.credited_at BETWEEN ? AND ?) AS revenue,
-            (SELECT COALESCE(SUM(a.amount_paid),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = s.staffid AND a.credited_at BETWEEN ? AND ?) AS collected,
+            " . $this->money_sql('won', $own) . " AS won,
+            " . $this->money_sql('renewals', $own) . " AS renewals,
+            " . $this->money_sql('rev_calls', $own) . " AS rev_calls,
+            " . $this->money_sql('rev_counter', $own) . " AS rev_counter,
+            " . $this->money_sql('billed', $own) . " AS billed,
             (SELECT COALESCE(SUM(" . self::DUE_SQL . "),0) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
                 LEFT JOIN {$p}shra_packages pk ON pk.id = x.interest_package_id
                 WHERE l.assigned = s.staffid AND " . self::PIPELINE_WHERE . ") AS pipeline,
@@ -1723,14 +1791,23 @@ class Shra_leads_model extends App_Model
             WHERE s.admin = 1 OR EXISTS (SELECT 1 FROM {$p}staff_permissions sp WHERE sp.staff_id = s.staffid AND sp.feature = 'shra' AND sp.capability IN ('leads_own','leads_all','leads_manage'))
                OR EXISTS (SELECT 1 FROM {$p}shra_lead_attribution a2 WHERE a2.agent_id = s.staffid)
                {$role_w}
-            ORDER BY revenue DESC, won DESC, calls DESC";
+            ORDER BY (rev_calls + rev_counter) DESC, won DESC, calls DESC";
+        // Every subquery above takes exactly one (from, to) pair, in order.
         $b = [];
-        for ($i = 0, $pairs = $has_pay ? 16 : 12; $i < $pairs; $i++) {
+        for ($i = 0, $pairs = $has_pay ? 17 : 13; $i < $pairs; $i++) {
             array_push($b, $f, $t);
         }
         $b[] = substr($from, 0, 7);
         $rows = $this->db->query($sql, $b)->result();
         foreach ($rows as $r) {
+            // Revenue is money that arrived, whichever ledger it landed in; `collected` is kept
+            // as an alias so the EOD report and leaderboard keep reading one obvious field.
+            // A group seat's share is a division, so round before anything formats it.
+            $r->rev_calls            = round((float) $r->rev_calls, 2);
+            $r->rev_counter          = round((float) $r->rev_counter, 2);
+            $r->revenue              = round($r->rev_calls + $r->rev_counter, 2);
+            $r->collected            = $r->revenue;
+            $r->billed               = (float) $r->billed;
             $r->pipeline             = (float) $r->pipeline;
             $r->pipeline_count       = (int) $r->pipeline_count;
             $r->pipeline_paid        = (float) $r->pipeline_paid;
@@ -1762,14 +1839,18 @@ class Shra_leads_model extends App_Model
         $sql = "SELECT s.id, s.name, COALESCE(m.monthly_cost,0) AS monthly_cost,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.source = s.id AND l.dateadded BETWEEN ? AND ?) AS leads,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.source = s.id AND x.visited_at BETWEEN ? AND ?) AS visited,
-            (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.source_id = s.id AND a.kind = 'first' AND a.credited_at BETWEEN ? AND ?) AS won,
-            (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.source_id = s.id AND a.credited_at BETWEEN ? AND ?) AS revenue,
+            " . $this->money_sql('won', 's.id = l2.source') . " AS won,
+            " . $this->money_sql('rev_calls', 's.id = l2.source') . " AS rev_calls,
+            " . $this->money_sql('rev_counter', 's.id = l2.source') . " AS rev_counter,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.source = s.id AND l.lost = 1 AND l.last_status_change BETWEEN ? AND ?) AS lost
             FROM {$p}leads_sources s LEFT JOIN {$p}shra_lead_sources_meta m ON m.source_id = s.id
-            ORDER BY leads DESC, revenue DESC";
-        $rows   = $this->db->query($sql, [$f, $t, $f, $t, $f, $t, $f, $t, $f, $t])->result();
+            ORDER BY leads DESC, (rev_calls + rev_counter) DESC";
+        $rows   = $this->db->query($sql, [$f, $t, $f, $t, $f, $t, $f, $t, $f, $t, $f, $t])->result();
         $months = max(1, round((strtotime($to) - strtotime($from)) / (86400 * 30)));
         foreach ($rows as $r) {
+            // Same money rule as the agent leaderboard, keyed on the source instead of the
+            // owner — otherwise the two Reports cards would contradict each other.
+            $r->revenue = round((float) $r->rev_calls + (float) $r->rev_counter, 2);
             $r->cost = (float) $r->monthly_cost * $months;
             $r->cpl  = $r->leads > 0 && $r->cost > 0 ? round($r->cost / $r->leads) : null;
             $r->roi  = $r->cost > 0 ? round($r->revenue / $r->cost, 1) : null;
@@ -1826,95 +1907,95 @@ class Shra_leads_model extends App_Model
     }
 
     /**
-     * Revenue credited to nobody on the roster — a bill raised against a lead that was
-     * never assigned (public form, auto-assign off) lands on agent_id 0, and every
-     * subquery in team_stats() is keyed on s.staffid, so without this the money is real,
-     * frozen in tblshra_lead_attribution, and invisible on every screen.
+     * Money on leads nobody owns. Every column in team_stats() is keyed on l2.assigned =
+     * s.staffid, so a lead that was never assigned — the public form with auto-assign off —
+     * appears on no agent's row. That money is still the academy's, so the All-staff header
+     * adds it back rather than quietly under-reporting the team.
      */
-    private function unattributed_credit($from, $to)
+    private function unowned_money($from, $to)
     {
-        $p = db_prefix();
+        $own = '(l2.assigned = 0 OR l2.assigned IS NULL)';
+        $f   = $from . ' 00:00:00';
+        $t   = $to . ' 23:59:59';
+        $sql = 'SELECT ' . $this->money_sql('rev_calls', $own) . ' AS rev_calls, '
+             . $this->money_sql('rev_counter', $own) . ' AS rev_counter, '
+             . $this->money_sql('billed', $own) . ' AS billed, '
+             . $this->money_sql('won', $own) . ' AS won, '
+             . $this->money_sql('renewals', $own) . ' AS renewals';
 
-        return $this->db->query("SELECT
-            COALESCE(SUM(a.amount_billed),0) AS revenue,
-            COALESCE(SUM(a.amount_paid),0) AS collected,
-            COALESCE(SUM(a.kind = 'first'),0) AS won,
-            COALESCE(SUM(a.kind = 'repeat'),0) AS renewals
-            FROM {$p}shra_lead_attribution a
-            WHERE a.credited_at BETWEEN ? AND ?
-              AND NOT EXISTS (SELECT 1 FROM {$p}staff s WHERE s.staffid = a.agent_id)",
-            [$from . ' 00:00:00', $to . ' 23:59:59'])->row();
+        return $this->db->query($sql, [$f, $t, $f, $t, $f, $t, $f, $t, $f, $t])->row();
     }
 
     /**
-     * Why the Revenue tile reads zero. Three very different facts look identical on the
-     * screen — nothing was billed at all; something was billed but no lead was credited;
-     * or a colleague was credited instead — and only the middle one is a fault worth
-     * chasing. Returns ['short' => tile line, 'long' => the tooltip], or [] when there is
-     * nothing to explain.
+     * Why the Revenue tile reads zero. Revenue is money that arrived on leads this agent
+     * owns, so a zero means one of three very different things — no money arrived at all;
+     * money arrived at the counter from buyers tied to no lead, so it belongs to nobody;
+     * or it landed on somebody else's leads. Only the middle one is a fault worth chasing.
+     * Returns ['short' => tile line, 'long' => the tooltip], or [] when there is nothing
+     * to explain.
      */
     public function revenue_zero_reason($staff_id, $from, $to)
     {
         $p = db_prefix();
         $f = $from . ' 00:00:00';
         $t = $to . ' 23:59:59';
-        $r = $this->db->query("SELECT
-            (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.credited_at BETWEEN ? AND ?) AS team_revenue,
+        // Team-wide money in, counted exactly the way the tile counts one agent's.
+        $any = $this->money_sql('rev_calls', '1=1') . ' + ' . $this->money_sql('rev_counter', '1=1');
+        $r   = $this->db->query("SELECT ({$any}) AS team_revenue,
             (SELECT COUNT(*) FROM {$p}shra_enrollments e WHERE e.status <> 'cancelled' AND e.created_at BETWEEN ? AND ?) AS bills,
             (SELECT COALESCE(SUM(e.total),0) FROM {$p}shra_enrollments e WHERE e.status <> 'cancelled' AND e.created_at BETWEEN ? AND ?) AS billed
-            ", [$f, $t, $f, $t, $f, $t])->row();
+            ", [$f, $t, $f, $t, $f, $t, $f, $t])->row();
         if (!$r) {
             return [];
         }
-        // Someone was credited, just not the agent being looked at.
+        // Money did arrive, just not on this agent's leads.
         if ((float) $r->team_revenue > 0) {
             return (int) $staff_id ? [
-                'short' => 'credited to other agents',
-                'long'  => shra_money((float) $r->team_revenue) . ' was billed and credited in this period, but to other agents — '
-                         . 'nothing was credited to this one. Switch the agent filter to All staff to see it.',
+                'short' => "on other agents' leads",
+                'long'  => shra_money((float) $r->team_revenue) . ' came in during this period, but on leads other agents own — '
+                         . "none on this one's. Switch the agent filter to All staff to see it.",
             ] : [];
         }
-        // Bills exist but none reached a lead. Two very different things look the same here —
-        // walk-ins who were never in the pipeline (correct, nothing to fix) and leads the
-        // counter failed to match (a miss). Only the buyers' phone numbers can tell them
-        // apart, so ask them: for each uncredited bill, is there a lead on that mobile?
+        // Bills exist but none of the buyers is tied to a lead. Two very different things look
+        // the same here — walk-ins who were never in the pipeline (correct, nothing to fix)
+        // and leads the counter failed to link (a miss). Only the buyers' phone numbers can
+        // tell them apart, so ask them: for each of those bills, is there a lead on that mobile?
         if ((int) $r->bills > 0) {
             $n     = (int) $r->bills;
-            $miss  = $this->uncredited_bills($f, $t);
             $named = [];
-            foreach ($miss as $b) {
+            foreach ($this->uncredited_bills($f, $t) as $b) {
                 if ($this->find_by_phone($b->mobile)) {
                     $named[] = $b->full_name;
                 }
             }
-            $short = $n . ' bill' . ($n == 1 ? '' : 's') . ', none credited';
+            $short = $n . ' bill' . ($n == 1 ? '' : 's') . ', not linked to a lead';
             $head  = $n . ' bill' . ($n == 1 ? ' was' : 's were') . ' raised in this period (' . shra_money((float) $r->billed)
-                   . '), but not one was credited to a lead. ';
+                   . '), but not one of the buyers is linked to a lead, so that money belongs to no owner. ';
             if (count($named)) {
                 $show = array_slice($named, 0, 4);
 
                 return [
-                    'short' => $short . ' · ' . count($named) . ' matched a lead',
+                    'short' => $short . ' · ' . count($named) . ' should be',
                     'long'  => $head . count($named) . ' of them (' . implode(', ', $show)
                              . (count($named) > count($show) ? ' and ' . (count($named) - count($show)) . ' more' : '')
                              . ') ' . (count($named) == 1 ? 'was' : 'were') . ' billed on a mobile that DOES belong to a lead, '
-                             . 'so that revenue should have been credited and was not. Open those leads and check whether '
-                             . '"credit this agent" was unticked at the counter.',
+                             . 'so that money should be showing against its owner. The rider was never linked to the lead at '
+                             . 'billing time — bill those leads from the lead page so the link is made.',
                 ];
             }
 
             return [
                 'short' => $short,
-                'long'  => $head . 'None of the buyers\' mobiles matches a lead, so these were walk-ins who never went through '
-                         . 'the calling pipeline — nothing is broken, that revenue simply belongs to no agent. It still shows on '
-                         . 'the Billing and Reports screens.',
+                'long'  => $head . "None of the buyers' mobiles matches a lead either, so these were walk-ins who never went "
+                         . 'through the calling pipeline — nothing is broken, that money simply belongs to no agent. It still '
+                         . 'shows on the Billing and Reports screens.',
             ];
         }
 
         return [
-            'short' => 'no bills raised yet',
-            'long'  => 'Nothing has been billed at the counter in this period, so there is no revenue to show. Advances taken on '
-                     . 'calls sit in Collected until a bill is raised.',
+            'short' => 'no money in yet',
+            'long'  => 'No money has arrived on anyone\'s leads in this period — no advance on a call, no payment at the '
+                     . 'counter. Revenue moves the moment either of those happens; it does not wait for a bill.',
         ];
     }
 
@@ -1938,7 +2019,8 @@ class Shra_leads_model extends App_Model
     private function team_totals(array $rows, $from = '', $to = '')
     {
         $keys = ['assigned', 'calls', 'contacted', 'visits_booked', 'visited', 'confirmed', 'won', 'renewals',
-            'revenue', 'collected', 'pipeline', 'pipeline_count', 'pipeline_paid', 'pipeline_paid_count',
+            'revenue', 'collected', 'rev_calls', 'rev_counter', 'billed',
+            'pipeline', 'pipeline_count', 'pipeline_paid', 'pipeline_paid_count',
             'advance', 'advance_count', 'advance_others', 'advance_others_count',
             'open_now', 'overdue_now', 'stale_now', 'lost', 'calls_target', 'visits_target', 'revenue_target', 'cost'];
         $t = (object) array_fill_keys($keys, 0);
@@ -1947,13 +2029,16 @@ class Shra_leads_model extends App_Model
                 $t->$k += (float) ($r->$k ?? 0);
             }
         }
-        // Credit that belongs to no staff row at all is still the team's money.
-        if ($from !== '' && $to !== '' && ($u = $this->unattributed_credit($from, $to))) {
-            $t->revenue   += (float) $u->revenue;
-            $t->collected += (float) $u->collected;
-            $t->won       += (int) $u->won;
-            $t->renewals  += (int) $u->renewals;
+        // Money on leads that belong to no agent is still the team's money.
+        if ($from !== '' && $to !== '' && ($u = $this->unowned_money($from, $to))) {
+            $t->rev_calls   = round($t->rev_calls + (float) $u->rev_calls, 2);
+            $t->rev_counter = round($t->rev_counter + (float) $u->rev_counter, 2);
+            $t->billed      += (float) $u->billed;
+            $t->won         += (int) $u->won;
+            $t->renewals    += (int) $u->renewals;
         }
+        $t->revenue   = round($t->rev_calls + $t->rev_counter, 2);
+        $t->collected = $t->revenue;
         $t->staffid      = 0;
         $t->name         = 'All staff';
         $t->contact_rate = $t->assigned > 0 ? round($t->contacted / $t->assigned * 100) : 0;
@@ -2000,10 +2085,10 @@ class Shra_leads_model extends App_Model
             ({$ev} = 'visited') AS visited,
             ({$ev} = 'confirmed') AS confirmed,
             ({$ev} = 'no_show') AS no_show,
-            (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ? AND a.kind = 'first') AS won,
-            (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ? AND a.kind = 'repeat') AS renewals,
-            (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ?) AS revenue,
-            (SELECT COALESCE(SUM(a.amount_paid),0) FROM {$p}shra_lead_attribution a WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ?) AS collected,
+            " . $this->money_sql('won', 'l2.assigned = ?') . " AS won,
+            " . $this->money_sql('renewals', 'l2.assigned = ?') . " AS renewals,
+            " . $this->money_sql('rev_calls', 'l2.assigned = ?') . " AS rev_calls,
+            " . $this->money_sql('rev_counter', 'l2.assigned = ?') . " AS rev_counter,
             {$pay_sql} AS advance,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.assigned = ? AND l.last_status_change BETWEEN ? AND ? AND l.lost = 1) AS lost,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_now,
@@ -2016,11 +2101,17 @@ class Shra_leads_model extends App_Model
         }
         array_push($b, $id, $id, $now, $id, $tm);
         $today = $this->db->query($sql, $b)->row();
+        // Money in, split by where it landed — the report reads one number, the tiles two.
+        $today->rev_calls   = round((float) $today->rev_calls, 2);
+        $today->rev_counter = round((float) $today->rev_counter, 2);
+        $today->revenue     = round($today->rev_calls + $today->rev_counter, 2);
+        $today->collected = $today->revenue;
 
         // Names make the report worth reading — who joined, who is coming tomorrow.
-        $wins = $this->db->query("SELECT l.name, e.package_name, a.amount_billed, a.kind FROM {$p}shra_lead_attribution a
-            LEFT JOIN {$p}leads l ON l.id = a.lead_id LEFT JOIN {$p}shra_enrollments e ON e.id = a.enrollment_id
-            WHERE a.agent_id = ? AND a.credited_at BETWEEN ? AND ? ORDER BY a.id ASC LIMIT 10", [$id, $f, $t])->result();
+        $wins = $this->db->query("SELECT l.name, e.package_name, e.total AS amount_billed, 'first' AS kind
+            FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
+            LEFT JOIN {$p}shra_enrollments e ON e.id = x.first_enrollment_id
+            WHERE l.assigned = ? AND x.won_at BETWEEN ? AND ? ORDER BY x.won_at ASC LIMIT 10", [$id, $f, $t])->result();
         $visits = $this->db->query("SELECT l.name, l.phonenumber, x.visit_slot FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
             WHERE l.assigned = ? AND l.lost = 0 AND l.junk = 0 AND x.stage_key = 'visit_scheduled' AND x.visit_date = ?
             ORDER BY x.visit_slot ASC LIMIT 10", [$id, $tm])->result();
@@ -2040,19 +2131,27 @@ class Shra_leads_model extends App_Model
     /** Dashboard tiles. */
     public function summary()
     {
-        $p  = db_prefix();
+        $p   = db_prefix();
         $now = date('Y-m-d H:i:s');
-        $wk = shra_lead_weekend_dates();
-        $r  = (array) $this->db->query("SELECT
+        $wk  = shra_lead_weekend_dates();
+        $mf  = date('Y-m-01 00:00:00');
+        $mt  = date('Y-m-d 23:59:59');
+        $r   = (array) $this->db->query("SELECT
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_leads,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE " . shra_lead_overdue_where($now) . ") AS overdue,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.lost = 0 AND l.junk = 0 AND x.stage_key = 'visit_scheduled' AND x.visit_date IN (?, ?)) AS weekend_visits,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.dateadded >= ?) AS new_month,
-            (SELECT COALESCE(SUM(a.amount_billed),0) FROM {$p}shra_lead_attribution a WHERE a.credited_at >= ?) AS revenue_month,
-            (SELECT COUNT(*) FROM {$p}shra_lead_attribution a WHERE a.kind = 'first' AND a.credited_at >= ?) AS won_month",
-            [$wk['sat'], $wk['sun'], date('Y-m-01 00:00:00'), date('Y-m-01 00:00:00'), date('Y-m-01 00:00:00')])->row();
-        $top = $this->db->query("SELECT a.agent_id, CONCAT(s.firstname,' ',s.lastname) AS name, SUM(a.amount_billed) AS revenue FROM {$p}shra_lead_attribution a
-            LEFT JOIN {$p}staff s ON s.staffid = a.agent_id WHERE a.credited_at >= ? GROUP BY a.agent_id ORDER BY revenue DESC LIMIT 1", [date('Y-m-01 00:00:00')])->row();
+            " . $this->money_sql('rev_calls', '1=1') . " AS rev_calls,
+            " . $this->money_sql('rev_counter', '1=1') . " AS rev_counter,
+            " . $this->money_sql('won', '1=1') . " AS won_month",
+            [$wk['sat'], $wk['sun'], date('Y-m-01 00:00:00'), $mf, $mt, $mf, $mt, $mf, $mt])->row();
+        // Same money rule as the leads header, so the dashboard cannot contradict it.
+        $r['revenue_month'] = round((float) $r['rev_calls'] + (float) $r['rev_counter'], 2);
+        // Top agent by the money on the leads they own right now.
+        $top = $this->db->query('SELECT s.staffid AS agent_id, CONCAT(s.firstname," ",s.lastname) AS name, ('
+            . $this->money_sql('rev_calls', 'l2.assigned = s.staffid') . ' + '
+            . $this->money_sql('rev_counter', 'l2.assigned = s.staffid') . ") AS revenue
+            FROM {$p}staff s HAVING revenue > 0 ORDER BY revenue DESC LIMIT 1", [$mf, $mt, $mf, $mt])->row();
         $r['top_agent'] = $top;
 
         return $r;
@@ -2508,8 +2607,13 @@ class Shra_leads_model extends App_Model
             foreach ($over as $o) {
                 $parts[] = ($o->name ?: 'Unassigned') . ' ' . $o->c;
             }
-            $yday = $this->db->query("SELECT COALESCE(SUM(amount_billed),0) AS v FROM {$p}shra_lead_attribution WHERE credited_at >= ? AND credited_at < ?", [date('Y-m-d 00:00:00', strtotime('-1 day')), date('Y-m-d 00:00:00')])->row()->v;
-            $text = 'Open ' . $sum['open_leads'] . ' · Overdue ' . $sum['overdue'] . (count($parts) ? ' (' . implode(', ', $parts) . ')' : '') . ' · Weekend visits ' . $sum['weekend_visits'] . ' · Yesterday revenue from leads ' . shra_money($yday);
+            // Yesterday's money on leads, counted the same way every other screen counts it.
+            $yf   = date('Y-m-d 00:00:00', strtotime('-1 day'));
+            $yt   = date('Y-m-d 23:59:59', strtotime('-1 day'));
+            $yrow = $this->db->query('SELECT (' . $this->money_sql('rev_calls', '1=1') . ' + '
+                . $this->money_sql('rev_counter', '1=1') . ') AS v', [$yf, $yt, $yf, $yt])->row();
+            $yday = $yrow ? (float) $yrow->v : 0;
+            $text = 'Open ' . $sum['open_leads'] . ' · Overdue ' . $sum['overdue'] . (count($parts) ? ' (' . implode(', ', $parts) . ')' : '') . ' · Weekend visits ' . $sum['weekend_visits'] . ' · Yesterday money from leads ' . shra_money($yday);
             foreach ($managers as $sid) {
                 add_notification(['description' => 'shra_not_lead_digest', 'touserid' => $sid, 'fromcompany' => 1, 'link' => 'shra/shra_leads/team', 'additional_data' => serialize([$text])]);
             }

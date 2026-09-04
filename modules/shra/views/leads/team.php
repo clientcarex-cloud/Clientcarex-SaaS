@@ -60,7 +60,7 @@
                 <tr>
                     <th class="num">Leads</th><th class="num">Calls</th><th class="num">Visited</th>
                     <th class="num">Joined</th><th class="num">Win %</th>
-                    <th class="num">Collected by agent</th><th class="num">Collected by others</th><th class="num">Revenue billed</th><th class="num">Paid on bills</th>
+                    <th class="num">Advances by agent</th><th class="num">Advances by others</th><th class="num">Revenue in</th><th class="num">Billed</th>
                     <th class="num lb-x">Reached</th><th class="num lb-x">Confirmed</th><th class="num lb-x">Days to win</th><th class="num lb-x">Open</th><th class="num lb-x">Overdue</th><th class="num lb-x">Stale</th>
                 </tr>
             </thead>
@@ -76,8 +76,9 @@
                     <td class="num"><?php echo (int) $r->win_rate; ?>%</td>
                     <td class="num money cash"><?php if ($r->advance > 0) { ?><a href="<?php echo $adv_link($r->name); ?>" title="See these payments"><?php echo shra_money($r->advance); ?></a><span class="sub"><?php echo (int) $r->advance_count; ?> payment<?php echo $r->advance_count == 1 ? '' : 's'; ?></span><?php } else { ?><span class="shra-muted" style="font-weight:400">—</span><?php } ?></td>
                     <td class="num money others"><?php if ($r->advance_others > 0) { echo shra_money($r->advance_others); ?><span class="sub"><?php echo (int) $r->advance_others_count; ?> payment<?php echo $r->advance_others_count == 1 ? '' : 's'; ?> on their leads</span><?php } else { ?><span class="shra-muted" style="font-weight:400">—</span><?php } ?></td>
-                    <td class="num money"><?php echo $r->revenue > 0 ? shra_money($r->revenue) : '<span class="shra-muted" style="font-weight:400">—</span>'; ?></td>
-                    <td class="num"><?php if ($r->revenue > 0) { echo shra_money($r->collected); ?><span class="sub"><?php echo round($r->collected / $r->revenue * 100); ?>% of billed</span><?php } else { ?><span class="shra-muted">—</span><?php } ?></td>
+                    <td class="num money"><?php if ($r->revenue > 0) { echo shra_money($r->revenue); ?><span class="sub"><?php echo shra_money($r->rev_calls); ?> calls · <?php echo shra_money($r->rev_counter); ?> counter</span><?php } else { ?><span class="shra-muted" style="font-weight:400">—</span><?php } ?></td>
+                    <?php // Revenue is money in; this column is what was billed on the same leads, so the pair reads "collected X of Y". ?>
+                    <td class="num"><?php if ($r->billed > 0) { echo shra_money($r->billed); ?><span class="sub"><?php echo round($r->revenue / $r->billed * 100); ?>% collected</span><?php } else { ?><span class="shra-muted">—</span><?php } ?></td>
                     <td style="min-width:120px"><?php if ($r->revenue_target > 0) { $pc = min(100, round($r->revenue / $r->revenue_target * 100)); ?><div class="shra-progress"><span style="width:<?php echo $pc; ?>%;background:<?php echo $pc >= 100 ? 'var(--green)' : 'var(--gold)'; ?>"></span></div><span class="sub"><?php echo $pc; ?>% of <?php echo shra_money($r->revenue_target); ?></span><?php } else { ?><span class="shra-muted">no target</span><?php } ?></td>
                     <td class="num lb-x"><?php echo (int) $r->contacted; ?><span class="sub"><?php echo (int) $r->contact_rate; ?>% of leads</span></td>
                     <td class="num lb-x"><?php echo (int) $r->confirmed; ?></td>

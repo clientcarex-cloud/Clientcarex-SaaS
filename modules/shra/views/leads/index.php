@@ -26,6 +26,9 @@
     $pipe    = $m && isset($m->pipeline) ? (float) $m->pipeline : 0;
     $pipe_n  = $m && isset($m->pipeline_count) ? (int) $m->pipeline_count : 0;
     $pipe_p  = $m && isset($m->pipeline_paid) ? (float) $m->pipeline_paid : 0;
+    // Revenue is money in, split by where it landed — advances on calls, and the counter.
+    $rev_calls   = $m && isset($m->rev_calls) ? (float) $m->rev_calls : 0;
+    $rev_counter = $m && isset($m->rev_counter) ? (float) $m->rev_counter : 0;
     // Why Revenue reads zero, when it does: a short line for the tile, the whole story on hover.
     $rev_why = isset($revenue_note) && is_array($revenue_note) ? $revenue_note : [];
     $all   = $scope === 'all';
@@ -103,12 +106,19 @@
             // rather than one sum that would double-count once the lead is billed.
             ['collected', 'Collected', 'fa-hand-holding-dollar', $adv, 0, true,
                 $adv_n ? $adv_n . ' advance' . ($adv_n == 1 ? '' : 's') . ' on calls' . ($adv_oth > 0 ? ' · ' . shra_money($adv_oth) . ' by others' : '') : 'no advances yet', null,
-                'Advances taken on calls, before any bill exists. Click to see those leads.'],
+                'Advances taken on calls, before any bill exists. This money is already inside Revenue — the two tiles '
+                . 'are not separate pots. Click to see those leads.'],
             // A zero here reads as a fault unless the screen says why, so at zero the tile
             // spells it out instead of showing the per-day pace it would need.
             ['revenue', 'Revenue', 'fa-indian-rupee-sign', $rev, $rev_t, true,
-                $rev > 0 ? 'billed · ' . shra_money((float) $m->collected) . ' paid' : ($rev_why['short'] ?? 'no bills raised yet'), null,
-                'Billed at the counter — it only moves when a bill is raised, so advances on calls do not count here. Click to see the billed leads.'
+                $rev > 0
+                    ? shra_money($rev_calls) . ' on calls · ' . shra_money($rev_counter) . ' at counter'
+                    : ($rev_why['short'] ?? 'no money in yet'), null,
+                'Money that actually arrived on the leads this agent owns — advances taken on calls plus payments at the '
+                    . 'counter. It follows the lead, so reassigning one moves its revenue too, and it does not wait for a '
+                    . 'bill. Collected is the advances half of this number, not a separate pot — do not add them up.'
+                    // With a target set the line under the number is the pace, so the split lives here.
+                    . ($rev > 0 ? ' This period: ' . shra_money($rev_calls) . ' on calls, ' . shra_money($rev_counter) . ' at the counter.' : '')
                     . (isset($rev_why['long']) ? ' — ' . $rev_why['long'] : ''),
                 $rev <= 0],
             // Not money that has moved: money already promised. Every open lead that paid

@@ -1068,7 +1068,8 @@ function shra_lead_eod_message(array $d)
 
     $L[] = '🏆 *CLOSED TODAY*';
     $L[] = 'Joined *' . $n($t->won) . '*  ·  Renewals *' . $n($t->renewals) . '*  ·  Lost *' . $n($t->lost) . '*';
-    $L[] = 'Revenue *' . shra_money($t->revenue) . '*  ·  Collected *' . shra_money($t->collected) . '*';
+    $L[] = 'Money in *' . shra_money($t->revenue) . '*  ·  on calls *' . shra_money($t->rev_calls)
+         . '*  ·  at counter *' . shra_money($t->rev_counter) . '*';
     if (isset($t->advance) && (float) $t->advance > 0) {
         $L[] = 'Advance taken on calls *' . shra_money($t->advance) . '*';
     }
