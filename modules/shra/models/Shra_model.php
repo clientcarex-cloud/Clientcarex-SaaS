@@ -15,15 +15,51 @@ class Shra_model extends App_Model
 
     /* ═══════════════════════ Numbering ═══════════════════════ */
 
-    private function next_number($option, $prefix, $pad = 4)
+    /**
+     * The next number in a series (rider, enrollment, membership, certificate).
+     *
+     * The counter is read straight from the options row and never through get_option(): these
+     * options are autoloaded into a per-request cache that update_option() does not refresh, so
+     * two calls in one request — a group bill opens one wallet per seat, and a family of new
+     * friends needs one rider number each — both handed back the same number and the second
+     * insert died on the unique key. LAST_INSERT_ID() makes the bump atomic on the connection,
+     * so two counters billing at the same moment cannot land on the same number either.
+     *
+     * $table/$column, when given, are the unique series this number lands in: a counter that has
+     * fallen behind the table (an import, a hand-edited option) skips forward instead of
+     * handing out a number that is already taken.
+     */
+    private function next_number($option, $prefix, $pad = 4, $table = null, $column = null)
     {
-        $n = (int) get_option($option);
-        if ($n < 1) {
-            $n = 1;
-        }
-        update_option($option, $n + 1);
+        $p    = db_prefix();
+        $name = $this->db->escape($option);
+        $no   = '';
 
-        return $prefix . str_pad($n, $pad, '0', STR_PAD_LEFT);
+        for ($try = 0; $try < 100; $try++) {
+            // The option holds the *next* number, so bumping it hands us the one we just took.
+            // The REGEXP guard keeps a blank or hand-mangled counter from aborting the statement
+            // under strict mode (CAST('' AS UNSIGNED) is an error, not a zero).
+            $this->db->query('UPDATE ' . $p . 'options SET value = LAST_INSERT_ID('
+                . 'IF(value REGEXP \'^[0-9]+$\', GREATEST(CAST(value AS UNSIGNED), 1), 1) + 1'
+                . ') WHERE name = ' . $name);
+            if ($this->db->affected_rows() < 1) {
+                // Counter row missing (upgraded from an older install, or wiped by hand).
+                $row = ['name' => $option, 'value' => '1'];
+                if ($this->db->field_exists('autoload', $p . 'options')) {
+                    $row['autoload'] = 1;
+                }
+                $this->db->insert($p . 'options', $row);
+
+                continue;
+            }
+            $n  = max(1, (int) $this->db->query('SELECT LAST_INSERT_ID() AS v')->row()->v - 1);
+            $no = $prefix . str_pad($n, $pad, '0', STR_PAD_LEFT);
+            if (!$table || !$column || !$this->db->where($column, $no)->count_all_results($p . $table)) {
+                return $no;
+            }
+        }
+
+        return $no !== '' ? $no : $prefix . str_pad((string) time(), $pad, '0', STR_PAD_LEFT);
     }
 
     /* ═══════════════════════ Riders ═══════════════════════ */
@@ -184,27 +220,39 @@ class Shra_model extends App_Model
      */
     public function find_rider_by_mobile_name($mobile, $name)
     {
+        $rows = $this->find_riders_by_mobile_name($mobile, $name, 1);
+
+        return $rows ? $rows[0] : null;
+    }
+
+    /**
+     * Every rider on this mobile under this name, oldest first. Two friends really can share a
+     * name on one bill, and each of them owns a rider row — the caller walks this list so a
+     * repeat visit reuses both rows instead of billing one of them twice.
+     */
+    public function find_riders_by_mobile_name($mobile, $name, $limit = 10)
+    {
         $digits = preg_replace('/\D+/', '', (string) $mobile);
         $name   = trim((string) $name);
         if ($digits === '' || $name === '') {
-            return null;
+            return [];
         }
-        $r = $this->db
+        $rows = $this->db
             ->where("REPLACE(REPLACE(REPLACE(mobile,' ',''),'-',''),'+','') LIKE '%" . $this->db->escape_like_str($digits) . "'", null, false)
             ->where('LOWER(full_name) = ' . $this->db->escape(mb_strtolower($name)), null, false)
-            ->limit(1)->get(db_prefix() . 'shra_riders')->row();
-        if ($r) {
+            ->order_by('id', 'ASC')->limit(max(1, (int) $limit))->get(db_prefix() . 'shra_riders')->result();
+        foreach ($rows as $r) {
             $this->decorate_rider($r);
         }
 
-        return $r;
+        return $rows;
     }
 
     public function add_rider(array $data, $source = 'staff')
     {
         $data = $this->clean_rider_data($data);
 
-        $data['rider_no']   = $this->next_number('shra_next_rider_no', 'SHRA-');
+        $data['rider_no']   = $this->next_number('shra_next_rider_no', 'SHRA-', 4, 'shra_riders', 'rider_no');
         $data['source']     = $source;
         $data['is_minor']   = shra_is_minor($data['dob'] ?? null) ? 1 : 0;
         $data['ip_address'] = $this->input->ip_address();
@@ -220,7 +268,7 @@ class Shra_model extends App_Model
 
         // Learners receive a membership number straight away
         if (($data['rider_type'] ?? 'learner') === 'learner') {
-            $data['membership_no']        = $this->next_number('shra_next_membership_no', 'SHRA-M-', 4);
+            $data['membership_no']        = $this->next_number('shra_next_membership_no', 'SHRA-M-', 4, 'shra_riders', 'membership_no');
             $data['membership_issued_at'] = date('Y-m-d H:i:s');
         }
 
@@ -250,7 +298,7 @@ class Shra_model extends App_Model
 
         // Learner switched on later → issue a membership number
         if (($data['rider_type'] ?? $rider->rider_type) === 'learner' && empty($rider->membership_no)) {
-            $data['membership_no']        = $this->next_number('shra_next_membership_no', 'SHRA-M-', 4);
+            $data['membership_no']        = $this->next_number('shra_next_membership_no', 'SHRA-M-', 4, 'shra_riders', 'membership_no');
             $data['membership_issued_at'] = date('Y-m-d H:i:s');
         }
 
@@ -296,7 +344,7 @@ class Shra_model extends App_Model
 
         $upd = ['rider_type' => $type];
         if ($type === 'learner' && empty($rider->membership_no)) {
-            $upd['membership_no']        = $this->next_number('shra_next_membership_no', 'SHRA-M-', 4);
+            $upd['membership_no']        = $this->next_number('shra_next_membership_no', 'SHRA-M-', 4, 'shra_riders', 'membership_no');
             $upd['membership_issued_at'] = date('Y-m-d H:i:s');
         }
         $this->db->where('id', (int) $id)->update(db_prefix() . 'shra_riders', $upd);
@@ -556,87 +604,118 @@ class Shra_model extends App_Model
             return $splits;
         }
 
-        $guests = $this->group_riders($rider, $package, $names);
-        if (is_string($guests)) {
-            return $guests;
-        }
-        $riders = array_merge([$rider], $guests);
-
-        // Ensure a core customer exists (riders created before linking)
-        if (!$rider->client_id) {
-            $link = $this->ensure_client((array) $rider);
-            $this->db->where('id', $rider->id)->update(db_prefix() . 'shra_riders', $link);
-            $rider->client_id  = $link['client_id'];
-            $rider->contact_id = $link['contact_id'];
-        }
-
         $this->load->model('invoices_model');
         $this->load->model('payment_modes_model');
 
-        $client = $this->db->where('userid', $rider->client_id)->get(db_prefix() . 'clients')->row();
+        // Everything from here writes money: the invoice, its payment records and one sessions
+        // wallet per seat. A group bill is several inserts, so it goes in or it does not go in
+        // at all — a seat that fails half way must never leave an invoice the counter cannot see.
+        $this->db->trans_begin();
 
-        $status = $paid_amount >= $group_total ? 2 : ($paid_amount > 0 ? 3 : 1); // paid | partial | unpaid
-
-        $invoice_data = $this->invoice_payload($rider, $package, $quote, $client, $status, [
-            'source'                => 'counter billing',
-            'allowed_payment_modes' => $this->split_mode_ids($splits),
-            'seats'                 => $seats,
-            'riders'                => $riders,
-        ]);
-
-        $invoice_id = $this->invoices_model->add($invoice_data);
-        if (!$invoice_id) {
-            return 'Could not create the invoice.';
-        }
-
-        foreach ($splits as $s) {
-            $this->db->insert(db_prefix() . 'invoicepaymentrecords', [
-                'invoiceid'     => $invoice_id,
-                'amount'        => $s['amount'],
-                'paymentmode'   => $s['mode'],
-                'date'          => date('Y-m-d'),
-                'daterecorded'  => date('Y-m-d H:i:s'),
-                'transactionid' => $s['reference'],
-                'note'          => 'SHRA counter · ' . $package->name,
-            ]);
-        }
-        if (count($splits)) {
-            update_invoice_status($invoice_id, true);
-            $this->invoices_model->save_formatted_number($invoice_id);
-        }
-
-        $mode_name = $this->payment_mode_label($splits);
-
-        // One sessions wallet per rider. The money is shared out across the seats so no seat
-        // reads the whole invoice as its own — see decorate_enrollment().
-        $group  = $seats > 1 ? bin2hex(random_bytes(8)) : null;
-        $shares = $this->share_amount($paid_amount, $seats);
-        $first  = null;
-        $ids    = [];
-        foreach ($riders as $i => $r) {
-            $seat = $this->add_enrollment($r, $package, $quote, $invoice_id, $shares[$i], $mode_name, array_merge($opts, [
-                // bill_token is unique per row, so only the payer's seat carries the guard token.
-                'bill_token' => $i === 0 ? $token : '',
-                'bill_group' => $group,
-                // A group is credited once, after the loop, when every seat's total is known.
-                'skip_lead'  => $group !== null,
-            ]));
-            $ids[] = $seat['enrollment_id'];
-            if ($i === 0) {
-                $first = $seat;
+        try {
+            // Ensure a core customer exists (riders created before linking). This runs before the
+            // guests are added so they land on the payer's customer instead of opening their own.
+            if (!$rider->client_id) {
+                $link = $this->ensure_client((array) $rider);
+                $this->db->where('id', $rider->id)->update(db_prefix() . 'shra_riders', $link);
+                $rider->client_id  = $link['client_id'];
+                $rider->contact_id = $link['contact_id'];
             }
+
+            $guests = $this->group_riders($rider, $package, $names);
+            if (is_string($guests)) {
+                $this->db->trans_rollback();
+
+                return $guests;
+            }
+            $riders = array_merge([$rider], $guests);
+
+            $client = $this->db->where('userid', $rider->client_id)->get(db_prefix() . 'clients')->row();
+
+            $status = $paid_amount >= $group_total ? 2 : ($paid_amount > 0 ? 3 : 1); // paid | partial | unpaid
+
+            $invoice_data = $this->invoice_payload($rider, $package, $quote, $client, $status, [
+                'source'                => 'counter billing',
+                'allowed_payment_modes' => $this->split_mode_ids($splits),
+                'seats'                 => $seats,
+                'riders'                => $riders,
+            ]);
+
+            $invoice_id = $this->invoices_model->add($invoice_data);
+            if (!$invoice_id) {
+                $this->db->trans_rollback();
+
+                return 'Could not create the invoice.';
+            }
+
+            foreach ($splits as $s) {
+                $this->db->insert(db_prefix() . 'invoicepaymentrecords', [
+                    'invoiceid'     => $invoice_id,
+                    'amount'        => $s['amount'],
+                    'paymentmode'   => $s['mode'],
+                    'date'          => date('Y-m-d'),
+                    'daterecorded'  => date('Y-m-d H:i:s'),
+                    'transactionid' => $s['reference'],
+                    'note'          => 'SHRA counter · ' . $package->name,
+                ]);
+            }
+            if (count($splits)) {
+                update_invoice_status($invoice_id, true);
+                $this->invoices_model->save_formatted_number($invoice_id);
+            }
+
+            $mode_name = $this->payment_mode_label($splits);
+
+            // One sessions wallet per rider. The money is shared out across the seats so no seat
+            // reads the whole invoice as its own — see decorate_enrollment().
+            $group  = $seats > 1 ? bin2hex(random_bytes(8)) : null;
+            $shares = $this->share_amount($paid_amount, $seats);
+            $first  = null;
+            $ids    = [];
+            foreach ($riders as $i => $r) {
+                $seat = $this->add_enrollment($r, $package, $quote, $invoice_id, $shares[$i], $mode_name, array_merge($opts, [
+                    // bill_token is unique per row, so only the payer's seat carries the guard token.
+                    'bill_token' => $i === 0 ? $token : '',
+                    'bill_group' => $group,
+                    // A group is credited once, after the loop, when every seat's total is known.
+                    'skip_lead'  => $group !== null,
+                ]));
+                if (empty($seat['enrollment_id'])) {
+                    $this->db->trans_rollback();
+
+                    return 'The sessions wallet for ' . $r->full_name . ' could not be opened, so nothing was billed. Try again.';
+                }
+                $ids[] = $seat['enrollment_id'];
+                if ($i === 0) {
+                    $first = $seat;
+                }
+            }
+
+            if ($group !== null && $first && $this->db->table_exists(db_prefix() . 'shra_lead_attribution')) {
+                $this->load->model('shra/shra_leads_model');
+                $first['lead_id'] = $this->shra_leads_model->credit_revenue($first['enrollment_id'], $invoice_id, $rider, [
+                    'lead_id'       => (int) ($opts['lead_id'] ?? 0),
+                    'credit_lead'   => isset($opts['credit_lead']) ? (string) $opts['credit_lead'] : '1',
+                    'source_id'     => (int) ($opts['source_id'] ?? 0),
+                    'amount_billed' => $group_total,
+                    'amount_paid'   => $paid_amount,
+                ]);
+            }
+        } catch (Throwable $ex) {
+            $this->db->trans_rollback();
+            log_activity('SHRA bill failed [' . $rider->rider_no . ' · ' . $package->name . ' · ' . $ex->getMessage() . ']');
+
+            return 'The bill could not be saved (' . $ex->getMessage() . '). Nothing was charged — try again.';
         }
 
-        if ($group !== null && $first && $this->db->table_exists(db_prefix() . 'shra_lead_attribution')) {
-            $this->load->model('shra/shra_leads_model');
-            $first['lead_id'] = $this->shra_leads_model->credit_revenue($first['enrollment_id'], $invoice_id, $rider, [
-                'lead_id'       => (int) ($opts['lead_id'] ?? 0),
-                'credit_lead'   => isset($opts['credit_lead']) ? (string) $opts['credit_lead'] : '1',
-                'source_id'     => (int) ($opts['source_id'] ?? 0),
-                'amount_billed' => $group_total,
-                'amount_paid'   => $paid_amount,
-            ]);
+        // A query failed quietly (db_debug is off in production) — do not leave half a bill behind.
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            log_activity('SHRA bill rolled back [' . $rider->rider_no . ' · ' . $package->name . ']');
+
+            return 'The bill could not be saved. Nothing was charged — try again.';
         }
+        $this->db->trans_commit();
 
         return $first + ['invoice_id' => $invoice_id, 'quote' => $quote, 'bill_group' => $group,
             'enrollment_ids' => $ids, 'seats' => $seats, 'group_total' => $group_total];
@@ -660,15 +739,26 @@ class Shra_model extends App_Model
         }
         $out  = [];
         $seat = 1;
+        // Seat 1 is the payer. A rider may hold only one seat on a bill: two friends who share a
+        // name (or a friend typed with the payer's own name) are two people, so each needs a row
+        // of their own — reusing one row would give one rider two wallets and lose the other.
+        $taken = [(int) $payer->id => true];
         foreach (array_slice(array_values($names), 0, self::MAX_GROUP_SEATS - 1) as $raw) {
             $seat++;
             $name = substr(trim((string) $raw), 0, 191);
             if ($name === '') {
                 $name = $payer->full_name . ' · guest ' . $seat;
             }
-            $existing = $this->find_rider_by_mobile_name($payer->mobile, $name);
+            $existing = null;
+            foreach ($this->find_riders_by_mobile_name($payer->mobile, $name, self::MAX_GROUP_SEATS) as $cand) {
+                if (!isset($taken[(int) $cand->id])) {
+                    $existing = $cand;
+                    break;
+                }
+            }
             if ($existing) {
-                $out[] = $existing;
+                $taken[(int) $existing->id] = true;
+                $out[]                      = $existing;
                 continue;
             }
             $id = $this->add_rider([
@@ -682,7 +772,8 @@ class Shra_model extends App_Model
             if (!$id) {
                 return 'Could not add "' . $name . '" to this bill.';
             }
-            $out[] = $this->get_rider($id);
+            $taken[(int) $id] = true;
+            $out[]            = $this->get_rider($id);
         }
 
         return $out;
@@ -796,7 +887,7 @@ class Shra_model extends App_Model
         $token   = (string) ($opts['bill_token'] ?? '');
 
         $enr = [
-            'enrollment_no'    => $this->next_number('shra_next_enrollment_no', 'SHRA-E-'),
+            'enrollment_no'    => $this->next_number('shra_next_enrollment_no', 'SHRA-E-', 4, 'shra_enrollments', 'enrollment_no'),
             'rider_id'         => $rider->id,
             'package_id'       => $package->id,
             'package_name'     => $package->name,
@@ -1459,7 +1550,7 @@ class Shra_model extends App_Model
         if (!empty($e->certificate_no)) {
             return $e->certificate_no;
         }
-        $no = $this->next_number('shra_next_certificate_no', 'SHRA-C-', 4);
+        $no = $this->next_number('shra_next_certificate_no', 'SHRA-C-', 4, 'shra_enrollments', 'certificate_no');
         $this->db->where('id', $e->id)->update(db_prefix() . 'shra_enrollments', [
             'certificate_no'        => $no,
             'certificate_issued_at' => date('Y-m-d H:i:s'),

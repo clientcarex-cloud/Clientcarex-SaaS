@@ -423,21 +423,30 @@ class Shra extends AdminController
             'credit_lead'      => $this->input->post('credit_lead') !== null ? (string) $this->input->post('credit_lead') : '1',
         ];
 
-        $res = $this->shra_model->create_bill($rider_id, $package_id, $opts);
-        if (is_string($res)) {
-            $this->json(['success' => false, 'message' => $res]);
+        // Anything that escapes here would reach the counter as a bare 500 ("Request failed."),
+        // which says nothing about whether the money was taken. Report it instead.
+        try {
+            $res = $this->shra_model->create_bill($rider_id, $package_id, $opts);
+            if (is_string($res)) {
+                $this->json(['success' => false, 'message' => $res]);
+
+                return;
+            }
+            if (!empty($res['needs_confirm'])) {
+                $this->json(['success' => false, 'needs_confirm' => true, 'reason' => $res['reason'], 'message' => $res['message']]);
+
+                return;
+            }
+
+            $e     = $this->shra_model->get_enrollment($res['enrollment_id']);
+            $group = !empty($res['bill_group']) ? $this->shra_model->group_enrollments($res['bill_group']) : [];
+            $html  = $this->load->view('partials/bill_done', ['e' => $e, 'group' => $group, 'duplicate' => !empty($res['duplicate'])], true);
+        } catch (Throwable $ex) {
+            log_activity('SHRA billing error [rider ' . $rider_id . ', package ' . $package_id . ': ' . $ex->getMessage() . ']');
+            $this->json(['success' => false, 'message' => 'The bill could not be completed: ' . $ex->getMessage()]);
 
             return;
         }
-        if (!empty($res['needs_confirm'])) {
-            $this->json(['success' => false, 'needs_confirm' => true, 'reason' => $res['reason'], 'message' => $res['message']]);
-
-            return;
-        }
-
-        $e     = $this->shra_model->get_enrollment($res['enrollment_id']);
-        $group = !empty($res['bill_group']) ? $this->shra_model->group_enrollments($res['bill_group']) : [];
-        $html  = $this->load->view('partials/bill_done', ['e' => $e, 'group' => $group, 'duplicate' => !empty($res['duplicate'])], true);
 
         $this->json(['success' => true, 'html' => $html, 'invoice_id' => $res['invoice_id'], 'duplicate' => !empty($res['duplicate'])]);
     }
