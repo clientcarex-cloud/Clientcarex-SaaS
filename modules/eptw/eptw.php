@@ -42,6 +42,9 @@ hooks()->add_action('app_admin_head', 'eptw_add_head_components');
 hooks()->add_action('app_admin_footer', 'eptw_add_footer_components');
 hooks()->add_filter('module_eptw_action_links', 'eptw_module_action_links');
 hooks()->add_action('after_cron_run', 'eptw_cron');
+// Late priority so the entries stay gone even if another module rebuilds the menu array.
+hooks()->add_filter('sidebar_menu_items', 'eptw_hide_core_menu_items', 99999);
+hooks()->add_action('admin_init', 'eptw_default_landing');
 
 function eptw_module_init_menu_items()
 {
@@ -104,6 +107,59 @@ function eptw_module_init_menu_items()
             'position' => 6,
         ]);
     }
+}
+
+/**
+ * An ePTW site runs on contractors and projects, not CRM customers, so the
+ * Customers entry is dropped from the sidebar, and the core Dashboard entry
+ * with it — the ePTW dashboard is the home screen (see eptw_default_landing).
+ *
+ * Both are hidden only for staff who actually have ePTW access, so anyone
+ * outside the permit team keeps a working home link. Nothing is blocked:
+ * admin/clients stays reachable so links into a client record still work, and
+ * the core dashboard stays reachable at admin/dashboard?core=1.
+ */
+function eptw_hide_core_menu_items($items)
+{
+    if (!eptw_can_access()) {
+        return $items;
+    }
+
+    foreach (['customers', 'dashboard'] as $slug) {
+        if (isset($items[$slug])) {
+            unset($items[$slug]);
+            continue;
+        }
+
+        // Another module may have re-keyed the array; fall back to the slug attribute.
+        foreach ($items as $key => $item) {
+            if (isset($item['slug']) && $item['slug'] === $slug) {
+                unset($items[$key]);
+            }
+        }
+    }
+
+    return $items;
+}
+
+/**
+ * The permit desk is the home screen: the core dashboard (admin/) sends staff
+ * who can use ePTW straight to the module. Any other page is untouched, and
+ * the core dashboard stays reachable at admin/dashboard?core=1.
+ */
+function eptw_default_landing()
+{
+    $CI = &get_instance();
+
+    if ($CI->router->fetch_class() !== 'dashboard' || $CI->router->fetch_method() !== 'index') {
+        return;
+    }
+
+    if ($CI->input->get('core') || $CI->input->is_ajax_request() || !eptw_can_access()) {
+        return;
+    }
+
+    redirect(admin_url('eptw'));
 }
 
 function eptw_module_action_links($actions)
