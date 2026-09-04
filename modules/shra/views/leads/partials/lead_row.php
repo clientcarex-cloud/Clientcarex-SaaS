@@ -62,7 +62,10 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     <td class="shra-r-paid num">
         <?php if ($money['paid'] > 0) { ?>
             <span class="shra-r-paid-amt"><?php echo shra_money($money['paid']); ?></span>
-            <?php if ($money['deal'] > 0) { ?><span class="shra-r-sub"><?php echo (int) round($money['paid'] / $money['deal'] * 100); ?>% of <?php echo shra_money($money['deal']); ?></span><?php } ?>
+            <?php if ($money['deal'] > 0) { $pc = $money['paid'] / $money['deal'] * 100; ?>
+                <?php // A token advance against a big package rounds to 0%, which reads as "nothing paid". ?>
+                <span class="shra-r-sub"><?php echo $pc < 1 ? '&lt;1' : (int) round($pc); ?>% of <?php echo shra_money($money['deal']); ?></span>
+            <?php } ?>
         <?php } else { ?><span class="shra-muted">—</span><?php } ?>
     </td>
     <?php /* The balance still to collect. It only exists once the lead has a deal value — an

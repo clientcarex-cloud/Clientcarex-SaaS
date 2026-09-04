@@ -191,8 +191,16 @@ class Shra_leads_model extends App_Model
      */
     const DEAL_SQL = "COALESCE(NULLIF(x.expected_value,0), pk.price, 0)";
     const DUE_SQL  = "GREATEST(0, COALESCE(NULLIF(x.expected_value,0), pk.price, 0) - x.paid_amount)";
-    /** An open lead that has part-paid and still owes something — the projection's population. */
-    const PIPELINE_WHERE = "l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.paid_amount > 0
+    /**
+     * The projection's population: every open lead that still owes something. Deliberately the
+     * same test the Due column prints, so the tile is the visible column added up — an earlier
+     * cut of this also required paid_amount > 0, which read as a broken ₹0 next to a list full
+     * of due amounts. PIPELINE_PAID_WHERE narrows it to the leads that have actually handed
+     * money over, which is the committed half of that number.
+     */
+    const PIPELINE_WHERE = "l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won'
+                        AND COALESCE(NULLIF(x.expected_value,0), pk.price, 0) > x.paid_amount";
+    const PIPELINE_PAID_WHERE = "l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won' AND x.paid_amount > 0
                         AND COALESCE(NULLIF(x.expected_value,0), pk.price, 0) > x.paid_amount";
 
     /**
@@ -242,10 +250,10 @@ class Shra_leads_model extends App_Model
                         . ($a ? ' AND (pm.staff_id = ? OR l.assigned = ?)' : '') . ')',
                     $a ? [$f, $t, $a, $a] : [$f, $t]];
 
-            // Money still owed, not money already moved: every open lead that has part-paid
-            // and whose deal is bigger than what it has handed over. A running balance, so
-            // unlike the tiles beside it this one is deliberately NOT clipped to the period —
-            // an advance taken in August is still owed in September.
+            // Money still owed, not money already moved: every open lead whose deal is bigger
+            // than what it has handed over — exactly the rows showing a Due below. A running
+            // balance, so unlike the tiles beside it this one is deliberately NOT clipped to
+            // the period: a balance owed since August is still owed in September.
             case 'pipeline':
                 return [self::PIPELINE_WHERE . ($a ? ' AND l.assigned = ?' : ''), $a ? [$a] : []];
         }
@@ -1677,6 +1685,12 @@ class Shra_leads_model extends App_Model
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
                 LEFT JOIN {$p}shra_packages pk ON pk.id = x.interest_package_id
                 WHERE l.assigned = s.staffid AND " . self::PIPELINE_WHERE . ") AS pipeline_count,
+            (SELECT COALESCE(SUM(" . self::DUE_SQL . "),0) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
+                LEFT JOIN {$p}shra_packages pk ON pk.id = x.interest_package_id
+                WHERE l.assigned = s.staffid AND " . self::PIPELINE_PAID_WHERE . ") AS pipeline_paid,
+            (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id
+                LEFT JOIN {$p}shra_packages pk ON pk.id = x.interest_package_id
+                WHERE l.assigned = s.staffid AND " . self::PIPELINE_PAID_WHERE . ") AS pipeline_paid_count,
             {$adv_sql}
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won') AS open_now,
             (SELECT COUNT(*) FROM {$p}leads l JOIN {$p}shra_lead_ext x ON x.lead_id = l.id WHERE l.assigned = s.staffid AND " . shra_lead_overdue_where($now) . ") AS overdue_now,
@@ -1699,6 +1713,8 @@ class Shra_leads_model extends App_Model
         foreach ($rows as $r) {
             $r->pipeline             = (float) $r->pipeline;
             $r->pipeline_count       = (int) $r->pipeline_count;
+            $r->pipeline_paid        = (float) $r->pipeline_paid;
+            $r->pipeline_paid_count  = (int) $r->pipeline_paid_count;
             $r->advance              = (float) $r->advance;
             $r->advance_count        = (int) $r->advance_count;
             $r->advance_others       = (float) $r->advance_others;
@@ -1861,7 +1877,8 @@ class Shra_leads_model extends App_Model
     private function team_totals(array $rows, $from = '', $to = '')
     {
         $keys = ['assigned', 'calls', 'contacted', 'visits_booked', 'visited', 'confirmed', 'won', 'renewals',
-            'revenue', 'collected', 'pipeline', 'pipeline_count', 'advance', 'advance_count', 'advance_others', 'advance_others_count',
+            'revenue', 'collected', 'pipeline', 'pipeline_count', 'pipeline_paid', 'pipeline_paid_count',
+            'advance', 'advance_count', 'advance_others', 'advance_others_count',
             'open_now', 'overdue_now', 'stale_now', 'lost', 'calls_target', 'visits_target', 'revenue_target', 'cost'];
         $t = (object) array_fill_keys($keys, 0);
         foreach ($rows as $r) {

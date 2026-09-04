@@ -20,10 +20,12 @@
     $adv     = $adv_own + $adv_oth;
     $adv_n   = ($m && isset($m->advance_count) ? (int) $m->advance_count : 0)
              + ($agent && $m && isset($m->advance_others_count) ? (int) $m->advance_others_count : 0);
-    // Balance still owed by leads that have part-paid — the projection. A running figure,
-    // not a period one, so it does not follow the date range the other tiles do.
+    // The projection: everything open leads still owe — the Due column added up. A running
+    // figure, not a period one, so it does not follow the date range the other tiles do.
+    // $pipe_p is the committed half of it: leads that have already handed money over.
     $pipe    = $m && isset($m->pipeline) ? (float) $m->pipeline : 0;
     $pipe_n  = $m && isset($m->pipeline_count) ? (int) $m->pipeline_count : 0;
+    $pipe_p  = $m && isset($m->pipeline_paid) ? (float) $m->pipeline_paid : 0;
     // Why Revenue reads zero, when it does: a short line for the tile, the whole story on hover.
     $rev_why = isset($revenue_note) && is_array($revenue_note) ? $revenue_note : [];
     $all   = $scope === 'all';
@@ -114,10 +116,13 @@
             // in if the pipeline closes. Deliberately not clipped to the period: a balance
             // outstanding since August is still owed today.
             ['pipeline', 'Pipeline due', 'fa-hourglass-half', $pipe, 0, true,
-                $pipe_n ? 'from ' . $pipe_n . ' part-paid lead' . ($pipe_n == 1 ? '' : 's') : 'nothing part-paid yet',
+                $pipe_n ? 'across ' . $pipe_n . ' open lead' . ($pipe_n == 1 ? '' : 's')
+                        . ($pipe_p > 0 ? ' · ' . shra_money($pipe_p) . ' part-paid' : '')
+                        : 'no lead owes a balance',
                 $rev_t > 0 ? (int) round($pipe / $rev_t * 100) : 0,
-                'Projected: what part-paid leads still owe on their package'
-                    . ($pipe_n && $rev_t > 0 ? ' — ' . (int) round($pipe / $rev_t * 100) . '% of the revenue target' : '')
+                'Projected: the Due column added up — what open leads still owe on the package they picked'
+                    . ($pipe_p > 0 ? ', of which ' . shra_money($pipe_p) . ' is owed by leads that have already part-paid' : '')
+                    . ($pipe_n && $rev_t > 0 ? '. That is ' . (int) round($pipe / $rev_t * 100) . '% of the revenue target' : '')
                     . '. Counted across every open lead, not only this period, because a balance owed since last month is still owed. Click to see them.'],
         ];
         $tg_any = ($tg_on && $m && ($m->calls_target > 0 || $m->visits_target > 0 || $rev_t > 0));
@@ -191,7 +196,7 @@
         // Pipeline due is a running balance, not a period figure — naming a month beside it
         // would promise a filter that is not there.
         $mx_from   = $metric === 'pipeline' ? 'still open, any date' : ($range['on'] ? $range['label'] : date('F Y'));
-        $mx_say    = $metric === 'pipeline' ? 'part-paid, still owing' : 'the leads behind that number';
+        $mx_say    = $metric === 'pipeline' ? 'open leads with a balance to collect' : 'the leads behind that number';
     ?>
     <div class="shra-drill">
         <span><i class="fa fa-filter"></i> <b><?php echo html_escape($mx_labels[$metric]); ?></b> &middot; <?php echo html_escape($mx_say); ?>
