@@ -777,3 +777,26 @@ tr.shra-row-picked td{background:#fdf3f2!important}
 #tc-table td:first-child{min-width:150px}
 #tc-table input.form-control{display:inline-block}
 .tc-dim{opacity:.4}
+
+/* Team leaderboard — grouped headers, money columns, optional pipeline detail */
+.shra-lb thead th{vertical-align:bottom}
+.shra-lb th.grp{text-align:center;padding:7px 14px;font-size:10px;letter-spacing:1.6px;background:var(--cream-2);border-bottom:1px solid var(--line)}
+.shra-lb th.grp-money{color:var(--brown);background:#f6ecd2}
+.shra-lb th:first-child{border-top-left-radius:12px}.shra-lb thead tr:first-child th:last-child{border-top-right-radius:12px}
+.shra-lb td .sub{display:block;font-size:10.5px;color:var(--muted);font-weight:400;margin-top:2px;white-space:nowrap}
+.shra-lb td.money{font-weight:700;font-variant-numeric:tabular-nums}
+.shra-lb td.cash,.shra-lb td.cash a{color:var(--green)}
+.shra-lb td.cash a:hover{text-decoration:underline}
+.shra-lb .lb-x{display:none}.shra-lb.more .lb-x{display:table-cell}
+.shra-lb tfoot td{background:var(--cream-2);font-weight:700;border-top:2px solid var(--line);padding:12px 14px}
+.shra-lb tfoot td .sub{font-weight:400}
+.shra-lb-guide{display:flex;gap:10px 26px;flex-wrap:wrap;padding:10px 22px;background:var(--cream-2);border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-2);line-height:1.5}
+.shra-lb-guide b{color:var(--ink);font-weight:600}
+.shra-lb-guide i{width:14px;text-align:center;margin-right:2px}
+.shra-lb-toggle{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:var(--ink-2);cursor:pointer;margin:0;user-select:none}
+.shra-lb-toggle input{margin:0}
+.shra-lb-rank{display:inline-flex;width:26px;height:26px;border-radius:50%;align-items:center;justify-content:center;font-weight:700;font-size:12px;background:var(--cream);color:var(--muted);font-variant-numeric:tabular-nums}
+.shra-lb-rank.r1{background:linear-gradient(135deg,#f3dd9a,#d4b45c);color:var(--brown);box-shadow:0 1px 3px rgba(90,62,34,.25)}
+.shra-lb-rank.r2{background:linear-gradient(135deg,#ececea,#c9c7c2);color:#4c4a46}
+.shra-lb-rank.r3{background:linear-gradient(135deg,#f0d6bf,#d29b6b);color:#5a3616}
+@media(max-width:700px){.shra-lb-guide{padding:10px 14px;gap:6px 16px}}
