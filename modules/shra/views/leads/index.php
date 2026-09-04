@@ -7,8 +7,22 @@
     <?php
     $m     = $month;
     $rev   = $m ? (float) $m->revenue : 0;
-    $rev_t = $m && $m->revenue_target ? (float) $m->revenue_target : 0;
+    // A monthly target only means something over a whole calendar month — any other
+    // window shows the plain numbers rather than a percentage of the wrong thing.
+    $tg_on = !empty($range['is_month']);
+    $rev_t = $tg_on && $m && $m->revenue_target ? (float) $m->revenue_target : 0;
+    // Advances taken on calls: real money in, before any bill exists. Without this the
+    // header reads zero all month while agents are collecting. One agent's header also
+    // counts payments a colleague keyed in on their leads — the lead still paid, and the
+    // row already shows it. "All staff" must not, or that money is counted twice.
+    $adv_own = $m && isset($m->advance) ? (float) $m->advance : 0;
+    $adv_oth = $agent && $m && isset($m->advance_others) ? (float) $m->advance_others : 0;
+    $adv     = $adv_own + $adv_oth;
+    $adv_n   = ($m && isset($m->advance_count) ? (int) $m->advance_count : 0)
+             + ($agent && $m && isset($m->advance_others_count) ? (int) $m->advance_others_count : 0);
     $all   = $scope === 'all';
+    // What the numbers cover: the picked range, or this month when none is picked.
+    $period = !empty($range['on']) ? $range['label'] : 'this month';
 
     // No-shows are appended as their own tab; skip any already in the list.
     $seen = [];
@@ -25,6 +39,7 @@
         $q = array_merge([
             'scope' => $scope,
             'agent' => $sel_agent,
+            'range' => $filters['range'],
             'from'  => $filters['from'],
             'to'    => $filters['to'],
         ], $extra);
@@ -59,23 +74,28 @@
         foreach ($agents as $a) {
             if ((int) $a->staffid === (int) $agent) { $tg_name = $a->full_name; }
         }
-        $pace = shra_lead_target_progress(1, 1); // day / days / % of the month gone
+        $pace = shra_lead_target_progress(1, 1, $range['pace_date']); // day / days / % of the month gone
         $mx   = [
-            ['Calls', 'fa-phone', $m ? (float) $m->calls : 0, $m ? (float) $m->calls_target : 0, false, 'this month', null],
-            ['Visits booked', 'fa-calendar-check', $m ? (float) $m->visits_booked : 0, $m ? (float) $m->visits_target : 0, false,
-                $m && $m->visits_booked ? (int) $m->show_rate . '% showed up' : 'this month', null],
+            ['Calls', 'fa-phone', $m ? (float) $m->calls : 0, $tg_on && $m ? (float) $m->calls_target : 0, false, $period, null],
+            ['Visits booked', 'fa-calendar-check', $m ? (float) $m->visits_booked : 0, $tg_on && $m ? (float) $m->visits_target : 0, false,
+                $m && $m->visits_booked ? (int) $m->show_rate . '% showed up' : $period, null],
             // Joined has no monthly target — its bar is the conversion rate instead.
             ['Joined', 'fa-trophy', $m ? (float) $m->won : 0, 0, false,
-                $m && $m->assigned ? 'of ' . (int) $m->assigned . ' leads · ' . (int) $m->win_rate . '%' : 'this month',
+                $m && $m->assigned ? 'of ' . (int) $m->assigned . ' leads · ' . (int) $m->win_rate . '%' : $period,
                 $m ? (int) $m->win_rate : 0],
-            ['Revenue', 'fa-indian-rupee-sign', $rev, $rev_t, true, 'this month', null],
+            // Collected = advances taken on calls (screenshot money). Revenue = what has
+            // actually been billed. They are two different ledgers, so they get two tiles
+            // rather than one sum that would double-count once the lead is billed.
+            ['Collected', 'fa-hand-holding-dollar', $adv, 0, true,
+                $adv_n ? $adv_n . ' advance' . ($adv_n == 1 ? '' : 's') . ' on calls' . ($adv_oth > 0 ? ' · ' . shra_money($adv_oth) . ' by others' : '') : 'no advances yet', null],
+            ['Revenue', 'fa-indian-rupee-sign', $rev, $rev_t, true, $m && $m->won ? 'billed · ' . shra_money((float) $m->collected) . ' paid' : 'nothing billed yet', null],
         ];
-        $tg_any = ($m && ($m->calls_target > 0 || $m->visits_target > 0 || $rev_t > 0));
+        $tg_any = ($tg_on && $m && ($m->calls_target > 0 || $m->visits_target > 0 || $rev_t > 0));
         ?>
         <div class="shra-mrow">
             <?php foreach ($mx as $x) {
                 list($x_label, $x_icon, $x_val, $x_target, $x_money, $x_alt, $x_pct) = $x;
-                $pr    = shra_lead_target_progress($x_val, $x_target);
+                $pr    = shra_lead_target_progress($x_val, $x_target, $range['pace_date']);
                 $state = $pr ? shra_lead_target_state($pr) : ($x_pct !== null ? 'plain' : 'none');
                 $fmt   = function ($v) use ($x_money) { return $x_money ? shra_money($v) : number_format((float) $v); };
                 $width = $pr ? min(100, $pr['pct']) : min(100, (int) $x_pct);
@@ -110,8 +130,12 @@
             <div class="shra-mx-aside">
                 <span class="shra-mx-meta">
                     <b><i class="fa fa-bullseye"></i> <?php echo $tg_name ? html_escape($tg_name) : 'Target'; ?></b>
-                    <?php echo date('M Y'); ?> &middot; day <?php echo $pace['day']; ?>/<?php echo $pace['days']; ?> &middot; <?php echo $pace['pace']; ?>% gone<?php if (!$tg_any && $can_manage) { ?>
-                        &middot; <a href="<?php echo admin_url('shra/shra_leads/settings'); ?>">set targets</a>
+                    <?php if ($tg_on) { ?>
+                        <?php echo $range['on'] ? html_escape($range['label']) : date('M Y'); ?> &middot; day <?php echo $pace['day']; ?>/<?php echo $pace['days']; ?> &middot; <?php echo $pace['pace']; ?>% gone<?php if (!$tg_any && $can_manage) { ?>
+                            &middot; <a href="<?php echo admin_url('shra/shra_leads/settings'); ?>">set targets</a>
+                        <?php } ?>
+                    <?php } else { ?>
+                        <?php echo html_escape($range['label']); ?> &middot; no target for this range
                     <?php } ?>
                 </span>
                 <button type="button" class="shra-btn shra-btn-primary shra-btn-sm" data-shra-eod="<?php echo (int) $agent; ?>" title="End-of-day report, ready for WhatsApp">
@@ -142,15 +166,21 @@
                     <?php foreach ($agents as $a) { ?><option value="<?php echo $a->staffid; ?>" <?php echo (string) $a->staffid === $sel_agent ? 'selected' : ''; ?>><?php echo html_escape($a->full_name); ?><?php echo $a->staffid == get_staff_user_id() ? ' (me)' : ''; ?></option><?php } ?>
                 </select>
                 <?php } ?>
-                <?php if ($all) { ?>
-                    <input type="date" name="from" class="form-control" value="<?php echo html_escape($filters['from']); ?>" title="Added from" onchange="this.form.submit()">
-                    <input type="date" name="to" class="form-control" value="<?php echo html_escape($filters['to']); ?>" title="Added to" onchange="this.form.submit()">
-                <?php } ?>
+                <select name="range" id="shra-f-range" class="form-control" title="When the lead came in">
+                    <?php foreach (shra_lead_range_defs() as $rk => $rd) { ?><option value="<?php echo $rk; ?>" <?php echo $filters['range'] === $rk ? 'selected' : ''; ?>><?php echo $rd[0]; ?></option><?php } ?>
+                </select>
+                <span id="shra-f-dates" class="shra-fl-dates"<?php echo $filters['range'] === 'custom' ? '' : ' hidden'; ?>>
+                    <input type="date" name="from" class="form-control" value="<?php echo html_escape($filters['from']); ?>" title="Added from">
+                    <input type="date" name="to" class="form-control" value="<?php echo html_escape($filters['to']); ?>" title="Added to">
+                </span>
             </form>
-            <a href="<?php echo $all ? admin_url('shra/shra_leads') : $qs(['scope' => 'all']); ?>" class="shra-btn shra-btn-outline shra-btn-sm" title="<?php echo $all ? 'Back to my call queue' : 'Show every lead'; ?>">
+            <?php // "My queue" resets to the viewer's own queue as it always has — it just keeps the date range.
+            $queue_url = admin_url('shra/shra_leads?' . http_build_query(array_filter(['range' => $filters['range'], 'from' => $filters['from'], 'to' => $filters['to']]))); ?>
+            <a href="<?php echo $all ? $queue_url : $qs(['scope' => 'all']); ?>" class="shra-btn shra-btn-outline shra-btn-sm" title="<?php echo $all ? 'Back to my call queue' : 'Show every lead'; ?>">
                 <i class="fa <?php echo $all ? 'fa-list-check' : 'fa-layer-group'; ?>"></i> <?php echo $all ? 'My queue' : 'All leads'; ?>
             </a>
-            <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="shra-f-clear" title="Clear filters"><i class="fa fa-rotate-left"></i></button>
+            <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="shra-f-clear" title="Clear filters"
+                <?php if ($range['on']) { ?>data-reset="<?php echo $qs(['range' => '', 'from' => '', 'to' => '']); ?>"<?php } ?>><i class="fa fa-rotate-left"></i></button>
         </div>
     </div>
 
@@ -178,7 +208,7 @@
             </tbody>
         </table>
         <?php if (!count($rows) && !count($ns)) { ?>
-            <div class="shra-empty"><i class="fa-solid fa-phone-volume"></i><?php echo $all ? 'No leads match these filters.' : 'Nothing in your queue — every lead is followed up.'; ?></div>
+            <div class="shra-empty"><i class="fa-solid fa-phone-volume"></i><?php echo $all || $range['on'] ? 'No leads match these filters.' : 'Nothing in your queue — every lead is followed up.'; ?></div>
         <?php } ?>
         <div class="shra-empty" id="shra-none" hidden><i class="fa-solid fa-check" style="color:var(--green)"></i>Nothing here — pick another tab or clear the search.</div>
         <div class="shra-work-foot">
@@ -186,7 +216,7 @@
             <span>
                 <?php if (!$all && count($rows) >= 800) { ?><span class="shra-badge shra-badge-muted" title="Queue is capped at 800">first 800</span><?php } ?>
                 <?php if ($all && count($rows) >= 1500) { ?><span class="shra-badge shra-badge-muted" title="Narrow the date range to see more">first 1500</span><?php } ?>
-                <?php if ($can_manage) { ?><a href="<?php echo admin_url('shra/shra_leads/export?' . http_build_query(array_filter(array_map('strval', ['agent' => $sel_agent, 'from' => $filters['from'], 'to' => $filters['to'], 'stage' => $filters['stage']])))); ?>" class="shra-btn shra-btn-outline shra-btn-xs"><i class="fa fa-download"></i> Export</a><?php } ?>
+                <?php if ($can_manage) { ?><a href="<?php echo admin_url('shra/shra_leads/export?' . http_build_query(array_filter(array_map('strval', ['agent' => $sel_agent, 'range' => $filters['range'], 'from' => $filters['from'], 'to' => $filters['to'], 'stage' => $filters['stage']])))); ?>" class="shra-btn shra-btn-outline shra-btn-xs"><i class="fa fa-download"></i> Export</a><?php } ?>
             </span>
         </div>
     </div>

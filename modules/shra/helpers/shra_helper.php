@@ -826,6 +826,90 @@ function shra_lead_fill_template($text, $lead)
     ]);
 }
 
+/* ══════════════ Date range filter (leads list) ══════════════ */
+
+/** A `Y-m-d` string, or '' when the value is missing or not a real date. */
+function shra_lead_ymd($d)
+{
+    $d = trim((string) $d);
+
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && strtotime($d) ? $d : '';
+}
+
+/**
+ * The ranges the leads filter offers: key => [label, from, to]. '' is "any date" —
+ * the list is not narrowed and the header stays on the current month, which is what
+ * the monthly targets are set against. 'custom' takes its dates from the URL.
+ */
+function shra_lead_range_defs()
+{
+    $today = date('Y-m-d');
+    $lm    = strtotime('first day of last month');
+
+    return [
+        ''           => ['Any date',     '', ''],
+        'today'      => ['Today',        $today, $today],
+        'yesterday'  => ['Yesterday',    date('Y-m-d', strtotime('-1 day')), date('Y-m-d', strtotime('-1 day'))],
+        '7d'         => ['Last 7 days',  date('Y-m-d', strtotime('-6 days')), $today],
+        '30d'        => ['Last 30 days', date('Y-m-d', strtotime('-29 days')), $today],
+        'month'      => ['This month',   date('Y-m-01'), date('Y-m-t')],
+        'last_month' => ['Last month',   date('Y-m-01', $lm), date('Y-m-t', $lm)],
+        'custom'     => ['Custom range', '', ''],
+    ];
+}
+
+/**
+ * Resolve the picked range into real dates. A bare from/to with no key (older
+ * links, the export URL) is read as a custom range. Returns the key, the dates,
+ * a label for the screen, and — for the header targets — whether the range is
+ * exactly one calendar month and which day the pace should be measured on.
+ */
+function shra_lead_range($key, $from = '', $to = '')
+{
+    $defs = shra_lead_range_defs();
+    $key  = (string) $key;
+    $from = shra_lead_ymd($from);
+    $to   = shra_lead_ymd($to);
+    if (!isset($defs[$key])) {
+        $key = '';
+    }
+    if ($key === '' && ($from !== '' || $to !== '')) {
+        $key = 'custom';
+    }
+    if ($key !== '' && $key !== 'custom') {
+        list(, $from, $to) = $defs[$key];
+    } elseif ($key === 'custom') {
+        if ($from !== '' && $to !== '' && $from > $to) {
+            list($from, $to) = [$to, $from];
+        }
+        if ($from === '' && $to === '') {
+            $key = '';
+        }
+    }
+
+    $label = $defs[$key][0];
+    if ($key === 'custom') {
+        // Two dates in the same year only need the year printed once.
+        $d     = function ($x, $year = true) { return date($year ? 'd M Y' : 'd M', strtotime($x)); };
+        $label = $from !== '' && $to !== '' ? ($from === $to ? $d($from) : $d($from, substr($from, 0, 4) !== substr($to, 0, 4)) . ' – ' . $d($to))
+               : ($from !== '' ? 'From ' . $d($from) : 'Until ' . $d($to));
+    }
+
+    // Monthly targets can only be judged against a whole calendar month; the pace
+    // for a month already over is measured on its last day, not today.
+    $whole = $key === '' || ($from !== '' && $to !== '' && $from === date('Y-m-01', strtotime($from)) && $to === date('Y-m-t', strtotime($from)));
+
+    return [
+        'key'       => $key,
+        'from'      => $from,
+        'to'        => $to,
+        'label'     => $label,
+        'on'        => $from !== '' || $to !== '',
+        'is_month'  => $whole,
+        'pace_date' => $to !== '' && $to < date('Y-m-d') ? $to : date('Y-m-d'),
+    ];
+}
+
 /* ══════════════ Targets / EOD report ══════════════ */
 
 /**

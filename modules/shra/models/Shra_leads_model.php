@@ -161,7 +161,7 @@ class Shra_leads_model extends App_Model
     }
 
     /** Agent home: overdue / today / upcoming (7 days) / no next action (safety net). */
-    public function queues_for($staff_id, $include_unassigned = false)
+    public function queues_for($staff_id, $include_unassigned = false, $from = '', $to = '')
     {
         $p    = db_prefix();
         // Managers also see unassigned leads (public form with an empty agent pool) so nothing is invisible.
@@ -172,6 +172,16 @@ class Shra_leads_model extends App_Model
         } else {
             $who  = $include_unassigned ? '(l.assigned = ? OR l.assigned = 0 OR l.assigned IS NULL)' : 'l.assigned = ?';
             $bind = [(int) $staff_id];
+        }
+        // The date-range filter narrows by when the lead came in, the same field the
+        // all-leads list uses — so the two scopes answer the same question.
+        if ($from !== '') {
+            $who .= ' AND l.dateadded >= ?';
+            $bind[] = $from . ' 00:00:00';
+        }
+        if ($to !== '') {
+            $who .= ' AND l.dateadded <= ?';
+            $bind[] = $to . ' 23:59:59';
         }
         $rows = $this->db->query($this->base_select() . " WHERE $who AND l.lost = 0 AND l.junk = 0 AND x.stage_key <> 'won'
             ORDER BY l.dateadded DESC LIMIT 800", $bind)->result();
@@ -1594,8 +1604,15 @@ class Shra_leads_model extends App_Model
     /** Agent-level KPIs for My Day header (this month, or the month $in falls in). $staff_id 0 = whole team. */
     public function my_month($staff_id, $in = null)
     {
-        $ts   = $in && strtotime($in) ? strtotime($in) : time();
-        $rows = $this->team_stats(date('Y-m-01', $ts), date('Y-m-t', $ts));
+        $ts = $in && strtotime($in) ? strtotime($in) : time();
+
+        return $this->stats_for($staff_id, date('Y-m-01', $ts), date('Y-m-t', $ts));
+    }
+
+    /** The same KPIs over any window — what the leads header shows once a date range is picked. */
+    public function stats_for($staff_id, $from, $to)
+    {
+        $rows = $this->team_stats($from, $to);
         if ((int) $staff_id === 0) {
             return $this->team_totals($rows);
         }
@@ -1612,7 +1629,8 @@ class Shra_leads_model extends App_Model
     private function team_totals(array $rows)
     {
         $keys = ['assigned', 'calls', 'contacted', 'visits_booked', 'visited', 'confirmed', 'won', 'renewals',
-            'revenue', 'collected', 'open_now', 'overdue_now', 'stale_now', 'lost', 'calls_target', 'visits_target', 'revenue_target', 'cost'];
+            'revenue', 'collected', 'advance', 'advance_count', 'advance_others', 'advance_others_count',
+            'open_now', 'overdue_now', 'stale_now', 'lost', 'calls_target', 'visits_target', 'revenue_target', 'cost'];
         $t = (object) array_fill_keys($keys, 0);
         foreach ($rows as $r) {
             foreach ($keys as $k) {

@@ -122,8 +122,11 @@ class Shra_leads extends AdminController
             $agent = $me;
         }
         $scope = $this->input->get('scope') === 'all' ? 'all' : 'mine';
-        $from  = (string) $this->input->get('from');
-        $to    = (string) $this->input->get('to');
+        // One date-range control drives both scopes: a preset key, or `custom` with
+        // its own from/to. A bare from/to (older links, the export URL) still works.
+        $range = shra_lead_range($this->input->get('range'), (string) $this->input->get('from'), (string) $this->input->get('to'));
+        $from  = $range['from'];
+        $to    = $range['to'];
 
         $data          = $this->common();
         $data['title'] = 'Leads';
@@ -139,7 +142,9 @@ class Shra_leads extends AdminController
         } elseif ($this->input->get('overdue')) {
             $bucket = 'overdue';
         }
+        $data['range']   = $range;
         $data['filters'] = [
+            'range'  => $range['key'],
             'from'   => $from,
             'to'     => $to,
             'stage'  => $stage,
@@ -157,7 +162,7 @@ class Shra_leads extends AdminController
             ]), 1500);
             $data['no_shows'] = [];
         } else {
-            $queues = $this->leads->queues_for($agent, $agent === (int) $me && shra_leads_can('all'));
+            $queues = $this->leads->queues_for($agent, $agent === (int) $me && shra_leads_can('all'), $from, $to);
             $rows   = [];
             foreach (['unset', 'overdue', 'today', 'upcoming', 'later', 'joining'] as $k) {
                 foreach ($queues[$k] as $l) {
@@ -172,7 +177,11 @@ class Shra_leads extends AdminController
             $data['no_shows'] = shra_leads_can('all') ? $this->leads->no_shows(20) : [];
         }
 
-        $data['month']  = $this->leads->my_month($agent);
+        // With no range the header stays on this month — that is what the monthly
+        // targets are set against. Pick a range and the numbers follow it.
+        $data['month']  = $range['on']
+            ? $this->leads->stats_for($agent, $from !== '' ? $from : '1970-01-01', $to !== '' ? $to : date('Y-m-d'))
+            : $this->leads->my_month($agent);
         $data['funnel'] = $this->leads->funnel_counts(!shra_leads_can('all'));
         $this->load->view('leads/index', $data);
     }
@@ -216,8 +225,10 @@ class Shra_leads extends AdminController
     public function export()
     {
         $this->need('manage');
-        $list = $this->leads->get_list(array_filter(['stage' => (string) $this->input->get('stage'), 'agent' => (int) $this->input->get('agent'), 'source' => (int) $this->input->get('source'),
-            'from' => (string) $this->input->get('from'), 'to' => (string) $this->input->get('to')]), 5000);
+        // Same range control as the screen, so the export matches what was on it.
+        $range = shra_lead_range($this->input->get('range'), (string) $this->input->get('from'), (string) $this->input->get('to'));
+        $list  = $this->leads->get_list(array_filter(['stage' => (string) $this->input->get('stage'), 'agent' => (int) $this->input->get('agent'), 'source' => (int) $this->input->get('source'),
+            'from' => $range['from'], 'to' => $range['to']]), 5000);
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="shra-leads-' . date('Ymd') . '.csv"');
         $out = fopen('php://output', 'w');

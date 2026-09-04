@@ -27,6 +27,7 @@ if (!function_exists('core_crm_managed_menus')) {
             'utilities'        => 'Utilities',
             'setup'            => 'Setup', // handled via CSS, not the sidebar filter
             'subscriptions'    => 'Subscriptions',
+            'expenses'         => 'Expenses',
             'support'          => 'Support / Tickets',
             'leads'            => 'Leads',
             'reports'          => 'Reports',

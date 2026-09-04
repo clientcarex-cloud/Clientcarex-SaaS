@@ -691,7 +691,24 @@
       });
       $('#shra-f-stage').on('change', function () { stage = this.value; apply(); });
       $('#shra-f-source').on('change', function () { source = this.value; apply(); });
+
+      /* The date range is a server filter — the rows for a period have to be fetched.
+         A preset reloads straight away; "Custom range" waits for the two dates. */
+      $('#shra-f-range').on('change', function () {
+        var custom = this.value === 'custom', $d = $('#shra-f-dates');
+        $d.prop('hidden', !custom);
+        if (custom) { $d.find('input[name=from]').focus(); return; }
+        $d.find('input').prop('disabled', true); // keep stale dates out of the URL
+        this.form.submit();
+      });
+      $('#shra-f-dates').on('change', 'input', function () {
+        if ($('#shra-f-range').val() === 'custom' && $('#shra-f-dates input').filter(function () { return !!this.value; }).length) { this.form.submit(); }
+      });
+
       $('#shra-f-clear').on('click', function () {
+        // A date range lives on the URL, so clearing it means going back for the rows.
+        var reset = $(this).data('reset');
+        if (reset) { window.location.href = reset; return; }
         q = stage = source = ''; $('#shra-q').val(''); $('#shra-f-stage,#shra-f-source').val('');
         bucket = 'all'; drawTabs(); apply();
       });

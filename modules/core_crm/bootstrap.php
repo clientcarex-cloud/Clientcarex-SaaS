@@ -88,6 +88,7 @@ if (!function_exists('core_crm_restrict_access')) {
             'knowledge-base'   => ['knowledge_base'],
             'utilities'        => ['utilities'],
             'subscriptions'    => ['subscriptions'],
+            'expenses'         => ['expenses'],
             'support'          => ['tickets'],
             'leads'            => ['leads'],
             'reports'          => ['reports'],

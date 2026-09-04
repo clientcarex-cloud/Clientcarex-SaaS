@@ -87,7 +87,7 @@ foreach ($packages as $pk) {
             </div>
             <input type="datetime-local" name="next_action_at" class="form-control" style="margin-top:8px" value="<?php echo $tomorrow; ?>">
         </div>
-        <div class="form-group" style="margin-top:12px"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Optional — what was discussed"></div>
+        <div class="form-group shra-note-hl" style="margin-top:12px"><label><i class="fa fa-pen-to-square"></i> Call Note</label><input type="text" name="note" class="form-control" placeholder="Optional — what was discussed"></div>
 
         <div id="shra-call-pay">
             <label class="shra-pay-switch"><input type="checkbox" id="shra-pay-on"> <i class="fa-solid fa-indian-rupee-sign"></i> Payment taken on this call <span class="shra-muted">— advance / part payment</span></label>

@@ -11,6 +11,7 @@ $menus = [
     'utilities',
     'setup',
     'subscriptions',
+    'expenses',
     'support',
     'leads',
     'reports',

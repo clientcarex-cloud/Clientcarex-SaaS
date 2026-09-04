@@ -303,6 +303,11 @@ a.shra-stat:hover{border-color:var(--gold-2)}
 .shra-pay-switch .shra-muted{font-weight:400}
 .shra-pay-box{border:1.5px solid var(--line);border-radius:12px;padding:12px 12px 2px;margin-top:8px;background:var(--cream-2)}
 .shra-pay-box .form-group{margin-bottom:10px}
+.shra-note-hl{background:var(--cream-2);border:1.5px solid var(--sand);border-left:4px solid var(--gold);border-radius:12px;padding:10px 12px;margin-bottom:0}
+.shra-note-hl label{display:flex;align-items:center;gap:6px;color:var(--brown)}
+.shra-note-hl label i{color:var(--gold)}
+.shra-note-hl .form-control{background:#fff;border-color:var(--sand)}
+.shra-note-hl .form-control:focus{border-color:var(--gold)}
 .shra-pay-file{display:flex;align-items:center;gap:8px;border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;color:var(--ink-2);background:#fff;cursor:pointer;margin:0}
 .shra-pay-file:hover{border-color:var(--gold);color:var(--brown)}
 #shra-pay-preview{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--ink-2)}
@@ -381,8 +386,8 @@ button.shra-wa-tpl{width:100%;text-align:left;background:#fff;cursor:pointer;fon
 .shra-fn.zero{opacity:.45}
 /* one strip: this month's numbers, their pace against target, and the EOD button */
 .shra-mrow{display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;margin-top:9px;padding-top:10px;border-top:1px solid var(--line)}
-.shra-mx{flex:1 1 140px;min-width:0}
-.shra-mx.wide{flex:1.45 1 185px}
+.shra-mx{flex:1 1 130px;min-width:0}
+.shra-mx.wide{flex:1.3 1 165px}
 .shra-mx-hd{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
 .shra-mx-hd>span{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .shra-mx-hd>span i{font-size:9.5px;opacity:.7;margin-right:2px}
@@ -429,6 +434,8 @@ button.shra-wa-tpl{width:100%;text-align:left;background:#fff;cursor:pointer;fon
 .shra-fl .shra-search input{width:230px;padding-left:32px!important}
 .shra-scope{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .shra-fl input[type=date]{width:135px}
+.shra-fl-dates{display:flex;gap:8px;align-items:center}
+.shra-fl-dates[hidden]{display:none}
 .shra-fl .shra-search i{left:11px;font-size:12px}
 .shra-tabs{display:inline-flex;gap:3px;background:var(--cream);border:1px solid var(--line);border-radius:9px;padding:3px;flex-wrap:wrap}
 .shra-tab{border:0;background:none;padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;white-space:nowrap}
