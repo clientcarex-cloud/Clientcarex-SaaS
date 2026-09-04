@@ -376,10 +376,12 @@ class Shra extends AdminController
         $data['currency']      = get_base_currency();
         $data['lead_id']       = (int) $this->input->get('lead');
         $data['lead']          = null;
+        $this->load->model('shra/shra_leads_model');
         if ($data['lead_id']) {
-            $this->load->model('shra/shra_leads_model');
             $data['lead'] = $this->shra_leads_model->get($data['lead_id']);
         }
+        // Where the customer came from — mandatory on every bill, preset from the lead when billing one.
+        $data['sources']       = $this->shra_leads_model->sources();
 
         $this->load->view('billing', $data);
     }
@@ -395,7 +397,14 @@ class Shra extends AdminController
 
         $rider_id   = (int) $this->input->post('rider_id');
         $package_id = (int) $this->input->post('package_id');
+        $source_id  = (int) $this->input->post('source_id');
+        if ($source_id <= 0 || !$this->db->where('id', $source_id)->count_all_results(db_prefix() . 'leads_sources')) {
+            $this->json(['success' => false, 'message' => 'Select the source — where did this customer come from?']);
+
+            return;
+        }
         $opts       = [
+            'source_id'        => $source_id,
             'discount_percent' => $this->input->post('discount_percent') !== null && $this->input->post('discount_percent') !== '' ? (float) $this->input->post('discount_percent') : null,
             'paid_amount'      => $this->input->post('paid_amount'),
             'payment_mode'     => (string) $this->input->post('payment_mode'),

@@ -706,6 +706,12 @@ if ($CI->db->table_exists($p . 'shra_enrollments') && !$CI->db->field_exists('bi
     $CI->db->query("ALTER TABLE `{$p}shra_enrollments` ADD `bill_group` VARCHAR(40) DEFAULT NULL COMMENT 'set when several riders were billed on one invoice' AFTER `bill_token`, ADD KEY `bill_group` (`bill_group`)");
 }
 
+// v1.5.3 — every counter bill records where the customer came from (tblleads_sources), so
+// revenue can be read by source even for walk-ins that never went through the leads desk.
+if ($CI->db->table_exists($p . 'shra_enrollments') && !$CI->db->field_exists('source_id', $p . 'shra_enrollments')) {
+    $CI->db->query("ALTER TABLE `{$p}shra_enrollments` ADD `source_id` INT(11) DEFAULT NULL COMMENT 'tblleads_sources.id picked at billing' AFTER `batch`, ADD KEY `source_id` (`source_id`)");
+}
+
 // v1.4.6 — a confirmed lead has paid and only waits for its start date, so it carries no
 // follow-up clock. confirm() used to plant one an hour out, which every such lead then sat
 // past forever and read as "overdue". Clear the leftovers so the work list is honest.

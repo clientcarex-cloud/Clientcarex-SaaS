@@ -20,7 +20,7 @@
     <h4 class="shra-title" style="margin:4px 0 14px">Team performance <span class="thin">· <?php echo date('d M Y', strtotime($from)); ?> – <?php echo date('d M Y', strtotime($to)); ?></span></h4>
 
     <?php
-    $tot = ['assigned' => 0, 'calls' => 0, 'visits_booked' => 0, 'visited' => 0, 'won' => 0, 'renewals' => 0, 'revenue' => 0, 'collected' => 0, 'advance' => 0, 'advance_count' => 0, 'overdue_now' => 0, 'open_now' => 0, 'lost' => 0];
+    $tot = ['assigned' => 0, 'calls' => 0, 'visits_booked' => 0, 'visited' => 0, 'won' => 0, 'renewals' => 0, 'revenue' => 0, 'collected' => 0, 'advance' => 0, 'advance_count' => 0, 'advance_others' => 0, 'advance_others_count' => 0, 'overdue_now' => 0, 'open_now' => 0, 'lost' => 0];
     foreach ($rows as $r) { foreach ($tot as $k => $v) { $tot[$k] += (float) $r->$k; } }
     // One link per agent into the payments screen, already filtered to their advances in this period.
     $adv_link = function ($name) use ($from, $to) {
@@ -42,7 +42,8 @@
             <label class="shra-lb-toggle"><input type="checkbox" id="shra-lb-more"> Show pipeline detail</label>
         </div>
         <div class="shra-lb-guide">
-            <span><i class="fa fa-hand-holding-dollar" style="color:var(--green)"></i> <b>Payments collected</b> — advances the agent took on calls (screenshot money, before any bill)</span>
+            <span><i class="fa fa-hand-holding-dollar" style="color:var(--green)"></i> <b>Collected by agent</b> — advances the agent took on calls themselves (screenshot money, before any bill)</span>
+            <span><i class="fa fa-people-arrows" style="color:var(--ink-2)"></i> <b>Collected by others</b> — advances taken on this agent's leads by another employee (a colleague or the counter)</span>
             <span><i class="fa fa-file-invoice" style="color:var(--gold)"></i> <b>Revenue billed</b> — bills raised for riders this agent brought in; credit stays with the agent even if the lead is reassigned later</span>
             <span><i class="fa fa-circle-check" style="color:var(--muted)"></i> <b>Paid on bills</b> — how much of that billed revenue has actually come in</span>
         </div>
@@ -52,21 +53,21 @@
                     <th rowspan="2">#</th><th rowspan="2">Agent</th>
                     <th colspan="3" class="grp">Work done</th>
                     <th colspan="2" class="grp">Results</th>
-                    <th colspan="3" class="grp grp-money">Money</th>
+                    <th colspan="4" class="grp grp-money">Money</th>
                     <th rowspan="2">Target</th>
                     <th colspan="6" class="grp lb-x">Pipeline detail</th>
                 </tr>
                 <tr>
                     <th class="num">Leads</th><th class="num">Calls</th><th class="num">Visited</th>
                     <th class="num">Joined</th><th class="num">Win %</th>
-                    <th class="num">Payments collected</th><th class="num">Revenue billed</th><th class="num">Paid on bills</th>
+                    <th class="num">Collected by agent</th><th class="num">Collected by others</th><th class="num">Revenue billed</th><th class="num">Paid on bills</th>
                     <th class="num lb-x">Reached</th><th class="num lb-x">Confirmed</th><th class="num lb-x">Days to win</th><th class="num lb-x">Open</th><th class="num lb-x">Overdue</th><th class="num lb-x">Stale</th>
                 </tr>
             </thead>
             <tbody>
-            <?php $i = 0; foreach ($rows as $r) { if (!$r->assigned && !$r->calls && !$r->revenue && !$r->open_now && !$r->advance) { continue; } $i++; ?>
+            <?php $i = 0; foreach ($rows as $r) { if (!$r->assigned && !$r->calls && !$r->revenue && !$r->open_now && !$r->advance && !$r->advance_others) { continue; } $i++; ?>
                 <tr>
-                    <td><?php if ($i <= 3 && ($r->revenue > 0 || $r->advance > 0)) { ?><span class="shra-lb-rank r<?php echo $i; ?>"><?php echo $i; ?></span><?php } else { ?><span class="shra-lb-rank"><?php echo $i; ?></span><?php } ?></td>
+                    <td><?php if ($i <= 3 && ($r->revenue > 0 || $r->advance > 0 || $r->advance_others > 0)) { ?><span class="shra-lb-rank r<?php echo $i; ?>"><?php echo $i; ?></span><?php } else { ?><span class="shra-lb-rank"><?php echo $i; ?></span><?php } ?></td>
                     <td><a href="<?php echo admin_url('shra/shra_leads?agent=' . $r->staffid); ?>" style="font-weight:600"><?php echo html_escape($r->name); ?></a><?php if (!$r->active) { ?> <span class="shra-badge shra-badge-muted">inactive</span><?php } ?></td>
                     <td class="num"><?php echo (int) $r->assigned; ?></td>
                     <td class="num"><?php echo (int) $r->calls; ?><?php if ($r->calls_target) { ?><span class="sub">of <?php echo (int) $r->calls_target; ?> target</span><?php } ?></td>
@@ -74,6 +75,7 @@
                     <td class="num"><b><?php echo (int) $r->won; ?></b><?php if ($r->renewals) { ?><span class="sub">+<?php echo (int) $r->renewals; ?> renewals</span><?php } ?></td>
                     <td class="num"><?php echo (int) $r->win_rate; ?>%</td>
                     <td class="num money cash"><?php if ($r->advance > 0) { ?><a href="<?php echo $adv_link($r->name); ?>" title="See these payments"><?php echo shra_money($r->advance); ?></a><span class="sub"><?php echo (int) $r->advance_count; ?> payment<?php echo $r->advance_count == 1 ? '' : 's'; ?></span><?php } else { ?><span class="shra-muted" style="font-weight:400">—</span><?php } ?></td>
+                    <td class="num money others"><?php if ($r->advance_others > 0) { echo shra_money($r->advance_others); ?><span class="sub"><?php echo (int) $r->advance_others_count; ?> payment<?php echo $r->advance_others_count == 1 ? '' : 's'; ?> on their leads</span><?php } else { ?><span class="shra-muted" style="font-weight:400">—</span><?php } ?></td>
                     <td class="num money"><?php echo $r->revenue > 0 ? shra_money($r->revenue) : '<span class="shra-muted" style="font-weight:400">—</span>'; ?></td>
                     <td class="num"><?php if ($r->revenue > 0) { echo shra_money($r->collected); ?><span class="sub"><?php echo round($r->collected / $r->revenue * 100); ?>% of billed</span><?php } else { ?><span class="shra-muted">—</span><?php } ?></td>
                     <td style="min-width:120px"><?php if ($r->revenue_target > 0) { $pc = min(100, round($r->revenue / $r->revenue_target * 100)); ?><div class="shra-progress"><span style="width:<?php echo $pc; ?>%;background:<?php echo $pc >= 100 ? 'var(--green)' : 'var(--gold)'; ?>"></span></div><span class="sub"><?php echo $pc; ?>% of <?php echo shra_money($r->revenue_target); ?></span><?php } else { ?><span class="shra-muted">no target</span><?php } ?></td>
@@ -85,7 +87,7 @@
                     <td class="num lb-x"><?php echo (int) $r->stale_now; ?></td>
                 </tr>
             <?php } ?>
-            <?php if (!$i) { ?><tr><td colspan="17" class="shra-muted" style="text-align:center;padding:26px">No agent activity in this period.</td></tr><?php } ?>
+            <?php if (!$i) { ?><tr><td colspan="18" class="shra-muted" style="text-align:center;padding:26px">No agent activity in this period.</td></tr><?php } ?>
             </tbody>
             <?php if ($i) { ?>
             <tfoot>
@@ -97,6 +99,7 @@
                     <td class="num"><?php echo (int) $tot['won']; ?><?php if ($tot['renewals']) { ?><span class="sub">+<?php echo (int) $tot['renewals']; ?> renewals</span><?php } ?></td>
                     <td class="num"><?php echo $tot['assigned'] ? round($tot['won'] / $tot['assigned'] * 100) : 0; ?>%</td>
                     <td class="num money cash"><?php echo shra_money($tot['advance']); ?><span class="sub"><?php echo (int) $tot['advance_count']; ?> payments</span></td>
+                    <td class="num money others"><?php echo shra_money($tot['advance_others']); ?><span class="sub"><?php echo (int) $tot['advance_others_count']; ?> payments</span></td>
                     <td class="num money"><?php echo shra_money($tot['revenue']); ?></td>
                     <td class="num"><?php echo shra_money($tot['collected']); ?><?php if ($tot['revenue'] > 0) { ?><span class="sub"><?php echo round($tot['collected'] / $tot['revenue'] * 100); ?>% of billed</span><?php } ?></td>
                     <td></td>

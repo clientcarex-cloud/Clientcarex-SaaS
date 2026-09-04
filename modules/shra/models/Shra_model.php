@@ -535,7 +535,9 @@ class Shra_model extends App_Model
         // ── Seats: the payer, plus anyone riding with them on the same mobile ──
         // Only the headcount is needed to price the bill. The guest rider rows are created after
         // the money checks out, so a rejected bill does not leave half a family on file.
-        $names = is_array($opts['guests'] ?? null)
+        // Extra seats exist only on a guest ride (friends riding together on one bill); a course
+        // is one learner, one wallet, so any guest rows posted with it are ignored.
+        $names = (int) $package->is_guest && is_array($opts['guests'] ?? null)
             ? array_slice(array_values($opts['guests']), 0, self::MAX_GROUP_SEATS - 1)
             : [];
         $seats = 1 + count($names);
@@ -630,6 +632,7 @@ class Shra_model extends App_Model
             $first['lead_id'] = $this->shra_leads_model->credit_revenue($first['enrollment_id'], $invoice_id, $rider, [
                 'lead_id'       => (int) ($opts['lead_id'] ?? 0),
                 'credit_lead'   => isset($opts['credit_lead']) ? (string) $opts['credit_lead'] : '1',
+                'source_id'     => (int) ($opts['source_id'] ?? 0),
                 'amount_billed' => $group_total,
                 'amount_paid'   => $paid_amount,
             ]);
@@ -813,6 +816,7 @@ class Shra_model extends App_Model
             'bill_group'       => !empty($opts['bill_group']) ? $opts['bill_group'] : null,
             'start_date'       => $start,
             'batch'            => $batch,
+            'source_id'        => !empty($opts['source_id']) ? (int) $opts['source_id'] : null,
             'expires_at'       => $expires,
             'status'           => 'active',
             'notes'            => isset($opts['notes']) ? substr(trim((string) $opts['notes']), 0, 500) : null,
@@ -854,6 +858,7 @@ class Shra_model extends App_Model
             $lead_id = $this->shra_leads_model->credit_revenue($enrollment_id, $invoice_id, $rider, [
                 'lead_id'     => (int) ($opts['lead_id'] ?? 0),
                 'credit_lead' => isset($opts['credit_lead']) ? (string) $opts['credit_lead'] : '1',
+                'source_id'   => (int) ($opts['source_id'] ?? 0),
             ]);
         }
 

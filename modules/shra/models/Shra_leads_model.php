@@ -1389,6 +1389,11 @@ class Shra_leads_model extends App_Model
                 return null;
             }
             $agent = (int) $lead->assigned ?: (int) $lead->addedfrom;
+            // The counter picks a source on every bill; a lead that never had one adopts it.
+            if (!(int) $lead->source && !empty($opts['source_id'])) {
+                $lead->source = (int) $opts['source_id'];
+                $this->db->where('id', $lead->id)->update($p . 'leads', ['source' => $lead->source]);
+            }
             $prev  = $this->db->where('lead_id', $lead->id)->order_by('id', 'ASC')->get($p . 'shra_lead_attribution')->row();
             $kind  = $prev ? 'repeat' : 'first';
             if ($kind === 'repeat') {
@@ -1478,13 +1483,17 @@ class Shra_leads_model extends App_Model
         $role_w = $rid ? 'OR s.role = ' . (int) $rid : '';
         $f   = $from . ' 00:00:00';
         $t   = $to . ' 23:59:59';
-        // Advances the agent took on calls (screenshot money, before any bill) — credited to
-        // whoever recorded them. The table only exists once the module install has run.
+        // Advances taken on calls (screenshot money, before any bill). `advance` is what the
+        // agent recorded themselves; `advance_others` is money someone else took on a lead
+        // this agent currently owns — the agent's lead still paid, even if a colleague or the
+        // counter recorded it. The table only exists once the module install has run.
         $has_pay = $this->db->table_exists($p . 'shra_lead_payments');
         $adv_sql = $has_pay
             ? "(SELECT COALESCE(SUM(pm.amount),0) FROM {$p}shra_lead_payments pm WHERE pm.staff_id = s.staffid AND pm.created_at BETWEEN ? AND ?) AS advance,
-            (SELECT COUNT(*) FROM {$p}shra_lead_payments pm WHERE pm.staff_id = s.staffid AND pm.created_at BETWEEN ? AND ?) AS advance_count,"
-            : '0 AS advance, 0 AS advance_count,';
+            (SELECT COUNT(*) FROM {$p}shra_lead_payments pm WHERE pm.staff_id = s.staffid AND pm.created_at BETWEEN ? AND ?) AS advance_count,
+            (SELECT COALESCE(SUM(pm.amount),0) FROM {$p}shra_lead_payments pm JOIN {$p}leads l ON l.id = pm.lead_id WHERE l.assigned = s.staffid AND pm.staff_id <> s.staffid AND pm.created_at BETWEEN ? AND ?) AS advance_others,
+            (SELECT COUNT(*) FROM {$p}shra_lead_payments pm JOIN {$p}leads l ON l.id = pm.lead_id WHERE l.assigned = s.staffid AND pm.staff_id <> s.staffid AND pm.created_at BETWEEN ? AND ?) AS advance_others_count,"
+            : '0 AS advance, 0 AS advance_count, 0 AS advance_others, 0 AS advance_others_count,';
         $sql = "SELECT s.staffid, CONCAT(s.firstname,' ',s.lastname) AS name, s.active,
             (SELECT COUNT(*) FROM {$p}leads l WHERE l.assigned = s.staffid AND l.dateadded BETWEEN ? AND ?) AS assigned,
             (SELECT COUNT(*) FROM {$p}shra_lead_events e WHERE e.staff_id = s.staffid AND e.event_type IN ('call','whatsapp') AND e.created_at BETWEEN ? AND ?) AS calls,
@@ -1510,14 +1519,16 @@ class Shra_leads_model extends App_Model
                {$role_w}
             ORDER BY revenue DESC, won DESC, calls DESC";
         $b = [];
-        for ($i = 0, $pairs = $has_pay ? 14 : 12; $i < $pairs; $i++) {
+        for ($i = 0, $pairs = $has_pay ? 16 : 12; $i < $pairs; $i++) {
             array_push($b, $f, $t);
         }
         $b[] = substr($from, 0, 7);
         $rows = $this->db->query($sql, $b)->result();
         foreach ($rows as $r) {
-            $r->advance       = (float) $r->advance;
-            $r->advance_count = (int) $r->advance_count;
+            $r->advance              = (float) $r->advance;
+            $r->advance_count        = (int) $r->advance_count;
+            $r->advance_others       = (float) $r->advance_others;
+            $r->advance_others_count = (int) $r->advance_others_count;
             $r->contact_rate = $r->assigned > 0 ? round($r->contacted / $r->assigned * 100) : 0;
             $r->show_rate    = $r->visits_booked > 0 ? round($r->visited / $r->visits_booked * 100) : 0;
             $r->win_rate     = $r->assigned > 0 ? round($r->won / $r->assigned * 100) : 0;

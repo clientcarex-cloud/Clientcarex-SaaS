@@ -270,17 +270,21 @@
       $grows.children('.shra-guest-row').each(function (i) {
         var n = i + 2;
         $(this).find('.n').text(n);
-        $(this).find('input').attr('placeholder', 'Guest ' + n + ' — name optional');
+        $(this).find('input').attr('placeholder', 'Friend ' + n + ' — name optional');
       });
       $('#shra-guest-add').prop('disabled', seats() >= (cfg.maxSeats || 10));
     }
     function resetGuests() { $grows.empty(); renumberGuests(); }
-    $('#shra-guest-add').on('click', function () {
+    function addGuest() {
       if (seats() >= (cfg.maxSeats || 10)) { return; }
       $grows.append(proto('shra-guest-proto', '.shra-guest-row'));
       renumberGuests(); summary();
       $grows.children('.shra-guest-row').last().find('input').focus();
-    });
+    }
+    $('#shra-guest-add').on('click', addGuest);
+    // A + on every row too, so a group of five is five quick presses.
+    $grows.on('click', '[data-guest-more]', addGuest);
+    $grows.on('keydown', 'input', function (e) { if (e.key === 'Enter') { e.preventDefault(); addGuest(); } });
     $grows.on('click', '[data-guest-del]', function () {
       $(this).closest('.shra-guest-row').remove(); renumberGuests(); summary();
     });
@@ -340,6 +344,8 @@
       pkg = cfg.packages[$(this).data('id')];
       $('#shra-package-id').val(pkg.id);
       if (+pkg.is_guest === 1) { $('#shra-bill-form input[name=batch][value=""]').prop('checked', true); }
+      // Friends ride together only on a guest ride — a course is one learner, one wallet.
+      if (+pkg.is_guest !== 1) { resetGuests(); }
       // Guest rides ride now — preselect "Mark 1st session now" unless the user chose otherwise
       var $mark = $('#shra-bill-form input[name=mark_now]');
       if (!$mark.data('touched')) { $mark.prop('checked', +pkg.is_guest === 1); }
@@ -348,6 +354,7 @@
     });
 
     $discount.on('input', function () { $(this).data('touched', true); summary(); });
+    $('#shra-source').on('change', summary);
     $('#shra-bill-form input[name=mark_now]').on('change', function () { $(this).data('touched', true); });
 
     function scheduleLine() {
@@ -364,7 +371,9 @@
     function summary() {
       // Schedule (start date + batch) shows only once a non-guest package is chosen
       $('#shra-schedule').toggle(!!pkg && +pkg.is_guest !== 1);
-      $guests.toggle(!!pkg);
+      $guests.toggle(!!pkg && +pkg.is_guest === 1);
+      var $src = $('#shra-source'), srcOk = !!$src.val();
+      $src.closest('.form-group').toggleClass('has-error', !srcOk && !!pkg);
       if (!pkg) {
         $sum.html('<div class="shra-empty" style="padding:30px 10px"><i class="fa-solid fa-horse"></i>Pick a rider and a package</div>');
         $btn.prop('disabled', true);
@@ -387,15 +396,17 @@
         (d > 0 ? '<div class="row-line" style="color:#a8322d"><span>Discount ' + d + '%</span><span>− ' + S.money(disc) + '</span></div>' : '') +
         (n > 1 ? '<div class="row-line"><span><i class="fa-solid fa-users"></i> ' + n + ' riders</span><span class="shra-muted">' + S.money(unit) + ' each</span></div>' : '') +
         (scheduleLine() ? '<div class="row-line"><span><i class="fa-solid fa-calendar-day"></i> Schedule</span><span class="shra-muted">' + S.esc(scheduleLine()) + '</span></div>' : '') +
+        '<div class="row-line"><span><i class="fa-solid fa-bullhorn"></i> Source</span><span class="' + (srcOk ? 'shra-muted' : 'v') + '" style="' + (srcOk ? '' : 'color:#a8322d') + '">' + (srcOk ? S.esc($src.find('option:selected').text()) : 'not selected') + '</span></div>' +
         '<div class="row-line total"><span>Total</span><span class="amt">' + S.money(total) + '</span></div>' +
         '<div class="row-line pay"><span>Collecting now</span><span class="v">' + (got.any ? S.money(got.sum) : '—') + '</span></div>' +
         (got.parts.length > 1 ? '<div class="row-line"><span class="shra-muted">Split</span><span class="shra-muted">' + S.esc(got.parts.join(' · ')) + '</span></div>' : '') +
         '<div class="row-line due' + (got.any && !over && due <= 0 ? ' ok' : '') + '"><span>Still due</span><span class="v">' + (got.any ? (due > 0 ? S.money(due) : S.money(0) + ' · fully paid') : '—') + '</span></div>' +
-        (over ? '<div class="shra-alert shra-alert-bad" style="margin-top:8px">That is ' + S.money(Math.round((got.sum - total) * 100) / 100) + ' more than the bill. Reduce a mode, or add a rider.</div>' :
+        (!srcOk ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Select the source (how they found us) to continue.</div>' : '') +
+        (over ? '<div class="shra-alert shra-alert-bad" style="margin-top:8px">That is ' + S.money(Math.round((got.sum - total) * 100) / 100) + ' more than the bill. Reduce a mode' + (+pkg.is_guest === 1 ? ', or add a friend' : '') + '.</div>' :
           (!got.any ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">Enter the amount received to continue.</div>' :
             (due > 0 ? '<div class="shra-alert shra-alert-warn" style="margin-top:8px">' + S.money(due) + ' will stay due on the invoice.</div>' : '')))
       );
-      $btn.prop('disabled', (!rider && !quickReady()) || !got.any || over).find('.amt').text(got.any && !over ? S.money(paid) : '');
+      $btn.prop('disabled', (!rider && !quickReady()) || !got.any || over || !srcOk).find('.amt').text(got.any && !over ? S.money(paid) : '');
     }
 
     var inflight = false;
@@ -427,7 +438,9 @@
         if (res.success) {
           $('#shra-bill-done').html(res.html).show();
           if (res.duplicate) { alert_float('warning', 'That bill was already created — nothing was charged twice.'); }
+          var srcKeep = $('#shra-lead-id').data('fixed') ? $('#shra-source').val() : '';
           $form[0].reset(); $discount.data('touched', false); $paid.data('touched', false);
+          $('#shra-source').val(srcKeep);
           $('#shra-bill-form input[name=mark_now]').data('touched', false);
           resetGuests(); resetPayRows();
           $('#shra-quick-age').hide().empty();

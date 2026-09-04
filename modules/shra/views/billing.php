@@ -31,14 +31,24 @@
                 </div>
                 <div id="shra-picked" class="shra-picked" style="display:none"></div>
 
+                <div class="form-group shra-source" style="margin-top:12px">
+                    <label for="shra-source">Source <span style="color:var(--red)">*</span> <span class="shra-muted" style="font-weight:400;font-size:11.5px">— how did they find us?</span></label>
+                    <select name="source_id" id="shra-source" class="form-control" required>
+                        <option value="">Select a source…</option>
+                        <?php foreach ($sources as $src) { ?><option value="<?php echo (int) $src->id; ?>" <?php echo $lead && (int) $lead->source === (int) $src->id ? 'selected' : ''; ?>><?php echo html_escape($src->name); ?></option><?php } ?>
+                    </select>
+                    <?php if (!count($sources)) { ?><div class="help" style="color:var(--red)">No sources yet — <a href="<?php echo admin_url('shra/shra_leads/settings'); ?>" target="_blank">add one in Leads settings</a> before billing.</div>
+                    <?php } elseif (shra_leads_can('manage')) { ?><div class="help">Missing one? <a href="<?php echo admin_url('shra/shra_leads/settings'); ?>" target="_blank">Add sources in Leads settings</a>.</div><?php } ?>
+                </div>
+
                 <div id="shra-guests" class="shra-guests" style="display:none">
-                    <label style="margin-bottom:8px">Riding with them <span class="shra-muted" style="font-weight:400;font-size:11.5px">— same mobile, one bill</span></label>
+                    <label style="margin-bottom:8px">Friends riding with them <span class="shra-muted" style="font-weight:400;font-size:11.5px">— guest ride only · same mobile, one bill</span></label>
                     <div id="shra-guest-rows"></div>
-                    <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="shra-guest-add"><i class="fa fa-plus"></i> Add a rider</button>
-                    <div class="help" style="margin-top:8px">Only the payer's details are needed. Each guest still gets their own rider number, sessions and attendance — leave a name blank and it is numbered for you.</div>
+                    <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="shra-guest-add"><i class="fa fa-plus"></i> Add a friend</button>
+                    <div class="help" style="margin-top:8px">One customer, many friends: press <b>+</b> once per extra rider. Only the payer's details are needed — each friend still gets their own rider number and attendance; leave a name blank and it is numbered for you.</div>
                 </div>
                 <template id="shra-guest-proto">
-                    <div class="shra-guest-row"><span class="n"></span><input type="text" name="guest_name[]" class="form-control" maxlength="191"><button type="button" class="shra-ic" data-guest-del title="Remove"><i class="fa fa-times"></i></button></div>
+                    <div class="shra-guest-row"><span class="n"></span><input type="text" name="guest_name[]" class="form-control" maxlength="191"><button type="button" class="shra-ic" data-guest-del title="Remove"><i class="fa fa-times"></i></button><button type="button" class="shra-ic shra-ic-add" data-guest-more title="Add another friend"><i class="fa fa-plus"></i></button></div>
                 </template>
 
                 <div id="shra-rider-flags" style="margin-top:10px"></div>

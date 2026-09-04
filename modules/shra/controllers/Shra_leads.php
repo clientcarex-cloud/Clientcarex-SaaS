@@ -684,6 +684,7 @@ class Shra_leads extends AdminController
             'reference'    => trim((string) $this->input->post('paid_reference')),
             'notes'        => 'Leads desk · confirmed & billed on lead #' . $l->id,
             'lead_id'      => $l->id,
+            'source_id'    => (int) $l->source,
             'credit_lead'  => '1',
             'bill_token'   => (string) $this->input->post('bill_token'),
             'force'        => (int) $this->input->post('force') === 1,
