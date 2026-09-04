@@ -705,14 +705,6 @@
         if ($('#shra-f-range').val() === 'custom' && $('#shra-f-dates input').filter(function () { return !!this.value; }).length) { this.form.submit(); }
       });
 
-      $('#shra-f-clear').on('click', function () {
-        // A date range lives on the URL, so clearing it means going back for the rows.
-        var reset = $(this).data('reset');
-        if (reset) { window.location.href = reset; return; }
-        q = stage = source = ''; $('#shra-q').val(''); $('#shra-f-stage,#shra-f-source').val('');
-        bucket = 'all'; drawTabs(); apply();
-      });
-
       // "/" focuses search, Esc closes the row menu — agents live on the keyboard here.
       $(document).on('keydown', function (e) {
         if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ''))) { e.preventDefault(); $('#shra-q').focus(); }

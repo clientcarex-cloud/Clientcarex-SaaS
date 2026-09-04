@@ -174,13 +174,6 @@
                     <input type="date" name="to" class="form-control" value="<?php echo html_escape($filters['to']); ?>" title="Added to">
                 </span>
             </form>
-            <?php // "My queue" resets to the viewer's own queue as it always has — it just keeps the date range.
-            $queue_url = admin_url('shra/shra_leads?' . http_build_query(array_filter(['range' => $filters['range'], 'from' => $filters['from'], 'to' => $filters['to']]))); ?>
-            <a href="<?php echo $all ? $queue_url : $qs(['scope' => 'all']); ?>" class="shra-btn shra-btn-outline shra-btn-sm" title="<?php echo $all ? 'Back to my call queue' : 'Show every lead'; ?>">
-                <i class="fa <?php echo $all ? 'fa-list-check' : 'fa-layer-group'; ?>"></i> <?php echo $all ? 'My queue' : 'All leads'; ?>
-            </a>
-            <button type="button" class="shra-btn shra-btn-outline shra-btn-sm" id="shra-f-clear" title="Clear filters"
-                <?php if ($range['on']) { ?>data-reset="<?php echo $qs(['range' => '', 'from' => '', 'to' => '']); ?>"<?php } ?>><i class="fa fa-rotate-left"></i></button>
         </div>
     </div>
 
