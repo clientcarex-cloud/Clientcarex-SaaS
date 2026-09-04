@@ -4,23 +4,30 @@
 <div class="content">
     <?php $shra_active = 'team'; include __DIR__ . '/../_nav.php'; ?>
 
-    <form method="get" class="shra-toolbar" style="justify-content:space-between">
-        <div class="shra-seg" style="margin:0">
+    <?php
+    // Two forms, not one. They used to share a single form that carried both the preset
+    // radios (name="range") and a hidden range=custom for the date boxes — so every preset
+    // click submitted range=<preset>&range=custom, PHP kept the last one, and all seven
+    // buttons silently resolved to the custom dates. Keeping them apart is what makes the
+    // presets work; do not merge them back for the sake of one <form>.
+    ?>
+    <div class="shra-toolbar" style="justify-content:space-between">
+        <form method="get" class="shra-seg" style="margin:0">
             <?php foreach (['today' => 'Today', 'week' => 'This week', 'month' => 'This month', 'last_month' => 'Last month', 'quarter' => '3 months', 'year' => 'This year', 'all' => 'All time'] as $k => $v) { ?>
                 <label><input type="radio" name="range" value="<?php echo $k; ?>" <?php echo $preset === $k ? 'checked' : ''; ?> onclick="this.form.submit()"><span><?php echo $v; ?></span></label>
             <?php } ?>
-        </div>
-        <div class="shra-toolbar" style="margin:0">
+        </form>
+        <form method="get" class="shra-toolbar" style="margin:0">
             <input type="hidden" name="range" value="custom">
             <input type="date" name="from" class="form-control" style="width:auto" value="<?php echo $from; ?>">
             <input type="date" name="to" class="form-control" style="width:auto" value="<?php echo $to; ?>">
             <button class="shra-btn shra-btn-outline shra-btn-sm">Apply</button>
-        </div>
-    </form>
+        </form>
+    </div>
     <h4 class="shra-title" style="margin:4px 0 14px">Team performance <span class="thin">· <?php echo date('d M Y', strtotime($from)); ?> – <?php echo date('d M Y', strtotime($to)); ?></span></h4>
 
     <?php
-    $tot = ['assigned' => 0, 'calls' => 0, 'visits_booked' => 0, 'visited' => 0, 'won' => 0, 'renewals' => 0, 'revenue' => 0, 'collected' => 0, 'advance' => 0, 'advance_count' => 0, 'advance_others' => 0, 'advance_others_count' => 0, 'overdue_now' => 0, 'open_now' => 0, 'lost' => 0];
+    $tot = ['assigned' => 0, 'calls' => 0, 'visits_booked' => 0, 'visited' => 0, 'won' => 0, 'renewals' => 0, 'revenue' => 0, 'collected' => 0, 'rev_calls' => 0, 'rev_counter' => 0, 'billed' => 0, 'advance' => 0, 'advance_count' => 0, 'advance_others' => 0, 'advance_others_count' => 0, 'overdue_now' => 0, 'open_now' => 0, 'lost' => 0];
     foreach ($rows as $r) { foreach ($tot as $k => $v) { $tot[$k] += (float) $r->$k; } }
     // One link per agent into the payments screen, already filtered to their advances in this period.
     $adv_link = function ($name) use ($from, $to) {
@@ -33,19 +40,19 @@
         <div class="shra-stat"><div class="shra-stat-label">Visited</div><div class="shra-stat-value"><?php echo (int) $tot['visited']; ?></div><div class="shra-stat-sub"><?php echo (int) $tot['visits_booked']; ?> booked · <?php echo $tot['visits_booked'] ? round($tot['visited'] / $tot['visits_booked'] * 100) : 0; ?>% show</div><div class="shra-stat-icon"><i class="fa fa-calendar-check"></i></div></div>
         <div class="shra-stat"><div class="shra-stat-label">Joined</div><div class="shra-stat-value"><?php echo (int) $tot['won']; ?></div><div class="shra-stat-sub"><?php echo $tot['assigned'] ? round($tot['won'] / $tot['assigned'] * 100) : 0; ?>% conversion · <?php echo (int) $tot['lost']; ?> lost</div><div class="shra-stat-icon"><i class="fa fa-trophy"></i></div></div>
         <div class="shra-stat"><div class="shra-stat-label">Collected</div><div class="shra-stat-value" style="font-size:22px;color:var(--green)"><?php echo shra_money($tot['advance']); ?></div><div class="shra-stat-sub"><?php echo (int) $tot['advance_count']; ?> advances taken on calls</div><div class="shra-stat-icon"><i class="fa fa-hand-holding-dollar"></i></div></div>
-        <div class="shra-stat"><div class="shra-stat-label">Revenue billed</div><div class="shra-stat-value" style="font-size:22px"><?php echo shra_money($tot['revenue']); ?></div><div class="shra-stat-sub"><?php echo shra_money($tot['collected']); ?> paid on bills · <?php echo (int) $tot['renewals']; ?> renewals</div><div class="shra-stat-icon"><i class="fa fa-indian-rupee-sign"></i></div></div>
+        <div class="shra-stat"><div class="shra-stat-label">Revenue in</div><div class="shra-stat-value" style="font-size:22px"><?php echo shra_money($tot['revenue']); ?></div><div class="shra-stat-sub"><?php echo shra_money($tot['rev_calls']); ?> on calls · <?php echo shra_money($tot['rev_counter']); ?> at counter</div><div class="shra-stat-icon"><i class="fa fa-indian-rupee-sign"></i></div></div>
     </div>
 
     <div class="shra-card shra-lb" id="shra-lb">
         <div class="shra-card-head">
-            <h4><i class="fa fa-ranking-star" style="color:var(--gold)"></i> Leaderboard <span class="thin">· ranked by revenue billed</span></h4>
+            <h4><i class="fa fa-ranking-star" style="color:var(--gold)"></i> Leaderboard <span class="thin">· ranked by money in</span></h4>
             <label class="shra-lb-toggle"><input type="checkbox" id="shra-lb-more"> Show pipeline detail</label>
         </div>
         <div class="shra-lb-guide">
-            <span><i class="fa fa-hand-holding-dollar" style="color:var(--green)"></i> <b>Collected by agent</b> — advances the agent took on calls themselves (screenshot money, before any bill)</span>
-            <span><i class="fa fa-people-arrows" style="color:var(--ink-2)"></i> <b>Collected by others</b> — advances taken on this agent's leads by another employee (a colleague or the counter)</span>
-            <span><i class="fa fa-file-invoice" style="color:var(--gold)"></i> <b>Revenue billed</b> — bills raised for riders this agent brought in; credit stays with the agent even if the lead is reassigned later</span>
-            <span><i class="fa fa-circle-check" style="color:var(--muted)"></i> <b>Paid on bills</b> — how much of that billed revenue has actually come in</span>
+            <span><i class="fa fa-hand-holding-dollar" style="color:var(--green)"></i> <b>Advances by agent</b> — advances the agent took on calls themselves (screenshot money, before any bill)</span>
+            <span><i class="fa fa-people-arrows" style="color:var(--ink-2)"></i> <b>Advances by others</b> — advances taken on this agent's leads by another employee (a colleague or the counter)</span>
+            <span><i class="fa fa-file-invoice" style="color:var(--gold)"></i> <b>Revenue in</b> — money that actually arrived on the leads this agent owns <em>now</em>: advances on calls plus payments at the counter. Reassign a lead and its revenue moves with it.</span>
+            <span><i class="fa fa-circle-check" style="color:var(--muted)"></i> <b>Billed</b> — what was invoiced on those same leads, so Revenue in ÷ Billed is how much of it has landed</span>
         </div>
         <div class="shra-table-wrap"><table class="shra-table">
             <thead>
