@@ -52,6 +52,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
             type="button"><?= _l('perfex_saas_test'); ?></button>
     </div>
 
+    <!-- Full diagnostic output of the last connection test. alert_float() is
+         far too small for a cURL/HTTP dump, so the detail lands here. -->
+    <div id="cpanel_test_result" class="hidden tw-mt-4">
+        <pre style="white-space:pre-wrap;word-break:break-word;max-height:420px;overflow:auto;font-size:12px;"></pre>
+    </div>
+
     <?php $addondoamin_enabled = get_option('perfex_saas_cpanel_enable_addondomain') == '1'; ?>
     <div class="row mtop25 tw-mb-4">
         <div class="col-md-3 border-right">
@@ -122,6 +128,15 @@ defined('BASEPATH') or exit('No direct script access allowed');
 <script>
 "use strict";
 
+function renderCpanelTestResult(status, text) {
+    const box = $("#cpanel_test_result");
+    box.removeClass('hidden');
+    box.find('pre')
+        .removeClass('text-danger text-success')
+        .addClass(status === 'success' ? 'text-success' : 'text-danger')
+        .text(text);
+}
+
 function testCpanelIntegration() {
     const data = {};
     const button = $("#cpanel button");
@@ -131,13 +146,44 @@ function testCpanelIntegration() {
     });
 
     button.attr('disabled', true);
+    renderCpanelTestResult('success', 'Testing...');
+
     $.post(admin_url + '<?= PERFEX_SAAS_ROUTE_NAME; ?>/integrations/test_cpanel', data)
         .done(function(response) {
             button.removeAttr('disabled');
-            response = JSON.parse(response);
-            alert_float(response.status, response.message, 10000);
+
+            let parsed;
+            try {
+                parsed = typeof response === 'string' ? JSON.parse(response) : response;
+            } catch (e) {
+                // PHP emitted a warning/fatal before the JSON - show it raw
+                // instead of swallowing it in a JSON.parse exception.
+                renderCpanelTestResult('danger', 'The server did not return JSON:\n\n' + response);
+                alert_float('danger', 'cPanel test failed - see the details below the Test button.', 10000);
+                return;
+            }
+
+            console.log('cPanel integration test', parsed);
+
+            let detail = parsed.message || '';
+            if (parsed.details) {
+                detail += '\n\n' + parsed.details;
+            }
+            if (parsed.diagnostics && Object.keys(parsed.diagnostics).length) {
+                detail += '\n\nRaw diagnostics:\n' + JSON.stringify(parsed.diagnostics, null, 2);
+            }
+            if (parsed.trace) {
+                detail += '\n\nStack trace:\n' + parsed.trace;
+            }
+
+            renderCpanelTestResult(parsed.status, detail.trim());
+            alert_float(parsed.status, parsed.message, 10000);
         }).fail(function(error) {
             button.removeAttr('disabled');
+            renderCpanelTestResult('danger',
+                'The test request itself failed (HTTP ' + error.status + ' ' + error.statusText + ').\n\n' +
+                (error.responseText || 'No response body. Check the PHP error log.'));
+            alert_float('danger', 'cPanel test request failed - see the details below the Test button.', 10000);
         });
 }
 

@@ -55,9 +55,21 @@ if (!function_exists('perfex_saas_get_cpanel')) {
         $db_prefix = empty($db_prefix) ? $user : $db_prefix;
         $prefix = (empty($db_prefix) ? '' : $db_prefix . '_') . PERFEX_SAAS_MODULE_NAME_SHORT . '_';
 
+        // decrypt() returns FALSE when the stored value was written under a
+        // different application encryption key. Passing that on produces an
+        // empty Basic auth password and cPanel answers with its login page,
+        // which reads as "invalid credentials" rather than "unreadable secret".
+        $stored_password = get_option('perfex_saas_cpanel_password');
+        $password = $CI->encryption->decrypt($stored_password);
+
+        if ($password === false) {
+            log_message('error', 'perfex_saas cpanel: stored password could not be decrypted (' . (empty($stored_password) ? 'no password saved' : 'the application encryption key changed since it was saved') . '). Re-enter and save the cPanel password in SaaS settings > Integrations.');
+            $password = '';
+        }
+
         $CI->cpanel_api->init(
             $user,
-            $CI->encryption->decrypt(get_option('perfex_saas_cpanel_password')),
+            $password,
             get_option('perfex_saas_cpanel_login_domain'),
             get_option('perfex_saas_cpanel_port'),
             $prefix
