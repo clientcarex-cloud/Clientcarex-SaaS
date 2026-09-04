@@ -82,6 +82,99 @@ class Cpanel_api
         return $port === '' ? '2083' : $port;
     }
 
+    /**
+     * Authorization scheme the panel has actually accepted on this instance,
+     * so the fallback below costs one extra request per run at most.
+     * '' | 'basic' | 'token'
+     *
+     * @var string
+     */
+    private $authScheme = '';
+
+    /**
+     * cPanel API tokens are NOT Basic auth passwords. A token must be sent as
+     * "Authorization: cpanel user:TOKEN"; sent as a Basic password the panel
+     * answers 401 with its HTML login page. The password setting is documented
+     * as accepting either a password or a full-permission API token, so try
+     * both schemes and remember whichever one the panel accepts.
+     *
+     * @return string[]
+     */
+    private function authSchemesToTry()
+    {
+        if ($this->authScheme !== '') {
+            return [$this->authScheme];
+        }
+
+        return $this->looksLikeApiToken() ? ['token', 'basic'] : ['basic', 'token'];
+    }
+
+    /**
+     * cPanel generates tokens as long upper-case alphanumeric strings. Only a
+     * hint for ordering - both schemes are tried either way.
+     *
+     * @return bool
+     */
+    private function looksLikeApiToken()
+    {
+        $secret = (string) $this->cpanelPassword;
+
+        return strlen($secret) >= 20 && preg_match('/^[A-Z0-9]+$/', $secret) === 1;
+    }
+
+    /**
+     * @param string $scheme
+     * @return string
+     */
+    private function authHeader($scheme)
+    {
+        if ($scheme === 'token') {
+            return 'Authorization: cpanel ' . $this->cpanelUsername . ':' . $this->cpanelPassword;
+        }
+
+        return 'Authorization: Basic ' . base64_encode($this->cpanelUsername . ':' . $this->cpanelPassword);
+    }
+
+    /**
+     * Perform one HTTP call and return everything needed to explain a failure.
+     *
+     * @param string $url
+     * @param string $authHeader
+     * @return array
+     */
+    protected function performRequest($url, $authHeader)
+    {
+        $responseHeaders = [];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [$authHeader, 'Accept: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $header) use (&$responseHeaders) {
+            $line = trim($header);
+            if ($line !== '') {
+                $responseHeaders[] = $line;
+            }
+            return strlen($header);
+        });
+
+        $body  = curl_exec($ch);
+        $errno = curl_errno($ch);
+        $error = curl_error($ch);
+        $info  = curl_getinfo($ch);
+        curl_close($ch);
+
+        return [
+            'body'    => $body === false ? '' : (string) $body,
+            'errno'   => $errno,
+            'error'   => $error,
+            'info'    => $info,
+            'headers' => $responseHeaders,
+        ];
+    }
+
     private function makeAPICall($module, $func, $params = [], $version = 'uapi')
     {
         $host = $this->normalizedHost();
@@ -90,10 +183,6 @@ class Cpanel_api
         $this->lastCall = $module . '::' . $func;
 
         $url = "https://{$host}:{$port}/execute/{$module}/{$func}";
-        $headers = [
-            'Authorization: Basic ' . base64_encode($this->cpanelUsername . ':' . $this->cpanelPassword),
-            'Accept: application/json',
-        ];
 
         if ($version !== 'uapi') {
             $url = "https://{$host}:{$port}/json-api/cpanel?cpanel_jsonapi_apiversion=2&cpanel_jsonapi_module={$module}&cpanel_jsonapi_func={$func}";
@@ -110,29 +199,30 @@ class Cpanel_api
         }
 
         $url .= $paramsString;
-        $responseHeaders = [];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $header) use (&$responseHeaders) {
-            $line = trim($header);
-            if ($line !== '') {
-                $responseHeaders[] = $line;
+        $schemes = $this->authSchemesToTry();
+        $tried   = [];
+        $result  = null;
+        $scheme  = '';
+
+        foreach ($schemes as $scheme) {
+            $tried[]  = $scheme;
+            $result   = $this->performRequest($url, $this->authHeader($scheme));
+            $httpCode = (int) ($result['info']['http_code'] ?? 0);
+
+            // Only an authentication rejection is worth retrying with the other
+            // scheme; anything else is the panel's real answer.
+            if ($result['errno'] !== 0 || $httpCode !== 401) {
+                $this->authScheme = $result['errno'] === 0 ? $scheme : $this->authScheme;
+                break;
             }
-            return strlen($header);
-        });
+        }
 
-        $response_text = curl_exec($ch);
-        $curl_errno = curl_errno($ch);
-        $curl_error = curl_error($ch);
-        $curl_info  = curl_getinfo($ch);
-        curl_close($ch);
+        $response_text = $result['body'];
+        $curl_errno    = $result['errno'];
+        $curl_error    = $result['error'];
+        $curl_info     = $result['info'];
 
-        $response_text = $response_text === false ? '' : (string) $response_text;
         $response = json_decode($response_text, true);
         $is_json = json_last_error() === JSON_ERROR_NONE && is_array($response);
 
@@ -144,14 +234,16 @@ class Cpanel_api
             'port'            => $port,
             'username'        => $this->cpanelUsername,
             'password_set'    => $this->cpanelPassword === '' || $this->cpanelPassword === null ? 'no' : 'yes (' . strlen((string) $this->cpanelPassword) . ' chars)',
+            'auth_scheme'     => $scheme === 'token' ? 'cpanel API token' : 'Basic password',
+            'auth_tried'      => implode(', ', $tried),
             'http_code'       => (int) ($curl_info['http_code'] ?? 0),
             'content_type'    => $curl_info['content_type'] ?? '',
             'primary_ip'      => $curl_info['primary_ip'] ?? '',
             'total_time'      => round((float) ($curl_info['total_time'] ?? 0), 2) . 's',
             'curl_errno'      => $curl_errno,
             'curl_error'      => $curl_error,
-            'redirect_to'     => $this->headerValue($responseHeaders, 'location'),
-            'www_authenticate' => $this->headerValue($responseHeaders, 'www-authenticate'),
+            'redirect_to'     => $this->headerValue($result['headers'], 'location'),
+            'www_authenticate' => $this->headerValue($result['headers'], 'www-authenticate'),
             'response_is_json' => $is_json ? 'yes' : 'no',
             'response_bytes'  => strlen($response_text),
             'response_excerpt' => $this->excerpt($response_text),
@@ -221,10 +313,11 @@ class Cpanel_api
         }
         // 2. cPanel answered, and answered with an auth failure.
         elseif ($code === 401) {
-            $reason = 'cPanel rejected the credentials (HTTP 401 Unauthorized).';
-            $hints[] = 'The username or password is wrong for this panel, OR Basic authentication is not usable on this account.';
-            $hints[] = 'Two-factor authentication on the cPanel account blocks Basic auth - disable 2FA for this user, or use an API token instead.';
-            $hints[] = 'Confirm the username is the cPanel account user (not WHM root, not an email address).';
+            $reason = 'cPanel rejected the credentials (HTTP 401 Unauthorized) using ' . ($d['auth_tried'] === 'basic, token' || $d['auth_tried'] === 'token, basic' ? 'BOTH a Basic password and a cPanel API token' : 'a ' . $d['auth_scheme']) . '.';
+            $hints[] = 'Create a cPanel API token and paste it into the Password field: cPanel > Security > Manage API Tokens > Create > give it full permissions. Tokens work even when password logins to the API are blocked.';
+            $hints[] = 'Two-factor authentication on the cPanel account makes password (Basic) authentication return exactly this 401 - cPanel & WHM 102+ refuses Basic auth for 2FA accounts. An API token is the supported way around it.';
+            $hints[] = 'Some hosts (Hostinger, and any server with a cPanel SecurityPolicy driver enabled) disable password authentication against port ' . $d['port'] . ' entirely, again leaving the API token as the only option.';
+            $hints[] = 'Otherwise: confirm "' . $d['username'] . '" is the cPanel account user (not WHM root, not an email address) and that the same user/password pair logs in at https://' . $d['login_domain'] . ':' . $d['port'] . '/ in a browser.';
         } elseif ($code === 403) {
             $reason = 'cPanel accepted the request but refused it (HTTP 403 Forbidden).';
             $hints[] = 'This is normally cPHulk / host access control blocking this server\'s IP' . ($d['primary_ip'] ? ' (' . $d['primary_ip'] . ')' : '') . ', or the cPanel account lacking the feature/privilege for ' . $d['call'] . '.';
@@ -264,7 +357,8 @@ class Cpanel_api
         $lines[] = '';
         $lines[] = 'Request:  ' . $d['endpoint'];
         $lines[] = 'Host:     ' . $d['login_domain'] . ':' . $d['port'] . ($d['primary_ip'] ? ' (resolved ' . $d['primary_ip'] . ')' : '');
-        $lines[] = 'User:     ' . $d['username'] . ' | password ' . $d['password_set'];
+        $lines[] = 'User:     ' . $d['username'] . ' | secret ' . $d['password_set'];
+        $lines[] = 'Auth:     ' . $d['auth_scheme'] . ' (schemes tried: ' . $d['auth_tried'] . ')';
         $lines[] = 'HTTP:     ' . ($code ?: 'no response') . ' ' . ($d['content_type'] ?: '') . ' in ' . $d['total_time'];
 
         if ($d['curl_errno']) {
