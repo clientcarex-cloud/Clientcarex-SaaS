@@ -595,6 +595,10 @@
       return out;
     }
 
+    // Pages can add their own bulk action (the leads list adds Reassign) — they need
+    // the same tick list the delete button works from.
+    S.bulkIds = ids;
+
     function sync() {
       var n = ids().length;
       $bar.prop('hidden', !n).find('.shra-bulk-count').text(n);

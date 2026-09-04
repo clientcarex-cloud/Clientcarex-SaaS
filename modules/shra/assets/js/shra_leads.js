@@ -451,6 +451,38 @@
   // Reassign
   $('#shra-lead-reassign-form').on('submit', function (e) { e.preventDefault(); post(cfg().urls.reassign, formObj($(this)), function () { $('#shra-lead-reassign').modal('hide'); }); });
 
+  /* Reassign everything ticked in the work list. The bulk bar owns the selection
+     (shra.js); this only asks who to hand them to and posts the ids. */
+  function bulkPicked() { return (window.SHRA && SHRA.bulkIds) ? SHRA.bulkIds() : []; }
+
+  $(document).on('click', '.shra-bulk-reassign', function () {
+    var n = bulkPicked().length;
+    if (!n) { return; }
+    $('#shra-bulk-n').text(n + ' lead' + (n === 1 ? '' : 's'));
+    $('#shra-bulk-reassign-form')[0].reset();
+    $('#shra-bulk-reassign').modal('show');
+  });
+
+  $('#shra-bulk-reassign-form').on('submit', function (e) {
+    e.preventDefault();
+    var list = bulkPicked();
+    if (!list.length) { $('#shra-bulk-reassign').modal('hide'); return; }
+    var $b = $(this).find('button[type=submit]'), html = $b.html();
+    $b.prop('disabled', true).html('<i class="fa fa-circle-notch fa-spin"></i> Reassigning\u2026');
+    $.post(cfg().urls.bulk_reassign, csrf($.param({
+      ids: list, staff_id: $(this).find('[name=staff_id]').val(), note: $(this).find('[name=note]').val()
+    })), function (res) {
+      if (!res || !res.success) {
+        $b.prop('disabled', false).html(html);
+        toast('danger', (res && res.message) || 'Could not reassign.');
+        return;
+      }
+      toast('success', res.message);
+      // Ownership drives the queue and the agent filter, so the list is refetched.
+      setTimeout(function () { location.reload(); }, 600);
+    }, 'json').fail(function () { $b.prop('disabled', false).html(html); toast('danger', 'Request failed.'); });
+  });
+
   // WhatsApp templates & share links
   function waFill(text, name, visit) {
     return String(text || '')

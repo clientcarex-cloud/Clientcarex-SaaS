@@ -3,7 +3,8 @@
  * One lead as a dense table row — the My Day work list (built for 150+ leads/day).
  * $l = decorated lead, $can_all. Swapped in place by shra_leads.js after every action.
  */
-$can_all = isset($can_all) ? $can_all : shra_leads_can('all');
+$can_all    = isset($can_all) ? $can_all : shra_leads_can('all');
+$can_manage = isset($can_manage) ? $can_manage : shra_leads_can('manage');
 $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : '')
          : ($l->rider_for === 'both' ? 'Self + child' : 'Self' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : ''));
 
@@ -24,7 +25,7 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     data-visit="<?php echo html_escape(trim(($l->visit_date ? date('D d M', strtotime($l->visit_date)) : '') . ' ' . shra_slot($l->visit_slot))); ?>"
     data-paid="<?php echo $money['paid'] > 0 ? html_escape(shra_money($money['paid'])) : ''; ?>" data-due="<?php echo $money['due'] > 0 ? html_escape(shra_money($money['due'])) : ''; ?>"
     data-paid-num="<?php echo $money['paid'] + 0; ?>" data-deal-num="<?php echo $money['deal'] + 0; ?>" data-pkg="<?php echo (int) $l->interest_package_id; ?>" data-s="<?php echo html_escape($hay); ?>">
-    <?php if (is_admin()) { ?><td class="shra-r-sel"><input type="checkbox" class="shra-bulk-cb" value="<?php echo (int) $l->id; ?>" title="Select for bulk delete"></td><?php } ?>
+    <?php if ($can_manage) { ?><td class="shra-r-sel"><input type="checkbox" class="shra-bulk-cb" value="<?php echo (int) $l->id; ?>" title="Select for bulk actions"></td><?php } ?>
     <td class="shra-r-name">
         <a href="<?php echo shra_lead_url($l->id); ?>"><?php echo html_escape($l->name); ?></a>
         <span class="shra-r-sub">

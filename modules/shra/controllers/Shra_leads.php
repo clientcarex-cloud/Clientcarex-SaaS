@@ -576,6 +576,71 @@ class Shra_leads extends AdminController
         ]);
     }
 
+    /**
+     * Hand everything ticked in the work list to one agent. Same permission and the same
+     * per-lead trail as the single-lead dialog — looping is the only difference.
+     */
+    public function bulk_reassign()
+    {
+        $this->need('manage');
+        if ($this->input->method() !== 'post') {
+            $this->json(['success' => false, 'message' => 'Invalid request.']);
+
+            return;
+        }
+        $ids = $this->input->post('ids');
+        $ids = is_array($ids) ? array_unique(array_filter(array_map('intval', $ids))) : [];
+        if (!count($ids)) {
+            $this->json(['success' => false, 'message' => 'Nothing selected.']);
+
+            return;
+        }
+        // The dropdown is a convenience, not a promise — the target must really take leads.
+        $to = (int) $this->input->post('staff_id');
+        $ok = false;
+        foreach (shra_lead_agents() as $a) {
+            if ((int) $a->staffid === $to) {
+                $ok = true;
+            }
+        }
+        if (!$ok) {
+            $this->json(['success' => false, 'message' => 'Pick an agent from the list.']);
+
+            return;
+        }
+
+        $note = trim((string) $this->input->post('note'));
+        $done = $same = $failed = 0;
+        foreach ($ids as $id) {
+            $l = $this->leads->get($id);
+            if (!$l || !$this->leads->can_access($l)) {
+                $failed++;
+            } elseif ((int) $l->assigned === $to) {
+                $same++;
+            } elseif ($this->leads->assign($id, $to, $note) === true) {
+                $done++;
+            } else {
+                $failed++;
+            }
+        }
+
+        $name  = get_staff_full_name($to);
+        $extra = [];
+        if ($same) {
+            $extra[] = $same . ' already with them';
+        }
+        if ($failed) {
+            $extra[] = $failed . ' could not be moved';
+        }
+        $this->json([
+            'success' => $done > 0 || $same > 0,
+            'message' => $done > 0
+                ? 'Reassigned ' . $done . ' lead' . ($done === 1 ? '' : 's') . ' to ' . $name
+                    . (count($extra) ? ' — ' . implode(', ', $extra) . '.' : '.')
+                : ($same > 0 ? 'Nothing to do — ' . $same . ' already with ' . $name . '.' : 'Nothing was reassigned.'),
+        ]);
+    }
+
     /** Single-lead delete from the lead page. Superadmin only, exactly like the bulk bar. */
     public function delete_lead()
     {

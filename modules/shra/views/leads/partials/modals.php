@@ -236,6 +236,20 @@ foreach ($packages as $pk) {
     <div class="modal-footer"><button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button><button type="submit" class="shra-btn shra-btn-primary"><i class="fa fa-check"></i> Reassign</button></div>
     </form>
 </div></div></div>
+
+<!-- Reassign everything ticked in the work list — same trail as the single-lead dialog -->
+<div class="modal fade shra" id="shra-bulk-reassign" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
+    <form id="shra-bulk-reassign-form">
+    <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title"><i class="fa fa-headset"></i> Reassign <span id="shra-bulk-n"></span></h4></div>
+    <div class="modal-body">
+        <label>Hand them to</label>
+        <select name="staff_id" class="form-control" required><?php foreach ($agents as $a) { ?><option value="<?php echo $a->staffid; ?>"><?php echo html_escape($a->full_name); ?><?php echo $a->staffid == get_staff_user_id() ? ' (me)' : ''; ?></option><?php } ?></select>
+        <div class="form-group" style="margin-top:12px"><label>Reason</label><input type="text" name="note" class="form-control" placeholder="Why (logged on every lead)"></div>
+        <p class="help" style="margin:0">Each lead keeps its own history entry, and the new agent is notified. Leads already with them are left alone.</p>
+    </div>
+    <div class="modal-footer"><button type="button" class="shra-btn shra-btn-outline" data-dismiss="modal">Cancel</button><button type="submit" class="shra-btn shra-btn-primary"><i class="fa fa-check"></i> Reassign</button></div>
+    </form>
+</div></div></div>
 <?php } ?>
 
 <!-- WhatsApp template picker -->
@@ -295,6 +309,7 @@ window.SHRA_LEADS_CFG = {
         reopen: <?php echo json_encode(admin_url('shra/shra_leads/reopen')); ?>,
         stage: <?php echo json_encode(admin_url('shra/shra_leads/stage')); ?>,
         reassign: <?php echo json_encode(admin_url('shra/shra_leads/reassign')); ?>,
+        bulk_reassign: <?php echo json_encode(admin_url('shra/shra_leads/bulk_reassign')); ?>,
         note: <?php echo json_encode(admin_url('shra/shra_leads/note')); ?>,
         payment_del: <?php echo json_encode(admin_url('shra/shra_leads/delete_payment')); ?>,
         payment_proof: <?php echo json_encode(admin_url('shra/shra_leads/attach_proof')); ?>,
