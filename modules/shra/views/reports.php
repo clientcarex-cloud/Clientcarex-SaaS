@@ -15,12 +15,12 @@ $bars = function (array $rows, $key, $val, $fmt = null, $h = 120, $color = 'var(
     }
     return $svg . '</svg>';
 };
-$hbars = function (array $rows, $key, $val, $fmt = null, $color = 'var(--gold)', $total = false) {
+$sum = function (array $rows, $val) { $t = 0; foreach ($rows as $r) { $t += (float) $r->$val; } return $t; };
+$hbars = function (array $rows, $key, $val, $fmt = null, $color = 'var(--gold)') {
     if (!count($rows)) { return '<div class="shra-empty" style="padding:26px"><i class="fa-solid fa-chart-simple"></i>No data in this range.</div>'; }
-    $max = 0; $sum = 0; foreach ($rows as $r) { $max = max($max, (float) $r->$val); $sum += (float) $r->$val; } $max = $max ?: 1;
+    $max = 0; foreach ($rows as $r) { $max = max($max, (float) $r->$val); } $max = $max ?: 1;
     $o = '<div class="shra-hbars">';
     foreach ($rows as $r) { $v = (float) $r->$val; $o .= '<div class="hb"><span class="lbl">' . html_escape($r->$key) . '</span><span class="bar"><span style="width:' . round($v / $max * 100) . '%;background:' . $color . '"></span></span><span class="val">' . ($fmt ? $fmt($v) : (int) $v) . '</span></div>'; }
-    if ($total) { $o .= '<div class="hb total"><span class="lbl">Total</span><span></span><span class="val">' . ($fmt ? $fmt($sum) : (int) $sum) . '</span></div>'; }
     return $o . '</div>';
 };
 $money = 'shra_money';
@@ -45,10 +45,6 @@ $hours = []; foreach ($R['by_hour'] as $r) { $hours[] = (object) ['k' => date('g
 .shra-hbars .val{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
 .shra-modes .lbl small{display:block;font-size:10.5px;font-weight:500;color:var(--muted)}
 .shra-modes .hb.zero .lbl,.shra-modes .hb.zero .val{color:var(--muted);font-weight:500}
-.shra-hbars .hb.total{border-top:2px solid var(--line);border-bottom:0;margin-top:2px;padding-top:9px}
-.shra-hbars .hb.total .val{font-size:15px}
-.shra-modes .pct{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;color:var(--muted)}
-.shra-modes .pct em{font-style:normal;white-space:nowrap}
 .shra-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
 @media(max-width:900px){.shra-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .shra-kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
@@ -90,14 +86,13 @@ $hours = []; foreach ($R['by_hour'] as $r) { $hours[] = (object) ['k' => date('g
 
     <div class="shra-rep-grid">
         <div class="shra-card"><div class="shra-card-head"><h4>Collections by day</h4><span class="shra-pill"><?php echo $money($k['collected']); ?></span></div><div class="shra-card-body"><?php echo $bars($byday, 'k', 'v', $money, 130, 'var(--green)'); ?></div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>Collections by payment mode</h4><span class="shra-pill"><?php echo $money($k['collected']); ?></span></div><div class="shra-card-body">
+        <div class="shra-card"><div class="shra-card-head"><h4>Collections by payment mode</h4><span class="shra-pill"><?php echo (int) $k['payments']; ?> · <?php echo $money($k['collected']); ?></span></div><div class="shra-card-body">
             <?php if (!count($R['by_mode'])) { ?><div class="shra-empty" style="padding:26px"><i class="fa-solid fa-chart-simple"></i>No payment modes configured.</div><?php } else {
-                $mmax = 0; $mtot = 0; $mcnt = 0; foreach ($R['by_mode'] as $m) { $mmax = max($mmax, (float) $m->amount); $mtot += (float) $m->amount; $mcnt += (int) $m->n; } $mmax = $mmax ?: 1; ?>
+                $mmax = 0; foreach ($R['by_mode'] as $m) { $mmax = max($mmax, (float) $m->amount); } $mmax = $mmax ?: 1; ?>
             <div class="shra-hbars shra-modes">
                 <?php foreach ($R['by_mode'] as $m) { $v = (float) $m->amount; ?>
                 <div class="hb<?php echo $v > 0 ? '' : ' zero'; ?>"><span class="lbl" title="<?php echo html_escape($m->mode); ?>"><?php echo html_escape($m->mode); ?><small><?php echo (int) $m->n; ?> payment<?php echo (int) $m->n == 1 ? '' : 's'; ?></small></span><span class="bar"><span style="width:<?php echo round($v / $mmax * 100); ?>%;background:var(--green)"></span></span><span class="val"><?php echo $v > 0 ? $money($v) : '—'; ?></span></div>
                 <?php } ?>
-                <div class="hb total"><span class="lbl">Total<small><?php echo $mcnt; ?> payment<?php echo $mcnt == 1 ? '' : 's'; ?></small></span><span class="pct"><?php foreach ($R['by_mode'] as $m) { if ((float) $m->amount <= 0) { continue; } ?><em><?php echo html_escape($m->mode); ?> <?php echo $pct($m->amount, $mtot); ?>%</em><?php } ?></span><span class="val"><?php echo $money($mtot); ?></span></div>
             </div>
             <?php $ci = 0; ?><div class="shra-split"><?php foreach ($R['by_mode'] as $m) { if ((float) $m->amount <= 0) { continue; } ?><span style="flex:<?php echo max(1, (float) $m->amount); ?>;background:<?php echo ['var(--green)', 'var(--gold)', 'var(--brown)', 'var(--ink)', 'var(--muted)'][$ci++ % 5]; ?>" title="<?php echo html_escape($m->mode . ' · ' . $money($m->amount)); ?>"></span><?php } ?></div>
             <?php } ?>
@@ -117,15 +112,15 @@ $hours = []; foreach ($R['by_hour'] as $r) { $hours[] = (object) ['k' => date('g
     </div>
 
     <div class="shra-rep-grid">
-        <div class="shra-card"><div class="shra-card-head"><h4>Children vs adults</h4></div><div class="shra-card-body"><?php $aud = array_map(function ($r) { $r->k = ucfirst($r->k) . ' (' . (int) $r->n . ')'; return $r; }, $R['by_audience']); echo $hbars($aud, 'k', 'billed', $money); ?></div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>Learner packages vs guest rides</h4></div><div class="shra-card-body"><?php $typ = array_map(function ($r) { $r->k = ucfirst($r->k) . ' (' . (int) $r->n . ')'; return $r; }, $R['by_type']); echo $hbars($typ, 'k', 'billed', $money, 'var(--brown)'); ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>Children vs adults</h4><span class="shra-pill"><?php echo $money($sum($R['by_audience'], 'billed')); ?></span></div><div class="shra-card-body"><?php $aud = array_map(function ($r) { $r->k = ucfirst($r->k) . ' (' . (int) $r->n . ')'; return $r; }, $R['by_audience']); echo $hbars($aud, 'k', 'billed', $money); ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>Learner packages vs guest rides</h4><span class="shra-pill"><?php echo $money($sum($R['by_type'], 'billed')); ?></span></div><div class="shra-card-body"><?php $typ = array_map(function ($r) { $r->k = ucfirst($r->k) . ' (' . (int) $r->n . ')'; return $r; }, $R['by_type']); echo $hbars($typ, 'k', 'billed', $money, 'var(--brown)'); ?></div></div>
     </div>
 
     <?php if (!empty($lead_agents)) { ?>
     <div class="shra-rep-title">Revenue by calling agent <span class="thin" style="font-weight:500;font-size:12px">· credited at billing to the agent who owned the lead · <a href="<?php echo admin_url('shra/shra_leads/team?range=custom&from=' . $from . '&to=' . $to); ?>">full team report</a></span></div>
     <div class="shra-rep-grid">
-        <div class="shra-card"><div class="shra-card-head"><h4>By agent</h4></div><div class="shra-card-body"><?php $ag = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->won . ' joined)'; return $r; }, array_values(array_filter($lead_agents, function ($r) { return $r->revenue > 0; }))); echo count($ag) ? $hbars($ag, 'k', 'revenue', $money, 'var(--green)', true) : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>By lead source</h4></div><div class="shra-card-body"><?php $sr = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->leads . ' leads)'; return $r; }, array_values(array_filter($lead_sources, function ($r) { return $r->revenue > 0; }))); echo count($sr) ? $hbars($sr, 'k', 'revenue', $money, 'var(--brown)', true) : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>By agent</h4><span class="shra-pill"><?php echo $money($sum($lead_agents, 'revenue')); ?></span></div><div class="shra-card-body"><?php $ag = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->won . ' joined)'; return $r; }, array_values(array_filter($lead_agents, function ($r) { return $r->revenue > 0; }))); echo count($ag) ? $hbars($ag, 'k', 'revenue', $money, 'var(--green)') : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>By lead source</h4><span class="shra-pill"><?php echo $money($sum($lead_sources, 'revenue')); ?></span></div><div class="shra-card-body"><?php $sr = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->leads . ' leads)'; return $r; }, array_values(array_filter($lead_sources, function ($r) { return $r->revenue > 0; }))); echo count($sr) ? $hbars($sr, 'k', 'revenue', $money, 'var(--brown)') : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
     </div>
     <?php } ?>
 
@@ -139,28 +134,28 @@ $hours = []; foreach ($R['by_hour'] as $r) { $hours[] = (object) ['k' => date('g
 
     <div class="shra-rep-grid">
         <div class="shra-card"><div class="shra-card-head"><h4>Sessions by day</h4><span class="shra-pill"><?php echo (int) $k['sessions_held']; ?></span></div><div class="shra-card-body"><?php echo $bars($sess, 'k', 'v', null, 130); ?></div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>Busiest weekdays</h4></div><div class="shra-card-body"><?php echo $hbars(array_values($wk), 'k', 'n'); ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>Busiest weekdays</h4><span class="shra-pill"><?php echo (int) $k['sessions_held']; ?> sessions</span></div><div class="shra-card-body"><?php echo $hbars(array_values($wk), 'k', 'n'); ?></div></div>
         <div class="shra-card"><div class="shra-card-head"><h4>Trainer workload</h4></div><div class="shra-card-body">
             <?php if (!count($R['by_trainer'])) { ?><div class="shra-empty" style="padding:26px"><i class="fa-solid fa-user-tie"></i>No sessions in this range.</div><?php } else { ?>
             <table class="shra-table"><thead><tr><th>Trainer</th><th class="num">Sessions</th><th class="num">Riders</th><th class="num">Days</th><th style="min-width:110px">Share</th></tr></thead><tbody>
             <?php foreach ($R['by_trainer'] as $r) { ?><tr><td class="strong"><?php echo html_escape($r->trainer); ?></td><td class="num"><?php echo (int) $r->n; ?></td><td class="num"><?php echo (int) $r->riders; ?></td><td class="num"><?php echo (int) $r->days; ?></td><td><div class="shra-progress"><span style="width:<?php echo $pct($r->n, $k['sessions_held']); ?>%"></span></div></td></tr><?php } ?>
             </tbody></table><?php } ?>
         </div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>Sessions by hour</h4></div><div class="shra-card-body"><?php echo $bars($hours, 'k', 'v', null, 110, 'var(--brown)'); ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>Sessions by hour</h4><span class="shra-pill"><?php echo (int) $sum($hours, 'v'); ?> sessions</span></div><div class="shra-card-body"><?php echo $bars($hours, 'k', 'v', null, 110, 'var(--brown)'); ?></div></div>
         <div class="shra-card"><div class="shra-card-head"><h4>Most active riders</h4></div><div class="shra-card-body">
             <?php if (!count($R['top_riders'])) { ?><div class="shra-empty" style="padding:26px"><i class="fa-solid fa-horse"></i>No sessions in this range.</div><?php } else { ?>
             <table class="shra-table"><thead><tr><th>#</th><th>Rider</th><th class="num">Sessions</th><th>Last ride</th></tr></thead><tbody>
             <?php foreach ($R['top_riders'] as $i => $r) { ?><tr><td class="shra-muted"><?php echo $i + 1; ?></td><td><a href="<?php echo admin_url('shra/rider/' . $r->id); ?>" class="strong"><?php echo html_escape($r->full_name); ?></a><span class="sub"><?php echo html_escape($r->rider_no); ?> · <?php echo $r->rider_type === 'guest' ? 'Guest' : 'Learner'; ?></span></td><td class="num"><?php echo (int) $r->n; ?></td><td><?php echo _d($r->last_session); ?></td></tr><?php } ?>
             </tbody></table><?php } ?>
         </div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>Horses ridden</h4></div><div class="shra-card-body"><?php echo count($R['top_horses']) ? $hbars($R['top_horses'], 'horse_name', 'n', null, 'var(--brown)') : '<div class="shra-empty" style="padding:26px"><i class="fa-solid fa-horse"></i>No horse names recorded on sessions yet.</div>'; ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>Horses ridden</h4><span class="shra-pill">top <?php echo count($R['top_horses']); ?></span></div><div class="shra-card-body"><?php echo count($R['top_horses']) ? $hbars($R['top_horses'], 'horse_name', 'n', null, 'var(--brown)') : '<div class="shra-empty" style="padding:26px"><i class="fa-solid fa-horse"></i>No horse names recorded on sessions yet.</div>'; ?></div></div>
     </div>
 
     <div class="shra-rep-title">Riders</div>
     <div class="shra-rep-grid">
         <div class="shra-card"><div class="shra-card-head"><h4>New registrations by source</h4><span class="shra-pill"><?php echo (int) $k['new_riders']; ?> in range</span></div><div class="shra-card-body"><?php $src = array_map(function ($r) { $r->k = ($r->k === 'self' ? 'QR self-registration' : 'Front desk') . ' · ' . ucfirst($r->rider_type); return $r; }, $R['riders_by_source']); echo $hbars($src, 'k', 'n'); ?></div></div>
         <div class="shra-card"><div class="shra-card-head"><h4>Age groups</h4><span class="shra-pill">all <?php echo (int) $k['riders_total']; ?> riders</span></div><div class="shra-card-body"><?php echo $hbars($R['age_bands'], 'k', 'n', null, 'var(--ink)'); ?></div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>Learners by riding level</h4></div><div class="shra-card-body"><?php echo $hbars($R['riders_by_level'], 'k', 'n'); ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>Learners by riding level</h4><span class="shra-pill"><?php echo (int) $sum($R['riders_by_level'], 'n'); ?> learners</span></div><div class="shra-card-body"><?php echo $hbars($R['riders_by_level'], 'k', 'n'); ?></div></div>
         <div class="shra-card"><div class="shra-card-head"><h4>Packages expiring within 30 days</h4><span class="shra-pill"><?php echo count($R['expiring']); ?></span></div><div class="shra-card-body" style="padding:0">
             <?php if (!count($R['expiring'])) { ?><div class="shra-empty" style="padding:26px"><i class="fa fa-check" style="color:var(--green)"></i>Nothing expiring soon.</div><?php } else { ?>
             <table class="shra-table"><thead><tr><th>Rider</th><th>Package</th><th class="num">Left</th><th>Expires</th></tr></thead><tbody>
