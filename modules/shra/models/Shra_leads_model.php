@@ -144,6 +144,17 @@ class Shra_leads_model extends App_Model
             $w[] = 'x.visit_date = ?';
             $b[] = $f['visit_date'];
         }
+        // Drill-down from a header tile: the leads behind that number, counted the same way.
+        if (!empty($f['metric'])) {
+            $m = $this->metric_where($f['metric'], (int) ($f['metric_agent'] ?? 0),
+                (string) ($f['metric_from'] ?? ''), (string) ($f['metric_to'] ?? ''));
+            if ($m) {
+                $w[] = $m[0];
+                foreach ($m[1] as $v) {
+                    $b[] = $v;
+                }
+            }
+        }
         if (!empty($f['overdue'])) {
             $w[] = shra_lead_overdue_where($now);
         }
@@ -158,6 +169,69 @@ class Shra_leads_model extends App_Model
         }
 
         return $rows;
+    }
+
+    /** The tiles a lead list can be drilled into, in header order. */
+    public static function metrics()
+    {
+        return [
+            'calls'     => 'Calls',
+            'visits'    => 'Visits booked',
+            'joined'    => 'Joined',
+            'collected' => 'Collected',
+            'revenue'   => 'Revenue',
+        ];
+    }
+
+    /**
+     * The leads behind one header tile, matched by the same rule team_stats() counted
+     * them with — so clicking a number lands on exactly the rows that made it.
+     * $agent 0 = the whole team. Returns [sql, binds] or null for an unknown metric.
+     */
+    private function metric_where($metric, $agent, $from, $to)
+    {
+        $p = db_prefix();
+        $f = ($from !== '' ? $from : '1970-01-01') . ' 00:00:00';
+        $t = ($to !== '' ? $to : date('Y-m-d')) . ' 23:59:59';
+        $a = (int) $agent;
+
+        switch ($metric) {
+            // Calls and WhatsApp are credited to whoever logged them.
+            case 'calls':
+                return ["EXISTS (SELECT 1 FROM {$p}shra_lead_events e WHERE e.lead_id = l.id
+                        AND e.event_type IN ('call','whatsapp') AND e.created_at BETWEEN ? AND ?"
+                        . ($a ? ' AND e.staff_id = ?' : '') . ')',
+                    $a ? [$f, $t, $a] : [$f, $t]];
+
+            // A booking belongs to whoever owns the lead now, like the leaderboard.
+            case 'visits':
+                return ["EXISTS (SELECT 1 FROM {$p}shra_lead_events e WHERE e.lead_id = l.id
+                        AND e.event_type IN ('visit_scheduled','visit_rescheduled') AND e.created_at BETWEEN ? AND ?)"
+                        . ($a ? ' AND l.assigned = ?' : ''),
+                    $a ? [$f, $t, $a] : [$f, $t]];
+
+            case 'joined':
+            case 'revenue':
+                return ["EXISTS (SELECT 1 FROM {$p}shra_lead_attribution att WHERE att.lead_id = l.id
+                        AND att.credited_at BETWEEN ? AND ?"
+                        . ($metric === 'joined' ? " AND att.kind = 'first'" : '')
+                        . ($a ? ' AND att.agent_id = ?' : '') . ')',
+                    $a ? [$f, $t, $a] : [$f, $t]];
+
+            // Advances the agent took themselves, plus any taken on their leads by
+            // somebody else — the same two sums the Collected tile adds up.
+            case 'collected':
+                if (!$this->db->table_exists($p . 'shra_lead_payments')) {
+                    return ['1=0', []];
+                }
+
+                return ["EXISTS (SELECT 1 FROM {$p}shra_lead_payments pm WHERE pm.lead_id = l.id
+                        AND pm.created_at BETWEEN ? AND ?"
+                        . ($a ? ' AND (pm.staff_id = ? OR l.assigned = ?)' : '') . ')',
+                    $a ? [$f, $t, $a, $a] : [$f, $t]];
+        }
+
+        return null;
     }
 
     /** Agent home: overdue / today / upcoming (7 days) / no next action (safety net). */

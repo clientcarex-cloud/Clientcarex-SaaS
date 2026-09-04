@@ -387,6 +387,10 @@ button.shra-wa-tpl{width:100%;text-align:left;background:#fff;cursor:pointer;fon
 /* one strip: this month's numbers, their pace against target, and the EOD button */
 .shra-mrow{display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;margin-top:9px;padding-top:10px;border-top:1px solid var(--line)}
 .shra-mx{flex:1 1 130px;min-width:0}
+a.shra-mx{display:block;color:inherit;text-decoration:none!important;border-radius:10px;margin:-6px -8px;padding:6px 8px;transition:.15s}
+a.shra-mx:hover{background:var(--cream-2);color:inherit}
+a.shra-mx:hover .shra-mx-hd>span{color:var(--brown)}
+.shra-mx.on{background:var(--cream-2);box-shadow:inset 0 0 0 1.5px var(--gold)}
 .shra-mx.wide{flex:1.3 1 165px}
 .shra-mx-hd{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
 .shra-mx-hd>span{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -428,6 +432,10 @@ button.shra-wa-tpl{width:100%;text-align:left;background:#fff;cursor:pointer;fon
 .shra-eod-loading{padding:30px;text-align:center;color:var(--muted)}
 
 /* filter bar */
+/* drill-down banner: which tile the list below is answering for */
+.shra-drill{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding:9px 14px;border:1.5px solid var(--sand);border-left:4px solid var(--gold);border-radius:12px;background:var(--cream-2);font-size:12.5px;color:var(--ink-2)}
+.shra-drill b{color:var(--brown)}
+.shra-drill i.fa-filter{color:var(--gold);margin-right:4px}
 .shra-fl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin-bottom:10px}
 .shra-fl-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .shra-fl .form-control{margin:0;height:34px;padding:6px 10px;font-size:12.5px;width:auto;border-radius:8px}

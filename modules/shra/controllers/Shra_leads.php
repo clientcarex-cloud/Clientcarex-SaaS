@@ -122,6 +122,14 @@ class Shra_leads extends AdminController
             $agent = $me;
         }
         $scope = $this->input->get('scope') === 'all' ? 'all' : 'mine';
+        // Drilling into a header tile is a question about a period, not a call queue.
+        $metric = (string) $this->input->get('metric');
+        if (!isset(Shra_leads_model::metrics()[$metric])) {
+            $metric = '';
+        }
+        if ($metric !== '') {
+            $scope = 'all';
+        }
         // One date-range control drives both scopes: a preset key, or `custom` with
         // its own from/to. A bare from/to (older links, the export URL) still works.
         $range = shra_lead_range($this->input->get('range'), (string) $this->input->get('from'), (string) $this->input->get('to'));
@@ -142,8 +150,15 @@ class Shra_leads extends AdminController
         } elseif ($this->input->get('overdue')) {
             $bucket = 'overdue';
         }
+        // The tiles cover the picked range, or this month when none is picked — a
+        // drill-down has to ask about exactly the same window.
+        $mfrom = $range['on'] ? ($from !== '' ? $from : '1970-01-01') : date('Y-m-01');
+        $mto   = $range['on'] ? ($to !== '' ? $to : date('Y-m-d')) : date('Y-m-t');
+
         $data['range']   = $range;
+        $data['metric']  = $metric;
         $data['filters'] = [
+            'metric' => $metric,
             'range'  => $range['key'],
             'from'   => $from,
             'to'     => $to,
@@ -156,8 +171,14 @@ class Shra_leads extends AdminController
         if ($scope === 'all') {
             $data['rows']     = $this->leads->get_list(array_filter([
                 'agent'   => $agent && $this->input->get('agent') ? $agent : 0,
-                'from'    => $from,
-                'to'      => $to,
+                // A drill-down's dates belong to the metric, not to when the lead came in.
+                'from'    => $metric === '' ? $from : '',
+                'to'      => $metric === '' ? $to : '',
+                'metric'       => $metric,
+                // Whoever the header counted for — 0 is the whole team.
+                'metric_agent' => $agent,
+                'metric_from'  => $mfrom,
+                'metric_to'    => $mto,
                 // Pipeline stage stays a browser-side filter so the dropdown can widen
                 // again without a round trip; only the dashboard slices narrow the query.
                 'stage'   => in_array($bucket, ['open', 'closed'], true) ? $bucket : '',
@@ -228,10 +249,20 @@ class Shra_leads extends AdminController
     public function export()
     {
         $this->need('manage');
-        // Same range control as the screen, so the export matches what was on it.
-        $range = shra_lead_range($this->input->get('range'), (string) $this->input->get('from'), (string) $this->input->get('to'));
-        $list  = $this->leads->get_list(array_filter(['stage' => (string) $this->input->get('stage'), 'agent' => (int) $this->input->get('agent'), 'source' => (int) $this->input->get('source'),
-            'from' => $range['from'], 'to' => $range['to']]), 5000);
+        // Same range and drill-down as the screen, so the export matches what was on it.
+        $range  = shra_lead_range($this->input->get('range'), (string) $this->input->get('from'), (string) $this->input->get('to'));
+        $metric = (string) $this->input->get('metric');
+        if (!isset(Shra_leads_model::metrics()[$metric])) {
+            $metric = '';
+        }
+        $agent = (int) $this->input->get('agent');
+        $list  = $this->leads->get_list(array_filter(['stage' => (string) $this->input->get('stage'), 'agent' => $agent, 'source' => (int) $this->input->get('source'),
+            'from' => $metric === '' ? $range['from'] : '', 'to' => $metric === '' ? $range['to'] : '',
+            'metric'       => $metric,
+            'metric_agent' => $agent,
+            'metric_from'  => $range['on'] ? ($range['from'] !== '' ? $range['from'] : '1970-01-01') : date('Y-m-01'),
+            'metric_to'    => $range['on'] ? ($range['to'] !== '' ? $range['to'] : date('Y-m-d')) : date('Y-m-t'),
+        ]), 5000);
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="shra-leads-' . date('Ymd') . '.csv"');
         $out = fopen('php://output', 'w');
