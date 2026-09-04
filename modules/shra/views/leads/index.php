@@ -24,13 +24,15 @@
     // What the numbers cover: the picked range, or this month when none is picked.
     $period = !empty($range['on']) ? $range['label'] : 'this month';
 
-    // No-shows are appended as their own tab; skip any already in the list.
+    // One list, in the order it should be worked: overdue first, then by how late each
+    // one is. No-shows join it rather than sitting apart — skip any already in the list.
     $seen = [];
-    foreach ($rows as $l) { $seen[$l->id] = true; }
-    $ns = [];
+    $work = [];
+    foreach ($rows as $l) { $seen[$l->id] = true; $work[] = [$l, shra_lead_bucket($l)]; }
     foreach ($no_shows as $l) {
-        if (!isset($seen[$l->id])) { $ns[] = $l; }
+        if (!isset($seen[$l->id])) { $work[] = [$l, 'noshow']; }
     }
+    shra_lead_sort_work($work);
     // agent 0 = "All staff" — everyone's leads at once, both scopes. Admins land on it.
     $agent_param = (string) $this->input->get('agent');
     $sel_agent   = ($all && $agent_param === '') ? '' : ($agent ? (string) $agent : '');
@@ -146,8 +148,7 @@
     </div>
 
     <!-- ── Filters ────────────────────────────────────────────────── -->
-    <div class="shra-fl" id="shra-filters" data-scope="<?php echo $scope; ?>" data-bucket="<?php echo html_escape($filters['bucket']); ?>">
-        <div class="shra-tabs" id="shra-tabs"><!-- filled from the rows below --></div>
+    <div class="shra-fl" id="shra-filters" data-scope="<?php echo $scope; ?>">
         <div class="shra-fl-right">
             <div class="shra-search"><i class="fa fa-search"></i><input type="text" id="shra-q" class="form-control" placeholder="Search name, phone, city…  (/)" autocomplete="off" value="<?php echo html_escape($filters['q']); ?>"></div>
             <select id="shra-f-stage" class="form-control">
@@ -182,7 +183,7 @@
         <table class="shra-table shra-wt">
             <thead>
                 <tr>
-                    <?php if (is_admin()) { ?><th class="shra-r-sel"><input type="checkbox" class="shra-bulk-all" title="Select every lead shown"></th><?php } ?>
+                    <?php if (is_admin()) { ?><th class="shra-r-sel"><input type="checkbox" class="shra-bulk-all" title="Select every lead on this page"></th><?php } ?>
                     <th class="shra-r-name">Lead</th>
                     <th class="shra-r-phone">Phone</th>
                     <th class="shra-r-stage">Stage</th>
@@ -196,16 +197,29 @@
                 </tr>
             </thead>
             <tbody id="shra-rows">
-                <?php foreach ($rows as $l) { include __DIR__ . '/partials/lead_row.php'; } ?>
-                <?php foreach ($ns as $l) { $force_bucket = 'noshow'; include __DIR__ . '/partials/lead_row.php'; unset($force_bucket); } ?>
+                <?php foreach ($work as $w) { list($l, $force_bucket) = $w; include __DIR__ . '/partials/lead_row.php'; } unset($force_bucket); ?>
             </tbody>
         </table>
-        <?php if (!count($rows) && !count($ns)) { ?>
+        <?php if (!count($work)) { ?>
             <div class="shra-empty"><i class="fa-solid fa-phone-volume"></i><?php echo $all || $range['on'] ? 'No leads match these filters.' : 'Nothing in your queue — every lead is followed up.'; ?></div>
         <?php } ?>
-        <div class="shra-empty" id="shra-none" hidden><i class="fa-solid fa-check" style="color:var(--green)"></i>Nothing here — pick another tab or clear the search.</div>
+        <div class="shra-empty" id="shra-none" hidden><i class="fa-solid fa-check" style="color:var(--green)"></i>Nothing matches — widen the stage, source or search.</div>
         <div class="shra-work-foot">
             <span id="shra-count"></span>
+            <span class="shra-pager" id="shra-pager" hidden>
+                <button type="button" class="shra-pg" data-page="first" title="First page"><i class="fa fa-angles-left"></i></button>
+                <button type="button" class="shra-pg" data-page="prev" title="Previous page"><i class="fa fa-angle-left"></i></button>
+                <span class="shra-pg-at" id="shra-pager-at"></span>
+                <button type="button" class="shra-pg" data-page="next" title="Next page"><i class="fa fa-angle-right"></i></button>
+                <button type="button" class="shra-pg" data-page="last" title="Last page"><i class="fa fa-angles-right"></i></button>
+                <select id="shra-per" class="form-control" title="Rows per page">
+                    <option value="25">25</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                    <option value="0">All</option>
+                </select>
+            </span>
             <span>
                 <?php if (!$all && count($rows) >= 800) { ?><span class="shra-badge shra-badge-muted" title="Queue is capped at 800">first 800</span><?php } ?>
                 <?php if ($all && count($rows) >= 1500) { ?><span class="shra-badge shra-badge-muted" title="Narrow the date range to see more">first 1500</span><?php } ?>

@@ -7,24 +7,8 @@ $can_all = isset($can_all) ? $can_all : shra_leads_can('all');
 $who     = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : '')
          : ($l->rider_for === 'both' ? 'Self + child' : 'Self' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : ''));
 
-// Which work bucket the row belongs to — mirrors Shra_leads_model::queues_for().
-if (!empty($force_bucket)) {
-    $bucket = $force_bucket;
-} elseif (!$l->is_open) {
-    $bucket = 'closed';
-} elseif (!$l->is_timed) {
-    $bucket = 'joining';   // confirmed & paid — waiting on its start date, not on an agent
-} elseif (empty($l->next_action_at)) {
-    $bucket = 'unset';
-} elseif (strtotime($l->next_action_at) < time()) {
-    $bucket = 'overdue';
-} elseif (date('Y-m-d', strtotime($l->next_action_at)) === date('Y-m-d')) {
-    $bucket = 'today';
-} elseif (strtotime($l->next_action_at) < strtotime('+7 days')) {
-    $bucket = 'upcoming';
-} else {
-    $bucket = 'later';
-}
+// Which work bucket the row belongs to — 'noshow' is only known to the caller.
+$bucket = !empty($force_bucket) ? $force_bucket : shra_lead_bucket($l);
 
 $cls = 'shra-lead shra-r'
      . ($l->is_overdue ? ' over' : '')

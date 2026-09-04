@@ -594,73 +594,53 @@
   $(document).on('shown.bs.modal', '.modal.shra', function () { $(this).find('input[type=datetime-local]').each(function () { dtHint($(this)); }); });
   $(function () { $('.shra input[type=datetime-local]').each(function () { dtHint($(this)); }); });
 
-  /* ───────── The leads work list: tabs, instant search, row menu ───────── */
+  /* ───────── The leads work list: instant search, pagination, row menu ───────── */
   var W = (function () {
-    // Buckets in the order an agent should work them. `all` is everything but the no-show tab.
-    var TABS = [
-      ['overdue',  'Overdue',     't-red'],
-      ['today',    'Today',       't-gold'],
-      ['unset',    'No date',     't-red'],
-      ['upcoming', 'Next 7 days', ''],
-      ['later',    'Later',       ''],
-      ['joining',  'To join',     't-green'],
-      ['noshow',   'No-show',     't-red'],
-      ['open',     'Open',        ''],
-      ['closed',   'Closed',      ''],
-      ['all',      'All',         '']
-    ];
-    var $rows = null, $tabs = null, bucket = 'all', q = '', stage = '', source = '';
+    // Every lead is on the page; the filters and the pager only decide what is visible.
+    // The server already ordered them the way the day should be worked — overdue first.
+    var PER_KEY = 'shra_leads_per';
+    var $rows = null, q = '', stage = '', source = '', page = 1, per = 50;
 
-    function counts() {
-      var c = { all: 0, open: 0 };
-      $rows.children('tr.shra-lead').each(function () {
-        var b = this.getAttribute('data-bucket');
-        c[b] = (c[b] || 0) + 1;
-        if (b !== 'noshow') { c.all++; }
-        if (b !== 'noshow' && b !== 'closed') { c.open++; }
-      });
+    function hide(r) { if (r.className.indexOf('is-off') === -1) { r.className += ' is-off'; } }
+    function show(r) { r.className = r.className.replace(/\s*is-off\b/, ''); }
 
-      return c;
-    }
-
-    /** (Re)draw the tab strip — a bucket with nothing in it does not earn a tab. */
-    function drawTabs() {
-      var c = counts(), html = '';
-      TABS.forEach(function (t) {
-        if (!c[t[0]] && t[0] !== 'all') { return; }
-        // "Open" would just repeat "All" unless closed leads are on the page too.
-        if (t[0] === 'open' && !c.closed) { return; }
-        html += '<button type="button" class="shra-tab ' + t[2] + (t[0] === bucket ? ' on' : '') +
-                '" data-bucket="' + t[0] + '">' + t[1] + ' <b>' + (c[t[0]] || 0) + '</b></button>';
-      });
-      $('#shra-tabs').html(html);
-      $tabs = $('#shra-tabs .shra-tab');
-      if (!$tabs.filter('.on').length) { bucket = 'all'; $tabs.filter('[data-bucket=all]').addClass('on'); }
-    }
-
+    /** Filter first, then show only the current page of what survived. */
     function apply() {
-      var shown = 0, total = 0;
+      var total = 0, match = [];
       $rows.children('tr.shra-lead').each(function () {
-        var r = this, b = r.getAttribute('data-bucket');
+        var r = this;
         total++;
-        var inBucket = bucket === 'all' ? b !== 'noshow'
-                     : bucket === 'open' ? (b !== 'noshow' && b !== 'closed')
-                     : b === bucket;
-        var ok = inBucket
-              && (!stage || r.getAttribute('data-stage') === stage)
-              && (!source || r.getAttribute('data-source') === source)
-              && (!q || r.getAttribute('data-s').indexOf(q) !== -1);
-        if (ok) { r.className = r.className.replace(/\s*is-off\b/, ''); shown++; }
-        else if (r.className.indexOf('is-off') === -1) { r.className += ' is-off'; }
+        if ((!stage || r.getAttribute('data-stage') === stage)
+         && (!source || r.getAttribute('data-source') === source)
+         && (!q || r.getAttribute('data-s').indexOf(q) !== -1)) { match.push(r); }
+        else { hide(r); }
       });
-      $('#shra-none').prop('hidden', shown > 0 || !total);
-      $('.shra-wt thead').toggle(shown > 0);
-      $('#shra-count').text(total ? shown + ' of ' + total + ' shown' : '');
+
+      var n = match.length, size = per > 0 ? per : (n || 1), pages = Math.max(1, Math.ceil(n / size));
+      if (page > pages) { page = pages; }
+      if (page < 1) { page = 1; }
+      var from = (page - 1) * size, to = Math.min(n, from + size);
+      match.forEach(function (r, i) { if (i >= from && i < to) { show(r); } else { hide(r); } });
+
+      $('#shra-none').prop('hidden', n > 0 || !total);
+      $('.shra-wt thead').toggle(n > 0);
+      $('#shra-count').text(!total ? ''
+        : n ? (n < total ? (from + 1) + '\u2013' + to + ' of ' + n + ' matching \u00b7 ' + total + ' loaded'
+                         : (from + 1) + '\u2013' + to + ' of ' + n)
+            : '0 of ' + total);
+      $('#shra-pager').prop('hidden', n <= size);
+      $('#shra-pager-at').text('Page ' + page + ' of ' + pages);
+      $('#shra-pager .shra-pg[data-page=first],#shra-pager .shra-pg[data-page=prev]').prop('disabled', page <= 1);
+      $('#shra-pager .shra-pg[data-page=next],#shra-pager .shra-pg[data-page=last]').prop('disabled', page >= pages);
+      $('#shra-pager').data('pages', pages);
       // Rows that just left the view must not stay part of a bulk selection.
       $(document).trigger('shra:filtered');
     }
 
-    function refresh() { if ($rows) { drawTabs(); apply(); } }
+    /** Back to the first page — any change to the filters invalidates the offset. */
+    function reset() { page = 1; apply(); }
+
+    function refresh() { if ($rows) { apply(); } }
 
     function init() {
       var $f = $('#shra-filters');
@@ -670,27 +650,31 @@
       source = $('#shra-f-source').val() || '';
       q      = $.trim($('#shra-q').val() || '').toLowerCase();
 
-      // A link may name the tab (dashboard "overdue", "open leads"); otherwise the
-      // all-leads scope opens on everything and the personal queue on what is late.
-      var c = counts();
-      bucket = $f.data('bucket') || ($f.data('scope') === 'all' ? 'all'
-             : (c.overdue ? 'overdue' : (c.today ? 'today' : (c.unset ? 'unset' : 'all'))));
-      drawTabs();
+      try { var saved = parseInt(localStorage.getItem(PER_KEY), 10); if (!isNaN(saved) && saved >= 0) { per = saved; } } catch (e) {}
+      $('#shra-per').val(String(per));
       apply();
 
-      $('#shra-tabs').on('click', '.shra-tab', function () {
-        $tabs.removeClass('on'); $(this).addClass('on');
-        bucket = $(this).data('bucket'); apply();
+      $('#shra-per').on('change', function () {
+        per = parseInt(this.value, 10) || 0;
+        try { localStorage.setItem(PER_KEY, String(per)); } catch (e) {}
+        reset();
+      });
+      $('#shra-pager').on('click', '.shra-pg', function () {
+        var to = $(this).data('page'), pages = $('#shra-pager').data('pages') || 1;
+        page = to === 'first' ? 1 : to === 'last' ? pages : to === 'prev' ? page - 1 : page + 1;
+        apply();
+        var top = $('.shra-work').offset();
+        if (top) { window.scrollTo({ top: Math.max(0, top.top - 80), behavior: 'smooth' }); }
       });
 
       var t = null;
       $('#shra-q').on('input', function () {
         var v = $.trim(this.value).toLowerCase();
         clearTimeout(t);
-        t = setTimeout(function () { q = v; apply(); }, 120);
+        t = setTimeout(function () { q = v; reset(); }, 120);
       });
-      $('#shra-f-stage').on('change', function () { stage = this.value; apply(); });
-      $('#shra-f-source').on('change', function () { source = this.value; apply(); });
+      $('#shra-f-stage').on('change', function () { stage = this.value; reset(); });
+      $('#shra-f-source').on('change', function () { source = this.value; reset(); });
 
       /* The date range is a server filter — the rows for a period have to be fetched.
          A preset reloads straight away; "Custom range" waits for the two dates. */

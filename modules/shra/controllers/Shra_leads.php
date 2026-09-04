@@ -132,12 +132,12 @@ class Shra_leads extends AdminController
         $data['title'] = 'Leads';
         $data['agent'] = $agent;
         $data['scope'] = $scope;
-        // `stage=open|closed` and `overdue=1` come from dashboard / team links: they pick a
-        // tab rather than a stage.
+        // `stage=open|closed` and `overdue=1` come from dashboard / team links. They name a
+        // slice of the list rather than a pipeline stage, so they narrow the query itself.
         $stage  = (string) $this->input->get('stage');
         $bucket = '';
         if (in_array($stage, ['open', 'closed'], true)) {
-            $bucket = $stage === 'open' ? 'open' : 'closed';
+            $bucket = $stage;
             $stage  = '';
         } elseif ($this->input->get('overdue')) {
             $bucket = 'overdue';
@@ -155,26 +155,29 @@ class Shra_leads extends AdminController
 
         if ($scope === 'all') {
             $data['rows']     = $this->leads->get_list(array_filter([
-                'agent' => $agent && $this->input->get('agent') ? $agent : 0,
-                'from'  => $from,
-                'to'    => $to,
-                'order' => 'l.dateadded DESC',
+                'agent'   => $agent && $this->input->get('agent') ? $agent : 0,
+                'from'    => $from,
+                'to'      => $to,
+                // Pipeline stage stays a browser-side filter so the dropdown can widen
+                // again without a round trip; only the dashboard slices narrow the query.
+                'stage'   => in_array($bucket, ['open', 'closed'], true) ? $bucket : '',
+                'overdue' => $bucket === 'overdue' ? 1 : 0,
+                'order'   => 'l.dateadded DESC',
             ]), 1500);
             $data['no_shows'] = [];
         } else {
             $queues = $this->leads->queues_for($agent, $agent === (int) $me && shra_leads_can('all'), $from, $to);
-            $rows   = [];
-            foreach (['unset', 'overdue', 'today', 'upcoming', 'later', 'joining'] as $k) {
+            // The queue holds only open leads, so open/closed mean nothing here; `overdue`
+            // still narrows it to what is actually late.
+            $keep = $bucket === 'overdue' ? ['overdue'] : ['unset', 'overdue', 'today', 'upcoming', 'later', 'joining'];
+            $rows = [];
+            foreach ($keep as $k) {
                 foreach ($queues[$k] as $l) {
                     $rows[] = $l;
                 }
             }
-            // Newest enquiry first — flattening the buckets above regrouped them.
-            usort($rows, function ($a, $b) {
-                return strcmp((string) $b->dateadded, (string) $a->dateadded);
-            });
             $data['rows']     = $rows;
-            $data['no_shows'] = shra_leads_can('all') ? $this->leads->no_shows(20) : [];
+            $data['no_shows'] = $bucket === '' && shra_leads_can('all') ? $this->leads->no_shows(20) : [];
         }
 
         // With no range the header stays on this month — that is what the monthly

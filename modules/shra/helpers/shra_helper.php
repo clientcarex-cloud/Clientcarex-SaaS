@@ -826,6 +826,73 @@ function shra_lead_fill_template($text, $lead)
     ]);
 }
 
+/* ══════════════ Work list ordering ══════════════ */
+
+/**
+ * Which work bucket a lead sits in — mirrors Shra_leads_model::queues_for().
+ * 'noshow' is not derivable from the lead alone; the caller passes it in.
+ */
+function shra_lead_bucket($l)
+{
+    if (!$l->is_open) {
+        return 'closed';
+    }
+    if (!$l->is_timed) {
+        return 'joining';   // confirmed & paid — waiting on its start date, not on an agent
+    }
+    if (empty($l->next_action_at)) {
+        return 'unset';
+    }
+    if (strtotime($l->next_action_at) < time()) {
+        return 'overdue';
+    }
+    if (date('Y-m-d', strtotime($l->next_action_at)) === date('Y-m-d')) {
+        return 'today';
+    }
+    if (strtotime($l->next_action_at) < strtotime('+7 days')) {
+        return 'upcoming';
+    }
+
+    return 'later';
+}
+
+/**
+ * Where a bucket sorts in the one work list: what is late is at the top, what
+ * needs nothing from an agent is at the bottom.
+ */
+function shra_lead_bucket_rank($bucket)
+{
+    $order = ['overdue' => 0, 'noshow' => 1, 'today' => 2, 'unset' => 3,
+        'upcoming' => 4, 'later' => 5, 'joining' => 6, 'closed' => 7];
+
+    return isset($order[$bucket]) ? $order[$bucket] : 9;
+}
+
+/**
+ * The work list in the order an agent should work it: overdue first, then by how
+ * late each one is; buckets with no due date read newest enquiry first. Takes
+ * [lead, bucket] pairs and sorts them in place.
+ */
+function shra_lead_sort_work(array &$list)
+{
+    $timed = ['overdue' => 1, 'today' => 1, 'upcoming' => 1, 'later' => 1];
+    usort($list, function ($a, $b) use ($timed) {
+        $ra = shra_lead_bucket_rank($a[1]);
+        $rb = shra_lead_bucket_rank($b[1]);
+        if ($ra !== $rb) {
+            return $ra - $rb;
+        }
+        if (isset($timed[$a[1]])) {
+            return strcmp((string) $a[0]->next_action_at, (string) $b[0]->next_action_at);
+        }
+        if ($a[1] === 'noshow') {
+            return strcmp((string) $b[0]->visit_date, (string) $a[0]->visit_date);
+        }
+
+        return strcmp((string) $b[0]->dateadded, (string) $a[0]->dateadded);
+    });
+}
+
 /* ══════════════ Date range filter (leads list) ══════════════ */
 
 /** A `Y-m-d` string, or '' when the value is missing or not a real date. */
