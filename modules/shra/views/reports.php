@@ -15,11 +15,12 @@ $bars = function (array $rows, $key, $val, $fmt = null, $h = 120, $color = 'var(
     }
     return $svg . '</svg>';
 };
-$hbars = function (array $rows, $key, $val, $fmt = null, $color = 'var(--gold)') {
+$hbars = function (array $rows, $key, $val, $fmt = null, $color = 'var(--gold)', $total = false) {
     if (!count($rows)) { return '<div class="shra-empty" style="padding:26px"><i class="fa-solid fa-chart-simple"></i>No data in this range.</div>'; }
-    $max = 0; foreach ($rows as $r) { $max = max($max, (float) $r->$val); } $max = $max ?: 1;
+    $max = 0; $sum = 0; foreach ($rows as $r) { $max = max($max, (float) $r->$val); $sum += (float) $r->$val; } $max = $max ?: 1;
     $o = '<div class="shra-hbars">';
     foreach ($rows as $r) { $v = (float) $r->$val; $o .= '<div class="hb"><span class="lbl">' . html_escape($r->$key) . '</span><span class="bar"><span style="width:' . round($v / $max * 100) . '%;background:' . $color . '"></span></span><span class="val">' . ($fmt ? $fmt($v) : (int) $v) . '</span></div>'; }
+    if ($total) { $o .= '<div class="hb total"><span class="lbl">Total</span><span></span><span class="val">' . ($fmt ? $fmt($sum) : (int) $sum) . '</span></div>'; }
     return $o . '</div>';
 };
 $money = 'shra_money';
@@ -42,6 +43,12 @@ $hours = []; foreach ($R['by_hour'] as $r) { $hours[] = (object) ['k' => date('g
 .shra-hbars .bar{display:block;height:10px;background:var(--cream);border-radius:999px;overflow:hidden}
 .shra-hbars .bar span{display:block;height:100%;border-radius:999px}
 .shra-hbars .val{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.shra-modes .lbl small{display:block;font-size:10.5px;font-weight:500;color:var(--muted)}
+.shra-modes .hb.zero .lbl,.shra-modes .hb.zero .val{color:var(--muted);font-weight:500}
+.shra-hbars .hb.total{border-top:2px solid var(--line);border-bottom:0;margin-top:2px;padding-top:9px}
+.shra-hbars .hb.total .val{font-size:15px}
+.shra-modes .pct{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;color:var(--muted)}
+.shra-modes .pct em{font-style:normal;white-space:nowrap}
 .shra-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
 @media(max-width:900px){.shra-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .shra-kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
@@ -83,9 +90,17 @@ $hours = []; foreach ($R['by_hour'] as $r) { $hours[] = (object) ['k' => date('g
 
     <div class="shra-rep-grid">
         <div class="shra-card"><div class="shra-card-head"><h4>Collections by day</h4><span class="shra-pill"><?php echo $money($k['collected']); ?></span></div><div class="shra-card-body"><?php echo $bars($byday, 'k', 'v', $money, 130, 'var(--green)'); ?></div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>Collections by payment mode</h4></div><div class="shra-card-body">
-            <?php echo $hbars($R['by_mode'], 'mode', 'amount', $money, 'var(--green)'); ?>
-            <?php if (count($R['by_mode'])) { ?><div class="shra-split"><?php foreach ($R['by_mode'] as $i => $m) { ?><span style="flex:<?php echo max(1, (float) $m->amount); ?>;background:<?php echo ['var(--green)', 'var(--gold)', 'var(--brown)', 'var(--ink)', 'var(--muted)'][$i % 5]; ?>" title="<?php echo html_escape($m->mode); ?>"></span><?php } ?></div><?php } ?>
+        <div class="shra-card"><div class="shra-card-head"><h4>Collections by payment mode</h4><span class="shra-pill"><?php echo $money($k['collected']); ?></span></div><div class="shra-card-body">
+            <?php if (!count($R['by_mode'])) { ?><div class="shra-empty" style="padding:26px"><i class="fa-solid fa-chart-simple"></i>No payment modes configured.</div><?php } else {
+                $mmax = 0; $mtot = 0; $mcnt = 0; foreach ($R['by_mode'] as $m) { $mmax = max($mmax, (float) $m->amount); $mtot += (float) $m->amount; $mcnt += (int) $m->n; } $mmax = $mmax ?: 1; ?>
+            <div class="shra-hbars shra-modes">
+                <?php foreach ($R['by_mode'] as $m) { $v = (float) $m->amount; ?>
+                <div class="hb<?php echo $v > 0 ? '' : ' zero'; ?>"><span class="lbl" title="<?php echo html_escape($m->mode); ?>"><?php echo html_escape($m->mode); ?><small><?php echo (int) $m->n; ?> payment<?php echo (int) $m->n == 1 ? '' : 's'; ?></small></span><span class="bar"><span style="width:<?php echo round($v / $mmax * 100); ?>%;background:var(--green)"></span></span><span class="val"><?php echo $v > 0 ? $money($v) : '—'; ?></span></div>
+                <?php } ?>
+                <div class="hb total"><span class="lbl">Total<small><?php echo $mcnt; ?> payment<?php echo $mcnt == 1 ? '' : 's'; ?></small></span><span class="pct"><?php foreach ($R['by_mode'] as $m) { if ((float) $m->amount <= 0) { continue; } ?><em><?php echo html_escape($m->mode); ?> <?php echo $pct($m->amount, $mtot); ?>%</em><?php } ?></span><span class="val"><?php echo $money($mtot); ?></span></div>
+            </div>
+            <?php $ci = 0; ?><div class="shra-split"><?php foreach ($R['by_mode'] as $m) { if ((float) $m->amount <= 0) { continue; } ?><span style="flex:<?php echo max(1, (float) $m->amount); ?>;background:<?php echo ['var(--green)', 'var(--gold)', 'var(--brown)', 'var(--ink)', 'var(--muted)'][$ci++ % 5]; ?>" title="<?php echo html_escape($m->mode . ' · ' . $money($m->amount)); ?>"></span><?php } ?></div>
+            <?php } ?>
         </div></div>
     </div>
 
@@ -109,8 +124,8 @@ $hours = []; foreach ($R['by_hour'] as $r) { $hours[] = (object) ['k' => date('g
     <?php if (!empty($lead_agents)) { ?>
     <div class="shra-rep-title">Revenue by calling agent <span class="thin" style="font-weight:500;font-size:12px">· credited at billing to the agent who owned the lead · <a href="<?php echo admin_url('shra/shra_leads/team?range=custom&from=' . $from . '&to=' . $to); ?>">full team report</a></span></div>
     <div class="shra-rep-grid">
-        <div class="shra-card"><div class="shra-card-head"><h4>By agent</h4></div><div class="shra-card-body"><?php $ag = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->won . ' joined)'; return $r; }, array_values(array_filter($lead_agents, function ($r) { return $r->revenue > 0; }))); echo count($ag) ? $hbars($ag, 'k', 'revenue', $money, 'var(--green)') : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
-        <div class="shra-card"><div class="shra-card-head"><h4>By lead source</h4></div><div class="shra-card-body"><?php $sr = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->leads . ' leads)'; return $r; }, array_values(array_filter($lead_sources, function ($r) { return $r->revenue > 0; }))); echo count($sr) ? $hbars($sr, 'k', 'revenue', $money, 'var(--brown)') : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>By agent</h4></div><div class="shra-card-body"><?php $ag = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->won . ' joined)'; return $r; }, array_values(array_filter($lead_agents, function ($r) { return $r->revenue > 0; }))); echo count($ag) ? $hbars($ag, 'k', 'revenue', $money, 'var(--green)', true) : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
+        <div class="shra-card"><div class="shra-card-head"><h4>By lead source</h4></div><div class="shra-card-body"><?php $sr = array_map(function ($r) { $r->k = $r->name . ' (' . (int) $r->leads . ' leads)'; return $r; }, array_values(array_filter($lead_sources, function ($r) { return $r->revenue > 0; }))); echo count($sr) ? $hbars($sr, 'k', 'revenue', $money, 'var(--brown)', true) : '<div class="shra-muted">No lead revenue in this period.</div>'; ?></div></div>
     </div>
     <?php } ?>
 

@@ -1679,6 +1679,50 @@ class Shra_model extends App_Model
      * Collections are taken from the invoice payment records of SHRA bills,
      * so balance payments recorded later land on the day they were received.
      */
+    /**
+     * Every active payment mode (offline modes + online gateways) with its
+     * collections in range. Modes with no collections still appear with 0 so
+     * the report reads as a full picture, not just "whatever got used".
+     * Gateway ids stored on payment records (e.g. "cashfree") are shown under
+     * the gateway's configured label.
+     */
+    private function report_by_mode(array $rows)
+    {
+        $p     = db_prefix();
+        $modes = []; // lower(name / id) => display label
+        foreach ($this->db->where('active', 1)->where('expenses_only', 0)->order_by('id', 'ASC')->get($p . 'payment_modes')->result() as $m) {
+            $modes[mb_strtolower(trim($m->name))] = $m->name;
+        }
+        $this->load->model('payment_modes_model');
+        foreach ($this->payment_modes_model->get_payment_gateways() as $g) {
+            $label = trim((string) ($g['name'] ?? '')) ?: ucfirst($g['id']);
+            $modes[mb_strtolower($g['id'])] = $label;
+            $modes[mb_strtolower($label)]   = $label;
+        }
+
+        $byLabel = [];
+        foreach ($modes as $key => $label) {
+            $byLabel[$label] = $byLabel[$label] ?? (object) ['mode' => $label, 'n' => 0, 'amount' => 0.0];
+        }
+        foreach ($rows as $r) {
+            $key   = mb_strtolower(trim((string) $r->mode));
+            $label = $modes[$key] ?? $r->mode;
+            if (!isset($byLabel[$label])) {
+                $byLabel[$label] = (object) ['mode' => $label, 'n' => 0, 'amount' => 0.0];
+            }
+            $byLabel[$label]->n      += (int) $r->n;
+            $byLabel[$label]->amount += (float) $r->amount;
+        }
+
+        $list = array_values($byLabel);
+        usort($list, function ($a, $b) {
+            if ($a->amount != $b->amount) { return $a->amount < $b->amount ? 1 : -1; }
+            return strcasecmp($a->mode, $b->mode);
+        });
+
+        return $list;
+    }
+
     public function report($from, $to)
     {
         $p  = db_prefix();
@@ -1720,7 +1764,7 @@ class Shra_model extends App_Model
             (SELECT COUNT(*) FROM {$p}shra_riders) AS riders_total
         ");
 
-        $out['by_mode'] = $q("SELECT COALESCE(pm.name, NULLIF(pr.paymentmode,''), 'Unspecified') AS mode, COUNT(*) AS n, SUM(pr.amount) AS amount {$pay_join} GROUP BY mode ORDER BY amount DESC");
+        $out['by_mode'] = $this->report_by_mode($q("SELECT COALESCE(pm.name, NULLIF(pr.paymentmode,''), 'Unspecified') AS mode, COUNT(*) AS n, SUM(pr.amount) AS amount {$pay_join} GROUP BY mode ORDER BY amount DESC"));
         $out['by_day']  = $q("SELECT DATE(pr.date) AS d, SUM(pr.amount) AS amount, COUNT(*) AS n {$pay_join} GROUP BY DATE(pr.date) ORDER BY d");
         $out['sessions_by_day'] = $q("SELECT a.session_date AS d, COUNT(*) AS n FROM {$p}shra_attendance a WHERE a.session_date BETWEEN {$f} AND {$t} GROUP BY a.session_date ORDER BY d");
         $out['payments'] = $q("SELECT pr.id, pr.date, pr.amount, pr.transactionid, COALESCE(pm.name, pr.paymentmode) AS mode, e.enrollment_no, e.package_name, e.rider_id, r.full_name, r.rider_no {$pay_join} ORDER BY pr.date DESC, pr.id DESC LIMIT 500");
