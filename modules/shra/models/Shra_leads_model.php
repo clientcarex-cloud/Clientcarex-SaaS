@@ -335,14 +335,34 @@ class Shra_leads_model extends App_Model
         return $rows;
     }
 
+    /**
+     * The lead on a phone number. The stored key is whatever shra_phone_norm() made of the
+     * number when the lead was captured — and that only strips a country code when the
+     * `shra_lead_phone_country` option is set. So a rider keyed in at the counter as
+     * "+91 95159 58722" normalises to 919515958722 and misses a lead stored as 9515958722,
+     * which is exactly how a bill ends up crediting nobody. The exact (indexed) match still
+     * runs first; only when it misses do we fall back to comparing the last 10 digits, which
+     * is the part that actually identifies the subscriber. The scan is bounded to leads whose
+     * key ends the same way and never runs on the hot path.
+     */
     public function find_by_phone($phone)
     {
         $n = shra_phone_norm($phone);
         if ($n === '') {
             return null;
         }
+        $row = $this->db->query($this->base_select() . ' WHERE x.phone_norm = ?', [$n])->row();
+        if (!$row && strlen($n) >= 10) {
+            // RIGHT() cannot use the index, so scan the narrow ext table for the id alone
+            // rather than dragging the six-table join through it, then load that one lead.
+            $hit = $this->db->query('SELECT lead_id FROM ' . db_prefix()
+                . 'shra_lead_ext WHERE RIGHT(phone_norm, 10) = ? ORDER BY lead_id ASC LIMIT 1', [substr($n, -10)])->row();
+            if ($hit) {
+                $row = $this->db->query($this->base_select() . ' WHERE l.id = ?', [(int) $hit->lead_id])->row();
+            }
+        }
 
-        return $this->decorate($this->db->query($this->base_select() . ' WHERE x.phone_norm = ?', [$n])->row());
+        return $this->decorate($row);
     }
 
     /** Open (or recently won) lead matching a phone — used by billing to credit walk-ins. */
@@ -1854,15 +1874,40 @@ class Shra_leads_model extends App_Model
                          . 'nothing was credited to this one. Switch the agent filter to All staff to see it.',
             ] : [];
         }
-        // Bills exist but none reached a lead: the counter did not match the buyer to one.
+        // Bills exist but none reached a lead. Two very different things look the same here —
+        // walk-ins who were never in the pipeline (correct, nothing to fix) and leads the
+        // counter failed to match (a miss). Only the buyers' phone numbers can tell them
+        // apart, so ask them: for each uncredited bill, is there a lead on that mobile?
         if ((int) $r->bills > 0) {
-            $n = (int) $r->bills;
+            $n     = (int) $r->bills;
+            $miss  = $this->uncredited_bills($f, $t);
+            $named = [];
+            foreach ($miss as $b) {
+                if ($this->find_by_phone($b->mobile)) {
+                    $named[] = $b->full_name;
+                }
+            }
+            $short = $n . ' bill' . ($n == 1 ? '' : 's') . ', none credited';
+            $head  = $n . ' bill' . ($n == 1 ? ' was' : 's were') . ' raised in this period (' . shra_money((float) $r->billed)
+                   . '), but not one was credited to a lead. ';
+            if (count($named)) {
+                $show = array_slice($named, 0, 4);
+
+                return [
+                    'short' => $short . ' · ' . count($named) . ' matched a lead',
+                    'long'  => $head . count($named) . ' of them (' . implode(', ', $show)
+                             . (count($named) > count($show) ? ' and ' . (count($named) - count($show)) . ' more' : '')
+                             . ') ' . (count($named) == 1 ? 'was' : 'were') . ' billed on a mobile that DOES belong to a lead, '
+                             . 'so that revenue should have been credited and was not. Open those leads and check whether '
+                             . '"credit this agent" was unticked at the counter.',
+                ];
+            }
 
             return [
-                'short' => $n . ' bill' . ($n == 1 ? '' : 's') . ', none credited',
-                'long'  => $n . ' bill' . ($n == 1 ? ' was' : 's were') . ' raised in this period (' . shra_money((float) $r->billed)
-                         . '), but not one was credited to a lead. That happens when the counter bills a rider whose mobile does not '
-                         . 'match any lead, or when "credit this lead" was unticked. Check the Billing screen against the leads.',
+                'short' => $short,
+                'long'  => $head . 'None of the buyers\' mobiles matches a lead, so these were walk-ins who never went through '
+                         . 'the calling pipeline — nothing is broken, that revenue simply belongs to no agent. It still shows on '
+                         . 'the Billing and Reports screens.',
             ];
         }
 
@@ -1871,6 +1916,22 @@ class Shra_leads_model extends App_Model
             'long'  => 'Nothing has been billed at the counter in this period, so there is no revenue to show. Advances taken on '
                      . 'calls sit in Collected until a bill is raised.',
         ];
+    }
+
+    /**
+     * Bills raised in a window that never produced a revenue credit, newest first. Small
+     * cap: this only ever runs to explain a zero on the header, never on a hot path.
+     */
+    private function uncredited_bills($from, $to, $limit = 10)
+    {
+        $p = db_prefix();
+
+        return $this->db->query("SELECT e.id, r.full_name, r.mobile
+            FROM {$p}shra_enrollments e
+            LEFT JOIN {$p}shra_riders r ON r.id = e.rider_id
+            WHERE e.status <> 'cancelled' AND e.created_at BETWEEN ? AND ?
+              AND NOT EXISTS (SELECT 1 FROM {$p}shra_lead_attribution a WHERE a.enrollment_id = e.id)
+            ORDER BY e.id DESC LIMIT " . (int) $limit, [$from, $to])->result();
     }
 
     /** Every agent's month rolled into one row, for the All-staff header. */
