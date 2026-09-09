@@ -929,7 +929,13 @@ function shra_lead_info_card($l)
 
     $h = '<div class="shra-tip-hd"><b>' . html_escape($l->name) . '</b>' . shra_lead_stage_badge($l->stage) . '</div>';
     // The enquiry in its own words leads the card — it is the reason the ⓘ exists.
-    $d = trim((string) ($l->description ?? ''));
+    // Web-form leads arrive with their answers as HTML ("Ad name: Reel 02<br />"). The card
+    // wants the words, so the markup becomes line breaks and everything else is dropped.
+    $d = (string) ($l->description ?? '');
+    // A tag that already sits at the end of its line must not add a second break.
+    $d = preg_replace('/<(?:br|\/p|\/div|\/li|\/tr|\/h[1-6])\b[^>]*>[ \t]*\r?\n?/i', "\n", $d);
+    $d = html_entity_decode(strip_tags($d), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $d = trim(preg_replace(["/[ \t]*\n/", "/\n{3,}/"], ["\n", "\n\n"], $d));
     $h .= $d !== ''
         ? '<div class="shra-tip-desc">' . nl2br(html_escape(mb_strlen($d) > 600 ? mb_substr($d, 0, 600) . '…' : $d)) . '</div>'
         : '<div class="shra-tip-desc empty">No description on this lead.</div>';
