@@ -183,7 +183,7 @@ class Shra_leads extends AdminController
                 // again without a round trip; only the dashboard slices narrow the query.
                 'stage'   => in_array($bucket, ['open', 'closed'], true) ? $bucket : '',
                 'overdue' => $bucket === 'overdue' ? 1 : 0,
-                'order'   => 'l.dateadded DESC',
+                'order'   => 'l.dateadded DESC, l.id DESC',
             ]), 1500);
             $data['no_shows'] = [];
         } else {

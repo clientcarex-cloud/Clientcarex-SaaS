@@ -37,13 +37,15 @@
 
     // One list, in the order it should be worked: overdue first, then by how late each
     // one is. No-shows join it rather than sitting apart — skip any already in the list.
+    // Browsing every lead is a different question — "what came in?" — so `all` keeps the
+    // query's own order, newest first, instead of the call queue's.
     $seen = [];
     $work = [];
     foreach ($rows as $l) { $seen[$l->id] = true; $work[] = [$l, shra_lead_bucket($l)]; }
     foreach ($no_shows as $l) {
         if (!isset($seen[$l->id])) { $work[] = [$l, 'noshow']; }
     }
-    shra_lead_sort_work($work);
+    if ($scope !== 'all') { shra_lead_sort_work($work); }
     // agent 0 = "All staff" — everyone's leads at once, both scopes. Admins land on it.
     $agent_param = (string) $this->input->get('agent');
     $sel_agent   = ($all && $agent_param === '') ? '' : ($agent ? (string) $agent : '');
