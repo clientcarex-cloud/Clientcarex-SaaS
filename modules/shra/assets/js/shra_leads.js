@@ -783,7 +783,7 @@
       // "/" focuses search, Esc closes the row menu — agents live on the keyboard here.
       $(document).on('keydown', function (e) {
         if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ''))) { e.preventDefault(); $('#shra-q').focus(); }
-        if (e.key === 'Escape') { closeMenu(); }
+        if (e.key === 'Escape') { closeMenu(); hideTip(); }
       });
     }
 
@@ -805,6 +805,64 @@
     $(document).on('click', function () { closeMenu(); });
     $(document).on('click', '.shra-row-menu', function () { closeMenu(); });
     $(window).on('scroll resize', closeMenu);
+
+    /* ───────── Row ⓘ: the lead's details on hover ─────────
+       The card is rendered with the row (hidden), so it survives every row swap and
+       costs no request; it is shown from body level so the table cannot clip it. */
+    var $tip = null, tipFor = 0, tipIn = null, tipOut = null;
+
+    function hideTip() {
+      clearTimeout(tipIn); clearTimeout(tipOut);
+      if ($tip) { $tip.hide(); }
+      $('.shra-r-info.on').removeClass('on');
+      tipFor = 0;
+    }
+
+    function showTip(btn) {
+      var id = $(btn).data('shra-info'), $src = $(btn).closest('tr').find('.shra-r-detail');
+      if (!$src.length) { return; }
+      if (!$tip) {
+        $tip = $('<div class="shra-lead-tip"></div>').appendTo('body')
+          .on('mouseenter', function () { clearTimeout(tipOut); })
+          .on('mouseleave', hideTip);
+      }
+      clearTimeout(tipOut);
+      $('.shra-r-info.on').removeClass('on');
+      $(btn).addClass('on');
+      tipFor = id;
+      $tip.html($src.html()).css({ top: 0, left: 0 }).show();
+
+      // Right of the ⓘ by default; flip or clamp rather than run off any edge.
+      var b = btn.getBoundingClientRect(), w = $tip.outerWidth(), h = $tip.outerHeight(), pad = 8;
+      var left = b.right + 10;
+      if (left + w > window.innerWidth - pad) { left = Math.max(pad, b.left - w - 10); }
+      $tip.css({
+        left: Math.min(left, Math.max(pad, window.innerWidth - w - pad)) + 'px',
+        top: Math.max(pad, Math.min(b.top - 6, window.innerHeight - h - pad)) + 'px'
+      });
+    }
+
+    $(document).on('mouseenter focus', '[data-shra-info]', function () {
+      var btn = this;
+      clearTimeout(tipIn); clearTimeout(tipOut);
+      tipIn = setTimeout(function () { showTip(btn); }, 120);
+    });
+    $(document).on('mouseleave blur', '[data-shra-info]', function () {
+      clearTimeout(tipIn);
+      // A moment's grace so the pointer can travel into the card and scroll it.
+      tipOut = setTimeout(hideTip, 180);
+    });
+    // Touch has no hover: tapping the ⓘ opens the card, tapping again (or anywhere) closes it.
+    $(document).on('click', '[data-shra-info]', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      closeMenu(); // the click never reaches the document, so close the overflow menu here
+      var open = tipFor === $(this).data('shra-info') && $tip && $tip.is(':visible');
+      clearTimeout(tipIn);
+      if (open) { hideTip(); } else { showTip(this); }
+    });
+    $(document).on('click', hideTip);
+    $(window).on('resize', hideTip);
+    document.addEventListener('scroll', hideTip, true);
 
     $(init);
     return { refresh: refresh, closeMenu: closeMenu };

@@ -27,11 +27,16 @@ $hay     = strtolower(trim($l->name . ' ' . $l->phonenumber . ' ' . $l->city . '
     data-paid-num="<?php echo $money['paid'] + 0; ?>" data-deal-num="<?php echo $money['deal'] + 0; ?>" data-pkg="<?php echo (int) $l->interest_package_id; ?>" data-s="<?php echo html_escape($hay); ?>">
     <?php if ($can_manage) { ?><td class="shra-r-sel"><input type="checkbox" class="shra-bulk-cb" value="<?php echo (int) $l->id; ?>" title="Select for bulk actions"></td><?php } ?>
     <td class="shra-r-name">
-        <a href="<?php echo shra_lead_url($l->id); ?>"><?php echo html_escape($l->name); ?></a>
+        <span class="shra-r-nm">
+            <a href="<?php echo shra_lead_url($l->id); ?>"><?php echo html_escape($l->name); ?></a>
+            <?php // Everything the row has no column for — hover (or tap) the ⓘ, don't open the lead. ?>
+            <button type="button" class="shra-r-info" data-shra-info="<?php echo (int) $l->id; ?>" aria-label="Lead details"><i class="fa fa-circle-info"></i></button>
+        </span>
         <span class="shra-r-sub">
             <span class="shra-r-ago" title="Added <?php echo html_escape(shra_datetime($l->dateadded)); ?>"><?php echo time_ago($l->dateadded); ?></span>
             · <?php echo $who; ?><?php if ($l->city) { ?> · <?php echo html_escape($l->city); ?><?php } ?><?php if ($l->package_name) { ?> · <?php echo html_escape($l->package_name); ?><?php } ?>
         </span>
+        <div class="shra-r-detail" hidden><?php echo shra_lead_info_card($l); ?></div>
     </td>
     <td class="shra-r-phone">
         <a href="<?php echo $l->tel_link; ?>" class="shra-r-tel"><?php echo html_escape($l->phonenumber); ?></a>

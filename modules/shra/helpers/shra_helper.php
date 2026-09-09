@@ -893,6 +893,58 @@ function shra_lead_sort_work(array &$list)
     });
 }
 
+/**
+ * The hover card behind the ⓘ on a lead row: everything the row has no column for —
+ * what the enquiry actually asked for, how to reach them, and where it came from.
+ * Built from the list query alone, so it costs no extra round trip per row.
+ */
+function shra_lead_info_card($l)
+{
+    $money = shra_lead_money($l);
+    $who   = $l->rider_for === 'child' ? 'Child' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : '')
+           : ($l->rider_for === 'both' ? 'Self + child' : 'Self' . ($l->rider_age ? ' ' . $l->rider_age . 'y' : ''));
+    $out   = shra_lead_outcomes();
+
+    $rows = [
+        // The audience only earns a mention when it says something "Self / Child" does not.
+        'Riding for'   => $who . ($l->audience && $l->rider_for === 'both' ? ' · ' . ucfirst($l->audience) : ''),
+        'Package'      => $l->package_name ?: '',
+        'Deal value'   => $money['deal'] > 0 ? shra_money($money['deal'])
+                          . ($money['paid'] > 0 ? ' · paid ' . shra_money($money['paid']) . ', due ' . shra_money($money['due']) : ' · nothing paid yet') : '',
+        'Wants to start' => shra_schedule_line($l->preferred_start_date ?? null, $l->preferred_batch ?? null, ''),
+        'Visit'        => $l->visit_date ? date('D d M Y', strtotime($l->visit_date)) . (shra_slot($l->visit_slot) ? ' · ' . shra_slot($l->visit_slot) : '') : '',
+        'Phone'        => $l->phonenumber,
+        'Email'        => $l->email,
+        'Lives in'     => trim((string) $l->city . ($l->address ? ' · ' . preg_replace('/\s+/', ' ', $l->address) : ''), ' ·'),
+        'Source'       => trim((string) ($l->source_name ?: '') . ($l->campaign ? ' · ' . $l->campaign : ''), ' ·'),
+        'Assigned to'  => $l->agent_name ?: 'Unassigned',
+        'Calls'        => ((int) $l->call_attempts) . ' attempt' . ((int) $l->call_attempts === 1 ? '' : 's')
+                          . ($l->last_outcome ? ' · last: ' . (isset($out[$l->last_outcome]) ? $out[$l->last_outcome][0] : $l->last_outcome) : '')
+                          . ($l->lastcontact ? ' · ' . shra_datetime($l->lastcontact, false) : ''),
+        'No-shows'     => (int) $l->no_show_count ? (int) $l->no_show_count : '',
+        'Rider'        => $l->rider_no ? $l->rider_no . ($l->rider_name ? ' · ' . $l->rider_name : '') : '',
+        'Closed as'    => $l->is_open ? '' : trim((string) ($l->lost_reason ?: '') . ($l->lost_note ? ' · ' . $l->lost_note : ''), ' ·'),
+        'Came in'      => shra_datetime($l->dateadded) . ($l->added_by_name ? ' · by ' . $l->added_by_name : ''),
+    ];
+
+    $h = '<div class="shra-tip-hd"><b>' . html_escape($l->name) . '</b>' . shra_lead_stage_badge($l->stage) . '</div>';
+    // The enquiry in its own words leads the card — it is the reason the ⓘ exists.
+    $d = trim((string) ($l->description ?? ''));
+    $h .= $d !== ''
+        ? '<div class="shra-tip-desc">' . nl2br(html_escape(mb_strlen($d) > 600 ? mb_substr($d, 0, 600) . '…' : $d)) . '</div>'
+        : '<div class="shra-tip-desc empty">No description on this lead.</div>';
+    $h .= '<dl class="shra-tip-dl">';
+    foreach ($rows as $label => $val) {
+        $val = trim((string) $val);
+        if ($val === '') {
+            continue;
+        }
+        $h .= '<dt>' . html_escape($label) . '</dt><dd>' . html_escape($val) . '</dd>';
+    }
+
+    return $h . '</dl>';
+}
+
 /* ══════════════ Date range filter (leads list) ══════════════ */
 
 /** A `Y-m-d` string, or '' when the value is missing or not a real date. */

@@ -509,6 +509,27 @@ a.shra-mx:hover .shra-mx-hd>span{color:var(--brown)}
 .shra-work-foot #shra-per{margin:0 0 0 6px;height:26px;padding:2px 6px;font-size:11.5px;width:auto;border-radius:7px}
 @media(max-width:575px){.shra-work-foot{flex-wrap:wrap}.shra-pager{order:3;width:100%;justify-content:center}}
 
+/* ⓘ on a row, and the detail card it opens — also body level, for the same reason */
+.shra-r-nm{display:flex;align-items:center;gap:5px;min-width:0}
+.shra-r-nm a{flex:1 1 auto;min-width:0}
+.shra-r-info{flex:none;border:0;background:none;padding:0;line-height:1;cursor:pointer;font-size:12px;color:#cbb87f}
+.shra-r-info:hover,.shra-r-info:focus,.shra-r-info.on{color:var(--gold);outline:none}
+tr:hover .shra-r-info{color:var(--gold-2)}
+:root .shra-lead-tip,:root .shra-row-menu{
+  /* Both live at body level, outside `.shra`, so they carry the palette themselves. */
+  --cream-2:#fbf7ee;--sand-2:#f0e4c8;--ink:#1c1a17;--ink-2:#3a3530;--gold:#b8922e;--muted:#7a6f5e;--line:#e3d6b8;--red:#a8322d;
+}
+.shra-lead-tip{position:fixed;z-index:1061;display:none;width:330px;max-width:calc(100vw - 16px);max-height:70vh;overflow:auto;
+  background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(28,26,23,.18);padding:11px 13px;
+  font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:12px;color:var(--ink);line-height:1.45}
+.shra-tip-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.shra-tip-hd b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shra-tip-desc{background:var(--cream-2);border:1px solid var(--sand-2);border-radius:8px;padding:7px 9px;margin-bottom:9px;color:var(--ink-2);white-space:normal}
+.shra-tip-desc.empty{color:var(--muted);font-style:italic;background:none;border-style:dashed}
+.shra-tip-dl{display:grid;grid-template-columns:88px 1fr;gap:4px 10px;margin:0}
+.shra-tip-dl dt{color:var(--muted);font-size:11px;font-weight:500;margin:0}
+.shra-tip-dl dd{margin:0;color:var(--ink-2);word-break:break-word}
+
 /* row overflow menu, rendered at body level so the table never clips it */
 .shra-row-menu{position:fixed;z-index:1060;display:none;min-width:186px;background:#fff;border:1px solid var(--line);
   border-radius:10px;box-shadow:0 10px 30px rgba(28,26,23,.16);padding:5px}
