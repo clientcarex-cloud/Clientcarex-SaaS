@@ -97,7 +97,11 @@ class Lead_sync_push extends App_Controller
         $rows    = [];
 
         if (isset($payload['headers']) && is_array($payload['headers'])) {
-            $headers = array_values($payload['headers']);
+            foreach ($payload['headers'] as $header) {
+                if (is_scalar($header)) {
+                    $headers[] = (string) $header;
+                }
+            }
         }
 
         $incoming = [];
@@ -109,19 +113,38 @@ class Lead_sync_push extends App_Controller
             $incoming = [$payload]; // a bare object: one row keyed by column name
         }
 
+        // A keyed row carries only the questions that lead actually answered, so the
+        // column list has to be the union of every row's keys. Reading it off the
+        // first row alone silently dropped, from every other row in the batch, each
+        // answer the first lead had left blank — the same push then imported some
+        // leads with the whole form in their description and some without.
+        $keys = [];
+        foreach ($incoming as $row) {
+            if (!is_array($row) || self::is_positional($row)) {
+                continue;
+            }
+            foreach (array_keys($row) as $key) {
+                $keys[(string) $key] = true;
+            }
+        }
+        foreach (array_keys($keys) as $key) {
+            if (!in_array($key, $headers, true)) {
+                $headers[] = $key;
+            }
+        }
+
         foreach ($incoming as $row) {
             if (!is_array($row)) {
                 continue;
             }
 
-            // Keyed row: the keys are the column names.
-            if (array_keys($row) !== range(0, count($row) - 1)) {
-                if (!count($headers)) {
-                    $headers = array_keys($row);
-                }
+            // Keyed row: the keys are the column names, and every row is laid out
+            // against the same header list so the columns line up.
+            if (!self::is_positional($row)) {
                 $ordered = [];
                 foreach ($headers as $header) {
-                    $ordered[] = $row[$header] ?? '';
+                    $value     = $row[$header] ?? '';
+                    $ordered[] = is_scalar($value) ? (string) $value : '';
                 }
                 $rows[] = $ordered;
                 continue;
@@ -131,6 +154,12 @@ class Lead_sync_push extends App_Controller
         }
 
         return [$headers, $rows];
+    }
+
+    /** A plain JSON array (cells in column order), rather than an object keyed by column name. */
+    private static function is_positional(array $row)
+    {
+        return $row === [] || array_keys($row) === range(0, count($row) - 1);
     }
 
     /** A push is a run like any other, so it shows up in the history screen. */
