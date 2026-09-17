@@ -1,0 +1,263 @@
+/* CCX Leads Modern UI Styles */
+
+/* Slide Over Panel */
+.ccx-slideover {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 9999;
+    display: none; /* Hidden by default */
+}
+
+.ccx-slideover.open {
+    display: block;
+}
+
+.ccx-slideover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.3s ease;
+}
+
+.ccx-slideover-content {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 600px; /* Adjust width as needed */
+    height: 100%;
+    background: #fff;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    transform: translateX(100%); /* Start off-screen */
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.ccx-slideover.open .ccx-slideover-content {
+    transform: translateX(0);
+}
+
+.close-slideover {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 24px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #666;
+    z-index: 10;
+}
+
+.close-slideover:hover {
+    color: #000;
+}
+
+#ccx_slideover_body {
+    padding: 20px;
+    flex: 1;
+}
+
+/* Kanban Improvements */
+
+.kanban-column {
+    background: #f4f5f7;
+    border-radius: 8px;
+    padding: 10px;
+    margin-right: 15px;
+    min-width: 300px;
+    max-width: 300px;
+}
+
+.kanban-card {
+    background: #fff;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: box-shadow 0.2s, transform 0.1s;
+    cursor: pointer;
+}
+
+.kanban-card:hover {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.kanban-card-title {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.kanban-card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #777;
+    margin-top: 10px;
+}
+
+.kanban-card-assigned img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+/* Header / Filter / Actions */
+.ccx-header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.ccx-status-filter {
+    display: inline-flex;
+    background: transparent;
+    padding: 4px;
+    border-radius: 999px;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+    gap: 6px;
+}
+
+.ccx-status-filter-item {
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #4b5563;
+    transition: all 0.15s ease;
+    margin-right: 0;
+    font-size: 13px;
+    border: 1px solid transparent;
+    background: #f8fafc;
+}
+
+.ccx-status-filter-item:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+.ccx-status-filter-item:hover {
+    transform: translateY(-1px);
+}
+
+.ccx-status-filter-item.active {
+    background: #fff;
+    color: #111827;
+    box-shadow: 0 4px 10px rgba(2,6,23,0.08);
+    font-weight: 600;
+    border-color: rgba(0,0,0,0.06);
+}
+
+.ccx-status-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px; /* pill for >2 digits, circular for 1 digit */
+    font-size: 11px;
+    margin-left: 8px;
+    line-height: 1;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(2,6,23,0.06);
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* small circular swatch used in status pills */
+.ccx-status-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* when status pill is active, make count slightly darker */
+.ccx-status-filter-item.active .ccx-status-count {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(2,6,23,0.08);
+}
+
+/* Improve spacing for the status pill content */
+.ccx-status-filter-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ccx-actions .btn {
+    min-height: 36px;
+}
+
+.ccx-floating-settings-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 48px;
+    height: 48px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 6px 18px rgba(2,6,23,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #374151;
+    z-index: 999;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    border: 1px solid #e6e9ef;
+}
+
+.ccx-floating-settings-btn:hover {
+    transform: translateY(-4px);
+    color: #1f6feb;
+}
+
+/* List / table tweaks */
+#ccx_leads_view_wrapper {
+    padding: 12px 16px 18px 16px;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+    .ccx-header-container { gap:8px; }
+    .ccx-status-filter-item { padding: 6px 10px; font-size: 12px; }
+    .kanban-column { min-width: 260px; max-width: 260px; }
+    .ccx-floating-settings-btn { bottom: 16px; right: 16px; }
+}
+
+/* Ordering tab sortable */
+.ccx-sort-placeholder {
+    background: #e3f2fd;
+    border: 2px dashed #90caf9;
+    border-radius: 5px;
+    margin-bottom: 3px;
+    min-height: 36px;
+}
+
+.ccx-field-order-item.ui-sortable-helper {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: scale(1.02);
+    background: #fff !important;
+}
