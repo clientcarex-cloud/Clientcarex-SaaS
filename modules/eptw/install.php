@@ -344,3 +344,12 @@ if ((int) $CI->db->count_all($p . 'eptw_contractors') === 0) {
 
 _maybe_create_upload_path(FCPATH . 'uploads/eptw');
 _maybe_create_upload_path(FCPATH . 'uploads/eptw/permits');
+
+// ── Menu permissions (1.1.0): existing team members keep the menus their role
+// already opened. Runs once; afterwards Staff → Permissions is the source of truth.
+if (!get_option('eptw_menu_permissions_seeded')) {
+    foreach ($CI->db->where('active', 1)->get($p . 'eptw_team')->result() as $eptw_member) {
+        eptw_grant_role_permissions($eptw_member->staff_id, $eptw_member->role);
+    }
+    update_option('eptw_menu_permissions_seeded', '1');
+}

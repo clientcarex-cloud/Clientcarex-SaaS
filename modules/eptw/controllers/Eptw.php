@@ -20,6 +20,10 @@ class Eptw extends AdminController
         $this->load->model('eptw/eptw_reports_model', 'reports');
 
         if (!eptw_can_access()) {
+            // Not on the permit team but holds a setup menu → go there instead.
+            if (eptw_can('setup') && $this->router->fetch_method() === 'index') {
+                redirect(admin_url(eptw_setup_url()));
+            }
             access_denied('ePTW');
         }
     }
@@ -28,6 +32,14 @@ class Eptw extends AdminController
 
     public function index()
     {
+        if (!eptw_menu_can('eptw_dashboard')) {
+            $home = eptw_home_url();
+            if ($home === null || $home === admin_url('eptw')) {
+                access_denied('ePTW dashboard');
+            }
+
+            return redirect($home);
+        }
         $data['cards']     = $this->reports->cards();
         $data['high_risk'] = $this->reports->high_risk_panel();
         $data['simops']    = $this->reports->simops_panel();
@@ -49,6 +61,14 @@ class Eptw extends AdminController
         $filters = [];
         foreach (['q', 'view', 'status', 'project', 'area', 'type', 'contractor', 'engineer', 'from', 'to', 'risk'] as $key) {
             $filters[$key] = (string) $this->input->get($key);
+        }
+        // "Pending approvals" is the register pinned to its pending view, so
+        // that menu alone opens the register but only that view of it.
+        if (!eptw_menu_can('eptw_register')) {
+            if (!eptw_menu_can('eptw_approvals')) {
+                access_denied('ePTW permit register');
+            }
+            $filters['view'] = 'pending';
         }
         $per_page = 50;
         $page     = max(1, (int) $this->input->get('page'));
@@ -494,6 +514,9 @@ class Eptw extends AdminController
     {
         if (!eptw_can('reports')) {
             access_denied('ePTW reports');
+        }
+        if ($this->input->get('export') !== null && !eptw_menu_can('eptw_reports', 'export')) {
+            access_denied('ePTW reports export');
         }
         $names  = $this->reports->report_names();
         $report = (string) $this->input->get('report');

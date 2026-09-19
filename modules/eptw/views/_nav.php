@@ -4,15 +4,20 @@
  * dashboard | register | new | reports | setup
  */
 $eptw_me   = eptw_me();
-$eptw_tabs = [
-    'dashboard' => ['url' => admin_url('eptw'),          'icon' => 'fa-solid fa-gauge-high',   'label' => 'Dashboard'],
-    'register'  => ['url' => admin_url('eptw/register'), 'icon' => 'fa-solid fa-table-list',   'label' => 'Permit register'],
-];
+$eptw_tabs = [];
+if (eptw_menu_can('eptw_dashboard')) {
+    $eptw_tabs['dashboard'] = ['url' => admin_url('eptw'), 'icon' => 'fa-solid fa-gauge-high', 'label' => 'Dashboard'];
+}
+if (eptw_menu_can('eptw_register')) {
+    $eptw_tabs['register'] = ['url' => admin_url('eptw/register'), 'icon' => 'fa-solid fa-table-list', 'label' => 'Permit register'];
+} elseif (eptw_menu_can('eptw_approvals')) {
+    $eptw_tabs['register'] = ['url' => admin_url('eptw/register?view=pending'), 'icon' => 'fa-solid fa-list-check', 'label' => 'Pending approvals'];
+}
 if (eptw_can('reports')) {
     $eptw_tabs['reports'] = ['url' => admin_url('eptw/reports'), 'icon' => 'fa-solid fa-chart-column', 'label' => 'Reports'];
 }
-if (eptw_can('setup') || eptw_can('import')) {
-    $eptw_tabs['setup'] = ['url' => admin_url(eptw_can('setup') ? 'eptw/eptw_setup' : 'eptw/eptw_setup/import'), 'icon' => 'fa-solid fa-sliders', 'label' => 'Setup'];
+if (eptw_can('setup')) {
+    $eptw_tabs['setup'] = ['url' => admin_url(eptw_setup_url()), 'icon' => 'fa-solid fa-sliders', 'label' => 'Setup'];
 }
 ?>
 <div class="eptw-header">
@@ -33,7 +38,7 @@ if (eptw_can('setup') || eptw_can('import')) {
     </div>
 
     <div class="eptw-header-actions">
-        <span class="eptw-role-chip" title="Your ePTW role"><?= html_escape(eptw_roles()[$eptw_me['role']]['short'] ?? $eptw_me['role']); ?></span>
+        <?php if ($eptw_me['role'] !== '') { ?><span class="eptw-role-chip" title="Your ePTW role"><?= html_escape(eptw_roles()[$eptw_me['role']]['short'] ?? $eptw_me['role']); ?></span><?php } ?>
         <?php if (eptw_can('create')) { ?>
             <a href="<?= admin_url('eptw/permit'); ?>" class="eptw-btn eptw-btn-primary">
                 <i class="fa fa-plus"></i> New permit

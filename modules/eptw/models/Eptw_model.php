@@ -451,6 +451,10 @@ class Eptw_model extends App_Model
             'phone'         => substr(trim((string) ($in['phone'] ?? '')), 0, 40),
             'active'        => !empty($in['active']) ? 1 : 0,
         ];
+        // First time on the team → the menus their role needs. Never overwrites
+        // what an administrator has already set on the staff profile.
+        eptw_grant_role_permissions($staff_id, $role);
+
         $existing = $this->db->where('staff_id', $staff_id)->get(db_prefix() . 'eptw_team')->row();
         if ($existing) {
             $this->db->where('id', $existing->id)->update(db_prefix() . 'eptw_team', $data);

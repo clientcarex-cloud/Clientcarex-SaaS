@@ -5,12 +5,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: ePTW
 Description: Electronic Permit to Work — digitises the full permit lifecycle for hazardous work: 17 permit templates, permit numbering, approval workflow with e-signatures, the permit register, extensions, suspensions, closure, document archiving, SIMOPS conflict detection, hazard suggestions, dashboards and reports.
-Version: 1.0.0
+Version: 1.1.0
 Requires at least: 2.3.*
 */
 
 define('EPTW_MODULE_NAME', 'eptw');
-define('EPTW_MODULE_VERSION', '1.0.0');
+define('EPTW_MODULE_VERSION', '1.1.0');
 
 require_once __DIR__ . '/helpers/eptw_helper.php';
 
@@ -49,8 +49,10 @@ hooks()->add_action('admin_init', 'eptw_default_landing');
 function eptw_module_init_menu_items()
 {
     eptw_maybe_upgrade_schema();
+    eptw_register_permissions();
 
-    if (!eptw_can_access()) {
+    $home = eptw_home_url();
+    if ($home === null) {
         return;
     }
 
@@ -58,54 +60,50 @@ function eptw_module_init_menu_items()
 
     $CI->app_menu->add_sidebar_menu_item('eptw', [
         'name'     => 'ePTW',
-        'href'     => admin_url('eptw'),
+        'href'     => $home,
         'icon'     => 'fa-solid fa-file-shield',
         'position' => 8,
     ]);
 
-    $CI->app_menu->add_sidebar_children_item('eptw', [
-        'slug'     => 'eptw-dashboard',
-        'name'     => 'Dashboard',
-        'href'     => admin_url('eptw'),
-        'position' => 1,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('eptw', [
-        'slug'     => 'eptw-register',
-        'name'     => 'Permit register',
-        'href'     => admin_url('eptw/register'),
-        'position' => 2,
-    ]);
-    if (eptw_can('create')) {
+    $children = [
+        'eptw-dashboard' => [eptw_menu_can('eptw_dashboard'), 'Dashboard', 'eptw'],
+        'eptw-register'  => [eptw_menu_can('eptw_register'), 'Permit register', 'eptw/register'],
+        'eptw-new'       => [eptw_can('create'), 'New permit', 'eptw/permit'],
+        'eptw-approvals' => [eptw_menu_can('eptw_approvals'), 'Pending approvals', 'eptw/register?view=pending'],
+        'eptw-reports'   => [eptw_can('reports'), 'Reports', 'eptw/reports'],
+        'eptw-setup'     => [eptw_can('setup'), 'Setup', eptw_setup_url()],
+    ];
+    $position = 0;
+    foreach ($children as $slug => $child) {
+        $position++;
+        if (!$child[0]) {
+            continue;
+        }
         $CI->app_menu->add_sidebar_children_item('eptw', [
-            'slug'     => 'eptw-new',
-            'name'     => 'New permit',
-            'href'     => admin_url('eptw/permit'),
-            'position' => 3,
+            'slug'     => $slug,
+            'name'     => $child[1],
+            'href'     => admin_url($child[2]),
+            'position' => $position,
         ]);
     }
-    if (eptw_can('review') || eptw_can('issue')) {
-        $CI->app_menu->add_sidebar_children_item('eptw', [
-            'slug'     => 'eptw-approvals',
-            'name'     => 'Pending approvals',
-            'href'     => admin_url('eptw/register?view=pending'),
-            'position' => 4,
-        ]);
-    }
-    if (eptw_can('reports')) {
-        $CI->app_menu->add_sidebar_children_item('eptw', [
-            'slug'     => 'eptw-reports',
-            'name'     => 'Reports',
-            'href'     => admin_url('eptw/reports'),
-            'position' => 5,
-        ]);
-    }
-    if (eptw_can('setup')) {
-        $CI->app_menu->add_sidebar_children_item('eptw', [
-            'slug'     => 'eptw-setup',
-            'name'     => 'Setup',
-            'href'     => admin_url('eptw/eptw_setup'),
-            'position' => 6,
-        ]);
+}
+
+/** First setup screen the current staff member may open. */
+function eptw_setup_url()
+{
+    $features = eptw_setup_features();
+
+    return count($features) ? eptw_menu_permissions()[$features[0]]['url'] : 'eptw/eptw_setup';
+}
+
+/**
+ * Menu-wise entries in Staff → Permissions (and Roles), one per ePTW menu.
+ * Perfex administrators hold all of them implicitly.
+ */
+function eptw_register_permissions()
+{
+    foreach (eptw_menu_permissions() as $feature => $menu) {
+        register_staff_capabilities($feature, ['capabilities' => $menu['caps']], 'ePTW — ' . $menu['name']);
     }
 }
 
@@ -114,14 +112,14 @@ function eptw_module_init_menu_items()
  * Customers entry is dropped from the sidebar, and the core Dashboard entry
  * with it — the ePTW dashboard is the home screen (see eptw_default_landing).
  *
- * Both are hidden only for staff who actually have ePTW access, so anyone
- * outside the permit team keeps a working home link. Nothing is blocked:
+ * Both are hidden only for staff who may open the ePTW dashboard, so anyone
+ * else keeps a working home link. Nothing is blocked:
  * admin/clients stays reachable so links into a client record still work, and
  * the core dashboard stays reachable at admin/dashboard?core=1.
  */
 function eptw_hide_core_menu_items($items)
 {
-    if (!eptw_can_access()) {
+    if (!eptw_menu_can('eptw_dashboard')) {
         return $items;
     }
 
@@ -144,8 +142,8 @@ function eptw_hide_core_menu_items($items)
 
 /**
  * The permit desk is the home screen: the core dashboard (admin/) sends staff
- * who can use ePTW straight to the module. Any other page is untouched, and
- * the core dashboard stays reachable at admin/dashboard?core=1.
+ * who may open the ePTW dashboard straight to it. Any other page is
+ * untouched, and the core dashboard stays reachable at admin/dashboard?core=1.
  */
 function eptw_default_landing()
 {
@@ -155,7 +153,7 @@ function eptw_default_landing()
         return;
     }
 
-    if ($CI->input->get('core') || $CI->input->is_ajax_request() || !eptw_can_access()) {
+    if ($CI->input->get('core') || $CI->input->is_ajax_request() || !eptw_menu_can('eptw_dashboard')) {
         return;
     }
 

@@ -16,7 +16,7 @@ foreach ($types as $t) { $names[$t->code] = $t->name; }
                 <div>
                     <div class="eptw-card">
                         <div class="eptw-card-head"><h3><i class="fa-solid fa-diagram-project"></i> SIMOPS conflict rules</h3>
-                            <div class="eptw-card-actions"><?= eptw_opt('eptw_simops_enabled') === '1' ? '<span class="eptw-badge ok">Detection on</span>' : '<span class="eptw-badge bad">Detection off</span>'; ?> <button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-rule"><i class="fa fa-plus"></i> Add rule</button></div></div>
+                            <div class="eptw-card-actions"><?= eptw_opt('eptw_simops_enabled') === '1' ? '<span class="eptw-badge ok">Detection on</span>' : '<span class="eptw-badge bad">Detection off</span>'; ?> <?php if (eptw_perm('eptw_setup_simops', 'create')) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-rule"><i class="fa fa-plus"></i> Add rule</button><?php } ?></div></div>
                         <div class="eptw-table-scroll"><table class="eptw-table">
                             <thead><tr><th>Permit type A</th><th>Permit type B</th><th>Severity</th><th>Description</th><th></th></tr></thead>
                             <tbody>
@@ -27,8 +27,8 @@ foreach ($types as $t) { $names[$t->code] = $t->name; }
                                     <td><span class="eptw-badge <?= $r->severity === 'block' ? 'bad' : 'warn'; ?>"><?= $r->severity === 'block' ? 'Block — on hold' : 'Warn — flag only'; ?></span> <?= $r->active ? '' : '<span class="eptw-badge muted">off</span>'; ?></td>
                                     <td class="eptw-small"><?= html_escape($r->description); ?></td>
                                     <td class="eptw-actions">
-                                        <button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-rule" data-fill-id="<?= $r->id; ?>" data-fill-type_a="<?= $r->type_a; ?>" data-fill-type_b="<?= $r->type_b; ?>" data-fill-severity="<?= $r->severity; ?>" data-fill-description="<?= html_escape($r->description); ?>" data-fill-active="<?= (int) $r->active; ?>"><i class="fa fa-pen"></i></button>
-                                        <form method="post" action="<?= admin_url('eptw/eptw_setup/rule_delete/' . $r->id); ?>" style="display:inline" onsubmit="return confirm('Delete this rule?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form>
+                                        <?php if (eptw_perm('eptw_setup_simops', 'edit')) { ?><button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-rule" data-fill-id="<?= $r->id; ?>" data-fill-type_a="<?= $r->type_a; ?>" data-fill-type_b="<?= $r->type_b; ?>" data-fill-severity="<?= $r->severity; ?>" data-fill-description="<?= html_escape($r->description); ?>" data-fill-active="<?= (int) $r->active; ?>"><i class="fa fa-pen"></i></button><?php } ?>
+                                        <?php if (eptw_perm('eptw_setup_simops', 'delete')) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/rule_delete/' . $r->id); ?>" style="display:inline" onsubmit="return confirm('Delete this rule?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?>
                                     </td>
                                 </tr>
                             <?php } ?>

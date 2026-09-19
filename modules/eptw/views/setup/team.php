@@ -12,7 +12,7 @@
                 <div>
                     <div class="eptw-card">
                         <div class="eptw-card-head"><h3><i class="fa-solid fa-users-gear"></i> ePTW team</h3>
-                            <div class="eptw-card-actions"><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-member"><i class="fa fa-plus"></i> Add member</button></div></div>
+                            <div class="eptw-card-actions"><?php if (eptw_perm('eptw_setup_team', 'create')) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-member"><i class="fa fa-plus"></i> Add member</button><?php } ?></div></div>
                         <?php if (!count($team)) { ?>
                             <div class="eptw-empty"><i class="fa-solid fa-users"></i><h4>Only administrators can use ePTW so far</h4><p>Add engineers, HSE officers, area authorities, the PTW coordinator and managers. Each gets exactly what their role allows.</p></div>
                         <?php } else { ?>
@@ -26,8 +26,8 @@
                                         <td class="eptw-small"><?= count($names) ? html_escape(implode(', ', $names)) : '<span class="eptw-muted">all projects</span>'; ?></td>
                                         <td class="eptw-small"><?= html_escape($m->phone); ?></td>
                                         <td class="eptw-actions">
-                                            <button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-member" data-fill-staff_id="<?= $m->staff_id; ?>" data-fill-role="<?= $m->role; ?>" data-fill-phone="<?= html_escape($m->phone); ?>" data-fill-active="<?= (int) $m->active; ?>" data-projects="<?= html_escape(json_encode(array_map('intval', $pids))); ?>"><i class="fa fa-pen"></i></button>
-                                            <form method="post" action="<?= admin_url('eptw/eptw_setup/team_delete/' . $m->id); ?>" style="display:inline" onsubmit="return confirm('Remove from the ePTW team?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form>
+                                            <?php if (eptw_perm('eptw_setup_team', 'edit')) { ?><button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-member" data-fill-staff_id="<?= $m->staff_id; ?>" data-fill-role="<?= $m->role; ?>" data-fill-phone="<?= html_escape($m->phone); ?>" data-fill-active="<?= (int) $m->active; ?>" data-projects="<?= html_escape(json_encode(array_map('intval', $pids))); ?>"><i class="fa fa-pen"></i></button><?php } ?>
+                                            <?php if (eptw_perm('eptw_setup_team', 'delete')) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/team_delete/' . $m->id); ?>" style="display:inline" onsubmit="return confirm('Remove from the ePTW team?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?>
                                         </td>
                                     </tr>
                                 <?php } ?>
@@ -45,9 +45,10 @@
                                 <div><dt>Area Authority</dt><dd>Review and sign for area safety, start work, suspend, revalidate shifts.</dd></div>
                                 <div><dt>PTW Coordinator</dt><dd>Issue permit numbers, record paper approvals, run the register, extend, hold, resume, close, archive, import the Excel register.</dd></div>
                                 <div><dt>Manager</dt><dd>Dashboard, register and reports for their projects. Signs only where a template asks for manager approval.</dd></div>
-                                <div><dt>ePTW Administrator</dt><dd>Everything, plus this setup area. CRM administrators are ePTW administrators automatically.</dd></div>
+                                <div><dt>ePTW Administrator</dt><dd>Every workflow step. CRM administrators are ePTW administrators automatically.</dd></div>
                             </dl>
                             <p class="eptw-muted" style="margin:12px 0 0">Leave "Projects" empty to cover every project.</p>
+                            <p class="eptw-muted" style="margin:8px 0 0">Which ePTW menus a member can open is set per staff member under <a href="<?= admin_url('staff'); ?>">Staff</a> → Permissions (the "ePTW — …" rows). A new member starts with the menus their role needs.</p>
                         </div>
                     </div>
                 </div>

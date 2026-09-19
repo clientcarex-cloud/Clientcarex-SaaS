@@ -10,7 +10,7 @@
 
             <div class="eptw-card">
                 <div class="eptw-card-head"><h3><i class="fa-solid fa-helmet-safety"></i> Contractors</h3>
-                    <div class="eptw-card-actions"><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-contractor"><i class="fa fa-plus"></i> Add contractor</button></div></div>
+                    <div class="eptw-card-actions"><?php if (eptw_perm('eptw_setup_contractors', 'create')) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-contractor"><i class="fa fa-plus"></i> Add contractor</button><?php } ?></div></div>
                 <?php if (!count($contractors)) { ?><div class="eptw-empty"><i class="fa-solid fa-helmet-safety"></i><h4>No contractors yet</h4></div><?php } else { ?>
                 <div class="eptw-table-scroll"><table class="eptw-table">
                     <thead><tr><th>Code</th><th>Contractor</th><th>Contact</th><th class="eptw-num">Permits</th><th></th></tr></thead>
@@ -22,8 +22,8 @@
                             <td class="eptw-small"><?= html_escape($c->contact_name); ?><div class="eptw-muted"><?= html_escape(trim($c->phone . ' ' . $c->email)); ?></div></td>
                             <td class="eptw-num"><?= (int) ($counts[$c->id] ?? 0); ?></td>
                             <td class="eptw-actions">
-                                <button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-contractor" data-fill-id="<?= $c->id; ?>" data-fill-name="<?= html_escape($c->name); ?>" data-fill-code="<?= html_escape($c->code); ?>" data-fill-contact_name="<?= html_escape($c->contact_name); ?>" data-fill-phone="<?= html_escape($c->phone); ?>" data-fill-email="<?= html_escape($c->email); ?>" data-fill-active="<?= (int) $c->active; ?>"><i class="fa fa-pen"></i></button>
-                                <?php if (!($counts[$c->id] ?? 0)) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/contractor_delete/' . $c->id); ?>" style="display:inline" onsubmit="return confirm('Delete this contractor?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?>
+                                <?php if (eptw_perm('eptw_setup_contractors', 'edit')) { ?><button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-contractor" data-fill-id="<?= $c->id; ?>" data-fill-name="<?= html_escape($c->name); ?>" data-fill-code="<?= html_escape($c->code); ?>" data-fill-contact_name="<?= html_escape($c->contact_name); ?>" data-fill-phone="<?= html_escape($c->phone); ?>" data-fill-email="<?= html_escape($c->email); ?>" data-fill-active="<?= (int) $c->active; ?>"><i class="fa fa-pen"></i></button><?php } ?>
+                                <?php if (!($counts[$c->id] ?? 0)) { ?><?php if (eptw_perm('eptw_setup_contractors', 'delete')) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/contractor_delete/' . $c->id); ?>" style="display:inline" onsubmit="return confirm('Delete this contractor?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?><?php } ?>
                             </td>
                         </tr>
                     <?php } ?>

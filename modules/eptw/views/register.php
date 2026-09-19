@@ -23,6 +23,9 @@
                 'drafts'       => 'Drafts',
                 'mine'         => 'Mine',
             ];
+            if (!eptw_menu_can('eptw_register')) {
+                $views = ['pending' => $views['pending']]; // "Pending approvals" menu only
+            }
             $qs = function (array $override) use ($filters) {
                 return admin_url('eptw/register?' . http_build_query(array_filter(array_merge($filters, $override), function ($v) { return $v !== '' && $v !== null; })));
             };
@@ -62,7 +65,7 @@
                         <?php if (array_filter($filters)) { ?><a href="<?= admin_url('eptw/register'); ?>" class="eptw-btn eptw-btn-ghost eptw-btn-sm" title="Clear filters"><i class="fa fa-times"></i> Clear</a><?php } ?>
                     </form>
                     <div class="eptw-card-actions">
-                        <a href="<?= admin_url('eptw/export?' . http_build_query(array_filter($filters))); ?>" class="eptw-btn eptw-btn-sm" title="Download the register for Excel"><i class="fa-solid fa-file-excel"></i> Export</a>
+                        <?php if (eptw_can('register')) { ?><a href="<?= admin_url('eptw/export?' . http_build_query(array_filter($filters))); ?>" class="eptw-btn eptw-btn-sm" title="Download the register for Excel"><i class="fa-solid fa-file-excel"></i> Export</a><?php } ?>
                         <?php if (eptw_can('import')) { ?><a href="<?= admin_url('eptw/eptw_setup/import'); ?>" class="eptw-btn eptw-btn-sm"><i class="fa-solid fa-file-import"></i> Import</a><?php } ?>
                     </div>
                 </div>

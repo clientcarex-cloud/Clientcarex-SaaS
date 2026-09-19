@@ -1,17 +1,20 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 /** Setup sub-navigation. Expects $setup_active. */
+$setup_icons = [
+    'eptw_setup_settings'    => 'fa-solid fa-sliders',
+    'eptw_setup_projects'    => 'fa-solid fa-diagram-project',
+    'eptw_setup_contractors' => 'fa-solid fa-helmet-safety',
+    'eptw_setup_types'       => 'fa-solid fa-file-shield',
+    'eptw_setup_team'        => 'fa-solid fa-users-gear',
+    'eptw_setup_simops'      => 'fa-solid fa-diagram-project',
+    'eptw_setup_import'      => 'fa-solid fa-file-import',
+];
+// One tab per setup menu the staff member holds "View" on (Staff → Permissions).
 $setup_tabs = [];
-if (eptw_can('setup')) {
-    $setup_tabs = [
-        'settings'    => ['eptw/eptw_setup',             'fa-solid fa-sliders',          'General & numbering'],
-        'projects'    => ['eptw/eptw_setup/projects',    'fa-solid fa-diagram-project',  'Projects & areas'],
-        'contractors' => ['eptw/eptw_setup/contractors', 'fa-solid fa-helmet-safety',    'Contractors'],
-        'types'       => ['eptw/eptw_setup/types',       'fa-solid fa-file-shield',      'Permit types'],
-        'team'        => ['eptw/eptw_setup/team',        'fa-solid fa-users-gear',       'Team & roles'],
-        'simops'      => ['eptw/eptw_setup/simops',      'fa-solid fa-diagram-project',  'SIMOPS rules'],
-    ];
+foreach (eptw_setup_features() as $eptw_feature) {
+    $eptw_menu = eptw_menu_permissions()[$eptw_feature];
+    $setup_tabs[substr($eptw_feature, strlen('eptw_setup_'))] = [$eptw_menu['url'], $setup_icons[$eptw_feature], substr($eptw_menu['name'], strlen('Setup — '))];
 }
-$setup_tabs['import'] = ['eptw/eptw_setup/import', 'fa-solid fa-file-import', 'Import Excel register'];
 ?>
 <div class="eptw-views" style="margin-bottom:16px">
     <?php // Prefixed names on purpose: this partial is include()d into views that own $t / $key.

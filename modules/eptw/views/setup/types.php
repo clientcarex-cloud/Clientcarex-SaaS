@@ -10,7 +10,7 @@
 
             <div class="eptw-card">
                 <div class="eptw-card-head"><h3><i class="fa-solid fa-file-shield"></i> Permit types — the digitised V3 templates</h3>
-                    <div class="eptw-card-actions"><a href="<?= admin_url('eptw/eptw_setup/type'); ?>" class="eptw-btn eptw-btn-sm eptw-btn-primary"><i class="fa fa-plus"></i> New permit type</a></div></div>
+                    <div class="eptw-card-actions"><?php if (eptw_perm('eptw_setup_types', 'create')) { ?><a href="<?= admin_url('eptw/eptw_setup/type'); ?>" class="eptw-btn eptw-btn-sm eptw-btn-primary"><i class="fa fa-plus"></i> New permit type</a><?php } ?></div></div>
                 <div class="eptw-table-scroll"><table class="eptw-table">
                     <thead><tr><th>Type</th><th>Flags</th><th class="eptw-num">Hazards</th><th class="eptw-num">Controls</th><th class="eptw-num">Fields</th><th>Approvals</th><th class="eptw-num">Validity</th><th class="eptw-num">Permits</th><th></th></tr></thead>
                     <tbody>
@@ -26,9 +26,9 @@
                             <td class="eptw-num"><?= (int) $t->default_validity_hours; ?> h</td>
                             <td class="eptw-num"><?= (int) ($counts[$t->id] ?? 0); ?></td>
                             <td class="eptw-actions">
-                                <a href="<?= admin_url('eptw/eptw_setup/type/' . $t->id); ?>" class="eptw-btn eptw-btn-sm"><i class="fa fa-pen"></i> Edit</a>
-                                <form method="post" action="<?= admin_url('eptw/eptw_setup/type_reset/' . $t->id); ?>" style="display:inline" onsubmit="return confirm('Restore hazards, controls and fields from the shipped V3 template? Your edits to this type are replaced.')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost" title="Restore V3 template"><i class="fa fa-rotate-left"></i></button></form>
-                                <?php if (!($counts[$t->id] ?? 0)) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/type_delete/' . $t->id); ?>" style="display:inline" onsubmit="return confirm('Delete this permit type?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?>
+                                <a href="<?= admin_url('eptw/eptw_setup/type/' . $t->id); ?>" class="eptw-btn eptw-btn-sm"><i class="fa fa-pen"></i> <?= eptw_perm('eptw_setup_types', 'edit') ? 'Edit' : 'View'; ?></a>
+                                <?php if (eptw_perm('eptw_setup_types', 'edit')) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/type_reset/' . $t->id); ?>" style="display:inline" onsubmit="return confirm('Restore hazards, controls and fields from the shipped V3 template? Your edits to this type are replaced.')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost" title="Restore V3 template"><i class="fa fa-rotate-left"></i></button></form><?php } ?>
+                                <?php if (!($counts[$t->id] ?? 0)) { ?><?php if (eptw_perm('eptw_setup_types', 'delete')) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/type_delete/' . $t->id); ?>" style="display:inline" onsubmit="return confirm('Delete this permit type?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?><?php } ?>
                             </td>
                         </tr>
                     <?php } ?>

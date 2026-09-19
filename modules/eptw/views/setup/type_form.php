@@ -73,7 +73,7 @@ foreach (($t ? $t->extra_fields : []) as $f) {
                             <div class="eptw-formbar">
                                 <span class="spacer"></span>
                                 <a href="<?= admin_url('eptw/eptw_setup/types'); ?>" class="eptw-btn eptw-btn-ghost">Cancel</a>
-                                <button type="submit" class="eptw-btn eptw-btn-primary"><i class="fa fa-check"></i> Save permit type</button>
+                                <?php if (eptw_perm('eptw_setup_types', $t ? 'edit' : 'create')) { ?><button type="submit" class="eptw-btn eptw-btn-primary"><i class="fa fa-check"></i> Save permit type</button><?php } ?>
                             </div>
                         </div>
                     </div>

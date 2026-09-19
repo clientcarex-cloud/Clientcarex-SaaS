@@ -92,7 +92,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="eptw-btn eptw-btn-primary eptw-btn-lg"><i class="fa fa-check"></i> Save settings</button>
+                    <?php if (eptw_perm('eptw_setup_settings', 'edit')) { ?><button type="submit" class="eptw-btn eptw-btn-primary eptw-btn-lg"><i class="fa fa-check"></i> Save settings</button><?php } ?>
                 </div>
 
                 <div>

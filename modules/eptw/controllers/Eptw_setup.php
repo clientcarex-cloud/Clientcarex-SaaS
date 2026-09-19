@@ -3,7 +3,8 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * ePTW — configuration screens. Administrators only.
+ * ePTW — configuration screens, each gated by its own menu permission
+ * (Staff → Permissions → "ePTW — Setup — …").
  * Reached at admin/eptw/eptw_setup/<method>.
  */
 class Eptw_setup extends AdminController
@@ -15,13 +16,71 @@ class Eptw_setup extends AdminController
         $this->load->model('eptw/eptw_model', 'setup');
         $this->load->model('eptw/eptw_permits_model', 'permits');
 
-        if (!eptw_can_access()) {
-            access_denied('ePTW');
+        [$feature, $capability] = $this->required_permission($this->router->fetch_method());
+        if (!eptw_perm($feature, $capability)) {
+            // Landing on Setup without the settings screen → the first setup screen they may open.
+            if ($this->router->fetch_method() === 'index' && !$this->input->post() && eptw_can('setup')) {
+                redirect(admin_url(eptw_setup_url()));
+            }
+            access_denied('ePTW ' . strtolower(eptw_menu_permissions()[$feature]['name']));
         }
-        // The register importer is also a coordinator's job; everything else is admin-only.
-        if (!eptw_can('setup') && !(eptw_can('import') && in_array($this->router->fetch_method(), ['import', 'import_commit'], true))) {
-            access_denied('ePTW setup');
+    }
+
+    /**
+     * Method → [menu permission feature, capability]. A save with an id is an
+     * edit, without one a create. Unknown methods need the settings edit right.
+     */
+    private function required_permission($method)
+    {
+        $segs = $this->uri->segment_array();
+        $at   = array_search($method, $segs, true);
+        $id   = $at !== false ? (int) ($segs[$at + 1] ?? 0) : 0;
+        $post = (bool) $this->input->post();
+        $save = $id ? 'edit' : 'create';
+
+        switch ($method) {
+            case 'index':
+                return ['eptw_setup_settings', $post ? 'edit' : 'view'];
+            case 'projects':
+            case 'contractors':
+            case 'types':
+            case 'team':
+            case 'simops':
+                return ['eptw_setup_' . $method, 'view'];
+            case 'project_save':
+            case 'area_save':
+                return ['eptw_setup_projects', $save];
+            case 'project_delete':
+            case 'area_delete':
+                return ['eptw_setup_projects', 'delete'];
+            case 'contractor_save':
+                return ['eptw_setup_contractors', $save];
+            case 'contractor_delete':
+                return ['eptw_setup_contractors', 'delete'];
+            case 'type':
+                return ['eptw_setup_types', $post ? $save : ($id ? 'view' : 'create')];
+            case 'type_reset':
+                return ['eptw_setup_types', 'edit'];
+            case 'type_delete':
+                return ['eptw_setup_types', 'delete'];
+            case 'team_save':
+                $staff_id = (int) $this->input->post('staff_id');
+                $exists   = $staff_id && $this->db->where('staff_id', $staff_id)->count_all_results(db_prefix() . 'eptw_team') > 0;
+
+                return ['eptw_setup_team', $exists ? 'edit' : 'create'];
+            case 'team_delete':
+                return ['eptw_setup_team', 'delete'];
+            case 'rule_save':
+                return ['eptw_setup_simops', $save];
+            case 'rule_delete':
+                return ['eptw_setup_simops', 'delete'];
+            case 'import':
+                return ['eptw_setup_import', empty($_FILES['register']['name']) ? 'view' : 'create'];
+            case 'import_commit':
+                return ['eptw_setup_import', 'create'];
         }
+
+        return ['eptw_setup_settings', 'edit'];
     }
 
     private function back($to, $result, $ok_message)

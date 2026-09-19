@@ -12,7 +12,7 @@
                 <div>
                     <div class="eptw-card">
                         <div class="eptw-card-head"><h3><i class="fa-solid fa-diagram-project"></i> Projects / packages</h3>
-                            <div class="eptw-card-actions"><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-project"><i class="fa fa-plus"></i> Add project</button></div></div>
+                            <div class="eptw-card-actions"><?php if (eptw_perm('eptw_setup_projects', 'create')) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-project"><i class="fa fa-plus"></i> Add project</button><?php } ?></div></div>
                         <div class="eptw-table-scroll"><table class="eptw-table">
                             <thead><tr><th>Code</th><th>Project</th><th>Client</th><th>Camera</th><th class="eptw-num">Permits</th><th></th></tr></thead>
                             <tbody>
@@ -24,9 +24,9 @@
                                     <td class="eptw-small"><?= $pr->camera_mode === 'inherit' ? '<span class="eptw-muted">default</span>' : html_escape(ucfirst($pr->camera_mode)); ?></td>
                                     <td class="eptw-num"><?= (int) ($counts[$pr->id] ?? 0); ?></td>
                                     <td class="eptw-actions">
-                                        <button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-project" data-fill-name="<?= html_escape($pr->name); ?>" data-fill-code="<?= html_escape($pr->code); ?>" data-fill-client_name="<?= html_escape($pr->client_name); ?>" data-fill-description="<?= html_escape($pr->description); ?>" data-fill-camera_mode="<?= $pr->camera_mode; ?>" data-fill-active="<?= (int) $pr->active; ?>" data-fill-id="<?= $pr->id; ?>"><i class="fa fa-pen"></i></button>
-                                        <button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-area" data-fill-project_id="<?= $pr->id; ?>" title="Add area"><i class="fa fa-plus"></i> Area</button>
-                                        <?php if (!($counts[$pr->id] ?? 0)) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/project_delete/' . $pr->id); ?>" style="display:inline" onsubmit="return confirm('Delete this project and its areas?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?>
+                                        <?php if (eptw_perm('eptw_setup_projects', 'edit')) { ?><button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-project" data-fill-name="<?= html_escape($pr->name); ?>" data-fill-code="<?= html_escape($pr->code); ?>" data-fill-client_name="<?= html_escape($pr->client_name); ?>" data-fill-description="<?= html_escape($pr->description); ?>" data-fill-camera_mode="<?= $pr->camera_mode; ?>" data-fill-active="<?= (int) $pr->active; ?>" data-fill-id="<?= $pr->id; ?>"><i class="fa fa-pen"></i></button><?php } ?>
+                                        <?php if (eptw_perm('eptw_setup_projects', 'create')) { ?><button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-area" data-fill-project_id="<?= $pr->id; ?>" title="Add area"><i class="fa fa-plus"></i> Area</button><?php } ?>
+                                        <?php if (!($counts[$pr->id] ?? 0)) { ?><?php if (eptw_perm('eptw_setup_projects', 'delete')) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/project_delete/' . $pr->id); ?>" style="display:inline" onsubmit="return confirm('Delete this project and its areas?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?><?php } ?>
                                     </td>
                                 </tr>
                             <?php } ?>
@@ -35,7 +35,7 @@
 
                     <div class="eptw-card">
                         <div class="eptw-card-head"><h3><i class="fa-solid fa-map-location-dot"></i> Areas / zones</h3>
-                            <div class="eptw-card-actions"><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-area"><i class="fa fa-plus"></i> Add area</button></div></div>
+                            <div class="eptw-card-actions"><?php if (eptw_perm('eptw_setup_projects', 'create')) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-area"><i class="fa fa-plus"></i> Add area</button><?php } ?></div></div>
                         <div class="eptw-table-scroll"><table class="eptw-table">
                             <thead><tr><th>Project</th><th>Code</th><th>Area</th><th></th></tr></thead>
                             <tbody>
@@ -45,8 +45,8 @@
                                     <td class="eptw-mono eptw-strong"><?= html_escape($a->code); ?></td>
                                     <td><span class="eptw-strong"><?= html_escape($a->name); ?></span> <?= $a->active ? '' : '<span class="eptw-badge muted">inactive</span>'; ?><div class="eptw-small eptw-muted"><?= html_escape($a->description); ?></div></td>
                                     <td class="eptw-actions">
-                                        <button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-area" data-fill-id="<?= $a->id; ?>" data-fill-project_id="<?= $a->project_id; ?>" data-fill-code="<?= html_escape($a->code); ?>" data-fill-name="<?= html_escape($a->name); ?>" data-fill-description="<?= html_escape($a->description); ?>" data-fill-active="<?= (int) $a->active; ?>"><i class="fa fa-pen"></i></button>
-                                        <form method="post" action="<?= admin_url('eptw/eptw_setup/area_delete/' . $a->id); ?>" style="display:inline" onsubmit="return confirm('Delete this area?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form>
+                                        <?php if (eptw_perm('eptw_setup_projects', 'edit')) { ?><button class="eptw-btn eptw-btn-sm" data-eptw-modal="m-area" data-fill-id="<?= $a->id; ?>" data-fill-project_id="<?= $a->project_id; ?>" data-fill-code="<?= html_escape($a->code); ?>" data-fill-name="<?= html_escape($a->name); ?>" data-fill-description="<?= html_escape($a->description); ?>" data-fill-active="<?= (int) $a->active; ?>"><i class="fa fa-pen"></i></button><?php } ?>
+                                        <?php if (eptw_perm('eptw_setup_projects', 'delete')) { ?><form method="post" action="<?= admin_url('eptw/eptw_setup/area_delete/' . $a->id); ?>" style="display:inline" onsubmit="return confirm('Delete this area?')"><?= $csrf; ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-trash"></i></button></form><?php } ?>
                                     </td>
                                 </tr>
                             <?php } ?>

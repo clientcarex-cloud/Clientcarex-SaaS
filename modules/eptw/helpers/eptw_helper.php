@@ -121,12 +121,128 @@ function eptw_can_access()
     return eptw_me()['active'];
 }
 
+/* ══════════════════════ Menu permissions (Staff → Permissions) ═════════ */
+
+/**
+ * One staff-permission feature per ePTW menu. These decide which menus and
+ * pages a staff member reaches; the ePTW team role (above) still decides the
+ * workflow steps they may take on a permit (review, issue, suspend …).
+ *
+ * `roles` lists the team roles that are granted the capability by default —
+ * used once when upgrading and whenever a staff member first joins the team.
+ */
+function eptw_menu_permissions()
+{
+    $crud    = ['view' => 'View', 'create' => 'Create', 'edit' => 'Edit', 'delete' => 'Delete'];
+    $all     = array_keys(eptw_roles());
+    $authors = ['engineer', 'coordinator', 'area_authority', 'hse', 'admin'];
+    $readers = ['coordinator', 'manager', 'hse', 'area_authority', 'admin'];
+
+    return [
+        'eptw_dashboard'         => ['name' => 'Dashboard',                    'url' => 'eptw',                         'caps' => ['view' => 'View'],                                          'roles' => ['view' => $all]],
+        'eptw_register'          => ['name' => 'Permit register',              'url' => 'eptw/register',                'caps' => ['view' => 'View', 'export' => 'Export to Excel'],           'roles' => ['view' => $all, 'export' => $all]],
+        'eptw_new_permit'        => ['name' => 'New permit',                   'url' => 'eptw/permit',                  'caps' => ['create' => 'Create'],                                      'roles' => ['create' => $authors]],
+        'eptw_approvals'         => ['name' => 'Pending approvals',            'url' => 'eptw/register?view=pending',   'caps' => ['view' => 'View'],                                          'roles' => ['view' => ['area_authority', 'hse', 'coordinator', 'admin']]],
+        'eptw_reports'           => ['name' => 'Reports',                      'url' => 'eptw/reports',                 'caps' => ['view' => 'View', 'export' => 'Export to Excel'],           'roles' => ['view' => $readers, 'export' => $readers]],
+        'eptw_setup_settings'    => ['name' => 'Setup — General & numbering',  'url' => 'eptw/eptw_setup',              'caps' => ['view' => 'View', 'edit' => 'Edit'],                        'roles' => ['view' => ['admin'], 'edit' => ['admin']]],
+        'eptw_setup_projects'    => ['name' => 'Setup — Projects & areas',     'url' => 'eptw/eptw_setup/projects',     'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
+        'eptw_setup_contractors' => ['name' => 'Setup — Contractors',          'url' => 'eptw/eptw_setup/contractors',  'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
+        'eptw_setup_types'       => ['name' => 'Setup — Permit types',         'url' => 'eptw/eptw_setup/types',        'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
+        'eptw_setup_team'        => ['name' => 'Setup — Team & roles',         'url' => 'eptw/eptw_setup/team',         'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
+        'eptw_setup_simops'      => ['name' => 'Setup — SIMOPS rules',         'url' => 'eptw/eptw_setup/simops',       'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
+        'eptw_setup_import'      => ['name' => 'Setup — Import Excel register', 'url' => 'eptw/eptw_setup/import',      'caps' => ['view' => 'View', 'create' => 'Run import'],                'roles' => ['view' => ['coordinator', 'admin'], 'create' => ['coordinator', 'admin']]],
+    ];
+}
+
+/** Perfex administrators hold every menu permission. */
+function eptw_perm($feature, $capability = 'view')
+{
+    return is_admin() || staff_can($capability, $feature);
+}
+
+/** Setup screens the current staff member may open, in menu order. */
+function eptw_setup_features()
+{
+    return array_values(array_filter(array_keys(eptw_menu_permissions()), function ($f) {
+        return strpos($f, 'eptw_setup_') === 0 && eptw_perm($f, 'view');
+    }));
+}
+
+/**
+ * Where a staff member should land in the module: the first ePTW menu they
+ * may open, or null when they have none.
+ */
+function eptw_home_url()
+{
+    foreach (eptw_menu_permissions() as $feature => $menu) {
+        if ($feature === 'eptw_new_permit' ? eptw_can('create') : eptw_menu_can($feature)) {
+            return admin_url($menu['url']);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Can the current staff member open this menu? Operational menus also need an
+ * ePTW team role, because what they show depends on it; setup menus do not.
+ */
+function eptw_menu_can($feature, $capability = 'view')
+{
+    if (strpos($feature, 'eptw_setup_') !== 0 && !eptw_can_access()) {
+        return false;
+    }
+
+    return eptw_perm($feature, $capability);
+}
+
+/**
+ * Give a staff member the default menu permissions for their team role —
+ * only when they have no ePTW menu permission yet, so an administrator's
+ * choices on the staff profile are never overwritten.
+ */
+function eptw_grant_role_permissions($staff_id, $role)
+{
+    $CI       = &get_instance();
+    $staff_id = (int) $staff_id;
+    $table    = db_prefix() . 'staff_permissions';
+
+    if (!$staff_id || !$CI->db->table_exists($table)) {
+        return;
+    }
+    if ($CI->db->where('staff_id', $staff_id)->like('feature', 'eptw_', 'after')->count_all_results($table) > 0) {
+        return;
+    }
+
+    foreach (eptw_menu_permissions() as $feature => $menu) {
+        foreach ($menu['roles'] as $capability => $roles) {
+            if (in_array($role, $roles, true)) {
+                $CI->db->insert($table, ['staff_id' => $staff_id, 'feature' => $feature, 'capability' => $capability]);
+            }
+        }
+    }
+}
+
 /**
  * Role → what it may do. Ownership (an engineer editing their own draft) is
- * checked by the model on top of this.
+ * checked by the model on top of this. The menu-level actions come from the
+ * staff permissions instead (see eptw_menu_permissions).
  */
 function eptw_can($action)
 {
+    switch ($action) {
+        case 'create':
+            return eptw_menu_can('eptw_new_permit', 'create');
+        case 'reports':
+            return eptw_menu_can('eptw_reports');
+        case 'register':
+            return eptw_menu_can('eptw_register', 'export');
+        case 'import':
+            return eptw_perm('eptw_setup_import', 'create');
+        case 'setup':
+            return count(eptw_setup_features()) > 0;
+    }
+
     $role = eptw_role();
     if ($role === '') {
         return false;
@@ -136,7 +252,6 @@ function eptw_can($action)
     }
 
     $matrix = [
-        'create'         => ['engineer', 'coordinator', 'area_authority', 'hse'],
         'edit'           => ['engineer', 'coordinator', 'area_authority', 'hse'],
         'request_number' => ['engineer', 'coordinator', 'area_authority', 'hse'],
         'review'         => ['area_authority', 'hse', 'coordinator'],
@@ -151,11 +266,7 @@ function eptw_can($action)
         'gas_test'       => ['engineer', 'coordinator', 'hse', 'area_authority'],
         'remark'         => ['engineer', 'coordinator', 'hse', 'area_authority', 'manager'],
         'view_all'       => ['coordinator', 'manager', 'hse', 'area_authority'],
-        'reports'        => ['coordinator', 'manager', 'hse', 'area_authority'],
-        'register'       => ['coordinator', 'manager', 'hse', 'area_authority', 'engineer'],
-        'import'         => ['coordinator'],
         'delete'         => [],
-        'setup'          => [],
     ];
 
     return in_array($role, $matrix[$action] ?? [], true);

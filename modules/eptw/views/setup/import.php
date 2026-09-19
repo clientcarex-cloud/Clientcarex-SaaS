@@ -24,7 +24,7 @@
                                         <button type="button" class="eptw-btn eptw-btn-sm" onclick="this.closest('.eptw-dropzone').querySelector('input[type=file]').click()"><i class="fa-solid fa-folder-open"></i> Choose file</button>
                                         <div class="eptw-small eptw-strong" data-eptw-files style="margin-top:6px"></div>
                                     </div>
-                                    <button type="submit" class="eptw-btn eptw-btn-primary" style="margin-top:12px"><i class="fa-solid fa-magnifying-glass"></i> Read the file</button>
+                                    <?php if (eptw_perm('eptw_setup_import', 'create')) { ?><button type="submit" class="eptw-btn eptw-btn-primary" style="margin-top:12px"><i class="fa-solid fa-magnifying-glass"></i> Read the file</button><?php } ?>
                                 </form>
                             </div>
                         </div>
@@ -63,7 +63,7 @@
                             <input type="hidden" name="token" value="<?= html_escape($preview['token']); ?>">
                             <div class="eptw-field"><label class="eptw-label">Project for rows without one</label><select name="default_project" class="eptw-select"><?php foreach (eptw_projects(false) as $pr) { ?><option value="<?= $pr->id; ?>"><?= html_escape($pr->name); ?></option><?php } ?></select></div>
                             <a href="<?= admin_url('eptw/eptw_setup/import'); ?>" class="eptw-btn">Cancel</a>
-                            <button type="submit" class="eptw-btn eptw-btn-primary" onclick="return confirm('Import <?= (int) $preview['count']; ?> rows into the register?')"><i class="fa-solid fa-file-import"></i> Import <?= (int) $preview['count']; ?> permits</button>
+                            <?php if (eptw_perm('eptw_setup_import', 'create')) { ?><button type="submit" class="eptw-btn eptw-btn-primary" onclick="return confirm('Import <?= (int) $preview['count']; ?> rows into the register?')"><i class="fa-solid fa-file-import"></i> Import <?= (int) $preview['count']; ?> permits</button><?php } ?>
                         </form>
                     </div>
                 </div>
