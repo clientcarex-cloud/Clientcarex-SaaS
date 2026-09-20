@@ -116,9 +116,13 @@ function eptw_role()
     return eptw_me()['role'];
 }
 
+/**
+ * May this staff member use ePTW at all? Either they are on the permit team,
+ * or an administrator gave them an ePTW menu on their staff profile.
+ */
 function eptw_can_access()
 {
-    return eptw_me()['active'];
+    return eptw_me()['active'] || eptw_has_menu_permission();
 }
 
 /* ══════════════════════ Menu permissions (Staff → Permissions) ═════════ */
@@ -175,7 +179,7 @@ function eptw_setup_features()
 function eptw_home_url()
 {
     foreach (eptw_menu_permissions() as $feature => $menu) {
-        if ($feature === 'eptw_new_permit' ? eptw_can('create') : eptw_menu_can($feature)) {
+        if (eptw_perm($feature, $feature === 'eptw_new_permit' ? 'create' : 'view')) {
             return admin_url($menu['url']);
         }
     }
@@ -184,16 +188,30 @@ function eptw_home_url()
 }
 
 /**
- * Can the current staff member open this menu? Operational menus also need an
- * ePTW team role, because what they show depends on it; setup menus do not.
+ * Does this staff member hold any ePTW menu at all?
+ *
+ * @param bool $recheck drop the cached answer (permissions just changed)
  */
-function eptw_menu_can($feature, $capability = 'view')
+function eptw_has_menu_permission($recheck = false)
 {
-    if (strpos($feature, 'eptw_setup_') !== 0 && !eptw_can_access()) {
-        return false;
+    static $any = null;
+    if ($recheck) {
+        $any = null;
+    }
+    if ($any !== null) {
+        return $any;
     }
 
-    return eptw_perm($feature, $capability);
+    $any = false;
+    foreach (eptw_menu_permissions() as $feature => $menu) {
+        foreach (array_keys($menu['caps']) as $capability) {
+            if (eptw_perm($feature, $capability)) {
+                return $any = true;
+            }
+        }
+    }
+
+    return $any;
 }
 
 /**
@@ -214,12 +232,22 @@ function eptw_grant_role_permissions($staff_id, $role)
         return;
     }
 
+    $granted = [];
     foreach (eptw_menu_permissions() as $feature => $menu) {
         foreach ($menu['roles'] as $capability => $roles) {
             if (in_array($role, $roles, true)) {
-                $CI->db->insert($table, ['staff_id' => $staff_id, 'feature' => $feature, 'capability' => $capability]);
+                $row = ['staff_id' => $staff_id, 'feature' => $feature, 'capability' => $capability];
+                $CI->db->insert($table, $row);
+                $granted[] = $row;
             }
         }
+    }
+
+    // The logged-in user's permissions were read at the start of the request.
+    // Without this they would see the new menus only after one more page load.
+    if ($staff_id === (int) get_staff_user_id() && isset($GLOBALS['current_user']) && count($granted)) {
+        $GLOBALS['current_user']->permissions = array_merge((array) $GLOBALS['current_user']->permissions, $granted);
+        eptw_has_menu_permission(true);
     }
 }
 
@@ -232,11 +260,11 @@ function eptw_can($action)
 {
     switch ($action) {
         case 'create':
-            return eptw_menu_can('eptw_new_permit', 'create');
+            return eptw_perm('eptw_new_permit', 'create');
         case 'reports':
-            return eptw_menu_can('eptw_reports');
+            return eptw_perm('eptw_reports');
         case 'register':
-            return eptw_menu_can('eptw_register', 'export');
+            return eptw_perm('eptw_register', 'export');
         case 'import':
             return eptw_perm('eptw_setup_import', 'create');
         case 'setup':
@@ -245,7 +273,9 @@ function eptw_can($action)
 
     $role = eptw_role();
     if ($role === '') {
-        return false;
+        // Menus but no team role: they read what those menus show — the
+        // register is granted globally — and take no step on a permit.
+        return $action === 'view_all' && (eptw_perm('eptw_register') || eptw_perm('eptw_dashboard'));
     }
     if ($role === 'admin') {
         return true;

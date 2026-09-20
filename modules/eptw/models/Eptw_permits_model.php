@@ -267,6 +267,10 @@ class Eptw_permits_model extends App_Model
         } elseif (in_array($role, ['coordinator', 'admin'], true)) {
             // Anything pending is the coordinator's business.
         } else {
+            // Nothing to approve — drop the half-built query, or the next one
+            // on this page inherits its "x" alias and dies.
+            $this->db->reset_query();
+
             return [];
         }
         $scope = eptw_scope();

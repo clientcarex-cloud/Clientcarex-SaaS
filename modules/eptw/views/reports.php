@@ -17,7 +17,7 @@
                         <button type="submit" class="eptw-btn"><i class="fa fa-search"></i> Run</button>
                     </form>
                     <div class="eptw-card-actions">
-                        <?php if (eptw_menu_can('eptw_reports', 'export')) { ?><a href="<?= admin_url('eptw/reports?' . http_build_query(['report' => $report, 'from' => $from, 'to' => $to, 'export' => 1])); ?>" class="eptw-btn eptw-btn-sm"><i class="fa-solid fa-file-excel"></i> Export</a><?php } ?>
+                        <?php if (eptw_perm('eptw_reports', 'export')) { ?><a href="<?= admin_url('eptw/reports?' . http_build_query(['report' => $report, 'from' => $from, 'to' => $to, 'export' => 1])); ?>" class="eptw-btn eptw-btn-sm"><i class="fa-solid fa-file-excel"></i> Export</a><?php } ?>
                         <button class="eptw-btn eptw-btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
                     </div>
                 </div>

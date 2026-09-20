@@ -66,10 +66,10 @@ function eptw_module_init_menu_items()
     ]);
 
     $children = [
-        'eptw-dashboard' => [eptw_menu_can('eptw_dashboard'), 'Dashboard', 'eptw'],
-        'eptw-register'  => [eptw_menu_can('eptw_register'), 'Permit register', 'eptw/register'],
+        'eptw-dashboard' => [eptw_perm('eptw_dashboard'), 'Dashboard', 'eptw'],
+        'eptw-register'  => [eptw_perm('eptw_register'), 'Permit register', 'eptw/register'],
         'eptw-new'       => [eptw_can('create'), 'New permit', 'eptw/permit'],
-        'eptw-approvals' => [eptw_menu_can('eptw_approvals'), 'Pending approvals', 'eptw/register?view=pending'],
+        'eptw-approvals' => [eptw_perm('eptw_approvals'), 'Pending approvals', 'eptw/register?view=pending'],
         'eptw-reports'   => [eptw_can('reports'), 'Reports', 'eptw/reports'],
         'eptw-setup'     => [eptw_can('setup'), 'Setup', eptw_setup_url()],
     ];
@@ -119,7 +119,7 @@ function eptw_register_permissions()
  */
 function eptw_hide_core_menu_items($items)
 {
-    if (!eptw_menu_can('eptw_dashboard')) {
+    if (!eptw_perm('eptw_dashboard')) {
         return $items;
     }
 
@@ -153,7 +153,7 @@ function eptw_default_landing()
         return;
     }
 
-    if ($CI->input->get('core') || $CI->input->is_ajax_request() || !eptw_menu_can('eptw_dashboard')) {
+    if ($CI->input->get('core') || $CI->input->is_ajax_request() || !eptw_perm('eptw_dashboard')) {
         return;
     }
 

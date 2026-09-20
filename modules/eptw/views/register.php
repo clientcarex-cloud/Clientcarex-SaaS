@@ -23,7 +23,7 @@
                 'drafts'       => 'Drafts',
                 'mine'         => 'Mine',
             ];
-            if (!eptw_menu_can('eptw_register')) {
+            if (!eptw_perm('eptw_register')) {
                 $views = ['pending' => $views['pending']]; // "Pending approvals" menu only
             }
             $qs = function (array $override) use ($filters) {

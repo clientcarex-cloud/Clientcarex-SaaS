@@ -5,12 +5,12 @@
  */
 $eptw_me   = eptw_me();
 $eptw_tabs = [];
-if (eptw_menu_can('eptw_dashboard')) {
+if (eptw_perm('eptw_dashboard')) {
     $eptw_tabs['dashboard'] = ['url' => admin_url('eptw'), 'icon' => 'fa-solid fa-gauge-high', 'label' => 'Dashboard'];
 }
-if (eptw_menu_can('eptw_register')) {
+if (eptw_perm('eptw_register')) {
     $eptw_tabs['register'] = ['url' => admin_url('eptw/register'), 'icon' => 'fa-solid fa-table-list', 'label' => 'Permit register'];
-} elseif (eptw_menu_can('eptw_approvals')) {
+} elseif (eptw_perm('eptw_approvals')) {
     $eptw_tabs['register'] = ['url' => admin_url('eptw/register?view=pending'), 'icon' => 'fa-solid fa-list-check', 'label' => 'Pending approvals'];
 }
 if (eptw_can('reports')) {

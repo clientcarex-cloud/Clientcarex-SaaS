@@ -20,10 +20,6 @@ class Eptw extends AdminController
         $this->load->model('eptw/eptw_reports_model', 'reports');
 
         if (!eptw_can_access()) {
-            // Not on the permit team but holds a setup menu → go there instead.
-            if (eptw_can('setup') && $this->router->fetch_method() === 'index') {
-                redirect(admin_url(eptw_setup_url()));
-            }
             access_denied('ePTW');
         }
     }
@@ -32,9 +28,11 @@ class Eptw extends AdminController
 
     public function index()
     {
-        if (!eptw_menu_can('eptw_dashboard')) {
+        // No dashboard menu → the first ePTW menu they do hold (a setup-only
+        // staff member lands in setup rather than on a denial page).
+        if (!eptw_perm('eptw_dashboard')) {
             $home = eptw_home_url();
-            if ($home === null || $home === admin_url('eptw')) {
+            if ($home === null) {
                 access_denied('ePTW dashboard');
             }
 
@@ -64,8 +62,8 @@ class Eptw extends AdminController
         }
         // "Pending approvals" is the register pinned to its pending view, so
         // that menu alone opens the register but only that view of it.
-        if (!eptw_menu_can('eptw_register')) {
-            if (!eptw_menu_can('eptw_approvals')) {
+        if (!eptw_perm('eptw_register')) {
+            if (!eptw_perm('eptw_approvals')) {
                 access_denied('ePTW permit register');
             }
             $filters['view'] = 'pending';
@@ -515,7 +513,7 @@ class Eptw extends AdminController
         if (!eptw_can('reports')) {
             access_denied('ePTW reports');
         }
-        if ($this->input->get('export') !== null && !eptw_menu_can('eptw_reports', 'export')) {
+        if ($this->input->get('export') !== null && !eptw_perm('eptw_reports', 'export')) {
             access_denied('ePTW reports export');
         }
         $names  = $this->reports->report_names();
