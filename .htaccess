@@ -73,6 +73,19 @@ RewriteCond %{ENV:CCX_TENANT_HOST} !=1
 RewriteCond %{DOCUMENT_ROOT}/homepage/index.html -f
 RewriteRule ^$ homepage/index.html [L]
 
+# Marketing pages → the site's front controller. /homepage is a single
+# index.php app (routes live in homepage/app/config.php PAGES), so these
+# are not files on disk and the file-based rules below never match them.
+# Keep this list in step with PAGES / REDIRECTS when adding a page.
+RewriteCond %{ENV:CCX_TENANT_HOST} !=1
+RewriteCond %{DOCUMENT_ROOT}/homepage/index.php -f
+RewriteRule ^(performance-marketing|business-automation|how-it-works|pricing|blog|contact|privacy|terms|refund|features|challenge|sitemap\.xml|robots\.txt)(\.html)?/?$ homepage/index.php [L,QSA]
+
+# Old links that carried the folder (/homepage/pricing) → clean URL.
+RewriteCond %{ENV:CCX_TENANT_HOST} !=1
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^homepage/?(.*)$ /$1 [R=301,L]
+
 # Exact file in /homepage: styles.css, script.js, assets/…, js/…,
 # sitemap.xml, robots.txt, api/plans.php, pricing.php, …
 # Real Perfex files fail the first -f check and fall through to

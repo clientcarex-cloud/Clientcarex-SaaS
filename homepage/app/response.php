@@ -37,7 +37,9 @@ function app_version(): string
 /** Cache filename stem for a route, without the version or ETag suffix. */
 function cache_key(string $route): string
 {
-    return cache_dir() . '/' . sha1($route === '' ? 'home' : $route);
+    // BASE is part of the key: the same route renders different links when
+    // reached as /pricing versus /homepage/pricing.
+    return cache_dir() . '/' . sha1(BASE . '|' . ($route === '' ? 'home' : $route));
 }
 
 function cache_path(string $route): string

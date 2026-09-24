@@ -17,10 +17,18 @@ if (PHP_SAPI === 'cli-server') {
 }
 
 define('ROOT', __DIR__);
-// Install directory, so the site also runs from a sub-folder.
-define('BASE', PHP_SAPI === 'cli-server'
+// Install directory, so the site also runs from a sub-folder. Assets are
+// always served from it, since they are real files on disk.
+define('ASSET_BASE', PHP_SAPI === 'cli-server'
     ? ''
     : rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/'));
+// Page links: when the web root's .htaccess rewrites clean URLs
+// (/pricing → homepage/index.php) the visitor never sees the folder, so
+// links must not carry it either — /homepage/pricing routes nowhere.
+define('BASE', ASSET_BASE !== ''
+    && str_starts_with((string) strtok($_SERVER['REQUEST_URI'] ?? '/', '?'), ASSET_BASE . '/')
+    ? ASSET_BASE
+    : '');
 
 ini_set('zlib.output_compression', '0'); // we compress once, at cache-write time
 
