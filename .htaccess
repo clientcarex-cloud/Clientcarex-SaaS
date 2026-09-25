@@ -79,7 +79,7 @@ RewriteRule ^$ homepage/index.html [L]
 # Keep this list in step with PAGES / REDIRECTS when adding a page.
 RewriteCond %{ENV:CCX_TENANT_HOST} !=1
 RewriteCond %{DOCUMENT_ROOT}/homepage/index.php -f
-RewriteRule ^(performance-marketing|business-automation|how-it-works|pricing|blog|contact|privacy|terms|refund|features|challenge|sitemap\.xml|robots\.txt)(\.html)?/?$ homepage/index.php [L,QSA]
+RewriteRule ^(performance-marketing|business-automation|how-it-works|pricing|blog|contact|growth-audit|privacy|terms|refund|features|challenge|sitemap\.xml|robots\.txt)(\.html)?/?$ homepage/index.php [L,QSA]
 
 # Old links that carried the folder (/homepage/pricing) → clean URL.
 RewriteCond %{ENV:CCX_TENANT_HOST} !=1
