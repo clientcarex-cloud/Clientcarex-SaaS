@@ -324,7 +324,16 @@ function duns_email_html($heading, $intro, array $rows = [], $button = null, $fo
         . '</div></div></div>';
 }
 
-/** Send one email through the core mailer. Never throws — a mail failure must not break a payment callback. */
+/**
+ * Send one email through the core mailer, IMMEDIATELY.
+ *
+ * Deliberately not Emails_model::send_simple_email(): that calls
+ * $this->email->send() without skipping the job queue, so with "Email Queue"
+ * enabled the email is only queued (and reported as sent) until cron picks it
+ * up. A DUNS delivery must not wait for cron, so this mirrors the core SMTP
+ * test email and calls send(true). Never throws — a mail failure must not
+ * break a payment callback.
+ */
 function duns_send_email($to, $subject, $html)
 {
     $to = trim((string) $to);
@@ -333,14 +342,41 @@ function duns_send_email($to, $subject, $html)
     }
     try {
         $CI = &get_instance();
-        $CI->load->model('emails_model');
+        $CI->load->config('email');
 
-        return (bool) $CI->emails_model->send_simple_email($to, $subject, $html);
+        // Same header/footer and merge parsing as every core email
+        $template           = new stdClass();
+        $template->message  = get_option('email_header') . $html . get_option('email_footer');
+        $template->fromname = get_option('companyname') ?: duns_landing()['brand'];
+        $template->subject  = $subject;
+        $template           = parse_email_template($template);
+
+        $CI->email->clear(true);
+        $CI->email->set_newline(config_item('newline'));
+        $CI->email->from(get_option('smtp_email'), $template->fromname);
+        $CI->email->to($to);
+        if (($bcc = trim((string) get_option('bcc_emails'))) !== '') {
+            $CI->email->bcc($bcc);
+        }
+        $support = trim((string) get_option('duns_support_email'));
+        if ($support !== '' && filter_var($support, FILTER_VALIDATE_EMAIL)) {
+            $CI->email->reply_to($support);
+        }
+        $CI->email->subject($template->subject);
+        $CI->email->message(check_for_links($template->message));
+        $CI->email->set_alt_message(strip_html_tags($template->message, '<br/>, <br>, <br />'));
+
+        if ($CI->email->send(true)) {
+            log_activity('DUNS Support email sent to: ' . $to . ' Subject: ' . $subject);
+
+            return true;
+        }
+        log_activity('DUNS Support email to ' . $to . ' failed: ' . strip_tags((string) $CI->email->print_debugger()));
     } catch (Throwable $e) {
         log_activity('DUNS Support email to ' . $to . ' failed: ' . $e->getMessage());
-
-        return false;
     }
+
+    return false;
 }
 
 /** Addresses from the "notify" setting (comma / newline separated). */
