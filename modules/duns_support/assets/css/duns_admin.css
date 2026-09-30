@@ -1,0 +1,88 @@
+/* DUNS Support — admin desk. Everything is namespaced .duns-* so core styles/JS never collide. */
+.duns-wrap{--dn-navy:#0a1733;--dn-blue:#2563eb;--dn-line:#e5e7eb;--dn-muted:#6b7280;--dn-soft:#f8fafc}
+.duns-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.duns-title{font-size:20px;font-weight:700;margin:0;display:flex;align-items:center;gap:10px;color:#0f172a}
+.duns-title i{width:36px;height:36px;border-radius:10px;background:var(--dn-navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:15px}
+.duns-tabs{display:flex;flex-wrap:wrap;gap:6px;background:#fff;border:1px solid var(--dn-line);border-radius:12px;padding:5px}
+.duns-tab{padding:7px 14px;border-radius:8px;color:#374151;font-weight:600;font-size:13px}
+.duns-tab:hover,.duns-tab:focus{background:var(--dn-soft);color:#111827;text-decoration:none}
+.duns-tab.active{background:var(--dn-navy);color:#fff}
+.duns-tab i{margin-right:5px}
+.duns-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.duns-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.duns-stat{background:#fff;border:1px solid var(--dn-line);border-radius:14px;padding:14px 16px;display:block;color:inherit}
+.duns-stat:hover{text-decoration:none;border-color:#c7d2fe}
+.duns-stat small{display:block;color:var(--dn-muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+.duns-stat b{display:block;font-size:24px;font-weight:700;margin-top:4px;color:#0f172a}
+.duns-stat.warn b{color:#b45309}
+.duns-stat.bad b{color:#dc2626}
+.duns-stat.good b{color:#16a34a}
+
+.duns-card{background:#fff;border:1px solid var(--dn-line);border-radius:14px;margin-bottom:16px}
+.duns-card-head{padding:13px 18px;border-bottom:1px solid var(--dn-line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.duns-card-head h4{margin:0;font-size:15px;font-weight:700;color:#0f172a}
+.duns-card-body{padding:16px 18px}
+.duns-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.duns-filters .form-group{margin:0}
+.duns-filters label{font-size:12px;color:var(--dn-muted);margin-bottom:3px}
+.duns-filters .form-control{height:34px}
+
+.duns-table{width:100%;margin:0}
+.duns-table th{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--dn-muted);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--dn-line);background:var(--dn-soft);white-space:nowrap}
+.duns-table td{padding:11px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle;font-size:13.5px}
+.duns-table tr:hover td{background:#fafcff}
+.duns-table .sub{display:block;color:var(--dn-muted);font-size:12px}
+.duns-table a.no{font-weight:700;color:var(--dn-blue)}
+.duns-empty{padding:40px;text-align:center;color:var(--dn-muted)}
+.duns-empty i{font-size:32px;display:block;margin-bottom:10px;color:#cbd5e1}
+
+.duns-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.duns-badge-muted{background:#f1f5f9;color:#475569}
+.duns-badge-blue{background:#eff6ff;color:#1d4ed8}
+.duns-badge-amber{background:#fffbeb;color:#b45309}
+.duns-badge-green{background:#ecfdf5;color:#15803d}
+.duns-badge-red{background:#fef2f2;color:#b91c1c}
+.duns-clock{font-size:12px;font-weight:600;color:#1d4ed8}
+.duns-clock.late{color:#dc2626}
+
+.duns-kv{display:grid;grid-template-columns:150px 1fr;gap:8px 14px;font-size:13.5px}
+.duns-kv dt{color:var(--dn-muted);font-weight:500}
+.duns-kv dd{margin:0;font-weight:600;word-break:break-word}
+.duns-kv dd a{font-weight:600}
+.duns-deadline{border-radius:12px;padding:14px 16px;background:#eff6ff;border:1px solid #bfdbfe;margin-bottom:14px}
+.duns-deadline.late{background:#fef2f2;border-color:#fecaca}
+.duns-deadline small{display:block;font-size:11.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#1d4ed8}
+.duns-deadline.late small{color:#b91c1c}
+.duns-deadline b{font-size:22px;display:block;margin-top:2px}
+.duns-deadline span{font-size:12.5px;color:var(--dn-muted)}
+.duns-number{background:linear-gradient(135deg,#052e16,#166534);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.duns-number small{color:#bbf7d0;font-size:11.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.duns-number b{display:block;font-size:26px;letter-spacing:2px;margin-top:2px}
+
+.duns-files{list-style:none;margin:0;padding:0}
+.duns-files li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.duns-files li:last-child{border-bottom:0}
+.duns-files .ic{width:38px;height:38px;border-radius:10px;background:#eff6ff;color:var(--dn-blue);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.duns-files .nm{flex:1;min-width:0}
+.duns-files .nm b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.duns-files .nm small{color:var(--dn-muted);font-size:12px}
+
+.duns-timeline{list-style:none;margin:0;padding:0}
+.duns-timeline li{position:relative;padding:0 0 14px 26px}
+.duns-timeline li:before{content:'';position:absolute;left:6px;top:6px;width:9px;height:9px;border-radius:50%;background:#cbd5e1}
+.duns-timeline li:after{content:'';position:absolute;left:10px;top:18px;bottom:0;width:1px;background:#e5e7eb}
+.duns-timeline li:last-child:after{display:none}
+.duns-timeline li.t-note:before{background:#6366f1}
+.duns-timeline li.t-status:before{background:#16a34a}
+.duns-timeline li.t-payment:before{background:#2563eb}
+.duns-timeline li.t-email:before{background:#f59e0b}
+.duns-timeline .msg{font-size:13.5px;white-space:pre-line}
+.duns-timeline small{color:var(--dn-muted);font-size:12px}
+
+.duns-plan-row td{vertical-align:top!important}
+.duns-help{color:var(--dn-muted);font-size:12.5px;margin-top:4px}
+.duns-sec{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--dn-muted);margin:18px 0 10px}
+.duns-urlbox{display:flex;gap:8px;align-items:center;background:var(--dn-soft);border:1px dashed #cbd5e1;border-radius:10px;padding:8px 12px;font-family:monospace;font-size:13px;word-break:break-all}
+.duns-pager{display:flex;gap:6px;justify-content:flex-end;padding:12px 16px}
+@media(max-width:767px){.duns-kv{grid-template-columns:1fr}.duns-kv dt{margin-top:6px}}

@@ -202,6 +202,13 @@ $route['join/(:any)/(:any)/(:any)']    = 'shra/shra_public/register/$1/$2/$3';
 $route['inquire']                      = 'shra/shra_public/inquire';
 $route['inquire/(:any)']               = 'shra/shra_public/inquire/$1';
 
+// Public DUNS Support landing page (duns_support module) - the URL used in ads.
+// /duns-support                  landing + order form
+// /duns-support/pay|status/{ref} checkout / order tracking
+$route['duns-support']                 = 'duns_support/duns_public/index';
+$route['duns-support/(:any)']          = 'duns_support/duns_public/index/$1';
+$route['duns-support/(:any)/(:any)']   = 'duns_support/duns_public/index/$1/$2';
+
 // SHRA leads desk — the leads pages live in the module's second controller
 // (modules/shra/controllers/Shra_leads.php), which HMVC resolves at
 // admin/shra/shra_leads/<method>. Alias the shorter admin/shra_leads/<method>
