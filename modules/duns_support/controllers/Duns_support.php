@@ -97,17 +97,49 @@ class Duns_support extends AdminController
     public function status($id)
     {
         $this->require_post_edit($id);
-        $res = $this->dm->set_status($id, (string) $this->input->post('status', true), trim((string) $this->input->post('note', true)), get_staff_user_id());
+        $status = (string) $this->input->post('status', true);
+
+        // "Completed" needs the DUNS number and (optionally) sends the delivery email
+        if ($status === 'completed') {
+            $mail = null;
+            if ($this->input->post('send_email')) {
+                $mail = [
+                    'to'      => $this->recipients(),
+                    'subject' => (string) $this->input->post('subject'),
+                    'body'    => (string) $this->input->post('body'),
+                ];
+            }
+            $res = $this->dm->deliver($id, (string) $this->input->post('duns_number', true), $mail, get_staff_user_id());
+            set_alert($res === true ? 'success' : 'danger', $res === true
+                ? 'Order completed' . ($mail ? ' and the DUNS number emailed to the customer.' : '.')
+                : $res);
+            redirect(admin_url('duns_support/order/' . (int) $id));
+        }
+
+        $res = $this->dm->set_status($id, $status, trim((string) $this->input->post('note', true)), get_staff_user_id());
         set_alert($res === true ? 'success' : 'danger', $res === true ? 'Status updated.' : $res);
         redirect(admin_url('duns_support/order/' . (int) $id));
     }
 
-    public function deliver($id)
+    /** Send any email about the order from the system (Email button on the order page). */
+    public function email($id)
     {
         $this->require_post_edit($id);
-        $res = $this->dm->deliver($id, (string) $this->input->post('duns_number', true), trim((string) $this->input->post('note', true)), (bool) $this->input->post('send_email'), get_staff_user_id());
-        set_alert($res === true ? 'success' : 'danger', $res === true ? 'DUNS number saved and the order is completed.' : $res);
-        redirect(admin_url('duns_support/order/' . (int) $id));
+        $res = $this->dm->send_message($this->dm->get($id), $this->recipients(), (string) $this->input->post('subject'),
+            (string) $this->input->post('body'), (bool) $this->input->post('show_duns'), get_staff_user_id());
+        set_alert($res === true ? 'success' : 'danger', $res === true ? 'Email sent.' : $res);
+        redirect(admin_url('duns_support/order/' . (int) $id) . '#timeline');
+    }
+
+    /** Ticked recipients plus any extra addresses typed in. */
+    private function recipients()
+    {
+        $to = (array) $this->input->post('to');
+        foreach (preg_split('/[\s,;]+/', (string) $this->input->post('extra_to')) as $e) {
+            $to[] = $e;
+        }
+
+        return array_filter(array_map('trim', $to));
     }
 
     public function note($id)
@@ -252,6 +284,10 @@ class Duns_support extends AdminController
             foreach (['duns_brand_name', 'duns_support_phone', 'duns_support_whatsapp', 'duns_support_email', 'duns_notify_emails',
                 'duns_hero_title', 'duns_hero_subtitle', 'duns_meta_pixel_id', 'duns_ga4_id', 'duns_gads_id', 'duns_gads_label', 'duns_terms_url'] as $k) {
                 update_option($k, trim((string) ($post[$k] ?? '')));
+            }
+            // Email templates keep their line breaks; read unfiltered, they are escaped when sent
+            foreach (['delivered_subject', 'delivered_body', 'message_subject', 'message_body'] as $k) {
+                update_option('duns_tpl_' . $k, trim(str_replace("\r", '', (string) $this->input->post('duns_tpl_' . $k))));
             }
             foreach (['duns_landing_enabled', 'duns_pay_enabled', 'duns_pay_use_master', 'duns_email_customer'] as $k) {
                 update_option($k, !empty($post[$k]) ? '1' : '0');

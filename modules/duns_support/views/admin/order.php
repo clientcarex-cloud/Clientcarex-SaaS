@@ -20,7 +20,7 @@ foreach ($staff as $s) {
         </div>
         <div class="duns-actions">
             <a class="btn btn-success" target="_blank" href="<?php echo html_escape(duns_wa_link($o->director_mobile, 'Hi ' . explode(' ', $o->director_name)[0] . ', this is about your DUNS order ' . $o->order_no . '.')); ?>"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
-            <a class="btn btn-default" href="mailto:<?php echo html_escape($o->director_email); ?>?subject=<?php echo rawurlencode('Your DUNS order ' . $o->order_no); ?>"><i class="fa-solid fa-envelope"></i> Email</a>
+            <?php if ($can_ed) { ?><button type="button" class="btn btn-default" data-toggle="modal" data-target="#duns-email-modal"><i class="fa-solid fa-envelope"></i> Send email</button><?php } ?>
             <?php if (duns_can('delete')) { ?>
             <?php echo form_open(admin_url('duns_support/delete/' . $o->id), ['style' => 'display:inline', 'onsubmit' => "return confirm('Delete this order and its documents? The invoice (if any) is kept.');"]); ?>
                 <button class="btn btn-danger"><i class="fa-solid fa-trash"></i></button>
@@ -139,36 +139,23 @@ foreach ($staff as $s) {
                 </div>
             <?php } ?>
 
-            <?php if ($can_ed && in_array($o->status, ['paid', 'processing', 'completed'], true)) { ?>
-            <div class="duns-card">
-                <div class="duns-card-head"><h4><i class="fa-solid fa-award"></i> <?php echo $o->status === 'completed' ? 'Update / resend DUNS' : 'Deliver DUNS number'; ?></h4></div>
-                <div class="duns-card-body">
-                    <?php echo form_open(admin_url('duns_support/deliver/' . $o->id)); ?>
-                        <div class="form-group"><label>DUNS number (9 digits)</label>
-                            <input name="duns_number" class="form-control input-lg" inputmode="numeric" maxlength="11" placeholder="12-345-6789" value="<?php echo $o->duns_number ? duns_format_number($o->duns_number) : ''; ?>" required style="letter-spacing:2px;font-weight:700"></div>
-                        <div class="form-group"><label>Message to customer <span class="text-muted">(optional)</span></label>
-                            <textarea name="note" class="form-control" rows="2" placeholder="e.g. It may take 24-48 hours to appear in Apple's lookup tool."></textarea></div>
-                        <div class="checkbox"><input type="checkbox" id="dn-send_email" name="send_email" value="1" checked><label for="dn-send_email">Email it to <?php echo html_escape($o->director_email); ?><?php echo $o->work_email !== $o->director_email ? ' and the work email' : ''; ?></label></div>
-                        <button class="btn btn-success btn-block"><i class="fa-solid fa-paper-plane"></i> <?php echo $o->status === 'completed' ? 'Save & resend' : 'Deliver & complete order'; ?></button>
-                    <?php echo form_close(); ?>
-                </div>
-            </div>
-            <?php } ?>
-
             <?php if ($can_ed) { ?>
             <div class="duns-card">
-                <div class="duns-card-head"><h4><i class="fa-solid fa-arrows-rotate"></i> Change status</h4></div>
+                <div class="duns-card-head"><h4><i class="fa-solid fa-arrows-rotate"></i> Update status</h4></div>
                 <div class="duns-card-body">
-                    <?php echo form_open(admin_url('duns_support/status/' . $o->id)); ?>
-                        <div class="form-group"><select name="status" class="form-control">
-                            <?php foreach (duns_statuses() as $k => $s) { if ($k === 'completed') { continue; } ?>
-                            <option value="<?php echo $k; ?>" <?php echo $o->status === $k ? 'selected' : ''; ?>><?php echo $s['label']; ?></option>
+                    <?php echo form_open(admin_url('duns_support/status/' . $o->id), ['id' => 'duns-status-form']); ?>
+                        <div class="form-group"><select name="status" class="form-control" id="duns-status">
+                            <?php foreach (duns_statuses() as $k => $s) { ?>
+                            <option value="<?php echo $k; ?>" <?php echo $o->status === $k ? 'selected' : ''; ?>><?php echo $k === 'completed' ? 'Completed — DUNS delivered' : $s['label']; ?></option>
                             <?php } ?>
                         </select></div>
-                        <div class="form-group"><input name="note" class="form-control" placeholder="Reason / note (optional)"></div>
-                        <button class="btn btn-default btn-block">Update status</button>
+                        <div class="form-group" id="duns-status-note"><input name="note" class="form-control" placeholder="Reason / note (optional)"></div>
+                        <button class="btn btn-default btn-block" id="duns-status-btn">Update status</button>
                         <?php if ($o->status === 'pending_payment') { ?><p class="duns-help">Choosing "Paid — in queue" on an unpaid order records it as paid offline and starts the delivery clock now.</p><?php } ?>
                     <?php echo form_close(); ?>
+                    <button type="button" class="btn btn-success btn-block" style="margin-top:10px" data-toggle="modal" data-target="#duns-complete-modal">
+                        <i class="fa-solid fa-award"></i> <?php echo $o->status === 'completed' ? 'Edit DUNS / resend email' : 'Complete order & send DUNS'; ?>
+                    </button>
                 </div>
             </div>
             <?php } ?>
@@ -205,5 +192,99 @@ foreach ($staff as $s) {
 </div>
 </div>
 <?php init_tail(); ?>
+<?php if ($can_ed) { ?>
+<?php $duns_rcp = function ($prefix) use ($o) { ?>
+                    <label>Send to</label>
+                    <div class="checkbox" style="margin-top:0"><input type="checkbox" id="<?php echo $prefix; ?>-dir" name="to[]" value="<?php echo html_escape($o->director_email); ?>" checked><label for="<?php echo $prefix; ?>-dir">Director — <?php echo html_escape($o->director_email); ?></label></div>
+                    <?php if ($o->work_email && $o->work_email !== $o->director_email) { ?>
+                    <div class="checkbox"><input type="checkbox" id="<?php echo $prefix; ?>-work" name="to[]" value="<?php echo html_escape($o->work_email); ?>" checked><label for="<?php echo $prefix; ?>-work">Work email — <?php echo html_escape($o->work_email); ?></label></div>
+                    <?php } ?>
+                    <input name="extra_to" class="form-control" placeholder="Other addresses, comma separated (optional)" style="margin-top:6px">
+<?php }; ?>
+<!-- Complete order + delivery email -->
+<div class="modal fade" id="duns-complete-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <?php echo form_open(admin_url('duns_support/status/' . $o->id), ['id' => 'duns-complete-form']); ?>
+            <input type="hidden" name="status" value="completed">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title"><i class="fa-solid fa-award"></i> Complete order <?php echo html_escape($o->order_no); ?> &amp; send the DUNS number</h4>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="form-group"><label>DUNS number (9 digits)</label>
+                            <input name="duns_number" id="duns-num" class="form-control input-lg" inputmode="numeric" maxlength="11" placeholder="12-345-6789" value="<?php echo $o->duns_number ? duns_format_number($o->duns_number) : ''; ?>" required style="letter-spacing:2px;font-weight:700"></div>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="checkbox" style="margin-top:28px"><input type="checkbox" id="duns-send" name="send_email" value="1" checked><label for="duns-send"><b>Email the DUNS number to the customer</b> (with the order tracking link)</label></div>
+                    </div>
+                </div>
+                <div id="duns-mail-fields">
+                    <div class="form-group"><?php $duns_rcp('dc'); ?></div>
+                    <div class="form-group"><label>Subject</label><input name="subject" class="form-control" value="<?php echo html_escape(duns_template('delivered_subject')); ?>"></div>
+                    <div class="form-group"><label>Message</label><textarea name="body" class="form-control" rows="11"><?php echo html_escape(duns_template('delivered_body')); ?></textarea></div>
+                    <p class="duns-help">Placeholders are filled in on send: <?php echo html_escape(implode(' ', duns_placeholders())); ?>. The DUNS number is also shown as a highlight and a "Track your order" button is added. Change the default wording in <a href="<?php echo admin_url('duns_support/settings'); ?>#templates">Settings</a>.</p>
+                    <div class="duns-help"><b>Tracking link:</b> <a href="<?php echo html_escape($track); ?>" target="_blank"><?php echo html_escape($track); ?></a></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" id="duns-complete-btn"><i class="fa-solid fa-paper-plane"></i> Mark completed &amp; send email</button>
+            </div>
+            <?php echo form_close(); ?>
+        </div>
+    </div>
+</div>
+
+<!-- Any email to the customer, sent from the system -->
+<div class="modal fade" id="duns-email-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <?php echo form_open(admin_url('duns_support/email/' . $o->id)); ?>
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title"><i class="fa-solid fa-envelope"></i> Email <?php echo html_escape($o->director_name); ?></h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-group"><?php $duns_rcp('de'); ?></div>
+                <div class="form-group"><label>Subject</label><input name="subject" class="form-control" value="<?php echo html_escape(duns_template('message_subject')); ?>" required></div>
+                <div class="form-group"><label>Message</label><textarea name="body" class="form-control" rows="9" required><?php echo html_escape(duns_template('message_body')); ?></textarea></div>
+                <?php if ($o->duns_number) { ?><div class="checkbox"><input type="checkbox" id="de-duns" name="show_duns" value="1"><label for="de-duns">Show the DUNS number (<?php echo duns_format_number($o->duns_number); ?>) as a highlight</label></div><?php } ?>
+                <p class="duns-help">Placeholders: <?php echo html_escape(implode(' ', duns_placeholders())); ?>. A "Track your order" button is always added. The email is logged on the order timeline.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Send email</button>
+            </div>
+            <?php echo form_close(); ?>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    // Choosing "Completed" in the status dropdown opens the completion dialog instead
+    var sel = document.getElementById('duns-status'), cur = sel.value;
+    document.getElementById('duns-status-form').addEventListener('submit', function(e){
+        if (sel.value === 'completed') { e.preventDefault(); sel.value = cur; $('#duns-complete-modal').modal('show'); }
+    });
+    sel.addEventListener('change', function(){
+        document.getElementById('duns-status-btn').textContent = sel.value === 'completed' ? 'Continue — enter DUNS number' : 'Update status';
+        document.getElementById('duns-status-note').style.display = sel.value === 'completed' ? 'none' : '';
+    });
+    var send = document.getElementById('duns-send');
+    send.addEventListener('change', function(){ document.getElementById('duns-mail-fields').style.display = send.checked ? '' : 'none'; });
+    document.getElementById('duns-complete-form').addEventListener('submit', function(e){
+        var d = document.getElementById('duns-num').value.replace(/\D+/g, '');
+        if (d.length !== 9) { e.preventDefault(); alert_float('danger', 'A DUNS number has exactly 9 digits.'); document.getElementById('duns-num').focus(); return; }
+        document.getElementById('duns-complete-btn').disabled = true;
+    });
+    send.addEventListener('change', function(){ document.getElementById('duns-complete-btn').innerHTML = send.checked ? '<i class="fa-solid fa-paper-plane"></i> Mark completed &amp; send email' : '<i class="fa-solid fa-check"></i> Mark completed'; });
+    $('#duns-complete-modal').on('shown.bs.modal', function(){ document.getElementById('duns-num').focus(); });
+})();
+</script>
+<?php } ?>
+
 </body>
 </html>

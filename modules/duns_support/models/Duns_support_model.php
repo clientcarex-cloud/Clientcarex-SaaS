@@ -441,8 +441,14 @@ class Duns_support_model extends App_Model
         return true;
     }
 
-    /** Hand over the DUNS number: store it, complete the order, email the customer. */
-    public function deliver($id, $duns_number, $note = '', $send_email = true, $staff_id = null)
+    /**
+     * Complete the order with its DUNS number, optionally emailing the customer.
+     *
+     * @param array|null $mail ['to' => [emails], 'subject' => text, 'body' => text] with
+     *                         placeholders, or null to complete without an email
+     * @return true|string
+     */
+    public function deliver($id, $duns_number, $mail = null, $staff_id = null)
     {
         $order = $this->get($id);
         if (!$order) {
@@ -452,7 +458,16 @@ class Duns_support_model extends App_Model
         if (strlen($duns) !== 9) {
             return 'A DUNS number has exactly 9 digits.';
         }
+        if ($mail !== null) {
+            if (!count($mail['to'] ?? [])) {
+                return 'Choose at least one email address, or untick "Send email".';
+            }
+            if (trim((string) ($mail['subject'] ?? '')) === '' || trim((string) ($mail['body'] ?? '')) === '') {
+                return 'The email needs a subject and a message.';
+            }
+        }
 
+        $was_completed = $order->status === 'completed';
         $this->db->where('id', (int) $id)->update($this->t['orders'], [
             'duns_number'  => $duns,
             'status'       => 'completed',
@@ -461,16 +476,63 @@ class Duns_support_model extends App_Model
             'updated_at'   => date('Y-m-d H:i:s'),
         ]);
 
-        $late = $order->due_at && strtotime($order->completed_at ?: 'now') > strtotime($order->due_at);
-        $this->add_event($id, 'status', 'DUNS number ' . duns_format_number($duns) . ' delivered' . ($late ? ' (after the deadline)' : ' on time') . ($note !== '' ? ' — ' . $note : ''), $staff_id);
+        if (!$was_completed || $order->duns_number !== $duns) {
+            $from = duns_statuses()[$order->status]['label'] ?? $order->status;
+            $late = $order->due_at && strtotime($order->completed_at ?: 'now') > strtotime($order->due_at);
+            $this->add_event($id, 'status', $from . ' → DUNS delivered: ' . duns_format_number($duns)
+                . ($order->due_at ? ($late ? ' (after the deadline)' : ' (on time)') : ''), $staff_id);
+        }
 
-        if ($send_email) {
-            $order = $this->get($id);
-            $sent  = $this->email_delivered($order, $note);
-            $this->add_event($id, 'email', $sent ? 'DUNS number emailed to ' . $order->director_email . ($order->work_email !== $order->director_email ? ' and ' . $order->work_email : '') . '.' : 'The delivery email could not be sent — check the email settings.', $staff_id);
+        if ($mail !== null) {
+            $res = $this->send_message($this->get($id), $mail['to'], $mail['subject'], $mail['body'], true, $staff_id);
+            if ($res !== true) {
+                return 'The order is completed, but ' . lcfirst($res);
+            }
         }
 
         return true;
+    }
+
+    /**
+     * Send a staff-written email about this order from the system (placeholders
+     * filled in, tracking button added) and log it on the timeline.
+     *
+     * @return true|string
+     */
+    public function send_message($order, array $to, $subject, $body, $show_duns = false, $staff_id = null)
+    {
+        $to = array_values(array_unique(array_filter(array_map('trim', $to), function ($e) {
+            return filter_var($e, FILTER_VALIDATE_EMAIL);
+        })));
+        if (!count($to)) {
+            return 'Add at least one valid email address.';
+        }
+        $subject = trim(duns_render($subject, $order));
+        $body    = trim(duns_render($body, $order));
+        if ($subject === '' || $body === '') {
+            return 'The email needs a subject and a message.';
+        }
+
+        $html = duns_compose_html($subject, $body, $order, $show_duns);
+        $sent = $failed = [];
+        foreach ($to as $email) {
+            if (duns_send_email($email, $subject, $html)) {
+                $sent[] = $email;
+            } else {
+                $failed[] = $email;
+            }
+        }
+
+        $log = 'Email "' . $subject . '"';
+        if (count($sent)) {
+            $log .= ' sent to ' . implode(', ', $sent) . '.';
+        }
+        if (count($failed)) {
+            $log .= ' Could not be sent to ' . implode(', ', $failed) . ' — check Setup → Settings → Email.';
+        }
+        $this->add_event($order->id, 'email', $log . "\n\n" . $body, $staff_id);
+
+        return count($failed) ? 'The email could not be sent to ' . implode(', ', $failed) . ' — check the email (SMTP) settings.' : true;
     }
 
     /* ════════════════════════ Checkout & payment ════════════════════════ */
@@ -686,23 +748,5 @@ class Duns_support_model extends App_Model
             'We may send a one-time verification code to your work email (' . html_escape($order->work_email) . ') — please keep it handy. 100% money-back guarantee if we cannot deliver.');
         $ok = duns_send_email($order->director_email, 'Order ' . $order->order_no . ' confirmed — ' . $brand, $html);
         $this->add_event($order->id, 'email', $ok ? 'Payment confirmation emailed to ' . $order->director_email . '.' : 'Payment confirmation email failed.');
-    }
-
-    private function email_delivered($order, $note = '')
-    {
-        $brand = duns_landing()['brand'];
-        $html  = duns_email_html('Your DUNS number is ready', 'Hi ' . html_escape($order->director_name) . ', here is the D-U-N-S number for <b>' . html_escape($order->company_name) . '</b>. You can use it for Google Play Console, the Apple Developer Program and anywhere else a DUNS number is required.'
-            . ($note !== '' ? '<br><br>' . nl2br(html_escape($note)) : ''), [
-            'DUNS number' => '<span style="font-size:20px;letter-spacing:1px">' . duns_format_number($order->duns_number) . '</span>',
-            'Company'     => html_escape($order->company_name),
-            'Order'       => html_escape($order->order_no),
-        ], ['View your order', duns_public_url('status/' . $order->ref)], 'Thank you for choosing ' . html_escape($brand) . '.');
-
-        $ok = duns_send_email($order->director_email, 'Your DUNS number — ' . $order->company_name, $html);
-        if ($order->work_email && $order->work_email !== $order->director_email) {
-            duns_send_email($order->work_email, 'Your DUNS number — ' . $order->company_name, $html);
-        }
-
-        return $ok;
     }
 }

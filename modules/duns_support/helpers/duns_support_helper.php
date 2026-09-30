@@ -352,3 +352,67 @@ function duns_notify_emails()
         return filter_var($e, FILTER_VALIDATE_EMAIL);
     })));
 }
+
+/* ─────────────────────────── Email templates ─────────────────────────── */
+
+/** Placeholders staff can use in any email written from the order page. */
+function duns_placeholders()
+{
+    return ['{director_name}', '{first_name}', '{company_name}', '{duns_number}', '{order_no}', '{plan_name}', '{tracking_url}', '{work_email}', '{brand}'];
+}
+
+function duns_template_defaults()
+{
+    return [
+        'delivered_subject' => 'Your DUNS number for {company_name}: {duns_number}',
+        'delivered_body'    => "Hi {first_name},\n\nGreat news — the D-U-N-S number for {company_name} is ready.\n\nDUNS number: {duns_number}\n\nYou can now use it for Google Play Console, the Apple Developer Program and anywhere else a DUNS number is required. Please note it can take 24–48 hours to appear in Apple's lookup tool.\n\nYou can see your order and delivery details any time here:\n{tracking_url}\n\nThank you for choosing {brand}.",
+        'message_subject'   => 'Update on your DUNS order {order_no}',
+        'message_body'      => "Hi {first_name},\n\n\n\nTrack your order here: {tracking_url}\n\nRegards,\n{brand}",
+    ];
+}
+
+/** A stored template (Settings → Delivery email), or the shipped default when blank. */
+function duns_template($key)
+{
+    $v = (string) get_option('duns_tpl_' . $key);
+
+    return trim($v) !== '' ? $v : (duns_template_defaults()[$key] ?? '');
+}
+
+/** Replace placeholders with the order's values. $duns overrides the stored number (not saved yet). */
+function duns_render($text, $order, $duns = null)
+{
+    $duns = $duns !== null ? $duns : (string) $order->duns_number;
+    $map  = [
+        '{director_name}' => $order->director_name,
+        '{first_name}'    => explode(' ', trim($order->director_name))[0],
+        '{company_name}'  => $order->company_name,
+        '{duns_number}'   => $duns !== '' ? duns_format_number($duns) : '',
+        '{order_no}'      => $order->order_no,
+        '{plan_name}'     => $order->plan_name,
+        '{tracking_url}'  => duns_public_url('status/' . $order->ref),
+        '{work_email}'    => $order->work_email,
+        '{brand}'         => duns_landing()['brand'],
+    ];
+
+    return strtr((string) $text, $map);
+}
+
+/**
+ * A staff-written plain-text email as branded HTML: escaped, line breaks kept,
+ * links clickable, the DUNS number shown as a highlight and a "Track your order" button.
+ */
+function duns_compose_html($subject, $body_text, $order, $show_duns = false)
+{
+    $html = nl2br(html_escape($body_text));
+    $html = preg_replace('~(https?://[^\s<]+)~', '<a href="$1" style="color:#2563eb">$1</a>', $html);
+
+    $rows = [];
+    if ($show_duns && $order->duns_number) {
+        $rows['DUNS number'] = '<span style="font-size:20px;letter-spacing:1px">' . duns_format_number($order->duns_number) . '</span>';
+        $rows['Company']     = html_escape($order->company_name);
+    }
+    $rows['Order'] = html_escape($order->order_no);
+
+    return duns_email_html($subject, $html, $rows, ['Track your order', duns_public_url('status/' . $order->ref)]);
+}

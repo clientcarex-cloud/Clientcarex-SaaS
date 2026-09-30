@@ -88,6 +88,26 @@ $use_master = get_option('duns_pay_use_master') == '1';
             </div>
         </div>
     </div>
+
+    <div class="duns-card" id="templates">
+        <div class="duns-card-head"><h4><i class="fa-solid fa-envelope-open-text"></i> Email templates</h4></div>
+        <div class="duns-card-body">
+            <p class="duns-help" style="margin-top:0">Pre-filled on the order page, where staff can still edit each email before sending. Placeholders: <code><?php echo html_escape(implode(' ', duns_placeholders())); ?></code>. Every email gets a "Track your order" button linking to the customer's order page.</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="duns-sec" style="margin-top:6px">DUNS delivery (order completed)</div>
+                    <div class="form-group"><label>Subject</label><input name="duns_tpl_delivered_subject" class="form-control" value="<?php echo html_escape(duns_template('delivered_subject')); ?>"></div>
+                    <div class="form-group"><label>Message</label><textarea name="duns_tpl_delivered_body" class="form-control" rows="12"><?php echo html_escape(duns_template('delivered_body')); ?></textarea></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="duns-sec" style="margin-top:6px">General message (Send email button)</div>
+                    <div class="form-group"><label>Subject</label><input name="duns_tpl_message_subject" class="form-control" value="<?php echo html_escape(duns_template('message_subject')); ?>"></div>
+                    <div class="form-group"><label>Message</label><textarea name="duns_tpl_message_body" class="form-control" rows="12"><?php echo html_escape(duns_template('message_body')); ?></textarea></div>
+                </div>
+            </div>
+            <p class="duns-help">Clear a field and save to go back to the default wording.</p>
+        </div>
+    </div>
     <button class="btn btn-primary btn-lg"><i class="fa-solid fa-floppy-disk"></i> Save settings</button>
     <?php echo form_close(); ?>
 </div>
