@@ -93,7 +93,7 @@ class Duns_public extends App_Controller
         }
 
         $file   = $_FILES['coi'] ?? null;
-        $errors = $this->duns_support_model->validate_order($post, $file);
+        $errors = $this->duns_support_model->validate_order($post, $file, false);
         if (count($errors)) {
             return $this->landing($errors, $post);
         }

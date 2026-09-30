@@ -209,7 +209,7 @@ include __DIR__ . '/_head.php';
                 <div class="alert alert-err" id="form-errors">
                     <b>Please fix the highlighted fields.</b>
                     <?php if (isset($errors['form'])) { ?><div><?php echo html_escape($errors['form']); ?></div><?php } ?>
-                    <?php if (isset($errors['coi']) || !empty($old)) { ?><div style="margin-top:4px">For your security, please attach the certificate again.</div><?php } ?>
+                    <?php if (!empty($old)) { ?><div style="margin-top:4px">If you attached a certificate, please attach it again.</div><?php } ?>
                 </div>
                 <?php } ?>
 
@@ -241,9 +241,9 @@ include __DIR__ . '/_head.php';
                         <?php echo $fm('company_name'); ?>
                     </div>
                     <div class="field<?php echo $fe('coi'); ?>">
-                        <label>Certificate of Incorporation</label>
+                        <label>Certificate of Incorporation <span class="opt">(optional)</span></label>
                         <div class="drop" id="drop">
-                            <input type="file" name="coi" id="f-coi" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" required>
+                            <input type="file" name="coi" id="f-coi" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
                             <div class="ic"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                             <b id="drop-t">Tap to upload or drop the file here</b>
                             <small id="drop-s">PDF, JPG or PNG · max 10 MB</small>

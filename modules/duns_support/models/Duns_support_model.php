@@ -279,7 +279,7 @@ class Duns_support_model extends App_Model
      *
      * @return object|string The order, or an error message
      */
-    public function create_order(array $in, array $file, array $meta = [])
+    public function create_order(array $in, $file = null, array $meta = [])
     {
         $plan = $this->get_plan((int) $in['plan_id']);
         $now  = date('Y-m-d H:i:s');
@@ -311,10 +311,14 @@ class Duns_support_model extends App_Model
         }
         $this->db->where('id', $id)->update($this->t['orders'], ['order_no' => 'DUNS-' . str_pad((string) $id, 5, '0', STR_PAD_LEFT)]);
 
-        $stored = $this->store_file($id, $file, 'coi');
-        if (!is_int($stored)) {
-            // The order exists; staff can still collect the certificate by email
-            $this->add_event($id, 'system', 'Certificate upload failed: ' . $stored);
+        // The certificate is optional on the form — staff collect it later when it is missing
+        if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $stored = $this->store_file($id, $file, 'coi');
+            if (!is_int($stored)) {
+                $this->add_event($id, 'system', 'Certificate upload failed: ' . $stored);
+            }
+        } else {
+            $this->add_event($id, 'system', 'No Certificate of Incorporation attached — collect it from the customer.');
         }
         $this->add_event($id, 'system', 'Order placed from the landing page — ' . $plan->name . ' (' . duns_hours_label($plan->delivery_hours) . ', ' . duns_money($plan->price) . ').');
 
