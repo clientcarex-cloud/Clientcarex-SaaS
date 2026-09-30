@@ -240,10 +240,6 @@ include __DIR__ . '/_head.php';
                         <input type="text" id="f-co" name="company_name" value="<?php echo $ov('company_name'); ?>" placeholder="Acme Technologies Private Limited" autocomplete="organization" required>
                         <?php echo $fm('company_name'); ?>
                     </div>
-                    <div class="field">
-                        <label for="f-cin">CIN / Registration number <span class="opt">(optional)</span></label>
-                        <input type="text" id="f-cin" name="cin" value="<?php echo $ov('cin'); ?>" placeholder="U72900MH2024PTC000000">
-                    </div>
                     <div class="field<?php echo $fe('coi'); ?>">
                         <label>Certificate of Incorporation</label>
                         <div class="drop" id="drop">
