@@ -5,12 +5,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: ePTW
 Description: Electronic Permit to Work — digitises the full permit lifecycle for hazardous work: 17 permit templates, permit numbering, approval workflow with e-signatures, the permit register, extensions, suspensions, closure, document archiving, SIMOPS conflict detection, hazard suggestions, dashboards and reports.
-Version: 1.1.0
+Version: 1.2.0
 Requires at least: 2.3.*
 */
 
 define('EPTW_MODULE_NAME', 'eptw');
-define('EPTW_MODULE_VERSION', '1.1.0');
+define('EPTW_MODULE_VERSION', '1.2.0');
 
 require_once __DIR__ . '/helpers/eptw_helper.php';
 
@@ -67,6 +67,7 @@ function eptw_module_init_menu_items()
 
     $children = [
         'eptw-dashboard' => [eptw_perm('eptw_dashboard'), 'Dashboard', 'eptw'],
+        'eptw-corporate' => [eptw_perm('eptw_corporate'), 'Corporate dashboard', 'eptw/corporate'],
         'eptw-register'  => [eptw_perm('eptw_register'), 'Permit register', 'eptw/register'],
         'eptw-new'       => [eptw_can('create'), 'New permit', 'eptw/permit'],
         'eptw-approvals' => [eptw_perm('eptw_approvals'), 'Pending approvals', 'eptw/register?view=pending'],

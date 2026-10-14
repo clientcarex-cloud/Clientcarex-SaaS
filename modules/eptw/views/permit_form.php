@@ -10,7 +10,7 @@
                 <!-- ── Step 1: pick the permit type ─────────────────────────────── -->
                 <div class="eptw-card">
                     <div class="eptw-card-head"><h3><i class="fa-solid fa-wand-magic-sparkles"></i> What kind of work is it?</h3>
-                        <div class="eptw-card-actions eptw-small eptw-muted">The form adapts to the permit type — hazards, controls and approvals come from the V3 template.</div></div>
+                        <div class="eptw-card-actions eptw-small eptw-muted">The form automatically adapts to the selected permit type.</div></div>
                     <div class="eptw-card-body">
                         <?php if (!count($types)) { ?>
                             <div class="eptw-note warn">No permit types are active. <a href="<?= admin_url('eptw/eptw_setup/types'); ?>">Set them up</a> first.</div>
@@ -21,12 +21,13 @@
                                     <span class="eptw-type-dot" style="background:<?= html_escape($t->color); ?>"><i class="<?= html_escape($t->icon); ?>"></i></span>
                                     <span style="min-width:0">
                                         <h4><?= html_escape($t->name); ?></h4>
-                                        <p><?= html_escape($t->description); ?></p>
+                                        <p><?= html_escape(eptw_type_text($t->description)); ?></p>
                                         <span class="eptw-type-flags">
-                                            <?php if ($t->high_risk) { ?><span class="eptw-badge bad">High risk</span><?php } ?>
+                                            <?php if ($t->high_risk) { ?><span class="eptw-badge bad" title="This permit type is classified high-risk">High-risk type</span><?php } ?>
                                             <?php if ($t->gas_test_required) { ?><span class="eptw-badge warn">Gas test</span><?php } ?>
-                                            <?php if ($t->isolation_required) { ?><span class="eptw-badge info">Isolation</span><?php } ?>
-                                            <span class="eptw-badge muted"><?= (int) $t->default_validity_hours; ?> h</span>
+                                            <?php if (($t->isolation_rule ?? '') === 'always') { ?><span class="eptw-badge info">Isolation</span><?php } ?>
+                                            <?php [$t_default, $t_max] = eptw_validity_limits($t); ?>
+                                            <span class="eptw-badge muted" title="Default validity<?= $t_max ? ' · maximum validity' : ''; ?> (Setup → Permit types)"><?= $t_default; ?> h<?= $t_max && $t_max !== $t_default ? ' · max ' . $t_max . ' h' : ''; ?></span>
                                         </span>
                                     </span>
                                 </a>
@@ -43,9 +44,15 @@
                 $ex         = $p ? $p->extra : [];
                 $is_coord   = in_array(eptw_role(), ['admin', 'coordinator'], true);
                 $project_id = $p ? (int) $p->project_id : (int) ($this->input->get('project') ?: (count($projects) ? $projects[0]->id : 0));
-                $camera     = eptw_camera_mode($project_id ? $this->setup->project($project_id) : null);
+                $project_row = $project_id ? $this->setup->project($project_id) : null;
+                $camera     = eptw_camera_mode($project_row);
+                [$valid_default, $valid_max] = eptw_validity_limits($type, $project_row);
+                $iso_rule   = $type->isolation_rule ?? 'conditional';
+                $iso_cur    = $p ? (string) $p->isolation_applicable : ($iso_rule === 'always' ? 'yes' : '');
+                if ($iso_rule === 'always') { $iso_cur = 'yes'; } elseif ($iso_rule === 'never') { $iso_cur = 'na'; }
             ?>
-                <form id="eptw-form" method="post" action="<?= admin_url('eptw/permit' . ($p ? '/' . $p->id : '')); ?>" data-type-id="<?= (int) $type->id; ?>" data-validity-hours="<?= (int) $type->default_validity_hours; ?>" data-permit-id="<?= $p ? (int) $p->id : 0; ?>" autocomplete="off">
+                <datalist id="eptw-people"><?php foreach ($people as $pe) { ?><option value="<?= html_escape($pe->name); ?>"><?= html_escape(trim($pe->position . ' · ' . ($pe->contractor_name ?: $pe->company) . ($pe->badge_no ? ' · ' . $pe->badge_no : ''), ' ·')); ?></option><?php } ?></datalist>
+                <form id="eptw-form" method="post" action="<?= admin_url('eptw/permit' . ($p ? '/' . $p->id : '')); ?>" data-type-id="<?= (int) $type->id; ?>" data-validity-hours="<?= (int) $valid_default; ?>" data-max-hours="<?= (int) $valid_max; ?>" data-permit-id="<?= $p ? (int) $p->id : 0; ?>" autocomplete="off">
                     <?= form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
                     <input type="hidden" name="permit_type_id" value="<?= (int) $type->id; ?>">
                     <input type="hidden" name="after" value="save">
@@ -60,7 +67,7 @@
                                 <div class="eptw-card-head">
                                     <h3><span class="eptw-type-dot" style="background:<?= html_escape($type->color); ?>"><i class="<?= html_escape($type->icon); ?>"></i></span> <?= html_escape($type->name); ?></h3>
                                     <div class="eptw-card-actions">
-                                        <?php if ($type->high_risk) { ?><span class="eptw-badge bad">High risk</span><?php } ?>
+                                        <?php if ($type->high_risk) { ?><span class="eptw-badge bad" title="This permit type is classified high-risk">High-risk type</span><?php } ?>
                                         <?php if (!$p) { ?><a href="<?= admin_url('eptw/permit'); ?>" class="eptw-btn eptw-btn-sm eptw-btn-ghost">Change type</a><?php } ?>
                                     </div>
                                 </div>
@@ -141,7 +148,7 @@
                                         <div class="eptw-field">
                                             <label class="eptw-label">End</label>
                                             <input type="datetime-local" name="end_at" class="eptw-input" value="<?= $p ? $dtl($p->end_at) : ''; ?>">
-                                            <div id="eptw-duration" class="eptw-hint">Defaults to <?= (int) $type->default_validity_hours; ?> h after the start.</div>
+                                            <div id="eptw-duration" class="eptw-hint">Defaults to <?= (int) $valid_default; ?> h after the start<?= $valid_max ? ' · maximum ' . (int) $valid_max . ' h' : ''; ?>.</div>
                                         </div>
                                         <div class="eptw-field">
                                             <label class="eptw-label">Shift</label>
@@ -189,11 +196,11 @@
                                         </div>
                                         <div class="eptw-field">
                                             <label class="eptw-label">Permit holder</label>
-                                            <input name="permit_holder" class="eptw-input" value="<?= $v('permit_holder'); ?>" placeholder="Person holding the permit at site">
+                                            <input name="permit_holder" class="eptw-input" list="eptw-people" value="<?= $v('permit_holder'); ?>" placeholder="Person holding the permit at site">
                                         </div>
                                         <div class="eptw-field">
                                             <label class="eptw-label">Site supervisor</label>
-                                            <input name="supervisor" class="eptw-input" value="<?= $v('supervisor'); ?>">
+                                            <input name="supervisor" class="eptw-input" list="eptw-people" value="<?= $v('supervisor'); ?>">
                                         </div>
                                         <div class="eptw-field">
                                             <label class="eptw-label">Contact no.</label>
@@ -246,7 +253,7 @@
                                                 echo '<textarea name="extra[' . $key . ']" class="eptw-textarea" style="min-height:70px">' . html_escape($val) . '</textarea>';
                                                 break;
                                             default:
-                                                echo '<input name="extra[' . $key . ']" class="eptw-input" value="' . html_escape($val) . '">';
+                                                echo '<input name="extra[' . $key . ']" class="eptw-input"' . (($f['group'] ?? '') === 'personnel' ? ' list="eptw-people"' : '') . ' value="' . html_escape($val) . '">';
                                         }
                                         echo '</div>';
                                     };
@@ -296,18 +303,42 @@
                                         </div>
                                     <?php } ?>
 
-                                    <div class="eptw-sec"><?= $n++; ?> · Isolation / LOTO <?php if ($type->isolation_required) { ?><span class="eptw-badge info" style="margin-left:6px">required for this type</span><?php } ?></div>
-                                    <div class="eptw-grid-3">
+                                    <div class="eptw-sec"><?= $n++; ?> · Isolation / LOTO &amp; gas testing</div>
+                                    <div class="eptw-grid-3" id="eptw-isolation" data-rule="<?= html_escape($iso_rule); ?>">
                                         <div class="eptw-field" style="grid-column:1/-1">
-                                            <label class="eptw-check"><input type="checkbox" name="isolation_required" value="1" <?= ($p ? $p->isolation_required : $type->isolation_required) ? 'checked' : ''; ?>> <span><b>Isolation required</b></span></label>
-                                            <label class="eptw-check"><input type="checkbox" name="loto_applied" value="1" <?= $p && $p->loto_applied ? 'checked' : ''; ?>> <span>LOTO applied</span></label>
-                                            <label class="eptw-check"><input type="checkbox" name="zero_energy_verified" value="1" <?= $p && $p->zero_energy_verified ? 'checked' : ''; ?>> <span>Zero energy verified</span></label>
-                                            <label class="eptw-check"><input type="checkbox" name="gas_test_required" value="1" <?= ($p ? $p->gas_test_required : $type->gas_test_required) ? 'checked' : ''; ?>> <span><b>Gas testing required</b> before and during work</span></label>
+                                            <?php if ($iso_rule === 'conditional') { ?>
+                                                <label class="eptw-label">Is isolation / LOTO of hazardous energy applicable to this task? <span class="req">*</span></label>
+                                                <div class="eptw-seg" data-eptw-iso-seg>
+                                                    <?php foreach (['yes' => 'Yes', 'no' => 'No', 'na' => 'N/A'] as $ov => $ol) { ?><label class="<?= $ov; ?>"><input type="radio" name="isolation_applicable" value="<?= $ov; ?>" <?= $iso_cur === $ov ? 'checked' : ''; ?>><?= $ol; ?></label><?php } ?>
+                                                </div>
+                                                <div class="eptw-hint">Yes = equipment or systems must be isolated for this work (an isolation reference is then required, and LOTO / zero energy is confirmed at the start of work). Answer it before submitting.</div>
+                                            <?php } elseif ($iso_rule === 'always') { ?>
+                                                <input type="hidden" name="isolation_applicable" value="yes">
+                                                <div class="eptw-note info" style="margin:0"><b>Isolation applies to every <?= html_escape($type->name); ?>.</b> Give the isolation reference below; LOTO and zero energy are confirmed when work starts.</div>
+                                            <?php } else { ?>
+                                                <input type="hidden" name="isolation_applicable" value="na">
+                                                <div class="eptw-hint" style="margin:0">Isolation / LOTO is not applicable to this permit type (Setup → Permit types).</div>
+                                            <?php } ?>
                                         </div>
-                                        <div class="eptw-field"><label class="eptw-label">Isolation type</label><input name="isolation_type" class="eptw-input" value="<?= $v('isolation_type'); ?>" placeholder="Electrical / mechanical / process"></div>
-                                        <div class="eptw-field"><label class="eptw-label">Isolation certificate no.</label><input name="isolation_cert_no" class="eptw-input" value="<?= $v('isolation_cert_no'); ?>"></div>
-                                        <div class="eptw-field"><label class="eptw-label">Isolation authority</label><input name="isolation_authority" class="eptw-input" value="<?= $v('isolation_authority'); ?>"></div>
-                                        <div class="eptw-field" style="grid-column:1/-1"><label class="eptw-label">Lock / tag numbers</label><input name="lock_tag_numbers" class="eptw-input" value="<?= $v('lock_tag_numbers'); ?>" placeholder="L-014, L-015 / T-221"></div>
+                                        <div class="eptw-field" data-iso-field><label class="eptw-label">Linked LOTO / isolation permit</label>
+                                            <select name="isolation_permit_id" class="eptw-select">
+                                                <option value="">— none / paper certificate —</option>
+                                                <?php foreach ($iso_permits as $ip) { ?><option value="<?= $ip->id; ?>" <?= $p && (int) $p->isolation_permit_id === (int) $ip->id ? 'selected' : ''; ?>><?= html_escape(($ip->permit_no ?: 'draft #' . $ip->id) . ' — ' . $ip->work_title . ' (' . eptw_status_label($ip->status) . ')'); ?></option><?php } ?>
+                                            </select>
+                                            <div class="eptw-hint">Links this work to the isolation it relies on — the isolation permit cannot close while this permit is open.</div>
+                                        </div>
+                                        <div class="eptw-field" data-iso-field><label class="eptw-label">Isolation certificate no.</label><input name="isolation_cert_no" class="eptw-input" value="<?= $v('isolation_cert_no'); ?>"></div>
+                                        <div class="eptw-field" data-iso-field><label class="eptw-label">Isolation type</label><input name="isolation_type" class="eptw-input" value="<?= $v('isolation_type'); ?>" placeholder="Electrical / mechanical / process"></div>
+                                        <div class="eptw-field" data-iso-field><label class="eptw-label">Isolation authority</label><input name="isolation_authority" class="eptw-input" list="eptw-people" value="<?= $v('isolation_authority'); ?>"></div>
+                                        <div class="eptw-field" data-iso-field style="grid-column:span 2"><label class="eptw-label">Lock / tag numbers</label><input name="lock_tag_numbers" class="eptw-input" value="<?= $v('lock_tag_numbers'); ?>" placeholder="L-014, L-015 / T-221"></div>
+                                        <div class="eptw-field" data-iso-field style="grid-column:1/-1">
+                                            <label class="eptw-check"><input type="checkbox" name="loto_applied" value="1" <?= $p && $p->loto_applied ? 'checked' : ''; ?>> <span>LOTO already applied</span></label>
+                                            <label class="eptw-check"><input type="checkbox" name="zero_energy_verified" value="1" <?= $p && $p->zero_energy_verified ? 'checked' : ''; ?>> <span>Zero energy already verified</span></label>
+                                            <div class="eptw-hint">Otherwise both are confirmed in the "Start work" step — work is not authorized until they are.</div>
+                                        </div>
+                                        <div class="eptw-field" style="grid-column:1/-1">
+                                            <label class="eptw-check"><input type="checkbox" name="gas_test_required" value="1" <?= ($p ? $p->gas_test_required : $type->gas_test_required) ? 'checked' : ''; ?> <?= $type->gas_test_required ? 'disabled' : ''; ?>> <span><b>Gas testing required</b> before and during work<?= $type->gas_test_required ? ' (always, for this permit type)' : ''; ?></span></label>
+                                        </div>
                                     </div>
 
                                     <div class="eptw-sec"><?= $n++; ?> · PPE & remarks</div>
@@ -322,6 +353,9 @@
                                         </div>
                                     </div>
 
+                                    <?php if ($p && $p->status === 'returned') { ?>
+                                        <div class="eptw-field" style="margin-top:12px"><label class="eptw-label">What did you correct? (goes into the audit trail)</label><input name="change_reason" class="eptw-input" placeholder="e.g. Added fire watch, corrected the area"></div>
+                                    <?php } ?>
                                     <div class="eptw-formbar">
                                         <?php if (!$p && $is_coord) { ?>
                                             <label class="eptw-check" style="margin:0"><input type="checkbox" name="source" value="paper"> <span class="eptw-small">Recording a <b>paper permit</b></span></label>
@@ -345,8 +379,8 @@
                                 <div class="eptw-card-head"><h3><i class="fa-solid fa-circle-info"></i> How this works</h3></div>
                                 <div class="eptw-card-body eptw-small">
                                     <p><b>Nothing is valid on site without a permit number.</b> Saving creates a draft. "Request permit number" sends it to the Area Authority and HSE for their signatures; the PTW Coordinator then issues the number.</p>
-                                    <p>The hazards and controls come from the <b><?= html_escape($type->name); ?> V3</b> template. As you type the description, matching hazards are pre-ticked and the relevant controls highlighted — check them, don't trust them blindly.</p>
-                                    <p class="eptw-muted" style="margin-bottom:0">Default validity for this type: <b><?= (int) $type->default_validity_hours; ?> h</b>. Approval steps: <?php foreach ($type->approvals as $s) { echo '<span class="eptw-badge muted">' . html_escape($this->permits->step_label($s)) . '</span> '; } ?></p>
+                                    <p>The hazards and controls are those of the <b><?= html_escape($type->name); ?></b>. As you type the description, matching hazards are pre-ticked and the relevant controls highlighted — check them, don't trust them blindly.</p>
+                                    <p class="eptw-muted" style="margin-bottom:0">Validity for this type: <b><?= (int) $valid_default; ?> h</b> by default<?= $valid_max ? ', <b>' . (int) $valid_max . ' h</b> at most' : ''; ?>. Longer work continues through an approved extension. Approval steps: <?php foreach ($type->approvals as $s) { echo '<span class="eptw-badge muted">' . html_escape($this->permits->step_label($s)) . '</span> '; } ?></p>
                                 </div>
                             </div>
                             <div class="eptw-card">

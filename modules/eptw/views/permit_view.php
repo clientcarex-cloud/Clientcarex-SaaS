@@ -10,11 +10,19 @@ $steps = [
     ['Draft', in_array($p->status, ['draft'], true), !in_array($p->status, ['draft'], true)],
     ['Number requested', in_array($p->status, ['number_requested', 'returned'], true), !in_array($p->status, ['draft', 'number_requested', 'returned'], true)],
     ['Under review', $p->status === 'under_review', in_array($p->status, array_merge(eptw_live_statuses(), eptw_closed_statuses()), true)],
-    ['Issued', $p->status === 'issued' || $p->status === 'on_hold_simops', in_array($p->status, array_merge(['active', 'active_extended', 'suspended', 'on_hold'], eptw_closed_statuses()), true)],
-    ['Active', in_array($p->status, ['active', 'active_extended', 'suspended', 'on_hold'], true), in_array($p->status, eptw_closed_statuses(), true)],
+    ['Issued', $p->status === 'issued' || $p->status === 'on_hold_simops', in_array($p->status, array_merge(['active', 'active_extended', 'suspended', 'on_hold', 'expired'], eptw_closed_statuses()), true)],
+    ['Active', in_array($p->status, ['active', 'active_extended', 'suspended', 'on_hold', 'expired'], true), in_array($p->status, eptw_closed_statuses(), true)],
     ['Closed', in_array($p->status, ['closed', 'closed_docs_pending'], true), $p->status === 'archived'],
 ];
+$auth      = $p->work_auth;
+$auth_cls  = $auth['ok'] ? 'ok' : (in_array($p->status, eptw_live_statuses(), true) ? 'no' : 'idle');
+$risk_why  = eptw_risk_reason_text($p);
+$closing   = eptw_closure_items();
+$me_name   = eptw_staff_name(eptw_me()['staff_id']);
+$tbt_mode  = eptw_opt('eptw_toolbox_mode');
+$tbt_docs  = array_values(array_filter($documents, function ($d) { return $d->doc_type === 'toolbox_talk'; }));
 ?>
+<datalist id="eptw-people"><?php foreach ($people as $pe) { ?><option value="<?= html_escape($pe->name); ?>" data-badge="<?= html_escape($pe->badge_no); ?>"><?= html_escape(trim($pe->position . ' · ' . ($pe->contractor_name ?: $pe->company) . ($pe->badge_no ? ' · ' . $pe->badge_no : ''), ' ·')); ?></option><?php } ?></datalist>
 <div id="wrapper">
     <div class="content">
         <div class="eptw-wrap" data-admin-url="<?= admin_url(); ?>">
@@ -34,7 +42,7 @@ $steps = [
                         <span><i class="fa-solid fa-diagram-project"></i> <b><?= html_escape($p->project_name); ?></b> / <?= html_escape($p->area_name ?: '—'); ?><?= $p->location ? ' · ' . html_escape($p->location) : ''; ?></span>
                         <span><i class="fa-solid fa-calendar"></i> <b><?= eptw_dt($p->start_at); ?></b> → <b><?= eptw_dt($p->end_at); ?></b> (<?= eptw_hours_between($p->start_at, $p->end_at); ?> h<?= $p->extension_count ? ', ' . (int) $p->extension_count . ' ext.' : ''; ?>)</span>
                         <span><i class="fa-solid fa-helmet-safety"></i> <?= html_escape($p->engineer_name); ?><?= $p->contractor_name ? ' · ' . html_escape($p->contractor_name) : ''; ?></span>
-                        <span><?= eptw_risk_badge($p->risk_level); ?><?= $p->high_risk ? ' <span class="eptw-badge bad"><i class="fa-solid fa-fire"></i> High-risk type</span>' : ''; ?></span>
+                        <span title="<?= html_escape($risk_why); ?>"><?= eptw_risk_badge($p->risk_level); ?><?= $p->high_risk ? ' <span class="eptw-badge bad"><i class="fa-solid fa-fire"></i> ' . ($p->type_high_risk ? 'High-risk type' : 'Assessed high risk') . '</span>' : ''; ?></span>
                     </div>
                     <?php if (count($p->auto_flags)) { ?>
                         <div class="eptw-flags"><?php foreach ($p->auto_flags as $f) { ?><span class="eptw-badge <?= $f[0]; ?>"><i class="fa-solid fa-bolt"></i> <?= html_escape($f[1]); ?></span><?php } ?></div>
@@ -46,9 +54,10 @@ $steps = [
                         <?php if ($can['submit']) { ?><button class="eptw-btn eptw-btn-primary" data-eptw-modal="m-submit"><i class="fa-solid fa-paper-plane"></i> Request permit number</button><?php } ?>
                         <?php foreach ($sign_steps as $s) { ?><button class="eptw-btn eptw-btn-primary" data-eptw-modal="m-sign-<?= $s; ?>"><i class="fa-solid fa-pen-nib"></i> Sign as <?= html_escape($this->permits->step_label($s)); ?></button><?php } ?>
                         <?php if ($can['issue']) { ?><button class="eptw-btn eptw-btn-primary" data-eptw-modal="m-issue"><i class="fa-solid fa-stamp"></i> Issue permit number</button><?php } ?>
-                        <?php if ($can['activate']) { ?><button class="eptw-btn eptw-btn-ok" data-eptw-act="<?= $act('activate'); ?>" data-confirm="Confirm that work is starting under this permit now?"><i class="fa-solid fa-play"></i> Start work</button><?php } ?>
+                        <?php if ($can['activate']) { ?><button class="eptw-btn eptw-btn-ok" data-eptw-modal="m-activate"><i class="fa-solid fa-play"></i> Confirm start of work</button><?php } ?>
                         <?php if ($can['resume']) { ?><button class="eptw-btn eptw-btn-ok" data-eptw-modal="m-resume"><i class="fa-solid fa-play"></i> <?= $p->status === 'on_hold_simops' ? 'Resolve SIMOPS & resume' : 'Resume'; ?></button><?php } ?>
-                        <?php if ($can['extend']) { ?><button class="eptw-btn" data-eptw-modal="m-extend"><i class="fa-solid fa-clock-rotate-left"></i> Extend</button><?php } ?>
+                        <?php if ($can['extend']) { ?><button class="eptw-btn" data-eptw-modal="m-extend"><i class="fa-solid fa-clock-rotate-left"></i> <?= eptw_can('extend_approve') ? 'Extend' : 'Request extension'; ?></button><?php } ?>
+                        <?php if ($can['simops_ack'] && !$p->simops_ack_at) { ?><button class="eptw-btn eptw-btn-warn" data-eptw-modal="m-simops-ack"><i class="fa-solid fa-diagram-project"></i> Acknowledge SIMOPS</button><?php } ?>
                         <?php if ($can['suspend']) { ?><button class="eptw-btn eptw-btn-warn" data-eptw-modal="m-suspend"><i class="fa-solid fa-pause"></i> Suspend</button><?php } ?>
                         <?php if ($can['hold']) { ?><button class="eptw-btn" data-eptw-modal="m-hold"><i class="fa-solid fa-hand"></i> Hold</button><?php } ?>
                         <?php if ($can['close']) { ?><button class="eptw-btn eptw-btn-dark" data-eptw-modal="m-close"><i class="fa-solid fa-circle-check"></i> Close permit</button><?php } ?>
@@ -64,11 +73,39 @@ $steps = [
                 </div>
             </div>
 
+            <!-- ── Work authorization: kept apart from the administrative status ── -->
+            <div class="eptw-auth <?= $auth_cls; ?>">
+                <div class="ic"><i class="fa-solid <?= $auth['ok'] ? 'fa-person-digging' : 'fa-ban'; ?>"></i></div>
+                <div style="min-width:0">
+                    <div class="t"><?= $auth['ok'] ? 'Work authorized' : 'Work not authorized'; ?></div>
+                    <div class="d"><?= html_escape($auth['detail']); ?> <span class="eptw-muted">· Permit status: <?= html_escape(eptw_status_label($p->status)); ?></span></div>
+                </div>
+                <?php if (!$auth['ok'] && in_array($p->status, eptw_live_statuses(), true)) { ?>
+                    <div class="acts">
+                        <?php if ($can['activate']) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-ok" data-eptw-modal="m-activate"><i class="fa-solid fa-play"></i> Confirm start of work</button><?php } ?>
+                        <?php if ($can['resume']) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-ok" data-eptw-modal="m-resume"><i class="fa-solid fa-play"></i> Resume</button><?php } ?>
+                        <?php if ($p->status === 'expired' && $can['extend']) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-extend"><i class="fa-solid fa-clock-rotate-left"></i> <?= eptw_can('extend_approve') ? 'Extend / revalidate' : 'Request extension'; ?></button><?php } ?>
+                        <?php if ($p->status === 'expired' && (int) $p->pending_extensions) { ?><a href="#extensions" class="eptw-btn eptw-btn-sm" data-pane="extensions"><i class="fa-solid fa-hourglass-half"></i> Extension awaiting approval</a><?php } ?>
+                        <?php if ($can['close']) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-dark" data-eptw-modal="m-close"><i class="fa-solid fa-circle-check"></i> Close permit</button><?php } ?>
+                    </div>
+                <?php } ?>
+            </div>
+
+            <?php if (count($dependents)) { ?>
+                <div class="eptw-note info"><i class="fa-solid fa-lock"></i> <b>Isolation in use by <?= count($dependents); ?> work permit(s):</b>
+                    <?php foreach ($dependents as $d) { ?><a href="<?= admin_url('eptw/view/' . $d->id); ?>"><?= html_escape($d->permit_no ?: 'draft #' . $d->id); ?></a> (<?= html_escape(eptw_status_label($d->status)); ?>) <?php } ?>
+                    — they must be closed before this isolation is removed and the permit closed.</div>
+            <?php } ?>
+            <?php if ((int) $p->isolation_permit_id) { ?>
+                <div class="eptw-note info"><i class="fa-solid fa-link"></i> <b>Relies on isolation permit</b> <a href="<?= admin_url('eptw/view/' . (int) $p->isolation_permit_id); ?>"><?= html_escape($p->isolation_permit_no ?: 'draft'); ?></a> (<?= html_escape(eptw_status_label($p->isolation_permit_status)); ?>).</div>
+            <?php } ?>
+
             <?php if ($p->status === 'on_hold_simops') { ?>
                 <div class="eptw-note bad"><i class="fa-solid fa-triangle-exclamation"></i> <b>On hold — SIMOPS conflict.</b> The permit number is issued but work must not start until the coordinator resolves the conflict below and resumes the permit.<br><span style="white-space:pre-line"><?= html_escape($p->simops_notes); ?></span></div>
             <?php } elseif (count($conflicts)) { ?>
                 <div class="eptw-note <?= array_filter($conflicts, function ($c) { return $c['severity'] === 'block'; }) ? 'bad' : 'warn'; ?>">
-                    <i class="fa-solid fa-diagram-project"></i> <b>SIMOPS check:</b> <?= count($conflicts); ?> other live permit(s) in <?= html_escape($p->area_name); ?> overlap this window.
+                    <i class="fa-solid fa-diagram-project"></i> <b>SIMOPS check:</b> <?= count($conflicts); ?> other open permit(s) in <?= html_escape($p->area_name); ?> overlap this window.
+                    <?php if ($p->simops_ack_at) { ?><span class="eptw-badge ok"><i class="fa fa-check"></i> Acknowledged by <?= html_escape(eptw_staff_name($p->simops_ack_by)); ?> <?= eptw_time_ago($p->simops_ack_at); ?></span><?php } elseif ($can['simops_ack']) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-warn" data-eptw-modal="m-simops-ack">Acknowledge</button><?php } ?>
                     <ul><?php foreach ($conflicts as $c) { ?><li><?= html_escape($c['description']); ?> — <a href="<?= admin_url('eptw/view/' . $c['permit_id']); ?>"><?= html_escape($c['permit_no'] ?: 'draft'); ?></a> (<?= html_escape($c['type_name']); ?>, <?= eptw_dt($c['start_at']); ?> → <?= eptw_dt($c['end_at']); ?>) <span class="eptw-badge <?= $c['severity'] === 'block' ? 'bad' : 'warn'; ?>"><?= $c['severity'] === 'block' ? 'blocks' : 'warning'; ?></span></li><?php } ?></ul>
                 </div>
             <?php } ?>
@@ -79,10 +116,10 @@ $steps = [
                 <div class="eptw-note bad"><i class="fa-solid fa-circle-pause"></i> <b>Suspended <?= eptw_time_ago($p->suspended_at); ?>:</b> <?= html_escape($p->suspend_reason); ?>. Work must stop until the coordinator resumes the permit.</div>
             <?php } ?>
             <?php if ($p->status === 'closed_docs_pending') { ?>
-                <div class="eptw-note warn"><i class="fa-solid fa-folder-open"></i> <b>Closed — documents pending:</b> <?= html_escape(implode(', ', $missing_docs)); ?>. Upload them under <a href="#documents" class="eptw-subtab-link" data-pane="documents">Documents</a> and the permit closes fully by itself.</div>
+                <div class="eptw-note warn"><i class="fa-solid fa-folder-open"></i> <b>Closed — documents pending upload<?= eptw_opt('eptw_docs_review') === '1' ? ' / verification' : ''; ?>:</b> <?= html_escape(implode(', ', $missing_docs)); ?>. The permit record is not complete. Upload them under <a href="#documents" class="eptw-subtab-link" data-pane="documents">Documents</a> and the permit closes fully by itself.</div>
             <?php } ?>
             <?php if ((int) $p->pending_extensions && $can['extend_approve']) { ?>
-                <div class="eptw-note info"><i class="fa-solid fa-clock-rotate-left"></i> <b>An extension request is waiting for your decision</b> — see the Extensions tab.</div>
+                <div class="eptw-note info"><i class="fa-solid fa-clock-rotate-left"></i> <b>An extension request is waiting for your decision</b> — revalidate the conditions under <a href="#extensions" class="eptw-subtab-link" data-pane="extensions">Extensions &amp; shifts</a>.</div>
             <?php } ?>
 
             <div class="eptw-card">
@@ -198,7 +235,8 @@ $steps = [
                             <div class="eptw-card-head"><h3><i class="fa-solid fa-lock"></i> Isolation / gas</h3></div>
                             <div class="eptw-card-body">
                                 <dl class="eptw-dl" style="grid-template-columns:1fr 1fr">
-                                    <div><dt>Isolation required</dt><dd><?= $p->isolation_required ? '<span class="eptw-badge info">Yes</span>' : 'No'; ?></dd></div>
+                                    <div><dt>Isolation applicable</dt><dd><?= ['yes' => '<span class="eptw-badge info">Yes</span>', 'no' => 'No', 'na' => 'N/A'][$p->isolation_applicable] ?? ($p->isolation_required ? '<span class="eptw-badge info">Yes</span>' : '<span class="eptw-badge warn">Not answered</span>'); ?></dd></div>
+                                    <div><dt>Linked isolation permit</dt><dd class="<?= (int) $p->isolation_permit_id ? '' : 'empty'; ?>"><?= (int) $p->isolation_permit_id ? '<a href="' . admin_url('eptw/view/' . (int) $p->isolation_permit_id) . '">' . html_escape($p->isolation_permit_no ?: 'draft') . '</a>' : '—'; ?></dd></div>
                                     <div><dt>LOTO applied</dt><dd><?= $p->loto_applied ? '<span class="eptw-badge ok">Yes</span>' : 'No'; ?></dd></div>
                                     <div><dt>Zero energy verified</dt><dd><?= $p->zero_energy_verified ? '<span class="eptw-badge ok">Yes</span>' : 'No'; ?></dd></div>
                                     <div><dt>Gas test required</dt><dd><?= $p->gas_test_required ? '<span class="eptw-badge warn">Yes</span>' : 'No'; ?></dd></div>
@@ -233,8 +271,10 @@ $steps = [
                                     <dl class="eptw-dl" style="grid-template-columns:1fr 1fr">
                                         <div><dt>Closed at</dt><dd><?= eptw_dt($p->closed_at); ?></dd></div>
                                         <div><dt>Closed by</dt><dd><?= html_escape(eptw_staff_name($p->closed_by) ?: ($p->closure['closed_by_name'] ?? '—')); ?></dd></div>
-                                        <?php foreach (['work_completed' => 'Work completed', 'area_clean' => 'Area clean', 'no_residual_hazards' => 'No residual hazards', 'isolation_removed' => 'Isolation removed', 'area_restored' => 'Area restored', 'inspection_done' => 'Inspection done'] as $k => $l) { ?>
-                                            <div><dt><?= $l; ?></dt><dd><?= !empty($p->closure[$k]) ? '<span class="eptw-badge ok">Yes</span>' : '<span class="eptw-badge muted">No</span>'; ?></dd></div>
+                                        <?php foreach ($closing as $k => $l) { $cv = eptw_closure_value($p->closure, $k); $ci = is_array($p->closure[$k] ?? null) ? $p->closure[$k] : []; ?>
+                                            <div><dt><?= $l; ?></dt><dd><span class="eptw-badge <?= ['yes' => 'ok', 'no' => 'bad', 'na' => 'muted'][$cv] ?? 'muted'; ?>"><?= ['yes' => 'Yes', 'no' => 'No', 'na' => 'N/A'][$cv] ?? '—'; ?></span>
+                                                <?php if (!empty($ci['by'])) { ?><div class="eptw-small eptw-muted"><?= html_escape($ci['by']); ?><?= !empty($ci['at']) ? ' · ' . eptw_dt($ci['at']) : ''; ?></div><?php } ?>
+                                                <?php if (!empty($ci['r'])) { ?><div class="eptw-small"><?= html_escape($ci['r']); ?></div><?php } ?></dd></div>
                                         <?php } ?>
                                     </dl>
                                     <?php if (!empty($p->closure['final_remarks'])) { ?><p style="margin:12px 0 0;white-space:pre-line"><?= html_escape($p->closure['final_remarks']); ?></p><?php } ?>
@@ -321,10 +361,12 @@ $steps = [
                                             <div>
                                                 <div class="ev-title">Until <?= eptw_dt($x->new_end_at); ?> <span class="eptw-badge <?= $x->status === 'approved' ? 'ok' : ($x->status === 'rejected' ? 'bad' : 'warn'); ?>"><?= ucfirst($x->status); ?></span></div>
                                                 <div class="ev-meta">Requested by <?= html_escape($x->requested_name); ?> · <?= eptw_time_ago($x->created_at); ?><?= $x->decided_at ? ' · decided by ' . html_escape($x->decided_name) . ' ' . eptw_time_ago($x->decided_at) : ''; ?></div>
+                                                <div class="ev-meta">From <?= eptw_dt($x->old_end_at); ?> → <?= eptw_dt($x->new_end_at); ?></div>
                                                 <div class="ev-note"><?= html_escape($x->reason); ?><?= $x->decision_note ? "\n— " . html_escape($x->decision_note) : ''; ?></div>
+                                                <?php if (!empty($x->checks)) { $xc = $x->checks; ?><div class="ev-meta"><i class="fa-solid fa-list-check"></i> Revalidated by <?= html_escape($xc['by'] ?? ''); ?>: conditions unchanged · controls in place · gas: <?= html_escape(['recorded' => 'recorded test, safe', 'paper' => 'paper sheet' . (!empty($xc['gas_ref']) ? ' ' . $xc['gas_ref'] : ''), 'not_required' => 'not required'][$xc['gas'] ?? ''] ?? '—'); ?></div><?php } ?>
                                                 <?php if ($x->status === 'pending' && $can['extend_approve']) { ?>
                                                     <div style="margin-top:8px;display:flex;gap:6px">
-                                                        <button class="eptw-btn eptw-btn-sm eptw-btn-ok" data-eptw-act="<?= $act('decide_extension'); ?>" data-field-extension_id="<?= $x->id; ?>" data-field-decision="approved" data-confirm="Approve the extension until <?= eptw_dt($x->new_end_at); ?>?"><i class="fa fa-check"></i> Approve</button>
+                                                        <button class="eptw-btn eptw-btn-sm eptw-btn-ok" data-eptw-modal="m-approve-ext" data-fill-extension_id="<?= $x->id; ?>"><i class="fa fa-check"></i> Revalidate &amp; approve</button>
                                                         <button class="eptw-btn eptw-btn-sm eptw-btn-danger" data-eptw-modal="m-reject-ext" data-fill-extension_id="<?= $x->id; ?>"><i class="fa fa-times"></i> Reject</button>
                                                     </div>
                                                 <?php } ?>
@@ -340,9 +382,11 @@ $steps = [
                             <?php if ($can['revalidate']) { ?><div class="eptw-card-actions"><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-reval"><i class="fa fa-plus"></i> Revalidate shift</button></div><?php } ?></div>
                         <?php if (!count($revalidations)) { ?><div class="eptw-card-body eptw-muted eptw-small">No shift revalidation recorded.</div><?php } else { ?>
                             <div class="eptw-table-scroll"><table class="eptw-table">
-                                <thead><tr><th>Shift</th><th>From</th><th>To</th><th>Area Authority</th><th>Issuer</th><th>HSE</th><th>Gas</th><th>Notes</th></tr></thead>
-                                <tbody><?php foreach ($revalidations as $r) { ?>
-                                    <tr><td><?= html_escape(eptw_shifts()[$r->shift] ?? $r->shift); ?></td><td class="eptw-small"><?= eptw_dt($r->from_at); ?></td><td class="eptw-small"><?= eptw_dt($r->to_at); ?></td><td class="eptw-small"><?= html_escape($r->area_authority); ?></td><td class="eptw-small"><?= html_escape($r->issuer); ?></td><td class="eptw-small"><?= html_escape($r->hse); ?></td><td><span class="eptw-badge <?= $r->gas_test_ok ? 'ok' : 'bad'; ?>"><?= $r->gas_test_ok ? 'OK' : 'N/A'; ?></span></td><td class="eptw-small eptw-muted"><?= html_escape($r->notes); ?></td></tr>
+                                <thead><tr><th>Shift</th><th>From</th><th>To</th><th>Area Authority</th><th>Issuer</th><th>HSE</th><th>Conditions</th><th>Gas test</th><th>Notes</th></tr></thead>
+                                <tbody><?php foreach ($revalidations as $r) { $g = $r->gas_test !== '' ? $r->gas_test : ($r->gas_test_ok ? 'done' : 'not_required'); ?>
+                                    <tr><td><?= html_escape(eptw_shifts()[$r->shift] ?? $r->shift); ?></td><td class="eptw-small"><?= eptw_dt($r->from_at); ?></td><td class="eptw-small"><?= eptw_dt($r->to_at); ?></td><td class="eptw-small"><?= html_escape($r->area_authority); ?></td><td class="eptw-small"><?= html_escape($r->issuer); ?></td><td class="eptw-small"><?= html_escape($r->hse); ?></td>
+                                        <td><span class="eptw-badge ok">Unchanged</span></td>
+                                        <td><span class="eptw-badge <?= $g === 'not_required' ? 'muted' : 'ok'; ?>"><?= ['done' => 'Repeated', 'paper' => 'Paper sheet', 'not_required' => 'Not required'][$g] ?? $g; ?></span></td><td class="eptw-small eptw-muted"><?= html_escape($r->notes); ?></td></tr>
                                 <?php } ?></tbody></table></div>
                         <?php } ?>
                     </div>
@@ -351,25 +395,48 @@ $steps = [
 
             <!-- Toolbox talk -->
             <div class="eptw-pane" id="pane-toolbox">
-                <div class="eptw-card">
-                    <div class="eptw-card-head"><h3><i class="fa-solid fa-people-group"></i> Toolbox talk</h3>
-                        <?php if ($can['toolbox']) { ?><div class="eptw-card-actions"><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-toolbox"><i class="fa fa-pen"></i> <?= count($p->toolbox['attendees'] ?? []) ? 'Update' : 'Record'; ?> toolbox talk</button></div><?php } ?></div>
-                    <div class="eptw-card-body">
-                        <?php if (!count($p->toolbox)) { ?>
-                            <div class="eptw-empty" style="padding:22px"><i class="fa-solid fa-people-group"></i><h4>Not recorded</h4><p>Hazards, controls, PPE and the emergency plan explained to the crew, with the attendee list.</p></div>
-                        <?php } else { ?>
-                            <dl class="eptw-dl">
-                                <div><dt>Held</dt><dd><?= eptw_dt($p->toolbox['held_at'] ?? ''); ?></dd></div>
-                                <div><dt>By</dt><dd><?= html_escape($p->toolbox['by'] ?? ''); ?></dd></div>
-                                <div><dt>Covered</dt><dd><?php foreach (['hazards' => 'Hazards', 'controls' => 'Controls', 'ppe' => 'PPE', 'emergency' => 'Emergency plan'] as $k => $l) { echo '<span class="eptw-badge ' . (in_array($k, $p->toolbox['topics'] ?? [], true) ? 'ok' : 'muted') . '" style="margin-right:4px">' . $l . '</span>'; } ?></dd></div>
-                            </dl>
-                            <?php if (count($p->toolbox['attendees'] ?? [])) { ?>
-                                <div class="eptw-table-scroll" style="margin-top:14px"><table class="eptw-table"><thead><tr><th>#</th><th>Worker</th><th>ID</th></tr></thead><tbody>
-                                    <?php foreach ($p->toolbox['attendees'] as $i => $w) { ?><tr><td class="eptw-muted"><?= $i + 1; ?></td><td class="eptw-strong"><?= html_escape($w['name']); ?></td><td class="eptw-mono eptw-small"><?= html_escape($w['id']); ?></td></tr><?php } ?>
-                                </tbody></table></div>
+                <div class="eptw-split">
+                    <div class="eptw-card">
+                        <div class="eptw-card-head"><h3><i class="fa-solid fa-people-group"></i> Toolbox talk</h3>
+                            <?php if ($can['toolbox'] && $tbt_mode !== 'upload') { ?><div class="eptw-card-actions"><button class="eptw-btn eptw-btn-sm eptw-btn-primary" data-eptw-modal="m-toolbox"><i class="fa fa-pen"></i> <?= count($p->toolbox['attendees'] ?? []) ? 'Update' : 'Record'; ?> digital attendance</button></div><?php } ?></div>
+                        <div class="eptw-card-body">
+                            <div class="eptw-small eptw-muted" style="margin-bottom:10px"><?= html_escape(eptw_toolbox_modes()[$tbt_mode] ?? ''); ?>.</div>
+                            <?php if (!count($p->toolbox) && !count($tbt_docs)) { ?>
+                                <div class="eptw-empty" style="padding:22px"><i class="fa-solid fa-people-group"></i><h4>Not recorded</h4><p>Hazards, controls, PPE and the emergency plan explained to the crew<?= $tbt_mode !== 'digital' ? ' — upload the signed TBT sheet, or record attendance digitally' : ', with the attendee list'; ?>.</p></div>
                             <?php } ?>
-                        <?php } ?>
+                            <?php if (count($p->toolbox)) { ?>
+                                <dl class="eptw-dl">
+                                    <div><dt>Held</dt><dd><?= eptw_dt($p->toolbox['held_at'] ?? ''); ?></dd></div>
+                                    <div><dt>By</dt><dd><?= html_escape($p->toolbox['by'] ?? ''); ?></dd></div>
+                                    <div><dt>Covered</dt><dd><?php foreach (['hazards' => 'Hazards', 'controls' => 'Controls', 'ppe' => 'PPE', 'emergency' => 'Emergency plan'] as $k => $l) { echo '<span class="eptw-badge ' . (in_array($k, $p->toolbox['topics'] ?? [], true) ? 'ok' : 'muted') . '" style="margin-right:4px">' . $l . '</span>'; } ?></dd></div>
+                                </dl>
+                                <?php if (count($p->toolbox['attendees'] ?? [])) { ?>
+                                    <div class="eptw-table-scroll" style="margin-top:14px"><table class="eptw-table"><thead><tr><th>#</th><th>Worker</th><th>Badge / ID</th><th>Acknowledged</th></tr></thead><tbody>
+                                        <?php foreach ($p->toolbox['attendees'] as $i => $w) { ?><tr><td class="eptw-muted"><?= $i + 1; ?></td><td class="eptw-strong"><?= html_escape($w['name']); ?></td><td class="eptw-mono eptw-small"><?= html_escape($w['id']); ?></td><td><?= !empty($w['ack']) ? '<span class="eptw-badge ok"><i class="fa fa-check"></i></span>' : '<span class="eptw-muted">—</span>'; ?></td></tr><?php } ?>
+                                    </tbody></table></div>
+                                <?php } ?>
+                            <?php } ?>
+                        </div>
                     </div>
+                    <?php if ($tbt_mode !== 'digital') { ?>
+                        <div class="eptw-card">
+                            <div class="eptw-card-head"><h3><i class="fa-solid fa-file-signature"></i> Signed TBT sheet</h3></div>
+                            <div class="eptw-card-body">
+                                <?php if (count($tbt_docs)) { foreach ($tbt_docs as $d) { ?>
+                                    <div class="eptw-small" style="margin-bottom:6px"><i class="fa-solid fa-paperclip"></i> <a href="<?= admin_url('eptw/document/' . $d->id); ?>" target="_blank"><?= html_escape($d->original_name); ?></a> <span class="eptw-muted">· <?= eptw_time_ago($d->created_at); ?></span></div>
+                                <?php } } else { ?><div class="eptw-muted eptw-small" style="margin-bottom:10px">No signed sheet uploaded yet.</div><?php } ?>
+                                <?php if ($can['upload']) { ?>
+                                    <form method="post" action="<?= admin_url('eptw/upload/' . $p->id); ?>" enctype="multipart/form-data" data-eptw-ajax-upload>
+                                        <?= $csrf; ?><input type="hidden" name="doc_type" value="toolbox_talk"><input type="hidden" name="note" value="Signed toolbox talk sheet">
+                                        <div class="eptw-dropzone"><input type="file" name="files[]" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp">
+                                            <button type="button" class="eptw-btn eptw-btn-sm" onclick="this.closest('.eptw-dropzone').querySelector('input[type=file]').click()"><i class="fa-solid fa-folder-open"></i> Choose the scanned sheet</button>
+                                            <div class="eptw-small eptw-strong" data-eptw-files style="margin-top:6px"></div></div>
+                                        <button type="submit" class="eptw-btn eptw-btn-primary eptw-btn-block" style="margin-top:8px">Upload</button>
+                                    </form>
+                                <?php } ?>
+                            </div>
+                        </div>
+                    <?php } ?>
                 </div>
             </div>
 
@@ -393,10 +460,13 @@ $steps = [
                                             <div class="ic"><i class="fa-solid <?= $ic; ?>"></i></div>
                                             <div style="min-width:0;flex:1">
                                                 <a href="<?= admin_url('eptw/document/' . $d->id); ?>" target="_blank" class="nm"><?= html_escape($d->original_name); ?></a>
-                                                <div class="mt"><span class="eptw-badge muted"><?= html_escape(eptw_document_types()[$d->doc_type] ?? $d->doc_type); ?></span> <?= eptw_human_size($d->size); ?> · <?= html_escape($d->uploaded_name); ?> · <?= eptw_time_ago($d->created_at); ?></div>
+                                                <div class="mt"><span class="eptw-badge muted"><?= html_escape(eptw_document_types()[$d->doc_type] ?? $d->doc_type); ?></span> <?= eptw_human_size($d->size); ?> · <?= html_escape($d->uploaded_name); ?> · <?= eptw_time_ago($d->created_at); ?>
+                                                    <?php if (eptw_opt('eptw_docs_review') === '1') { ?> <span class="eptw-badge <?= ['verified' => 'ok', 'rejected' => 'bad'][$d->review_status] ?? 'warn'; ?>" title="<?= html_escape($d->review_note); ?>"><?= ['verified' => 'Verified', 'rejected' => 'Rejected'][$d->review_status] ?? 'Awaiting review'; ?></span><?php } ?></div>
                                                 <?php if ($d->note) { ?><div class="mt"><?= html_escape($d->note); ?></div><?php } ?>
                                                 <div style="margin-top:6px;display:flex;gap:4px">
                                                     <a href="<?= admin_url('eptw/document/' . $d->id . '?dl=1'); ?>" class="eptw-btn eptw-btn-sm eptw-btn-ghost"><i class="fa fa-download"></i></a>
+                                                    <?php if ($can['doc_review'] && $d->review_status !== 'verified') { ?><button class="eptw-btn eptw-btn-sm eptw-btn-ok" data-eptw-act="<?= $act('doc_review'); ?>" data-field-document_id="<?= $d->id; ?>" data-field-decision="verified" data-confirm="Mark this document as verified?"><i class="fa fa-check"></i> Verify</button><?php } ?>
+                                                    <?php if ($can['doc_review'] && $d->review_status !== 'rejected') { ?><button class="eptw-btn eptw-btn-sm eptw-btn-danger" data-eptw-modal="m-doc-reject" data-fill-document_id="<?= $d->id; ?>"><i class="fa fa-times"></i> Reject</button><?php } ?>
                                                     <?php if ($can['upload'] && (eptw_can('status') || (int) $d->uploaded_by === (int) eptw_me()['staff_id'])) { ?><button class="eptw-btn eptw-btn-sm eptw-btn-ghost" data-eptw-act="<?= $act('document_delete'); ?>" data-field-document_id="<?= $d->id; ?>" data-confirm="Remove this document?"><i class="fa fa-trash"></i></button><?php } ?>
                                                 </div>
                                             </div>
@@ -442,12 +512,12 @@ $steps = [
             <!-- Activity -->
             <div class="eptw-pane" id="pane-activity">
                 <div class="eptw-card">
-                    <div class="eptw-card-head"><h3><i class="fa-solid fa-clock-rotate-left"></i> Audit trail</h3><div class="eptw-card-actions eptw-small eptw-muted">Every change, who made it and when.</div></div>
+                    <div class="eptw-card-head"><h3><i class="fa-solid fa-clock-rotate-left"></i> Audit trail</h3><div class="eptw-card-actions eptw-small eptw-muted">Every change, who made it, the previous and new value, and when. Entries are never edited or removed.</div></div>
                     <div class="eptw-card-body">
                         <ul class="eptw-timeline">
                             <?php foreach ($events as $e) {
-                                $cls = ['issued' => 'ok', 'approved' => 'ok', 'activated' => 'ok', 'auto_activated' => 'ok', 'extended' => 'ok', 'resumed' => 'ok', 'closed' => 'ok', 'simops_cleared' => 'ok',
-                                        'rejected' => 'bad', 'returned' => 'bad', 'suspended' => 'bad', 'simops_hold' => 'bad', 'cancelled' => 'bad', 'expired' => 'bad', 'extension_rejected' => 'bad',
+                                $cls = ['issued' => 'ok', 'approved' => 'ok', 'activated' => 'ok', 'auto_activated' => 'ok', 'extended' => 'ok', 'resumed' => 'ok', 'closed' => 'ok', 'simops_cleared' => 'ok', 'simops_ack' => 'ok', 'doc_verified' => 'ok',
+                                        'rejected' => 'bad', 'returned' => 'bad', 'suspended' => 'bad', 'simops_hold' => 'bad', 'cancelled' => 'bad', 'expired' => 'bad', 'extension_rejected' => 'bad', 'sod_override' => 'bad', 'simops_flagged' => 'bad', 'doc_rejected' => 'bad',
                                         'hold' => 'warn', 'extension_requested' => 'warn', 'number_requested' => 'info', 'document' => 'info', 'gas_test' => 'info', 'revalidated' => 'info', 'toolbox' => 'info'][$e->event] ?? '';
                                 $icon = ['issued' => 'fa-stamp', 'approved' => 'fa-check', 'rejected' => 'fa-times', 'returned' => 'fa-rotate-left', 'activated' => 'fa-play', 'auto_activated' => 'fa-play', 'extended' => 'fa-clock-rotate-left', 'extension_requested' => 'fa-clock-rotate-left', 'extension_rejected' => 'fa-times',
                                          'suspended' => 'fa-pause', 'hold' => 'fa-hand', 'resumed' => 'fa-play', 'closed' => 'fa-circle-check', 'cancelled' => 'fa-ban', 'archived' => 'fa-box-archive', 'document' => 'fa-paperclip', 'document_removed' => 'fa-trash',
@@ -460,6 +530,12 @@ $steps = [
                                         <div class="ev-title"><?= html_escape($this->permits->event_label($e->event)); ?><?php if ($e->from_status !== $e->to_status && $e->to_status !== '') { ?> <span class="eptw-small eptw-muted">→ <?= html_escape(eptw_status_label($e->to_status)); ?></span><?php } ?></div>
                                         <div class="ev-meta"><?= html_escape($e->staff_name ?: 'System'); ?> · <?= eptw_dt($e->created_at); ?> (<?= eptw_time_ago($e->created_at); ?>)</div>
                                         <?php if ($e->note) { ?><div class="ev-note"><?= html_escape($e->note); ?></div><?php } ?>
+                                        <?php if (!empty($e->data['changes'])) { ?>
+                                            <table class="eptw-diff"><thead><tr><th>Field</th><th>Previous value</th><th>New value</th></tr></thead><tbody>
+                                                <?php foreach ($e->data['changes'] as $ch) { ?><tr><td><?= html_escape($ch['field']); ?></td><td class="from"><?= html_escape($ch['from'] !== '' ? $ch['from'] : '—'); ?></td><td class="to"><?= html_escape($ch['to'] !== '' ? $ch['to'] : '—'); ?></td></tr><?php } ?>
+                                            </tbody></table>
+                                        <?php } ?>
+                                        <?php if (!empty($e->data['new_end_at'])) { ?><div class="ev-meta">End time <?= eptw_dt($e->data['old_end_at'] ?? ''); ?> → <?= eptw_dt($e->data['new_end_at']); ?> · original end <?= eptw_dt($e->data['original_end_at'] ?? ''); ?></div><?php } ?>
                                     </div>
                                 </li>
                             <?php } ?>
@@ -516,22 +592,62 @@ $steps = [
                 ($p->status === 'on_hold_simops' ? '<div class="eptw-note bad" style="white-space:pre-line">' . html_escape($p->simops_notes) . '</div><div class="eptw-field"><label class="eptw-label">How was it resolved? (SIMOPS approval) <span class="req">*</span></label><textarea name="note" class="eptw-textarea" required placeholder="e.g. Radiography rescheduled to night shift; exclusion zone agreed with both crews"></textarea></div>'
                     : '<div class="eptw-field"><label class="eptw-label">Note</label><textarea name="note" class="eptw-textarea" style="min-height:70px" placeholder="Conditions verified, gas test repeated…"></textarea></div>'), 'Resume', 'eptw-btn-ok'); ?>
 
-            <?php $modal('m-extend', eptw_can('extend_approve') ? 'Extend the permit' : 'Request an extension', 'extend',
-                '<div class="eptw-small eptw-muted" style="margin-bottom:10px">Current end: <b>' . eptw_dt($p->end_at) . '</b> · extensions so far: ' . (int) $p->extension_count . '</div>'
-                . '<div class="eptw-field"><label class="eptw-label">New end date &amp; time <span class="req">*</span></label><input type="datetime-local" name="new_end_at" class="eptw-input" value="' . $dtl(date('Y-m-d H:i', strtotime($p->end_at) + 4 * 3600)) . '" required></div>'
-                . '<div class="eptw-field"><label class="eptw-label">Reason <span class="req">*</span></label><textarea name="reason" class="eptw-textarea" required></textarea></div>', eptw_can('extend_approve') ? 'Extend' : 'Request'); ?>
+            <?php
+            $seg = function ($name, $options, $cur = '') {
+                $h = '<div class="eptw-seg">';
+                foreach ($options as $v => $l) { $h .= '<label class="' . $v . '"><input type="radio" name="' . $name . '" value="' . $v . '"' . ($cur === $v ? ' checked' : '') . '>' . $l . '</label>'; }
+                return $h . '</div>';
+            };
+            $gas_choice = function ($required) {
+                return '<div class="eptw-field"><label class="eptw-label">Gas test' . ($required ? ' <span class="req">*</span>' : '') . '</label>'
+                    . '<select name="checks[gas]" class="eptw-select">' . ($required ? '<option value="">— confirm the repeated gas test —</option>' : '<option value="not_required">Not required for this permit</option>')
+                    . '<option value="recorded">Repeated and recorded under Gas tests (latest result safe)</option><option value="paper">Repeated on the paper gas-test sheet</option></select></div>'
+                    . '<div class="eptw-field"><label class="eptw-label">Gas test sheet reference (if on paper)</label><input name="checks[gas_ref]" class="eptw-input" placeholder="e.g. GT-0412, attached under Documents"></div>';
+            };
+            $revalidate = '<div class="eptw-sec" style="margin-top:6px">Revalidation of conditions</div>'
+                . '<label class="eptw-check"><input type="checkbox" name="checks[conditions_ok]" value="1"> <span>Site conditions re-checked and <b>unchanged</b> since the permit was issued</span></label>'
+                . '<label class="eptw-check"><input type="checkbox" name="checks[controls_ok]" value="1"> <span>All control measures (and isolation, where applied) are <b>still in place</b></span></label>'
+                . $gas_choice((bool) $p->gas_test_required);
+            $ext_default = date('Y-m-d H:i', max(time(), strtotime($p->end_at)) + 4 * 3600);
+            if ($can['extend']) {
+                $modal('m-extend', eptw_can('extend_approve') ? 'Extend the permit' : 'Request an extension', 'extend',
+                    ($p->status === 'expired' ? '<div class="eptw-note bad"><b>This permit has expired.</b> Work stays not authorized until the extension is approved after the conditions are revalidated.</div>' : '')
+                    . '<div class="eptw-small eptw-muted" style="margin-bottom:10px">Original end: <b>' . eptw_dt($p->original_end_at) . '</b> · current end: <b>' . eptw_dt($p->end_at) . '</b> · extensions so far: ' . (int) $p->extension_count . ((int) eptw_opt('eptw_max_extensions') ? ' of ' . (int) eptw_opt('eptw_max_extensions') : '') . '</div>'
+                    . '<div class="eptw-field"><label class="eptw-label">New end date &amp; time <span class="req">*</span></label><input type="datetime-local" name="new_end_at" class="eptw-input" value="' . $dtl($ext_default) . '" required></div>'
+                    . '<div class="eptw-field"><label class="eptw-label">Reason <span class="req">*</span></label><textarea name="reason" class="eptw-textarea" required></textarea></div>'
+                    . (eptw_can('extend_approve') && !eptw_sod('own_extension')
+                        ? '<label class="eptw-check" style="margin-top:6px"><input type="checkbox" name="checks[approve_now]" value="1" checked data-eptw-toggle="#eptw-ext-checks"> <span><b>Approve now</b> as the permit issuer (conditions revalidated below). Untick to leave it as a request for another issuer.</span></label><div id="eptw-ext-checks">' . $revalidate . '</div>'
+                        : '<div class="eptw-hint">The permit issuer revalidates the conditions' . ($p->gas_test_required ? ' (including a repeated gas test)' : '') . ' before approving.</div>'),
+                    eptw_can('extend_approve') && !eptw_sod('own_extension') ? 'Extend' : 'Request');
+            }
+            ?>
+
+            <?php $modal('m-approve-ext', 'Revalidate and approve the extension', 'decide_extension',
+                '<input type="hidden" name="extension_id" value=""><input type="hidden" name="decision" value="approved">'
+                . '<p class="eptw-small eptw-muted">The new end time takes effect only after these checks. The original end time and this decision stay on record.</p>'
+                . $revalidate
+                . '<div class="eptw-field"><label class="eptw-label">Note' . (eptw_sod('own_extension') ? ' (required to override segregation of duties)' : '') . '</label><input name="note" class="eptw-input"></div>', 'Approve extension', 'eptw-btn-ok'); ?>
 
             <?php $modal('m-reject-ext', 'Reject the extension', 'decide_extension', '<input type="hidden" name="extension_id" value=""><input type="hidden" name="decision" value="rejected"><div class="eptw-field"><label class="eptw-label">Why?</label><textarea name="note" class="eptw-textarea"></textarea></div>', 'Reject', 'eptw-btn-danger'); ?>
 
-            <?php $modal('m-close', 'Close the permit', 'close',
-                '<p class="eptw-small eptw-muted">Confirm the site checks. Required closure documents: ' . html_escape(implode(', ', array_map(function ($k) { return eptw_document_types()[$k]; }, eptw_required_doc_types()))) . (count($missing_docs) ? ' — <b>still missing: ' . html_escape(implode(', ', $missing_docs)) . '</b> (the permit closes as "documents pending").' : ' — all present.') . '</p>'
-                . '<label class="eptw-check"><input type="checkbox" name="closure[work_completed]" value="1" checked> <span>Work completed</span></label>'
-                . '<label class="eptw-check"><input type="checkbox" name="closure[area_clean]" value="1" checked> <span>Area clean &amp; housekeeping done</span></label>'
-                . '<label class="eptw-check"><input type="checkbox" name="closure[no_residual_hazards]" value="1" checked> <span>No residual hazards</span></label>'
-                . '<label class="eptw-check"><input type="checkbox" name="closure[isolation_removed]" value="1" ' . ($p->isolation_required ? 'checked' : '') . '> <span>Isolation removed / de-isolated</span></label>'
-                . '<label class="eptw-check"><input type="checkbox" name="closure[area_restored]" value="1"> <span>Area restored / handed back</span></label>'
-                . '<label class="eptw-check"><input type="checkbox" name="closure[inspection_done]" value="1"> <span>Final inspection done</span></label>'
-                . '<div class="eptw-field" style="margin-top:10px"><label class="eptw-label">Final remarks</label><textarea name="closure[final_remarks]" class="eptw-textarea" style="min-height:60px"></textarea></div>', 'Close permit', 'eptw-btn-dark'); ?>
+            <?php
+            $iso_on    = $p->isolation_applicable === 'yes';
+            $close_rows = '';
+            foreach ($closing as $ck => $cl) {
+                $default = $ck === 'isolation_removed' ? ($iso_on ? '' : 'na') : '';
+                $mand    = $ck === 'work_completed' || ($ck === 'isolation_removed' && $iso_on);
+                $opts    = $ck === 'work_completed' ? ['yes' => 'Yes', 'no' => 'No'] : ['yes' => 'Yes', 'no' => 'No', 'na' => 'N/A'];
+                $close_rows .= '<div class="eptw-close-row"><span><b>' . $cl . '</b>' . ($mand ? ' <span class="req">*</span>' : '') . ($ck === 'isolation_removed' && $iso_on ? '<div class="eptw-small eptw-muted">Isolation applied on this permit — de-isolation must be confirmed by the isolation authority.</div>' : '') . '</span>'
+                    . $seg('closure[' . $ck . ']', $opts, $default)
+                    . '<div class="extra"><input name="closure[' . $ck . '_by]" class="eptw-input" list="eptw-people" placeholder="Confirmed by' . (in_array($ck, ['isolation_removed', 'area_restored'], true) ? ' (name)' : '') . '" value="' . ($ck === 'isolation_removed' ? html_escape($p->isolation_authority) : html_escape($me_name)) . '">'
+                    . '<input name="closure[' . $ck . '_remark]" class="eptw-input" placeholder="Remark (required when No)"></div></div>';
+            }
+            $modal('m-close', 'Close the permit', 'close',
+                '<p class="eptw-small eptw-muted">Answer each close-out check — Yes, No (with the reason) or N/A — and who confirmed it. Required closure documents: ' . html_escape(implode(', ', array_map(function ($k) { return eptw_document_types()[$k]; }, eptw_required_doc_types()))) . (count($missing_docs) ? ' — <b>still missing: ' . html_escape(implode(', ', $missing_docs)) . '</b> (the permit closes as "Closed – documents pending upload").' : ' — all present.') . '</p>'
+                . (count($dependents) ? '<div class="eptw-note bad">This isolation is still used by open work permits — they must be closed first.</div>' : '')
+                . $close_rows
+                . '<div class="eptw-field" style="margin-top:10px"><label class="eptw-label">Final remarks</label><textarea name="closure[final_remarks]" class="eptw-textarea" style="min-height:60px"></textarea></div>', 'Close permit', 'eptw-btn-dark', true);
+            ?>
 
             <?php $modal('m-cancel', 'Cancel the permit', 'cancel', '<div class="eptw-field"><label class="eptw-label">Reason <span class="req">*</span></label><textarea name="reason" class="eptw-textarea" required></textarea></div>', 'Cancel permit', 'eptw-btn-danger'); ?>
 
@@ -552,26 +668,56 @@ $steps = [
             <?php $modal('m-reval', 'Revalidate a shift', 'revalidate',
                 '<div class="eptw-grid-3"><div class="eptw-field"><label class="eptw-label">Shift</label><select name="shift" class="eptw-select">' . implode('', array_map(function ($k, $l) { return '<option value="' . $k . '">' . $l . '</option>'; }, array_keys(eptw_shifts()), eptw_shifts())) . '</select></div>'
                 . '<div class="eptw-field"><label class="eptw-label">From</label><input type="datetime-local" name="from_at" class="eptw-input" value="' . date('Y-m-d\TH:i') . '"></div>'
-                . '<div class="eptw-field"><label class="eptw-label">To</label><input type="datetime-local" name="to_at" class="eptw-input" value="' . date('Y-m-d\TH:i', time() + 12 * 3600) . '"></div></div>'
-                . '<div class="eptw-grid-3"><div class="eptw-field"><label class="eptw-label">Area Authority</label><input name="area_authority" class="eptw-input" value="' . html_escape($p->area_authority_name) . '"></div>'
-                . '<div class="eptw-field"><label class="eptw-label">Permit issuer</label><input name="issuer" class="eptw-input" value="' . html_escape($p->coordinator_name) . '"></div>'
-                . '<div class="eptw-field"><label class="eptw-label">HSE</label><input name="hse" class="eptw-input" value="' . html_escape($p->hse_officer_name) . '"></div></div>'
-                . '<label class="eptw-check"><input type="checkbox" name="gas_test_ok" value="1" checked> <span>Gas test repeated / conditions unchanged</span></label>'
+                . '<div class="eptw-field"><label class="eptw-label">To</label><input type="datetime-local" name="to_at" class="eptw-input" value="' . date('Y-m-d\TH:i', min(strtotime($p->end_at), time() + 12 * 3600)) . '"></div></div>'
+                . '<div class="eptw-grid-3"><div class="eptw-field"><label class="eptw-label">Area Authority</label><input name="area_authority" class="eptw-input" list="eptw-people" value="' . html_escape($p->area_authority_name) . '"></div>'
+                . '<div class="eptw-field"><label class="eptw-label">Permit issuer</label><input name="issuer" class="eptw-input" list="eptw-people" value="' . html_escape($p->coordinator_name) . '"></div>'
+                . '<div class="eptw-field"><label class="eptw-label">HSE</label><input name="hse" class="eptw-input" list="eptw-people" value="' . html_escape($p->hse_officer_name) . '"></div></div>'
+                . (eptw_sod('reval_distinct') ? '<div class="eptw-hint" style="margin-top:-6px">This site requires three different people for these roles.</div>' : '')
+                . '<div class="eptw-field"><label class="eptw-label">Site conditions unchanged since the last shift? <span class="req">*</span></label>' . $seg('conditions_ok', ['yes' => 'Yes — unchanged', 'no' => 'No — changed']) . '</div>'
+                . '<div class="eptw-field"><label class="eptw-label">Gas test for this shift' . ($p->gas_test_required ? ' <span class="req">*</span>' : '') . '</label>'
+                . $seg('gas_test', $p->gas_test_required ? ['done' => 'Repeated', 'paper' => 'On paper sheet'] : ['done' => 'Repeated', 'paper' => 'On paper sheet', 'not_required' => 'Not required'], $p->gas_test_required ? '' : 'not_required') . '</div>'
+                . '<div class="eptw-field"><label class="eptw-label">Gas test sheet (optional upload)</label><input type="file" name="gas_sheet" class="eptw-input" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp"></div>'
                 . '<div class="eptw-field"><label class="eptw-label">Notes</label><input name="notes" class="eptw-input"></div>', 'Revalidate'); ?>
 
             <?php
             $rows = '';
-            foreach (($p->toolbox['attendees'] ?? []) as $w) { $rows .= '<tr><td><input class="eptw-input" name="worker_name[]" value="' . html_escape($w['name']) . '"></td><td><input class="eptw-input" name="worker_id[]" value="' . html_escape($w['id']) . '"></td></tr>'; }
-            for ($i = count($p->toolbox['attendees'] ?? []); $i < 3; $i++) { $rows .= '<tr><td><input class="eptw-input" name="worker_name[]" placeholder="Worker name"></td><td><input class="eptw-input" name="worker_id[]" placeholder="ID / badge no."></td></tr>'; }
+            $wi = 0;
+            $worker_row = function ($i, $w) {
+                return '<tr><td><input class="eptw-input" name="worker_name[' . $i . ']" list="eptw-people" data-eptw-person value="' . html_escape($w['name'] ?? '') . '" placeholder="Worker name"></td>'
+                    . '<td><input class="eptw-input" name="worker_id[' . $i . ']" value="' . html_escape($w['id'] ?? '') . '" placeholder="ID / badge no."></td>'
+                    . '<td style="text-align:center"><input type="checkbox" name="worker_ack[' . $i . ']" value="1"' . (!empty($w['ack']) ? ' checked' : '') . ' title="Briefed and acknowledged"></td></tr>';
+            };
+            foreach (($p->toolbox['attendees'] ?? []) as $w) { $rows .= $worker_row($wi++, $w); }
+            for ($i = $wi; $i < 3; $i++) { $rows .= $worker_row($wi++, []); }
             $topics = $p->toolbox['topics'] ?? ['hazards', 'controls', 'ppe', 'emergency'];
             $modal('m-toolbox', 'Toolbox talk', 'toolbox',
                 '<div class="eptw-grid-2"><div class="eptw-field"><label class="eptw-label">Held at</label><input type="datetime-local" name="held_at" class="eptw-input" value="' . $dtl($p->toolbox['held_at'] ?? date('Y-m-d H:i')) . '"></div>'
                 . '<div class="eptw-field"><label class="eptw-label">Delivered by</label><input name="held_by" class="eptw-input" value="' . html_escape($p->toolbox['by'] ?? eptw_staff_name(eptw_me()['staff_id'])) . '"></div></div>'
                 . '<div class="eptw-field"><label class="eptw-label">Explained</label>'
                 . implode('', array_map(function ($k, $l) use ($topics) { return '<label class="eptw-check" style="display:inline-flex;margin-right:14px"><input type="checkbox" name="topics[]" value="' . $k . '" ' . (in_array($k, $topics, true) ? 'checked' : '') . '> <span>' . $l . '</span></label>'; }, ['hazards', 'controls', 'ppe', 'emergency'], ['Hazards', 'Controls', 'PPE', 'Emergency plan'])) . '</div>'
-                . '<div class="eptw-table-scroll"><table class="eptw-table"><thead><tr><th>Worker</th><th>ID</th></tr></thead><tbody id="eptw-workers">' . $rows . '</tbody></table></div>'
+                . '<div class="eptw-table-scroll"><table class="eptw-table"><thead><tr><th>Worker</th><th>Badge / ID</th><th>Ack.</th></tr></thead><tbody id="eptw-workers" data-next="' . $wi . '">' . $rows . '</tbody></table></div>'
                 . '<button type="button" class="eptw-btn eptw-btn-sm" style="margin-top:8px" data-eptw-add-worker><i class="fa fa-plus"></i> Add attendee</button>', 'Save', 'eptw-btn-primary', true);
             ?>
+
+            <?php if ($can['activate']) {
+                $body = '<p>Confirming the start of work turns this permit into <b>authorization to work</b> until ' . eptw_dt($p->end_at) . '. Do it at site, once the crew is briefed and the controls are in place.</p>';
+                if ($p->isolation_applicable === 'yes') {
+                    $body .= '<div class="eptw-sec">Isolation / LOTO</div>'
+                        . '<label class="eptw-check"><input type="checkbox" name="loto_applied" value="1"' . ($p->loto_applied ? ' checked' : '') . '> <span>LOTO applied' . ($p->isolation_cert_no ? ' (certificate ' . html_escape($p->isolation_cert_no) . ')' : '') . ($p->isolation_permit_no ? ' under ' . html_escape($p->isolation_permit_no) : '') . ' <span class="req">*</span></span></label>'
+                        . '<label class="eptw-check"><input type="checkbox" name="zero_energy_verified" value="1"' . ($p->zero_energy_verified ? ' checked' : '') . '> <span>Zero energy verified (try-out / test before touch) <span class="req">*</span></span></label>'
+                        . '<div class="eptw-field"><label class="eptw-label">Lock / tag numbers</label><input name="lock_tag_numbers" class="eptw-input" value="' . html_escape($p->lock_tag_numbers) . '"></div>';
+                }
+                if ($p->gas_test_required) {
+                    $body .= '<div class="eptw-sec">Pre-work gas test</div><div class="eptw-field"><select name="gas_check" class="eptw-select"><option value="">— confirm the gas test —</option><option value="recorded">Recorded under Gas tests — latest result safe</option><option value="paper">Done on the paper gas-test sheet — acceptable</option></select></div>';
+                }
+                $modal('m-activate', 'Confirm start of work', 'activate', $body . '<div class="eptw-field"><label class="eptw-label">Note</label><input name="note" class="eptw-input" placeholder="e.g. TBT done, fire watch in position"></div>', 'Confirm — work authorized', 'eptw-btn-ok');
+            } ?>
+
+            <?php if ($can['simops_ack']) { $modal('m-simops-ack', 'Acknowledge the SIMOPS conflict', 'simops_ack',
+                '<div class="eptw-note warn" style="white-space:pre-line">' . html_escape((string) $p->simops_notes) . '</div>'
+                . '<div class="eptw-field"><label class="eptw-label">How is the simultaneous work controlled? <span class="req">*</span></label><textarea name="note" class="eptw-textarea" required placeholder="e.g. Exclusion zone agreed, work sequenced, joint toolbox talk held"></textarea></div>', 'Acknowledge', 'eptw-btn-warn'); } ?>
+
+            <?php if ($can['doc_review']) { $modal('m-doc-reject', 'Reject the document', 'doc_review', '<input type="hidden" name="document_id" value=""><input type="hidden" name="decision" value="rejected"><div class="eptw-field"><label class="eptw-label">Why? <span class="req">*</span></label><textarea name="note" class="eptw-textarea" required placeholder="e.g. Unsigned, wrong permit, illegible"></textarea></div>', 'Reject', 'eptw-btn-danger'); } ?>
 
         </div>
     </div>

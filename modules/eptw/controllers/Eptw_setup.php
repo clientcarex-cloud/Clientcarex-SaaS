@@ -77,7 +77,16 @@ class Eptw_setup extends AdminController
             case 'import':
                 return ['eptw_setup_import', empty($_FILES['register']['name']) ? 'view' : 'create'];
             case 'import_commit':
+            case 'import_rollback':
                 return ['eptw_setup_import', 'create'];
+            case 'people':
+                return ['eptw_setup_people', 'view'];
+            case 'person_save':
+                return ['eptw_setup_people', $save];
+            case 'person_delete':
+                return ['eptw_setup_people', 'delete'];
+            case 'matrix':
+                return ['eptw_setup_types', $post ? 'edit' : 'view'];
         }
 
         return ['eptw_setup_settings', 'edit'];
@@ -211,7 +220,50 @@ class Eptw_setup extends AdminController
 
     public function type_reset($id)
     {
-        return $this->back('types', $this->setup->reset_type_from_seed((int) $id) ? true : 'This type is not one of the shipped V3 templates.', 'Template restored from the V3 form.');
+        return $this->back('types', $this->setup->reset_type_from_seed((int) $id) ? true : 'This type is not one of the shipped standard templates.', 'Hazards and controls restored from the standard template.');
+    }
+
+    /* ═══════════════════════════ Approval matrix ═══════════════════ */
+
+    /** Review steps per project × permit type (overrides the permit type default). */
+    public function matrix()
+    {
+        $projects   = eptw_projects(false);
+        $project_id = (int) ($this->input->post('project_id') ?: $this->input->get('project') ?: (count($projects) ? $projects[0]->id : 0));
+        if ($this->input->post()) {
+            $result = $this->setup->save_matrix($project_id, $this->input->post(null, false));
+            set_alert(is_string($result) ? 'warning' : 'success', is_string($result) ? $result : 'Approval matrix saved.');
+
+            return redirect(admin_url('eptw/eptw_setup/matrix?project=' . $project_id));
+        }
+        $data['projects']   = $projects;
+        $data['project_id'] = $project_id;
+        $data['matrix']     = $this->setup->matrix($project_id);
+        $data['types']      = eptw_permit_types(false);
+        $data['title']      = 'Approval matrix';
+        $this->load->view('setup/matrix', $data);
+    }
+
+    /* ═══════════════════════════ People ═════════════════════════════ */
+
+    public function people()
+    {
+        $data['people']      = $this->setup->people();
+        $data['contractors'] = eptw_contractors(false);
+        $data['projects']    = eptw_projects(false);
+        $data['staff']       = eptw_staff();
+        $data['title']       = 'People';
+        $this->load->view('setup/people', $data);
+    }
+
+    public function person_save($id = 0)
+    {
+        return $this->back('people', $this->setup->save_person($this->input->post(null, false) ?: [], (int) $id), 'Person saved.');
+    }
+
+    public function person_delete($id)
+    {
+        return $this->back('people', $this->setup->delete_person((int) $id), 'Person removed.');
     }
 
     /* ═══════════════════════════ Team ═══════════════════════════════ */
@@ -262,8 +314,10 @@ class Eptw_setup extends AdminController
     /* ═══════════════════════════ Register import ════════════════════ */
 
     /**
-     * Step 1: upload the Excel/CSV register → show what was recognised.
-     * Step 2 (import_commit): create the permits.
+     * Step 1: upload the Excel/CSV register → dry run: every row validated,
+     * duplicates and errors listed, nothing written.
+     * Step 2 (import_commit): import the valid rows as one batch.
+     * Each batch is logged and can be reversed (import_rollback).
      */
     public function import()
     {
@@ -271,6 +325,7 @@ class Eptw_setup extends AdminController
 
         $data['title']   = 'Import the Excel register';
         $data['preview'] = null;
+        $data['imports'] = $this->setup->imports();
 
         if (!empty($_FILES['register']['name'])) {
             if (($_FILES['register']['error'] ?? 1) !== UPLOAD_ERR_OK) {
@@ -284,19 +339,24 @@ class Eptw_setup extends AdminController
 
                 return redirect(admin_url('eptw/eptw_setup/import'));
             }
+            $table['file_name'] = substr((string) $_FILES['register']['name'], 0, 191);
             $token = bin2hex(random_bytes(8));
             $dir   = FCPATH . 'uploads/eptw/import/';
             _maybe_create_upload_path($dir);
             file_put_contents($dir . $token . '.json', json_encode($table));
 
-            $map      = Eptw_import::map_headers($table['headers']);
+            $map             = Eptw_import::map_headers($table['headers']);
+            $default_project = (int) ($this->input->post('default_project') ?: (count(eptw_projects()) ? eptw_projects()[0]->id : 0));
             $data['preview'] = [
-                'token'    => $token,
-                'headers'  => $table['headers'],
-                'map'      => $map,
-                'rows'     => array_slice($table['rows'], 0, 8),
-                'count'    => count($table['rows']),
-                'unmapped' => array_values(array_diff_key($table['headers'], $map)),
+                'token'           => $token,
+                'file_name'       => $table['file_name'],
+                'headers'         => $table['headers'],
+                'map'             => $map,
+                'rows'            => array_slice($table['rows'], 0, 8),
+                'count'           => count($table['rows']),
+                'unmapped'        => array_values(array_diff_key($table['headers'], $map)),
+                'default_project' => $default_project,
+                'dry'             => isset(array_flip($map)['type']) ? $this->setup->import_rows($table, $map, $default_project, true) : null,
             ];
         }
 
@@ -322,129 +382,40 @@ class Eptw_setup extends AdminController
             return redirect(admin_url('eptw/eptw_setup/import'));
         }
 
-        $map      = Eptw_import::map_headers($table['headers']);
-        $default_project = (int) $this->input->post('default_project');
-        $me       = (int) eptw_me()['staff_id'];
-        $created  = 0;
-        $skipped  = 0;
-        $errors   = [];
-        $p        = db_prefix();
+        $map = Eptw_import::map_headers($table['headers']);
+        $p   = db_prefix();
+        $this->db->insert($p . 'eptw_imports', [
+            'file_name' => (string) ($table['file_name'] ?? ''), 'total_rows' => count($table['rows']),
+            'created_by' => (int) eptw_me()['staff_id'], 'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        $batch  = (int) $this->db->insert_id();
+        $result = $this->setup->import_rows($table, $map, (int) $this->input->post('default_project'), false, $batch);
+        $this->db->where('id', $batch)->update($p . 'eptw_imports', [
+            'created' => $result['created'], 'skipped' => $result['skipped'], 'failed' => $result['failed'],
+            'report'  => json_encode(array_values(array_filter($result['rows'], function ($r) { return $r['result'] !== 'ok'; }))),
+        ]);
+        log_activity('ePTW register import #' . $batch . ': ' . $result['created'] . ' created, ' . $result['skipped'] . ' skipped, ' . $result['failed'] . ' failed');
 
-        foreach ($table['rows'] as $n => $row) {
-            $r = [];
-            foreach ($map as $i => $field) {
-                $r[$field] = trim((string) ($row[$i] ?? ''));
-            }
-            $permit_no = (string) ($r['permit_no'] ?? '');
-            if ($permit_no !== '' && $this->db->where('permit_no', $permit_no)->count_all_results($p . 'eptw_permits')) {
-                $skipped++;
-                continue;
-            }
-            $type_id = $this->setup->type_id_by_name($r['type'] ?? '');
-            if (!$type_id) {
-                $errors[] = 'Row ' . ($n + 1) . ': unknown permit type "' . ($r['type'] ?? '') . '"';
-                continue;
-            }
-            $project_id = ($r['project'] ?? '') !== '' ? $this->setup->project_id_by_name($r['project']) : $default_project;
-            if (!$project_id) {
-                $errors[] = 'Row ' . ($n + 1) . ': no project';
-                continue;
-            }
-            $area_id       = $this->setup->area_id_by_name($r['location'] ?? '', $project_id);
-            $contractor_id = $this->setup->contractor_id_by_name($r['company'] ?? '');
-            $type          = eptw_permit_type($type_id);
-            $start         = Eptw_import::to_datetime($r['start_at'] ?? '') ?: date('Y-m-d H:i:00');
-            $end           = Eptw_import::to_datetime($r['end_at'] ?? '') ?: date('Y-m-d H:i:00', strtotime($start) + (int) $type->default_validity_hours * 3600);
-            $status        = Eptw_import::to_status($r['status'] ?? '') ?: ($permit_no !== '' ? 'closed' : 'draft');
-            $closed_at     = Eptw_import::to_datetime($r['closed_at'] ?? '');
-            if (in_array($status, eptw_working_statuses(), true) && strtotime($end) < time() && $closed_at) {
-                $status = 'closed';
-            }
+        $msg = 'Import #' . $batch . ': ' . $result['created'] . ' permit(s) imported'
+            . ($result['skipped'] ? ', ' . $result['skipped'] . ' duplicate(s) skipped' : '')
+            . ($result['failed'] ? ', ' . $result['failed'] . ' row(s) rejected — see the import log' : '') . '.';
+        set_alert($result['created'] ? 'success' : 'warning', $msg);
 
-            $hazards = array_values(array_filter(array_map('trim', preg_split('/[;,\n]+/', (string) ($r['hazards'] ?? '')))));
-            $extra_notes = [];
-            foreach (['gas_tester', 'o2', 'lel', 'h2s', 'approver', 'delay_reason', 'risk_level'] as $k) {
-                if (($r[$k] ?? '') !== '') {
-                    $extra_notes[] = ucfirst(str_replace('_', ' ', $k)) . ': ' . $r[$k];
-                }
-            }
-            $remarks = trim((string) ($r['remarks'] ?? '') . (count($extra_notes) ? "\n" . implode("\n", $extra_notes) : ''));
-            $risk    = mb_strtolower((string) ($r['risk_level'] ?? ''));
-            if (!isset(eptw_risk_levels()[$risk])) {
-                $risk = eptw_risk_level($type, $hazards, 'day', 0);
-            }
+        return redirect(admin_url('eptw/eptw_setup/import?batch=' . $batch));
+    }
 
-            $data = [
-                'permit_no'          => $permit_no !== '' ? substr($permit_no, 0, 60) : null,
-                'serial_key'         => 'import',
-                'source'             => 'import',
-                'project_id'         => $project_id,
-                'area_id'            => $area_id,
-                'permit_type_id'     => $type_id,
-                'contractor_id'      => $contractor_id,
-                'subcontractor'      => substr(strtoupper((string) ($r['subcontractor'] ?? '')) === 'N/A' ? '' : (string) ($r['subcontractor'] ?? ''), 0, 150),
-                'work_order'         => substr(strtoupper((string) ($r['work_order'] ?? '')) === 'N/A' ? '' : (string) ($r['work_order'] ?? ''), 0, 60),
-                'work_title'         => substr((string) ($r['work_description'] ?? ($type->name . ' — imported')), 0, 191),
-                'work_description'   => (string) ($r['work_description'] ?? ''),
-                'location'           => substr((string) ($r['location'] ?? ''), 0, 191),
-                'equipment_tag'      => substr((string) ($r['equipment_tag'] ?? ''), 0, 120),
-                'shift'              => stripos((string) ($r['shift'] ?? ''), 'night') !== false ? 'night' : 'day',
-                'start_at'           => $start,
-                'end_at'             => $end,
-                'original_end_at'    => $end,
-                'engineer_id'        => $me,
-                'permit_holder'      => substr((string) ($r['permit_holder'] ?? ''), 0, 150),
-                'supervisor'         => substr((string) ($r['initiator'] ?? ''), 0, 150),
-                'status'             => $status,
-                'risk_level'         => $risk,
-                'high_risk'          => ($risk === 'high' || $type->high_risk) ? 1 : 0,
-                'simops_flag'        => in_array(mb_strtolower((string) ($r['simops'] ?? '')), ['yes', 'y', 'true', '1'], true) ? 1 : 0,
-                'extension_count'    => (int) ($r['extension_count'] ?? 0),
-                'hazards'            => json_encode([]),
-                'extra_hazards'      => json_encode($hazards),
-                'controls'           => json_encode([]),
-                'extra'              => json_encode(array_filter([
-                    'imported_initiator' => $r['initiator'] ?? '', 'imported_area_authority' => $r['area_authority'] ?? '', 'imported_issuer' => $r['issuer'] ?? '',
-                    'imported_hse' => $r['hse'] ?? '', 'imported_controls' => $r['controls'] ?? '',
-                ])),
-                'ppe'                => json_encode(array_values(array_filter(array_map('trim', preg_split('/[;,\n]+/', (string) ($r['ppe'] ?? '')))))),
-                'ra_ref'             => substr((string) ($r['ra_ref'] ?? ''), 0, 80),
-                'isolation_required' => in_array(mb_strtolower((string) ($r['isolation_required'] ?? '')), ['yes', 'y', 'true', '1'], true) ? 1 : 0,
-                'isolation_type'     => substr((string) ($r['isolation_type'] ?? ''), 0, 80),
-                'isolation_cert_no'  => substr((string) ($r['isolation_cert_no'] ?? ''), 0, 80),
-                'loto_applied'       => in_array(mb_strtolower((string) ($r['loto'] ?? '')), ['yes', 'y', 'true', '1'], true) ? 1 : 0,
-                'gas_test_required'  => in_array(mb_strtolower((string) ($r['gas_test'] ?? '')), ['yes', 'y', 'true', '1'], true) ? 1 : (int) $type->gas_test_required,
-                'weather'            => substr((string) ($r['weather'] ?? ''), 0, 80),
-                'remarks'            => $remarks,
-                'issued_at'          => $permit_no !== '' ? $start : null,
-                'issued_by'          => $permit_no !== '' ? $me : 0,
-                'activated_at'       => in_array($status, array_merge(eptw_working_statuses(), eptw_closed_statuses()), true) ? $start : null,
-                'closed_at'          => in_array($status, ['closed', 'closed_docs_pending', 'archived'], true) ? ($closed_at ?: $end) : null,
-                'closure'            => json_encode([
-                    'work_completed' => in_array(mb_strtolower((string) ($r['work_completed'] ?? '')), ['yes', 'y', 'true', '1'], true) ? 1 : 0,
-                    'area_restored' => in_array(mb_strtolower((string) ($r['area_restored'] ?? '')), ['yes', 'y', 'true', '1'], true) ? 1 : 0,
-                    'isolation_removed' => in_array(mb_strtolower((string) ($r['isolation_removed'] ?? '')), ['yes', 'y', 'true', '1'], true) ? 1 : 0,
-                    'closed_by_name' => (string) ($r['closed_by'] ?? ''),
-                ]),
-                'docs_complete'      => 1,
-                'expiry_notified'    => 1,
-                'created_by'         => $me,
-                'created_at'         => $start,
-                'updated_at'         => date('Y-m-d H:i:s'),
-            ];
-            $this->db->insert($p . 'eptw_permits', $data);
-            $id = (int) $this->db->insert_id();
-            $this->permits->event($id, 'imported', '', $status, 'Imported from the Excel register' . ($permit_no !== '' ? ' as ' . $permit_no : ''));
-            $created++;
+    public function import_rollback($id)
+    {
+        if ($this->input->method() !== 'post') {
+            show_404();
+        }
+        $result = $this->setup->rollback_import((int) $id);
+        if (is_string($result)) {
+            return $this->back('import', $result, '');
         }
 
-        $msg = $created . ' permit(s) imported' . ($skipped ? ', ' . $skipped . ' skipped (permit number already exists)' : '') . '.';
-        if (count($errors)) {
-            $msg .= ' ' . count($errors) . ' row(s) could not be read: ' . implode('; ', array_slice($errors, 0, 5)) . (count($errors) > 5 ? '…' : '');
-        }
-        set_alert($created ? 'success' : 'warning', $msg);
-
-        return redirect(admin_url('eptw/register?view=&q='));
+        return $this->back('import', true, 'Import #' . (int) $id . ' reversed: ' . $result['removed'] . ' permit(s) removed'
+            . ($result['kept'] ? ', ' . $result['kept'] . ' kept because they were changed after the import' : '') . '.');
     }
 
     /* ═══════════════════════════ Utilities ══════════════════════════ */

@@ -27,16 +27,23 @@ foreach (($t ? $t->extra_fields : []) as $f) {
                                 <div class="eptw-field" style="grid-column:span 2"><label class="eptw-label">Name <span class="req">*</span></label><input name="name" class="eptw-input" value="<?= $v('name'); ?>" required></div>
                                 <div class="eptw-field"><label class="eptw-label">Code <span class="req">*</span></label><input name="code" class="eptw-input eptw-mono" value="<?= $v('code'); ?>" maxlength="10" required><div class="eptw-hint">Used in the permit number.</div></div>
                             </div>
-                            <div class="eptw-field"><label class="eptw-label">Description</label><input name="description" class="eptw-input" value="<?= $v('description'); ?>"></div>
+                            <div class="eptw-field"><label class="eptw-label">Description</label><input name="description" class="eptw-input" value="<?= $v('description'); ?>"><div class="eptw-hint">Shown on the permit-type card. <code>{HEIGHT}</code> is replaced by the work-at-height threshold from Setup → General (now <?= html_escape(eptw_type_text('{HEIGHT}')); ?> m).</div></div>
                             <div class="eptw-grid-4">
                                 <div class="eptw-field"><label class="eptw-label">Icon (Font Awesome)</label><input name="icon" class="eptw-input" value="<?= $v('icon', 'fa-solid fa-file-shield'); ?>"></div>
                                 <div class="eptw-field"><label class="eptw-label">Colour</label><input type="color" name="color" class="eptw-input" value="<?= $v('color', '#2563eb'); ?>" style="height:38px;padding:3px"></div>
-                                <div class="eptw-field"><label class="eptw-label">Default validity (hours)</label><input type="number" min="1" name="default_validity_hours" class="eptw-input" value="<?= $v('default_validity_hours', '12'); ?>"></div>
                                 <div class="eptw-field"><label class="eptw-label">Sort order</label><input type="number" name="sort_order" class="eptw-input" value="<?= $v('sort_order', '999'); ?>"></div>
+                                <div class="eptw-field"></div>
+                            </div>
+                            <div class="eptw-grid-3">
+                                <div class="eptw-field"><label class="eptw-label">Default validity (hours)</label><input type="number" min="1" name="default_validity_hours" class="eptw-input" value="<?= $v('default_validity_hours', '12'); ?>"><div class="eptw-hint">Pre-filled end time on a new permit.</div></div>
+                                <div class="eptw-field"><label class="eptw-label">Maximum validity (hours, 0 = no limit)</label><input type="number" min="0" max="720" name="max_validity_hours" class="eptw-input" value="<?= $v('max_validity_hours', '0'); ?>"><div class="eptw-hint">Longest window a permit — or one extension — may cover. A project can set a lower cap.</div></div>
+                                <div class="eptw-field"><label class="eptw-label">Expiry warning (hours, 0 = general setting)</label><input type="number" min="0" max="72" name="expiry_warning_hours" class="eptw-input" value="<?= $v('expiry_warning_hours', '0'); ?>"><div class="eptw-hint">General setting: <?= (int) eptw_opt('eptw_expiring_hours'); ?> h.</div></div>
                             </div>
                             <label class="eptw-check"><input type="checkbox" name="high_risk" value="1" <?= $t && $t->high_risk ? 'checked' : ''; ?>> <span><b>High-risk permit type</b> — shows on the dashboard high-risk panel and raises the risk score.</span></label>
                             <label class="eptw-check"><input type="checkbox" name="gas_test_required" value="1" <?= $t && $t->gas_test_required ? 'checked' : ''; ?>> <span>Gas testing required by default</span></label>
-                            <label class="eptw-check"><input type="checkbox" name="isolation_required" value="1" <?= $t && $t->isolation_required ? 'checked' : ''; ?>> <span>Isolation / LOTO required by default</span></label>
+                            <div class="eptw-field" style="margin-top:8px"><label class="eptw-label">Isolation / LOTO</label>
+                                <select name="isolation_rule" class="eptw-select" style="max-width:420px"><?php foreach (eptw_isolation_rules() as $k => $l) { ?><option value="<?= $k; ?>" <?= ($t ? ($t->isolation_rule ?? 'conditional') : 'conditional') === $k ? 'selected' : ''; ?>><?= html_escape($l); ?></option><?php } ?></select>
+                                <div class="eptw-hint">"Ask on each permit" shows Yes / No / N/A; when Yes, an isolation reference is required and LOTO / zero energy are confirmed at the start of work.</div></div>
                             <label class="eptw-check"><input type="checkbox" name="active" value="1" <?= !$t || $t->active ? 'checked' : ''; ?>> <span>Active (available for new permits)</span></label>
 
                             <div class="eptw-sec">Approval steps (before the coordinator issues the number)</div>

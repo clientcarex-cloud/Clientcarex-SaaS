@@ -22,6 +22,9 @@ class Eptw extends AdminController
         if (!eptw_can_access()) {
             access_denied('ePTW');
         }
+
+        // A permit past its end time is EXPIRED on every screen, not only after the next cron pass.
+        $this->permits->expire_due();
     }
 
     /* ═══════════════════════════ Dashboard ══════════════════════════ */
@@ -38,18 +41,79 @@ class Eptw extends AdminController
 
             return redirect($home);
         }
-        $data['cards']     = $this->reports->cards();
-        $data['high_risk'] = $this->reports->high_risk_panel();
-        $data['simops']    = $this->reports->simops_panel();
-        $data['charts']    = $this->reports->charts(30);
-        $data['queue']     = $this->permits->my_queue();
-        $data['expiring']  = $this->permits->register(['view' => 'expiring'], 8);
-        $data['expired']   = $this->permits->register(['view' => 'expired'], 8);
-        $data['recent']    = $this->permits->register([], 8);
-        $data['mine']      = $this->permits->register(['view' => 'mine'], 6);
-        $data['title']     = 'ePTW Dashboard';
+
+        $filters = $this->dashboard_filters();
+        $scope   = array_intersect_key($filters, array_flip(['project', 'area', 'contractor', 'type', 'shift']));
+        $listing = array_merge($scope, ['status' => $filters['status']]);
+
+        $this->reports->set_filters($filters);
+        $data['filters']     = $filters;
+        $data['scope']       = $scope;
+        $data['cards']       = $this->reports->cards();
+        $data['definitions'] = $this->reports->kpi_definitions();
+        $data['high_risk']   = $this->reports->high_risk_panel();
+        $data['simops']      = $this->reports->simops_panel();
+        $data['charts']      = $this->reports->charts($filters['from'], $filters['to']);
+        $data['queue']       = $this->permits->action_queue($scope);
+        $data['expiring']    = $this->permits->register(array_merge($scope, ['view' => 'expiring']), 8);
+        $data['expired']     = $this->permits->register(array_merge($scope, ['view' => 'expired']), 10);
+        $data['latest']      = $this->permits->register(array_merge($listing, ['view' => 'latest']), 8);
+        $data['mine']        = $this->permits->register(['view' => 'mine'], 6);
+        $data['refreshed']   = date('Y-m-d H:i:s');
+        $data['title']       = 'ePTW Dashboard';
 
         $this->load->view('dashboard', $data);
+    }
+
+    /**
+     * Dashboard scope, kept for the session so it survives drilling into the
+     * register and coming back. ?reset=1 clears it.
+     */
+    private function dashboard_filters()
+    {
+        $keys = ['project', 'area', 'contractor', 'type', 'status', 'shift', 'from', 'to'];
+        if ($this->input->get('reset')) {
+            $this->session->unset_userdata('eptw_dash_filters');
+        }
+        $saved = (array) $this->session->userdata('eptw_dash_filters');
+        $out   = [];
+        $given = false;
+        foreach ($keys as $key) {
+            if ($this->input->get($key) !== null) {
+                $given = true;
+            }
+        }
+        foreach ($keys as $key) {
+            $value     = $given ? $this->input->get($key) : ($saved[$key] ?? '');
+            $out[$key] = trim((string) $value);
+        }
+        foreach (['project', 'area', 'contractor', 'type'] as $key) {
+            $out[$key] = (int) $out[$key] ? (string) (int) $out[$key] : '';
+        }
+        if ($out['project'] !== '' && !eptw_in_scope((int) $out['project'])) {
+            $out['project'] = '';
+        }
+        foreach (['from', 'to'] as $key) {
+            $out[$key] = $out[$key] !== '' && strtotime($out[$key]) ? date('Y-m-d', strtotime($out[$key])) : '';
+        }
+        if ($given) {
+            $this->session->set_userdata('eptw_dash_filters', $out);
+        }
+
+        return $out;
+    }
+
+    /** Corporate roll-up across every project in the viewer's scope. */
+    public function corporate()
+    {
+        if (!eptw_perm('eptw_corporate')) {
+            access_denied('ePTW corporate dashboard');
+        }
+        $data['rows']      = $this->reports->corporate();
+        $data['refreshed'] = date('Y-m-d H:i:s');
+        $data['title']     = 'Corporate dashboard';
+
+        $this->load->view('corporate', $data);
     }
 
     /* ═══════════════════════════ Register ═══════════════════════════ */
@@ -57,7 +121,7 @@ class Eptw extends AdminController
     public function register()
     {
         $filters = [];
-        foreach (['q', 'view', 'status', 'project', 'area', 'type', 'contractor', 'engineer', 'from', 'to', 'risk'] as $key) {
+        foreach (Eptw_permits_model::filter_keys() as $key) {
             $filters[$key] = (string) $this->input->get($key);
         }
         // "Pending approvals" is the register pinned to its pending view, so
@@ -89,7 +153,7 @@ class Eptw extends AdminController
             access_denied('ePTW');
         }
         $filters = [];
-        foreach (['q', 'view', 'status', 'project', 'area', 'type', 'contractor', 'engineer', 'from', 'to', 'risk'] as $key) {
+        foreach (Eptw_permits_model::filter_keys() as $key) {
             $filters[$key] = (string) $this->input->get($key);
         }
         $rows = $this->permits->register($filters, 5000, 0);
@@ -157,6 +221,9 @@ class Eptw extends AdminController
         $data['staff_aa']    = eptw_team_by_role('area_authority');
         $data['staff_hse']   = eptw_team_by_role('hse');
         $data['engineers']   = eptw_team_by_role('engineer');
+        $form_project        = $permit ? (int) $permit->project_id : (int) ($this->input->get('project') ?: (count(eptw_projects()) ? eptw_projects()[0]->id : 0));
+        $data['iso_permits'] = $this->permits->isolation_permits($form_project, $permit ? (int) $permit->id : 0);
+        $data['people']      = $this->setup->people_for($form_project);
         $data['title']       = $permit ? 'Edit ' . ($permit->permit_no ?: 'draft') : ($type ? 'New ' . $type->name : 'New permit');
 
         $this->load->view('permit_form', $data);
@@ -169,8 +236,12 @@ class Eptw extends AdminController
         foreach (eptw_areas((int) $project_id) as $area) {
             $out[] = ['id' => (int) $area->id, 'name' => $area->name, 'code' => $area->code, 'shared' => (int) $area->project_id === 0];
         }
+        $iso = [];
+        foreach ($this->permits->isolation_permits((int) $project_id, (int) $this->input->get('permit')) as $row) {
+            $iso[] = ['id' => (int) $row->id, 'label' => ($row->permit_no ?: 'draft #' . $row->id) . ' — ' . $row->work_title . ' (' . eptw_status_label($row->status) . ')'];
+        }
 
-        return $this->json(['ok' => true, 'areas' => $out]);
+        return $this->json(['ok' => true, 'areas' => $out, 'isolation_permits' => $iso]);
     }
 
     /** JSON: hazard / control / PPE suggestions for the description typed so far. */
@@ -237,26 +308,30 @@ class Eptw extends AdminController
         $data['missing_docs']  = $this->permits->missing_docs($permit->id);
         $data['conflicts']     = in_array($permit->status, array_merge(['draft', 'returned'], eptw_pending_statuses(), eptw_live_statuses()), true) ? $this->permits->simops_check($permit) : [];
         $data['project']       = $this->setup->project($permit->project_id);
+        $data['dependents']    = $this->permits->dependent_permits($permit->id);
+        $data['people']        = $this->setup->people_for($permit->project_id);
         $data['can']           = [
             'edit'           => $this->permits->can_edit($permit),
             'submit'         => $this->permits->can_edit($permit) && in_array($permit->status, ['draft', 'returned'], true),
             'issue'          => eptw_can('issue') && in_array($permit->status, ['draft', 'returned', 'number_requested', 'under_review'], true),
             'return'         => (eptw_can('review') || eptw_can('issue')) && in_array($permit->status, eptw_pending_statuses(), true),
-            'activate'       => (eptw_can('status') || eptw_role() === 'area_authority') && $permit->status === 'issued',
+            'activate'       => (eptw_can('status') || eptw_role() === 'area_authority') && $permit->status === 'issued' && strtotime($permit->end_at) > time(),
             'suspend'        => (eptw_can('status') || in_array(eptw_role(), ['hse', 'area_authority'], true)) && in_array($permit->status, ['issued', 'active', 'active_extended', 'on_hold'], true),
             'hold'           => eptw_can('status') && in_array($permit->status, ['issued', 'active', 'active_extended'], true),
-            'resume'         => eptw_can('status') && in_array($permit->status, ['suspended', 'on_hold', 'on_hold_simops'], true),
-            'extend'         => eptw_can('extend_request') && in_array($permit->status, ['issued', 'active', 'active_extended'], true) && (int) $permit->pending_extensions === 0,
+            'resume'         => eptw_can('status') && in_array($permit->status, ['suspended', 'on_hold', 'on_hold_simops'], true) && strtotime($permit->end_at) > time(),
+            'extend'         => eptw_can('extend_request') && in_array($permit->status, ['issued', 'active', 'active_extended', 'expired'], true) && (int) $permit->pending_extensions === 0,
             'extend_approve' => eptw_can('extend_approve'),
             'close'          => eptw_can('status') && in_array($permit->status, eptw_live_statuses(), true),
             'cancel'         => (eptw_can('status') || $this->permits->can_edit($permit)) && !in_array($permit->status, eptw_closed_statuses(), true),
             'archive'        => eptw_can('status') && in_array($permit->status, ['closed', 'cancelled'], true),
             'upload'         => eptw_can('upload') && !in_array($permit->status, ['cancelled', 'archived'], true),
             'gas_test'       => eptw_can('gas_test') && in_array($permit->status, array_merge(eptw_pending_statuses(), eptw_live_statuses(), ['draft', 'returned']), true),
-            'revalidate'     => (eptw_can('status') || in_array(eptw_role(), ['area_authority', 'hse'], true)) && in_array($permit->status, eptw_live_statuses(), true),
+            'revalidate'     => (eptw_can('status') || in_array(eptw_role(), ['area_authority', 'hse'], true)) && in_array($permit->status, eptw_live_statuses(), true) && $permit->status !== 'expired',
+            'simops_ack'     => (eptw_can('status') || eptw_role() === 'hse') && $permit->simops_flag && $permit->status !== 'on_hold_simops' && in_array($permit->status, eptw_live_statuses(), true),
+            'doc_review'     => eptw_opt('eptw_docs_review') === '1' && $this->permits->can_review_documents(),
             'toolbox'        => eptw_can('upload') && !in_array($permit->status, ['cancelled', 'archived'], true),
             'paper'          => eptw_can('issue') && in_array($permit->status, eptw_pending_statuses(), true),
-            'delete'         => eptw_role() === 'admin',
+            'delete'         => eptw_role() === 'admin' && (string) $permit->permit_no === '',
             'remark'         => eptw_can('remark'),
         ];
         $data['sign_steps'] = [];
@@ -309,8 +384,8 @@ class Eptw extends AdminController
                 $msg = 'Returned to the engineer.';
                 break;
             case 'activate':
-                $ok  = $this->permits->activate($permit, (string) ($in['note'] ?? ''));
-                $msg = 'Work started — the permit is active.';
+                $ok  = $this->permits->activate($permit, (string) ($in['note'] ?? ''), false, $in);
+                $msg = 'Start of work confirmed — work is authorized under this permit.';
                 break;
             case 'suspend':
                 $ok  = $this->permits->suspend($permit, (string) ($in['reason'] ?? ''), (string) ($in['note'] ?? ''));
@@ -325,12 +400,21 @@ class Eptw extends AdminController
                 $msg = 'Permit resumed.';
                 break;
             case 'extend':
-                $ok  = $this->permits->request_extension($permit, (string) ($in['new_end_at'] ?? ''), (string) ($in['reason'] ?? ''));
-                $msg = eptw_can('extend_approve') ? 'Permit extended.' : 'Extension requested — the PTW Coordinator has been notified.';
+                $checks = (array) ($in['checks'] ?? []);
+                $ok  = $this->permits->request_extension($permit, (string) ($in['new_end_at'] ?? ''), (string) ($in['reason'] ?? ''), $checks);
+                $msg = !empty($checks['approve_now']) && eptw_can('extend_approve') && !eptw_sod('own_extension') ? 'Conditions revalidated — permit extended.' : 'Extension requested — it waits for the issuer to revalidate and approve.';
                 break;
             case 'decide_extension':
-                $ok  = $this->permits->decide_extension($permit, (int) ($in['extension_id'] ?? 0), (string) ($in['decision'] ?? ''), (string) ($in['note'] ?? ''));
-                $msg = ($in['decision'] ?? '') === 'approved' ? 'Extension approved.' : 'Extension rejected.';
+                $ok  = $this->permits->decide_extension($permit, (int) ($in['extension_id'] ?? 0), (string) ($in['decision'] ?? ''), (string) ($in['note'] ?? ''), (array) ($in['checks'] ?? []));
+                $msg = ($in['decision'] ?? '') === 'approved' ? 'Conditions revalidated — extension approved.' : 'Extension rejected.';
+                break;
+            case 'simops_ack':
+                $ok  = $this->permits->simops_acknowledge($permit, (string) ($in['note'] ?? ''));
+                $msg = 'SIMOPS conflict acknowledged.';
+                break;
+            case 'doc_review':
+                $ok  = $this->permits->review_document($permit, (int) ($in['document_id'] ?? 0), (string) ($in['decision'] ?? ''), (string) ($in['note'] ?? ''));
+                $msg = ($in['decision'] ?? '') === 'verified' ? 'Document verified.' : 'Document rejected.';
                 break;
             case 'close':
                 $ok  = $this->permits->close($permit, (array) ($in['closure'] ?? []), (string) ($in['note'] ?? ''));
@@ -363,6 +447,10 @@ class Eptw extends AdminController
             case 'revalidate':
                 $ok  = $this->permits->add_revalidation($permit, $in);
                 $msg = 'Shift revalidation recorded.';
+                if ($ok === true && !empty($_FILES['gas_sheet']['name']) && ($_FILES['gas_sheet']['error'] ?? 1) === UPLOAD_ERR_OK) {
+                    $up  = $this->permits->add_document($permit, $_FILES['gas_sheet'], 'gas_test', 'Gas test sheet — shift revalidation');
+                    $msg .= $up === true ? ' Gas test sheet attached.' : ' The gas test sheet was not attached: ' . $up;
+                }
                 break;
             case 'toolbox':
                 $ok  = $this->permits->save_toolbox($permit, $in);
@@ -371,6 +459,8 @@ class Eptw extends AdminController
             case 'delete':
                 if (eptw_role() !== 'admin') {
                     $ok = 'Only an ePTW administrator can delete a permit.';
+                } elseif ((string) $permit->permit_no !== '') {
+                    $ok = 'A permit with a number is a control record and cannot be deleted. Cancel or close it instead.';
                 } else {
                     $this->permits->delete($permit->id);
                     set_alert('success', 'Permit deleted.');

@@ -28,7 +28,7 @@ $fmt = function ($f, $val) use ($e) {
 <table border="0" cellpadding="3" width="100%">
     <tr>
         <td width="60%" style="font-size:13pt;font-weight:bold;border:0"><?= $e($company); ?><br><span style="font-size:11pt"><?= $e(strtoupper($type ? $type->name : 'PERMIT')); ?> – V3 (GCC Standard)</span></td>
-        <td width="40%" align="right" style="border:0;font-size:9pt">Permit No.<br><span style="font-size:14pt;font-weight:bold;font-family:courier"><?= $e($p->permit_no ?: 'DRAFT – NOT VALID'); ?></span><br>Status: <b><?= $e(eptw_status_label($p->status)); ?></b><?= $p->issued_at ? '<br>Issued ' . eptw_dt($p->issued_at) : ''; ?></td>
+        <td width="40%" align="right" style="border:0;font-size:9pt">Permit No.<br><span style="font-size:14pt;font-weight:bold;font-family:courier"><?= $e($p->permit_no ?: 'DRAFT – NOT VALID'); ?></span><br>Status: <b><?= $e(eptw_status_label($p->status)); ?></b><?= $p->issued_at ? '<br>Issued ' . eptw_dt($p->issued_at) : ''; ?><br><b style="color:<?= $p->work_auth['ok'] ? '#166534' : '#b91c1c'; ?>"><?= $p->work_auth['ok'] ? 'WORK AUTHORIZED' : 'WORK NOT AUTHORIZED'; ?></b><br><span style="font-size:7.5pt"><?= $e($p->work_auth['detail']); ?> (printed <?= date('d M Y H:i'); ?>)</span></td>
     </tr>
 </table>
 
@@ -87,7 +87,7 @@ $fmt = function ($f, $val) use ($e) {
 
 <table border="1" cellpadding="3" width="100%">
     <tr><td colspan="8" <?= $sec; ?>>SECTION <?= $n++; ?>: ISOLATION / LOTO</td></tr>
-    <tr><td <?= $th; ?>>Isolation Required</td><td <?= $td; ?>><?= $p->isolation_required ? 'YES' : 'NO'; ?></td><td <?= $th; ?>>Isolation Type</td><td <?= $td; ?>><?= $e($p->isolation_type); ?></td><td <?= $th; ?>>Certificate No</td><td <?= $td; ?>><?= $e($p->isolation_cert_no); ?></td><td <?= $th; ?>>LOTO Applied</td><td <?= $td; ?>><?= $p->loto_applied ? 'YES' : 'NO'; ?></td></tr>
+    <tr><td <?= $th; ?>>Isolation Applicable</td><td <?= $td; ?>><?= $yn($p->isolation_applicable) ?: ($p->isolation_required ? 'YES' : ''); ?><?= $p->isolation_permit_no ? '<br>under ' . $e($p->isolation_permit_no) : ''; ?></td><td <?= $th; ?>>Isolation Type</td><td <?= $td; ?>><?= $e($p->isolation_type); ?></td><td <?= $th; ?>>Certificate No</td><td <?= $td; ?>><?= $e($p->isolation_cert_no); ?></td><td <?= $th; ?>>LOTO Applied</td><td <?= $td; ?>><?= $p->loto_applied ? 'YES' : 'NO'; ?></td></tr>
     <tr><td <?= $th; ?>>Zero Energy Verified</td><td <?= $td; ?>><?= $p->zero_energy_verified ? 'YES' : 'NO'; ?></td><td <?= $th; ?>>Isolation Authority</td><td <?= $td; ?>><?= $e($p->isolation_authority); ?></td><td <?= $th; ?>>Lock/Tag Numbers</td><td <?= $td; ?> colspan="3"><?= $e($p->lock_tag_numbers); ?></td></tr>
 </table>
 
@@ -138,7 +138,9 @@ $fmt = function ($f, $val) use ($e) {
 
 <table border="1" cellpadding="3" width="100%">
     <tr><td colspan="8" <?= $sec; ?>>SECTION <?= $n++; ?>: CLOSURE</td></tr>
-    <tr><td <?= $th; ?>>Work Completed</td><td <?= $td; ?>><?= !empty($p->closure['work_completed']) ? 'YES' : ''; ?></td><td <?= $th; ?>>Area Clean</td><td <?= $td; ?>><?= !empty($p->closure['area_clean']) ? 'YES' : ''; ?></td><td <?= $th; ?>>No Residual Hazards</td><td <?= $td; ?>><?= !empty($p->closure['no_residual_hazards']) ? 'YES' : ''; ?></td><td <?= $th; ?>>Isolation Removed</td><td <?= $td; ?>><?= !empty($p->closure['isolation_removed']) ? 'YES' : ''; ?></td></tr>
+    <?php $cv = function ($k) use ($p, $yn, $e) { $c = $p->closure[$k] ?? null; return $yn(eptw_closure_value($p->closure, $k)) . (is_array($c) && !empty($c['by']) ? '<br><span style="font-size:7pt">' . $e($c['by']) . '</span>' : ''); }; ?>
+    <tr><td <?= $th; ?>>Work Completed</td><td <?= $td; ?>><?= $cv('work_completed'); ?></td><td <?= $th; ?>>Area Clean</td><td <?= $td; ?>><?= $cv('area_clean'); ?></td><td <?= $th; ?>>No Residual Hazards</td><td <?= $td; ?>><?= $cv('no_residual_hazards'); ?></td><td <?= $th; ?>>Isolation Removed</td><td <?= $td; ?>><?= $cv('isolation_removed'); ?></td></tr>
+    <tr><td <?= $th; ?>>Area Restored / Handed Back</td><td <?= $td; ?>><?= $cv('area_restored'); ?></td><td <?= $th; ?>>Final Inspection</td><td <?= $td; ?>><?= $cv('inspection_done'); ?></td><td <?= $th; ?>></td><td <?= $td; ?>></td><td <?= $th; ?>></td><td <?= $td; ?>></td></tr>
     <tr><td <?= $th; ?>>Closed By</td><td <?= $td; ?>><?= $e(eptw_staff_name($p->closed_by) ?: ($p->closure['closed_by_name'] ?? '')); ?></td><td <?= $th; ?>>Closure Date</td><td <?= $td; ?>><?= $p->closed_at ? eptw_dt($p->closed_at) : ''; ?></td><td <?= $th; ?>>Final Remarks</td><td <?= $td; ?> colspan="3"><?= $e($p->closure['final_remarks'] ?? ''); ?></td></tr>
 </table>
 

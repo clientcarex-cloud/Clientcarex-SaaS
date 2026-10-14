@@ -1,12 +1,15 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 /**
  * Module header + primary tabs. Expects $active in:
- * dashboard | register | new | reports | setup
+ * dashboard | corporate | register | new | reports | setup
  */
 $eptw_me   = eptw_me();
 $eptw_tabs = [];
 if (eptw_perm('eptw_dashboard')) {
     $eptw_tabs['dashboard'] = ['url' => admin_url('eptw'), 'icon' => 'fa-solid fa-gauge-high', 'label' => 'Dashboard'];
+}
+if (eptw_perm('eptw_corporate')) {
+    $eptw_tabs['corporate'] = ['url' => admin_url('eptw/corporate'), 'icon' => 'fa-solid fa-building', 'label' => 'Corporate'];
 }
 if (eptw_perm('eptw_register')) {
     $eptw_tabs['register'] = ['url' => admin_url('eptw/register'), 'icon' => 'fa-solid fa-table-list', 'label' => 'Permit register'];

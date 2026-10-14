@@ -10,19 +10,23 @@
             $views = [
                 ''             => 'All',
                 'pending'      => 'Pending approvals',
-                'issued'       => 'Issued',
-                'active'       => 'Active',
+                'issued'       => 'Issued — not started',
+                'active'       => 'Work authorized',
                 'expiring'     => 'Expiring soon',
                 'expired'      => 'Expired',
-                'suspended'    => 'Suspended / on hold',
+                'on_hold'      => 'On hold',
+                'suspended'    => 'Suspended',
                 'extensions'   => 'Extension requests',
                 'high_risk'    => 'High risk',
                 'simops'       => 'SIMOPS',
                 'closed'       => 'Closed',
-                'docs_pending' => 'Docs pending',
+                'docs_pending' => 'Closed – docs pending',
                 'drafts'       => 'Drafts',
                 'mine'         => 'Mine',
             ];
+            if (!isset($views[$filters['view']]) && $filters['view'] !== '') {
+                $views[$filters['view']] = ['ready' => 'Ready to issue', 'live' => 'Open on site', 'latest' => 'Last 7 days', 'today' => 'Today'][$filters['view']] ?? ucfirst($filters['view']);
+            }
             if (!eptw_perm('eptw_register')) {
                 $views = ['pending' => $views['pending']]; // "Pending approvals" menu only
             }
@@ -54,7 +58,11 @@
                             <?php foreach (eptw_contractors(false) as $c) { ?><option value="<?= $c->id; ?>" <?= (int) $filters['contractor'] === (int) $c->id ? 'selected' : ''; ?>><?= html_escape($c->name); ?></option><?php } ?>
                         </select>
                         <select name="status" class="eptw-select"><option value="">Any status</option>
-                            <?php foreach (eptw_statuses() as $k => $s) { ?><option value="<?= $k; ?>" <?= $filters['status'] === $k ? 'selected' : ''; ?>><?= html_escape($s['label']); ?></option><?php } ?>
+                            <?php if ($filters['status'] !== '' && !isset(eptw_statuses()[$filters['status']])) { ?><option value="<?= html_escape($filters['status']); ?>" selected><?= html_escape(implode(' + ', array_map('eptw_status_label', explode(',', $filters['status'])))); ?></option><?php } ?>
+                            <?php foreach (eptw_statuses() as $k => $st) { ?><option value="<?= $k; ?>" <?= $filters['status'] === $k ? 'selected' : ''; ?>><?= html_escape($st['label']); ?></option><?php } ?>
+                        </select>
+                        <select name="shift" class="eptw-select"><option value="">Any shift</option>
+                            <?php foreach (eptw_shifts() as $k => $l) { ?><option value="<?= $k; ?>" <?= $filters['shift'] === $k ? 'selected' : ''; ?>><?= $l; ?></option><?php } ?>
                         </select>
                         <select name="risk" class="eptw-select"><option value="">Any risk</option>
                             <?php foreach (eptw_risk_levels() as $k => $l) { ?><option value="<?= $k; ?>" <?= $filters['risk'] === $k ? 'selected' : ''; ?>><?= $l; ?> risk</option><?php } ?>
@@ -65,6 +73,10 @@
                         <?php if (array_filter($filters)) { ?><a href="<?= admin_url('eptw/register'); ?>" class="eptw-btn eptw-btn-ghost eptw-btn-sm" title="Clear filters"><i class="fa fa-times"></i> Clear</a><?php } ?>
                     </form>
                     <div class="eptw-card-actions">
+                        <div class="eptw-cols" data-eptw-cols="register">
+                            <button type="button" class="eptw-btn eptw-btn-sm" data-eptw-cols-toggle><i class="fa-solid fa-table-columns"></i> Columns</button>
+                            <div class="eptw-cols-menu"></div>
+                        </div>
                         <?php if (eptw_can('register')) { ?><a href="<?= admin_url('eptw/export?' . http_build_query(array_filter($filters))); ?>" class="eptw-btn eptw-btn-sm" title="Download the register for Excel"><i class="fa-solid fa-file-excel"></i> Export</a><?php } ?>
                         <?php if (eptw_can('import')) { ?><a href="<?= admin_url('eptw/eptw_setup/import'); ?>" class="eptw-btn eptw-btn-sm"><i class="fa-solid fa-file-import"></i> Import</a><?php } ?>
                     </div>
@@ -79,52 +91,67 @@
                     </div>
                 <?php } else { ?>
                     <div class="eptw-table-scroll">
-                        <table class="eptw-table">
+                        <table class="eptw-table" data-eptw-cols-table="register">
                             <thead>
                                 <tr>
-                                    <th>Permit</th>
-                                    <th>Type</th>
-                                    <th>Project / area</th>
-                                    <th>Contractor</th>
-                                    <th>Window</th>
-                                    <th>People</th>
-                                    <th>Status</th>
-                                    <th class="eptw-num">Ext.</th>
-                                    <th>Flags</th>
-                                    <th></th>
+                                    <th data-col="permit" data-fixed>Permit</th>
+                                    <th data-col="type">Type</th>
+                                    <th data-col="project">Project</th>
+                                    <th data-col="area">Area</th>
+                                    <th data-col="contractor">Contractor</th>
+                                    <th data-col="engineer">Engineer</th>
+                                    <th data-col="aa">Area Authority</th>
+                                    <th data-col="hse">HSE Officer</th>
+                                    <th data-col="start">Start</th>
+                                    <th data-col="end">End</th>
+                                    <th data-col="status" data-fixed>Status</th>
+                                    <th data-col="ext" class="eptw-num">Ext.</th>
+                                    <th data-col="high">High risk</th>
+                                    <th data-col="simops">SIMOPS</th>
+                                    <th data-col="closed">Closure date</th>
+                                    <th data-col="docs">Attachments</th>
+                                    <th data-col="flags" data-off>Other flags</th>
+                                    <th data-fixed></th>
                                 </tr>
                             </thead>
                             <tbody>
                             <?php foreach ($rows as $r) { ?>
                                 <tr class="<?= $r->is_expired ? 'is-expired' : ''; ?>">
-                                    <td>
+                                    <td data-col="permit">
                                         <a href="<?= admin_url('eptw/view/' . $r->id); ?>" class="eptw-permit-no <?= $r->permit_no ? '' : 'draft'; ?>"><?= html_escape($r->permit_no ?: 'no number yet'); ?></a>
                                         <div class="eptw-small"><a href="<?= admin_url('eptw/view/' . $r->id); ?>" class="eptw-strong"><?= html_escape(mb_substr($r->work_title, 0, 70)); ?></a></div>
                                         <div class="eptw-small eptw-muted"><?= html_escape(implode(' · ', array_filter([$r->work_order ? 'WO ' . $r->work_order : '', $r->location, $r->equipment_tag]))); ?></div>
                                     </td>
-                                    <td>
-                                        <span class="eptw-type-chip"><span class="eptw-type-dot" style="background:<?= html_escape($r->type_color); ?>"><i class="<?= html_escape($r->type_icon); ?>"></i></span> <?= html_escape($r->type_code); ?></span>
+                                    <td data-col="type">
+                                        <span class="eptw-type-chip" title="<?= html_escape($r->type_name); ?>"><span class="eptw-type-dot" style="background:<?= html_escape($r->type_color); ?>"><i class="<?= html_escape($r->type_icon); ?>"></i></span> <?= html_escape($r->type_code); ?></span>
                                         <div class="eptw-small"><?= eptw_risk_badge($r->risk_level); ?></div>
                                     </td>
-                                    <td class="eptw-small"><span class="eptw-strong"><?= html_escape($r->project_name); ?></span><div class="eptw-muted"><?= html_escape($r->area_name ?: '—'); ?></div></td>
-                                    <td class="eptw-small"><?= html_escape($r->contractor_name ?: '—'); ?><?= $r->subcontractor ? '<div class="eptw-muted">' . html_escape($r->subcontractor) . '</div>' : ''; ?></td>
-                                    <td class="eptw-small" style="white-space:nowrap">
-                                        <?= eptw_dt($r->start_at); ?><div class="eptw-muted">→ <?= eptw_dt($r->end_at); ?></div>
-                                        <?php if ($r->expiring_soon || $r->is_expired) { ?><span class="eptw-badge <?= $r->is_expired ? 'bad' : 'warn'; ?>"><?= $r->is_expired ? 'expired' : eptw_time_until($r->end_at); ?></span><?php } ?>
+                                    <td data-col="project" class="eptw-small eptw-strong"><?= html_escape($r->project_name); ?></td>
+                                    <td data-col="area" class="eptw-small"><?= html_escape($r->area_name ?: '—'); ?></td>
+                                    <td data-col="contractor" class="eptw-small"><?= html_escape($r->contractor_name ?: '—'); ?><?= $r->subcontractor ? '<div class="eptw-muted">' . html_escape($r->subcontractor) . '</div>' : ''; ?></td>
+                                    <td data-col="engineer" class="eptw-small"><?= html_escape($r->engineer_name ?: '—'); ?></td>
+                                    <td data-col="aa" class="eptw-small"><?= html_escape($r->area_authority_name ?: '—'); ?></td>
+                                    <td data-col="hse" class="eptw-small"><?= html_escape($r->hse_officer_name ?: '—'); ?></td>
+                                    <td data-col="start" class="eptw-small" style="white-space:nowrap"><?= eptw_dt($r->start_at); ?></td>
+                                    <td data-col="end" class="eptw-small" style="white-space:nowrap"><?= eptw_dt($r->end_at); ?>
+                                        <?php if ($r->expiring_soon || $r->is_expired) { ?><div><span class="eptw-badge <?= $r->is_expired ? 'bad' : 'warn'; ?>"><?= $r->is_expired ? 'expired' : eptw_time_until($r->end_at); ?></span></div><?php } ?>
                                     </td>
-                                    <td class="eptw-small">
-                                        <div title="Engineer"><i class="fa-solid fa-helmet-safety eptw-muted"></i> <?= html_escape($r->engineer_name ?: '—'); ?></div>
-                                        <?php if ($r->area_authority_name) { ?><div class="eptw-muted" title="Area Authority"><i class="fa-solid fa-map-location-dot"></i> <?= html_escape($r->area_authority_name); ?></div><?php } ?>
-                                        <?php if ($r->hse_officer_name) { ?><div class="eptw-muted" title="HSE"><i class="fa-solid fa-shield-halved"></i> <?= html_escape($r->hse_officer_name); ?></div><?php } ?>
+                                    <td data-col="status"><?= eptw_status_badge($r->status); ?>
+                                        <?php if (in_array($r->status, eptw_live_statuses(), true)) { ?><div style="margin-top:4px"><span class="eptw-auth-chip <?= $r->work_auth['ok'] ? 'ok' : 'no'; ?>" title="<?= html_escape($r->work_auth['detail']); ?>"><i class="fa-solid <?= $r->work_auth['ok'] ? 'fa-check' : 'fa-ban'; ?>"></i> <?= $r->work_auth['ok'] ? 'Work authorized' : 'Not authorized'; ?></span></div><?php } ?>
                                     </td>
-                                    <td><?= eptw_status_badge($r->status); ?></td>
-                                    <td class="eptw-num"><?= (int) $r->extension_count ?: '<span class="eptw-muted">0</span>'; ?></td>
-                                    <td class="eptw-small">
-                                        <?php if ($r->high_risk) { ?><span class="eptw-badge bad" title="High risk"><i class="fa-solid fa-fire"></i></span> <?php } ?>
-                                        <?php if ($r->simops_flag) { ?><span class="eptw-badge bad" title="SIMOPS conflict"><i class="fa-solid fa-diagram-project"></i></span> <?php } ?>
-                                        <?php if ((int) $r->pending_extensions) { ?><span class="eptw-badge info" title="Extension pending"><i class="fa-solid fa-clock-rotate-left"></i></span> <?php } ?>
+                                    <td data-col="ext" class="eptw-num"><?= (int) $r->extension_count ?: '<span class="eptw-muted">0</span>'; ?><?= (int) $r->pending_extensions ? ' <span class="eptw-badge info" title="Extension awaiting approval"><i class="fa-solid fa-clock-rotate-left"></i></span>' : ''; ?></td>
+                                    <td data-col="high" class="eptw-small"><?= $r->high_risk ? '<span class="eptw-badge bad" title="' . html_escape(eptw_risk_reason_text($r)) . '"><i class="fa-solid fa-fire"></i> Yes</span>' : '<span class="eptw-muted">No</span>'; ?></td>
+                                    <td data-col="simops" class="eptw-small"><?= $r->simops_flag ? '<span class="eptw-badge bad" title="' . html_escape((string) $r->simops_notes) . '"><i class="fa-solid fa-diagram-project"></i> Yes</span>' : '<span class="eptw-muted">No</span>'; ?></td>
+                                    <td data-col="closed" class="eptw-small" style="white-space:nowrap"><?= $r->closed_at ? eptw_dt($r->closed_at, false) : '<span class="eptw-muted">—</span>'; ?></td>
+                                    <td data-col="docs" class="eptw-small" style="white-space:nowrap">
+                                        <span title="<?= (int) $r->doc_count; ?> file(s) attached"><i class="fa-solid fa-paperclip eptw-muted"></i> <?= (int) $r->doc_count; ?></span>
+                                        <?php if ($r->req_docs_total) { $complete = (int) $r->req_docs_have >= (int) $r->req_docs_total; ?>
+                                            <span class="eptw-badge <?= $complete ? 'ok' : (in_array($r->status, ['closed_docs_pending'], true) ? 'bad' : 'muted'); ?>" title="Required closure documents<?= eptw_opt('eptw_docs_review') === '1' ? ' (verified)' : ''; ?>"><?= (int) $r->req_docs_have; ?>/<?= (int) $r->req_docs_total; ?> req.</span>
+                                        <?php } ?>
+                                    </td>
+                                    <td data-col="flags" class="eptw-small">
                                         <?php if ($r->gas_test_required && !(int) $r->gas_test_count && in_array($r->status, eptw_live_statuses(), true)) { ?><span class="eptw-badge warn" title="Gas test required — none recorded"><i class="fa-solid fa-vial"></i></span> <?php } ?>
-                                        <?php if ((int) $r->doc_count) { ?><span class="eptw-badge muted" title="<?= (int) $r->doc_count; ?> document(s)"><i class="fa-solid fa-paperclip"></i> <?= (int) $r->doc_count; ?></span><?php } ?>
+                                        <?php if ($r->isolation_permit_no) { ?><span class="eptw-badge info" title="Isolation under <?= html_escape($r->isolation_permit_no); ?>"><i class="fa-solid fa-lock"></i></span><?php } ?>
                                     </td>
                                     <td class="eptw-actions">
                                         <a href="<?= admin_url('eptw/view/' . $r->id); ?>" class="eptw-btn eptw-btn-sm">Open</a>

@@ -117,6 +117,7 @@
         back.querySelectorAll('[data-eptw-close]').forEach(function (b) { b.addEventListener('click', closeModal); });
         initSegs(back);
         initSignature(back);
+        initToggles(back);
         var first = back.querySelector('input:not([type=hidden]), textarea, select');
         if (first) { setTimeout(function () { first.focus(); }, 50); }
         if (onOpen) { onOpen(modal); }
@@ -166,6 +167,29 @@
             });
         });
     });
+
+    /* ── Checkbox that shows / hides a block: data-eptw-toggle="#id" ─── */
+
+    function initToggles(root) {
+        root.querySelectorAll('[data-eptw-toggle]').forEach(function (cb) {
+            var sync = function () {
+                var target = root.querySelector(cb.getAttribute('data-eptw-toggle'));
+                if (target) { target.style.display = cb.checked ? '' : 'none'; }
+            };
+            cb.addEventListener('change', sync);
+            sync();
+        });
+    }
+
+    /* ── Deep link: ?do=close opens the "m-close" dialog on arrival ──── */
+
+    (function () {
+        var m = /[?&]do=([a-z_-]+)/.exec(window.location.search);
+        if (!m) { return; }
+        var trigger = wrap.querySelector('[data-eptw-modal="m-' + m[1] + '"]');
+        if (trigger) { setTimeout(function () { trigger.click(); }, 150); }
+        try { history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) { /* ignore */ }
+    })();
 
     /* ── Direct workflow actions (with confirm) ──────────────────────── */
 
@@ -259,12 +283,75 @@
 
     /* ── Register: filters auto-submit ───────────────────────────────── */
 
-    var filterForm = document.getElementById('eptw-filters');
-    if (filterForm) {
+    ['eptw-filters', 'eptw-dash-filters'].forEach(function (id) {
+        var filterForm = document.getElementById(id);
+        if (!filterForm) { return; }
         filterForm.querySelectorAll('select, input[type=date]').forEach(function (el) {
-            el.addEventListener('change', function () { filterForm.submit(); });
+            el.addEventListener('change', function () {
+                // A different project has different areas — drop the old one.
+                if (el.name === 'project') {
+                    var areaSel = filterForm.querySelector('[name=area]');
+                    if (areaSel) { areaSel.value = ''; }
+                }
+                filterForm.submit();
+            });
         });
+    });
+
+    /* ── Dashboard: auto-refresh (paused while a dialog is open or the tab is hidden) ── */
+
+    var refreshBox = wrap.querySelector('[data-eptw-refresh]');
+    if (refreshBox) {
+        var every = parseInt(refreshBox.getAttribute('data-eptw-refresh') || '0', 10);
+        var leftEl = refreshBox.querySelector('[data-eptw-refresh-left]');
+        if (every > 0) {
+            var left = every;
+            setInterval(function () {
+                if (document.hidden || back.classList.contains('open')) { return; }
+                left--;
+                if (leftEl) { leftEl.textContent = '· refreshing in ' + (left >= 60 ? Math.ceil(left / 60) + ' min' : left + ' s'); }
+                if (left <= 0) { window.location.reload(); }
+            }, 1000);
+        }
     }
+
+    /* ── Register: column chooser (remembered per browser) ───────────── */
+
+    wrap.querySelectorAll('[data-eptw-cols]').forEach(function (box) {
+        var key   = 'eptw-cols-' + box.getAttribute('data-eptw-cols');
+        var table = wrap.querySelector('[data-eptw-cols-table="' + box.getAttribute('data-eptw-cols') + '"]');
+        var menu  = box.querySelector('.eptw-cols-menu');
+        if (!table || !menu) { box.style.display = 'none'; return; }
+        var hidden = null;
+        try { hidden = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { hidden = null; }
+        if (!Array.isArray(hidden)) {
+            hidden = [];
+            table.querySelectorAll('th[data-off]').forEach(function (th) { hidden.push(th.getAttribute('data-col')); });
+        }
+        var apply = function () {
+            table.querySelectorAll('[data-col]').forEach(function (cell) {
+                cell.classList.toggle('col-off', hidden.indexOf(cell.getAttribute('data-col')) !== -1);
+            });
+        };
+        table.querySelectorAll('thead th[data-col]').forEach(function (th) {
+            if (th.hasAttribute('data-fixed')) { return; }
+            var col = th.getAttribute('data-col');
+            var label = document.createElement('label');
+            label.innerHTML = '<input type="checkbox"> ' + esc(th.textContent.trim());
+            var cb = label.querySelector('input');
+            cb.checked = hidden.indexOf(col) === -1;
+            cb.addEventListener('change', function () {
+                hidden = hidden.filter(function (c) { return c !== col; });
+                if (!cb.checked) { hidden.push(col); }
+                try { localStorage.setItem(key, JSON.stringify(hidden)); } catch (e) { /* private mode */ }
+                apply();
+            });
+            menu.appendChild(label);
+        });
+        box.querySelector('[data-eptw-cols-toggle]').addEventListener('click', function (e) { e.stopPropagation(); box.classList.toggle('open'); });
+        document.addEventListener('click', function (e) { if (!box.contains(e.target)) { box.classList.remove('open'); } });
+        apply();
+    });
 
     /* ── Upload: drop zone ───────────────────────────────────────────── */
 
@@ -305,29 +392,58 @@
 
     /* ── Charts ──────────────────────────────────────────────────────── */
 
+    // Long names wrap onto several lines instead of being clipped; the tooltip keeps the full name.
+    function wrapLabel(text, width) {
+        var words = String(text).split(/\s+/), lines = [], line = '';
+        words.forEach(function (w) {
+            if ((line + ' ' + w).trim().length > width && line) { lines.push(line); line = w; } else { line = (line + ' ' + w).trim(); }
+        });
+        if (line) { lines.push(line); }
+        return lines.length > 1 ? lines : String(text);
+    }
+    // Permit counts are whole numbers: never draw 0.5 ticks.
+    var intTicks = { beginAtZero: true, precision: 0, callback: function (v) { return Math.floor(v) === v ? v : null; } };
+
     if (typeof Chart !== 'undefined') {
         var palette = ['#0f766e', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#65a30d', '#db2777', '#4f46e5', '#f97316', '#334155', '#14b8a6'];
         wrap.querySelectorAll('[data-eptw-chart]').forEach(function (canvas) {
             var cfg;
             try { cfg = JSON.parse(canvas.getAttribute('data-eptw-chart')); } catch (e) { return; }
+            var full   = cfg.labels.slice();
+            var labels = cfg.wrap ? cfg.labels.map(function (l) { return wrapLabel(l, 26); }) : cfg.labels;
             var colors = cfg.colors && cfg.colors.length ? cfg.colors : cfg.labels.map(function (_, i) { return palette[i % palette.length]; });
-            var options = { responsive: true, maintainAspectRatio: false, legend: { display: cfg.type === 'doughnut', position: 'right', labels: { boxWidth: 10, fontSize: 11 } } };
+            var type   = cfg.type === 'stackedBar' ? 'horizontalBar' : cfg.type;
+            var options = {
+                responsive: true, maintainAspectRatio: false,
+                legend: { display: cfg.type === 'doughnut' || cfg.type === 'stackedBar', position: cfg.type === 'doughnut' ? 'right' : 'top', labels: { boxWidth: 10, fontSize: 11 } },
+                tooltips: { callbacks: { title: function (items) { return items.length ? full[items[0].index] : ''; } } }
+            };
             var datasets;
             if (cfg.type === 'line') {
                 datasets = cfg.series.map(function (s, i) {
                     return { label: s.label, data: s.data, borderColor: palette[i], backgroundColor: palette[i] + '22', fill: true, lineTension: 0.3, pointRadius: 2 };
                 });
                 options.legend = { display: true, position: 'top', labels: { boxWidth: 10, fontSize: 11 } };
-                options.scales = { yAxes: [{ ticks: { beginAtZero: true, precision: 0 } }], xAxes: [{ ticks: { maxTicksLimit: 8 } }] };
+                options.scales = { yAxes: [{ ticks: intTicks }], xAxes: [{ ticks: { maxTicksLimit: 8 } }] };
+            } else if (cfg.type === 'stackedBar') {
+                datasets = cfg.series.map(function (s, i) { return { label: s.label, data: s.data, backgroundColor: s.color || palette[i], borderWidth: 0 }; });
+                options.scales = { xAxes: [{ stacked: true, ticks: intTicks }], yAxes: [{ stacked: true, gridLines: { display: false }, ticks: { autoSkip: false } }] };
             } else {
                 datasets = [{ data: cfg.data, backgroundColor: colors, borderWidth: 0 }];
-                if (cfg.type === 'horizontalBar' || cfg.type === 'bar') {
-                    options.scales = cfg.type === 'horizontalBar'
-                        ? { xAxes: [{ ticks: { beginAtZero: true, precision: 0 } }], yAxes: [{ gridLines: { display: false } }] }
-                        : { yAxes: [{ ticks: { beginAtZero: true, precision: 0 } }], xAxes: [{ gridLines: { display: false } }] };
+                if (type === 'horizontalBar') {
+                    options.scales = { xAxes: [{ ticks: intTicks }], yAxes: [{ gridLines: { display: false }, ticks: { autoSkip: false, fontSize: 11 } }] };
+                } else if (type === 'bar') {
+                    options.scales = { yAxes: [{ ticks: intTicks }], xAxes: [{ gridLines: { display: false }, ticks: { autoSkip: false, maxRotation: 0 } }] };
                 }
             }
-            new Chart(canvas.getContext('2d'), { type: cfg.type, data: { labels: cfg.labels, datasets: datasets }, options: options });
+            // Drill-down: a click on a bar or slice opens the matching permits.
+            if (cfg.links && cfg.links.length) {
+                options.onClick = function (evt, items) {
+                    if (items && items.length && cfg.links[items[0]._index]) { window.location = cfg.links[items[0]._index]; }
+                };
+                options.hover = { onHover: function (evt, items) { canvas.style.cursor = items && items.length ? 'pointer' : 'default'; } };
+            }
+            new Chart(canvas.getContext('2d'), { type: type, data: { labels: labels, datasets: datasets }, options: options });
         });
     }
 
@@ -337,6 +453,7 @@
     if (form) {
         var typeId    = form.getAttribute('data-type-id');
         var validity  = parseInt(form.getAttribute('data-validity-hours') || '12', 10);
+        var maxHours  = parseInt(form.getAttribute('data-max-hours') || '0', 10);
         var permitId  = form.getAttribute('data-permit-id') || '0';
         var project   = form.querySelector('[name=project_id]');
         var area      = form.querySelector('[name=area_id]');
@@ -353,7 +470,7 @@
             project.addEventListener('change', function () {
                 area.innerHTML = '<option value="">Loading…</option>';
                 var xhr = new XMLHttpRequest();
-                xhr.open('GET', adminUrl + 'eptw/areas_json/' + project.value, true);
+                xhr.open('GET', adminUrl + 'eptw/areas_json/' + project.value + '?permit=' + permitId, true);
                 xhr.onload = function () {
                     var res = null;
                     try { res = JSON.parse(xhr.responseText); } catch (e) { res = null; }
@@ -362,8 +479,18 @@
                         res.areas.forEach(function (a) {
                             var o = document.createElement('option');
                             o.value = a.id;
-                            o.textContent = a.name + ' (' + a.code + ')' + (a.shared ? ' · shared' : '');
+                            o.textContent = a.name + ' (' + a.code + ')' + (a.shared ? ' · shared area' : '');
                             area.appendChild(o);
+                        });
+                    }
+                    var isoSel = form.querySelector('[name=isolation_permit_id]');
+                    if (isoSel && res && res.isolation_permits) {
+                        isoSel.innerHTML = '<option value="">— none / paper certificate —</option>';
+                        res.isolation_permits.forEach(function (ip) {
+                            var o = document.createElement('option');
+                            o.value = ip.id;
+                            o.textContent = ip.label;
+                            isoSel.appendChild(o);
                         });
                     }
                     simops();
@@ -394,8 +521,11 @@
             var out = document.getElementById('eptw-duration');
             if (!out || !start || !end || !start.value || !end.value) { return; }
             var h = (new Date(end.value) - new Date(start.value)) / 36e5;
-            out.textContent = h > 0 ? 'Validity ' + (Math.round(h * 10) / 10) + ' h' + (h > validity ? ' — longer than the template default of ' + validity + ' h' : '') : 'End must be after start';
-            out.className = 'eptw-hint' + (h <= 0 || h > validity ? ' text-warning' : '');
+            var over = maxHours && h > maxHours;
+            out.textContent = h > 0
+                ? 'Validity ' + (Math.round(h * 10) / 10) + ' h' + (over ? ' — over the maximum of ' + maxHours + ' h for this permit type; it will not save' : (h > validity ? ' — longer than the default of ' + validity + ' h' : ''))
+                : 'End must be after start';
+            out.className = 'eptw-hint' + (h <= 0 || over ? ' text-danger' : (h > validity ? ' text-warning' : ''));
         }
         showDuration();
 
@@ -496,6 +626,19 @@
         if (area) { area.addEventListener('change', simops); }
         simops();
 
+        // Isolation fields only when isolation applies to this task.
+        var isoBox = document.getElementById('eptw-isolation');
+        if (isoBox) {
+            var syncIso = function () {
+                var rule = isoBox.getAttribute('data-rule');
+                var picked = isoBox.querySelector('[name=isolation_applicable]:checked');
+                var on = rule === 'always' || (picked && picked.value === 'yes');
+                isoBox.querySelectorAll('[data-iso-field]').forEach(function (el) { el.style.display = on ? '' : 'none'; });
+            };
+            isoBox.addEventListener('change', syncIso);
+            syncIso();
+        }
+
         // Which button was pressed → what happens after save.
         form.querySelectorAll('[data-after]').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -533,9 +676,25 @@
         e.preventDefault();
         var tbody = document.getElementById('eptw-workers');
         if (!tbody) { return; }
+        var i = parseInt(tbody.getAttribute('data-next') || '0', 10);
+        tbody.setAttribute('data-next', i + 1);
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td><input class="eptw-input" name="worker_name[]" placeholder="Worker name"></td><td><input class="eptw-input" name="worker_id[]" placeholder="ID / badge no."></td>';
+        tr.innerHTML = '<td><input class="eptw-input" name="worker_name[' + i + ']" list="eptw-people" data-eptw-person placeholder="Worker name"></td>'
+            + '<td><input class="eptw-input" name="worker_id[' + i + ']" placeholder="ID / badge no."></td>'
+            + '<td style="text-align:center"><input type="checkbox" name="worker_ack[' + i + ']" value="1" title="Briefed and acknowledged"></td>';
         tbody.appendChild(tr);
         tr.querySelector('input').focus();
+    });
+
+    // Picking a person from the people master fills in their badge / ID.
+    document.addEventListener('change', function (e) {
+        var input = e.target.closest('[data-eptw-person]');
+        if (!input) { return; }
+        var list = document.getElementById('eptw-people');
+        if (!list) { return; }
+        var match = Array.prototype.filter.call(list.options, function (o) { return o.value === input.value; })[0];
+        var row = input.closest('tr');
+        var badge = row ? row.querySelector('[name^="worker_id"]') : null;
+        if (match && badge && !badge.value && match.getAttribute('data-badge')) { badge.value = match.getAttribute('data-badge'); }
     });
 })();

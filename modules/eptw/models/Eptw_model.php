@@ -47,6 +47,7 @@ class Eptw_model extends App_Model
             'client_name' => substr(trim((string) ($in['client_name'] ?? '')), 0, 150),
             'description' => trim((string) ($in['description'] ?? '')),
             'camera_mode' => in_array($in['camera_mode'] ?? '', ['inherit', 'allowed', 'restricted', 'disabled'], true) ? $in['camera_mode'] : 'inherit',
+            'max_validity_hours' => max(0, min(720, (int) ($in['max_validity_hours'] ?? 0))),
             'active'      => !empty($in['active']) ? 1 : 0,
         ];
 
@@ -102,8 +103,18 @@ class Eptw_model extends App_Model
         if ($code === '') {
             $code = eptw_code_from_name($name, 6);
         }
+        // Areas belong to a project; a shared area is a deliberate admin choice.
+        $shared     = !empty($in['shared']) && eptw_opt('eptw_shared_areas') === '1';
+        $project_id = $shared ? 0 : (int) ($in['project_id'] ?? 0);
+        if (!$shared && !$project_id) {
+            return 'Choose the project this area belongs to.';
+        }
+        $dupe = $this->db->where('project_id', $project_id)->where('LOWER(name)', mb_strtolower($name))->where('id !=', (int) $id)->get(db_prefix() . 'eptw_areas')->row();
+        if ($dupe) {
+            return 'This project already has an area called "' . $dupe->name . '".';
+        }
         $data = [
-            'project_id'  => (int) ($in['project_id'] ?? 0),
+            'project_id'  => $project_id,
             'code'        => substr(preg_replace('/[^A-Z0-9\-]/', '', $code), 0, 20),
             'name'        => substr($name, 0, 150),
             'description' => trim((string) ($in['description'] ?? '')),
@@ -223,9 +234,13 @@ class Eptw_model extends App_Model
         if ($name === '') {
             return 0;
         }
-        $row = $this->db->where('LOWER(name)', mb_strtolower($name))
-            ->group_start()->where('project_id', (int) $project_id)->or_where('project_id', 0)->group_end()
-            ->get(db_prefix() . 'eptw_areas')->row();
+        $this->db->where('LOWER(name)', mb_strtolower($name));
+        if (eptw_opt('eptw_shared_areas') === '1') {
+            $this->db->group_start()->where('project_id', (int) $project_id)->or_where('project_id', 0)->group_end();
+        } else {
+            $this->db->where('project_id', (int) $project_id);
+        }
+        $row = $this->db->order_by('project_id', 'desc')->get(db_prefix() . 'eptw_areas')->row();
         if ($row) {
             return (int) $row->id;
         }
@@ -270,6 +285,288 @@ class Eptw_model extends App_Model
         return 0;
     }
 
+    /* ═══════════════════════════ Register import ════════════════════ */
+
+    private function import_yes($v)
+    {
+        return in_array(mb_strtolower(trim((string) $v)), ['yes', 'y', 'true', '1'], true);
+    }
+
+    /** Does a project / contractor / area of that name exist (no creation)? */
+    private function import_lookup($kind, $name, $project_id = 0)
+    {
+        $name = trim((string) $name);
+        if ($name === '' || strtoupper($name) === 'N/A') {
+            return 0;
+        }
+        $p = db_prefix();
+        switch ($kind) {
+            case 'project':
+                $row = $this->db->group_start()->where('LOWER(name)', mb_strtolower($name))->or_where('code', strtoupper($name))->group_end()->get($p . 'eptw_projects')->row();
+                break;
+            case 'contractor':
+                $row = $this->db->where('LOWER(name)', mb_strtolower($name))->get($p . 'eptw_contractors')->row();
+                break;
+            default:
+                $this->db->where('LOWER(name)', mb_strtolower($name));
+                if (eptw_opt('eptw_shared_areas') === '1') {
+                    $this->db->group_start()->where('project_id', (int) $project_id)->or_where('project_id', 0)->group_end();
+                } else {
+                    $this->db->where('project_id', (int) $project_id);
+                }
+                $row = $this->db->get($p . 'eptw_areas')->row();
+        }
+
+        return $row ? (int) $row->id : 0;
+    }
+
+    /**
+     * Validate — and unless $dry, import — every row of a parsed register.
+     * One pass for both, so the dry-run preview says exactly what the import
+     * will do: per row ok / warning / duplicate / error, with the reasons.
+     *
+     * @return array{rows:array, created:int, skipped:int, failed:int, warnings:int}
+     */
+    public function import_rows(array $table, array $map, $default_project, $dry = true, $batch_id = 0)
+    {
+        require_once module_dir_path(EPTW_MODULE_NAME, 'libraries/Eptw_import.php');
+        $p      = db_prefix();
+        $me     = (int) eptw_me()['staff_id'];
+        $seen   = [];
+        $report = [];
+        $tally  = ['created' => 0, 'skipped' => 0, 'failed' => 0, 'warnings' => 0];
+
+        foreach ($table['rows'] as $n => $row) {
+            $line = $n + 1;
+            $r    = [];
+            foreach ($map as $i => $field) {
+                $r[$field] = trim((string) ($row[$i] ?? ''));
+            }
+            if (!count(array_filter($r, function ($v) { return $v !== ''; }))) {
+                continue; // blank line
+            }
+            $msgs      = [];
+            $warn      = [];
+            $permit_no = (string) ($r['permit_no'] ?? '');
+
+            if ($permit_no !== '' && isset($seen[mb_strtolower($permit_no)])) {
+                $report[] = ['row' => $line, 'permit_no' => $permit_no, 'result' => 'duplicate', 'messages' => ['Same permit number as row ' . $seen[mb_strtolower($permit_no)] . ' in this file — skipped']];
+                $tally['skipped']++;
+                continue;
+            }
+            if ($permit_no !== '') {
+                $seen[mb_strtolower($permit_no)] = $line;
+            }
+            if ($permit_no !== '' && $this->db->where('permit_no', $permit_no)->count_all_results($p . 'eptw_permits')) {
+                $report[] = ['row' => $line, 'permit_no' => $permit_no, 'result' => 'duplicate', 'messages' => ['Permit number already in the register — skipped']];
+                $tally['skipped']++;
+                continue;
+            }
+
+            $type_id = $this->type_id_by_name($r['type'] ?? '');
+            if (!$type_id) {
+                $msgs[] = 'Unknown permit type "' . ($r['type'] ?? '') . '"';
+            }
+            $project_name = (string) ($r['project'] ?? '');
+            $project_id   = $project_name !== '' ? $this->import_lookup('project', $project_name) : (int) $default_project;
+            if ($project_name !== '' && !$project_id) {
+                $warn[] = 'New project "' . $project_name . '" will be created';
+            }
+            if ($project_name === '' && !$project_id) {
+                $msgs[] = 'No project, and no default project chosen';
+            }
+            $start_raw = (string) ($r['start_at'] ?? '');
+            $start     = Eptw_import::to_datetime($start_raw);
+            if ($start_raw !== '' && !$start) {
+                $msgs[] = 'Start date "' . $start_raw . '" is not a date';
+            } elseif ($start_raw === '') {
+                $warn[] = 'No start date — the import date is used';
+            }
+            $end_raw = (string) ($r['end_at'] ?? '');
+            $end     = Eptw_import::to_datetime($end_raw);
+            if ($end_raw !== '' && !$end) {
+                $msgs[] = 'End date "' . $end_raw . '" is not a date';
+            }
+            if ($start && $end && strtotime($end) <= strtotime($start)) {
+                $msgs[] = 'End date is before the start date';
+            }
+            $status_raw = (string) ($r['status'] ?? '');
+            $status     = Eptw_import::to_status($status_raw);
+            if ($status_raw !== '' && $status === '') {
+                $warn[] = 'Status "' . $status_raw . '" not recognised — imported as ' . ($permit_no !== '' ? 'Closed' : 'Draft');
+            }
+            if (($r['company'] ?? '') !== '' && strtoupper($r['company']) !== 'N/A' && !$this->import_lookup('contractor', $r['company'])) {
+                $warn[] = 'New contractor "' . $r['company'] . '" will be created';
+            }
+            if (($r['location'] ?? '') !== '' && $project_id && !$this->import_lookup('area', $r['location'], $project_id)) {
+                $warn[] = 'New area "' . $r['location'] . '" will be created';
+            }
+
+            if (count($msgs)) {
+                $report[] = ['row' => $line, 'permit_no' => $permit_no, 'result' => 'error', 'messages' => array_merge($msgs, $warn)];
+                $tally['failed']++;
+                continue;
+            }
+            if (count($warn)) {
+                $tally['warnings']++;
+            }
+            if ($dry) {
+                $report[] = ['row' => $line, 'permit_no' => $permit_no, 'result' => count($warn) ? 'warning' : 'ok', 'messages' => $warn];
+                $tally['created']++;
+                continue;
+            }
+
+            // ── Write ──
+            $project_id    = $project_name !== '' ? $this->project_id_by_name($project_name) : (int) $default_project;
+            $area_id       = $this->area_id_by_name($r['location'] ?? '', $project_id);
+            $contractor_id = $this->contractor_id_by_name($r['company'] ?? '');
+            $type          = eptw_permit_type($type_id);
+            $start         = $start ?: date('Y-m-d H:i:00');
+            $end           = $end ?: date('Y-m-d H:i:00', strtotime($start) + (int) $type->default_validity_hours * 3600);
+            $status        = $status ?: ($permit_no !== '' ? 'closed' : 'draft');
+            $closed_at     = Eptw_import::to_datetime($r['closed_at'] ?? '');
+            if (in_array($status, eptw_working_statuses(), true) && strtotime($end) < time() && $closed_at) {
+                $status = 'closed';
+            }
+            $hazards = array_values(array_filter(array_map('trim', preg_split('/[;,\n]+/', (string) ($r['hazards'] ?? '')))));
+            $extra_notes = [];
+            foreach (['gas_tester', 'o2', 'lel', 'h2s', 'approver', 'delay_reason', 'risk_level'] as $k) {
+                if (($r[$k] ?? '') !== '') {
+                    $extra_notes[] = ucfirst(str_replace('_', ' ', $k)) . ': ' . $r[$k];
+                }
+            }
+            $remarks = trim((string) ($r['remarks'] ?? '') . (count($extra_notes) ? "\n" . implode("\n", $extra_notes) : ''));
+            $risk    = mb_strtolower((string) ($r['risk_level'] ?? ''));
+            $assess  = eptw_risk_assess($type, $hazards, 'day', 0);
+            if (!isset(eptw_risk_levels()[$risk])) {
+                $risk = $assess['level'];
+            }
+            $iso = $this->import_yes($r['isolation_required'] ?? '');
+
+            $data = [
+                'permit_no'            => $permit_no !== '' ? substr($permit_no, 0, 60) : null,
+                'serial_key'           => 'import',
+                'source'               => 'import',
+                'import_batch'         => (int) $batch_id,
+                'project_id'           => $project_id,
+                'area_id'              => $area_id,
+                'permit_type_id'       => $type_id,
+                'contractor_id'        => $contractor_id,
+                'subcontractor'        => substr(strtoupper((string) ($r['subcontractor'] ?? '')) === 'N/A' ? '' : (string) ($r['subcontractor'] ?? ''), 0, 150),
+                'work_order'           => substr(strtoupper((string) ($r['work_order'] ?? '')) === 'N/A' ? '' : (string) ($r['work_order'] ?? ''), 0, 60),
+                'work_title'           => substr((string) ($r['work_description'] ?? ($type->name . ' — imported')), 0, 191),
+                'work_description'     => (string) ($r['work_description'] ?? ''),
+                'location'             => substr((string) ($r['location'] ?? ''), 0, 191),
+                'equipment_tag'        => substr((string) ($r['equipment_tag'] ?? ''), 0, 120),
+                'shift'                => stripos((string) ($r['shift'] ?? ''), 'night') !== false ? 'night' : 'day',
+                'start_at'             => $start,
+                'end_at'               => $end,
+                'original_end_at'      => $end,
+                'engineer_id'          => $me,
+                'permit_holder'        => substr((string) ($r['permit_holder'] ?? ''), 0, 150),
+                'supervisor'           => substr((string) ($r['initiator'] ?? ''), 0, 150),
+                'status'               => $status,
+                'risk_level'           => $risk,
+                'high_risk'            => ($risk === 'high' || $type->high_risk) ? 1 : 0,
+                'risk_reasons'         => json_encode($assess['reasons']),
+                'simops_flag'          => $this->import_yes($r['simops'] ?? '') ? 1 : 0,
+                'extension_count'      => (int) ($r['extension_count'] ?? 0),
+                'hazards'              => json_encode([]),
+                'extra_hazards'        => json_encode($hazards),
+                'controls'             => json_encode([]),
+                'extra'                => json_encode(array_filter([
+                    'imported_initiator' => $r['initiator'] ?? '', 'imported_area_authority' => $r['area_authority'] ?? '', 'imported_issuer' => $r['issuer'] ?? '',
+                    'imported_hse' => $r['hse'] ?? '', 'imported_controls' => $r['controls'] ?? '',
+                ])),
+                'ppe'                  => json_encode(array_values(array_filter(array_map('trim', preg_split('/[;,\n]+/', (string) ($r['ppe'] ?? '')))))),
+                'ra_ref'               => substr((string) ($r['ra_ref'] ?? ''), 0, 80),
+                'isolation_required'   => $iso ? 1 : 0,
+                'isolation_applicable' => $iso ? 'yes' : '',
+                'isolation_type'       => substr((string) ($r['isolation_type'] ?? ''), 0, 80),
+                'isolation_cert_no'    => substr((string) ($r['isolation_cert_no'] ?? ''), 0, 80),
+                'loto_applied'         => $this->import_yes($r['loto'] ?? '') ? 1 : 0,
+                'gas_test_required'    => $this->import_yes($r['gas_test'] ?? '') ? 1 : (int) $type->gas_test_required,
+                'weather'              => substr((string) ($r['weather'] ?? ''), 0, 80),
+                'remarks'              => $remarks,
+                'issued_at'            => $permit_no !== '' ? $start : null,
+                'issued_by'            => $permit_no !== '' ? $me : 0,
+                'activated_at'         => in_array($status, array_merge(eptw_working_statuses(), eptw_closed_statuses()), true) ? $start : null,
+                'closed_at'            => in_array($status, ['closed', 'closed_docs_pending', 'archived'], true) ? ($closed_at ?: $end) : null,
+                'closure'              => json_encode([
+                    'work_completed'    => ['v' => $this->import_yes($r['work_completed'] ?? '') ? 'yes' : '', 'by' => (string) ($r['closed_by'] ?? ''), 'at' => '', 'r' => ''],
+                    'area_restored'     => ['v' => $this->import_yes($r['area_restored'] ?? '') ? 'yes' : '', 'by' => (string) ($r['closed_by'] ?? ''), 'at' => '', 'r' => ''],
+                    'isolation_removed' => ['v' => $this->import_yes($r['isolation_removed'] ?? '') ? 'yes' : '', 'by' => (string) ($r['closed_by'] ?? ''), 'at' => '', 'r' => ''],
+                    'closed_by_name'    => (string) ($r['closed_by'] ?? ''),
+                ]),
+                'docs_complete'        => 1,
+                'expiry_notified'      => 1,
+                'created_by'           => $me,
+                'created_at'           => $start,
+                'updated_at'           => date('Y-m-d H:i:s'),
+            ];
+            $this->db->insert($p . 'eptw_permits', $data);
+            $id = (int) $this->db->insert_id();
+            $this->db->insert($p . 'eptw_events', [
+                'permit_id' => $id, 'staff_id' => $me, 'event' => 'imported', 'from_status' => '', 'to_status' => $status,
+                'note' => 'Imported from the Excel register (batch #' . (int) $batch_id . ', row ' . $line . ')' . ($permit_no !== '' ? ' as ' . $permit_no : ''), 'created_at' => date('Y-m-d H:i:s'),
+            ]);
+            $report[] = ['row' => $line, 'permit_no' => $permit_no, 'result' => count($warn) ? 'warning' : 'ok', 'messages' => $warn, 'permit_id' => $id];
+            $tally['created']++;
+        }
+
+        return ['rows' => $report] + $tally;
+    }
+
+    public function imports($limit = 20)
+    {
+        return $this->db->select('i.*, CONCAT(s.firstname, " ", s.lastname) AS staff_name, (SELECT COUNT(*) FROM ' . db_prefix() . 'eptw_permits x WHERE x.import_batch = i.id) AS live_rows')
+            ->from(db_prefix() . 'eptw_imports i')->join(db_prefix() . 'staff s', 's.staffid = i.created_by', 'left')
+            ->order_by('i.id', 'desc')->limit((int) $limit)->get()->result();
+    }
+
+    public function import_batch($id)
+    {
+        return $this->db->where('id', (int) $id)->get(db_prefix() . 'eptw_imports')->row();
+    }
+
+    /**
+     * Reverse an import: removes the permits of the batch that nobody has
+     * touched since (no event besides the import, no document). Touched
+     * permits are kept and reported.
+     *
+     * @return array{removed:int, kept:int}|string
+     */
+    public function rollback_import($id)
+    {
+        $batch = $this->import_batch($id);
+        if (!$batch) {
+            return 'Import not found.';
+        }
+        if ($batch->rolled_back_at) {
+            return 'This import was already reversed.';
+        }
+        $p       = db_prefix();
+        $removed = 0;
+        $kept    = 0;
+        foreach ($this->db->select('id')->where('import_batch', (int) $id)->get($p . 'eptw_permits')->result() as $row) {
+            $events = $this->db->where('permit_id', (int) $row->id)->where('event !=', 'imported')->count_all_results($p . 'eptw_events');
+            $docs   = $this->db->where('permit_id', (int) $row->id)->count_all_results($p . 'eptw_documents');
+            if ($events || $docs) {
+                $kept++;
+                continue;
+            }
+            foreach (['eptw_events', 'eptw_approvals', 'eptw_gas_tests', 'eptw_extensions', 'eptw_revalidations'] as $table) {
+                $this->db->where('permit_id', (int) $row->id)->delete($p . $table);
+            }
+            $this->db->where('id', (int) $row->id)->delete($p . 'eptw_permits');
+            $removed++;
+        }
+        $this->db->where('id', (int) $id)->update($p . 'eptw_imports', ['rolled_back_at' => date('Y-m-d H:i:s'), 'rolled_back_by' => (int) eptw_me()['staff_id']]);
+        log_activity('ePTW import #' . (int) $id . ' reversed: ' . $removed . ' permit(s) removed, ' . $kept . ' kept (changed since import)');
+
+        return ['removed' => $removed, 'kept' => $kept];
+    }
+
     /* ═══════════════════════════ Permit types ═══════════════════════ */
 
     public function types()
@@ -303,6 +600,9 @@ class Eptw_model extends App_Model
         $dupe = $this->db->where('code', $code)->where('id !=', (int) $id)->get(db_prefix() . 'eptw_permit_types')->row();
         if ($dupe) {
             return 'Code "' . $code . '" is already used by ' . $dupe->name . '.';
+        }
+        if ((int) ($in['max_validity_hours'] ?? 0) > 0 && (int) ($in['default_validity_hours'] ?? 12) > (int) $in['max_validity_hours']) {
+            return 'The default validity cannot be longer than the maximum validity.';
         }
 
         $lines = function ($text) {
@@ -365,8 +665,11 @@ class Eptw_model extends App_Model
             'color'                  => preg_match('/^#[0-9a-f]{6}$/i', (string) ($in['color'] ?? '')) ? $in['color'] : '#2563eb',
             'high_risk'              => !empty($in['high_risk']) ? 1 : 0,
             'gas_test_required'      => !empty($in['gas_test_required']) ? 1 : 0,
-            'isolation_required'     => !empty($in['isolation_required']) ? 1 : 0,
+            'isolation_required'     => ($in['isolation_rule'] ?? '') === 'always' ? 1 : 0,
             'default_validity_hours' => max(1, (int) ($in['default_validity_hours'] ?? 12)),
+            'max_validity_hours'     => max(0, min(720, (int) ($in['max_validity_hours'] ?? 0))),
+            'expiry_warning_hours'   => max(0, min(72, (int) ($in['expiry_warning_hours'] ?? 0))),
+            'isolation_rule'         => isset(eptw_isolation_rules()[$in['isolation_rule'] ?? '']) ? $in['isolation_rule'] : 'conditional',
             'hazards'                => json_encode($lines($in['hazards_text'] ?? '')),
             'controls'               => json_encode($controls),
             'extra_fields'           => json_encode($extra),
@@ -512,6 +815,124 @@ class Eptw_model extends App_Model
         $this->db->where('id', (int) $id)->delete(db_prefix() . 'eptw_simops_rules');
     }
 
+    /* ═══════════════════════════ People (site personnel) ══════════ */
+
+    /**
+     * The personnel master: everyone who may be named on a permit (holder,
+     * supervisor, fire watch, isolation authority, toolbox attendee…) without
+     * needing a login. Approvals stay with ePTW team members who log in.
+     */
+    public function people($only_active = false)
+    {
+        $this->db->select('pe.*, c.name AS contractor_name')->from(db_prefix() . 'eptw_people pe')
+            ->join(db_prefix() . 'eptw_contractors c', 'c.id = pe.contractor_id', 'left');
+        if ($only_active) {
+            $this->db->where('pe.active', 1);
+        }
+
+        return $this->db->order_by('pe.name', 'asc')->get()->result();
+    }
+
+    /** Active people covering a project (empty project list = every project). */
+    public function people_for($project_id)
+    {
+        if (!$this->db->table_exists(db_prefix() . 'eptw_people')) {
+            return [];
+        }
+        $out = [];
+        foreach ($this->people(true) as $row) {
+            $projects = json_decode((string) $row->project_ids, true);
+            $projects = is_array($projects) ? array_map('intval', $projects) : [];
+            if ((int) $project_id && count($projects) && !in_array((int) $project_id, $projects, true)) {
+                continue;
+            }
+            $out[] = $row;
+        }
+
+        return $out;
+    }
+
+    public function save_person(array $in, $id = 0)
+    {
+        $name = trim((string) ($in['name'] ?? ''));
+        if ($name === '') {
+            return 'Give the person a name.';
+        }
+        $badge = substr(trim((string) ($in['badge_no'] ?? '')), 0, 60);
+        if ($badge !== '') {
+            $dupe = $this->db->where('badge_no', $badge)->where('id !=', (int) $id)->get(db_prefix() . 'eptw_people')->row();
+            if ($dupe) {
+                return 'Badge / ID "' . $badge . '" already belongs to ' . $dupe->name . '.';
+            }
+        }
+        $data = [
+            'name'          => substr($name, 0, 150),
+            'position'      => substr(trim((string) ($in['position'] ?? '')), 0, 120),
+            'contractor_id' => (int) ($in['contractor_id'] ?? 0),
+            'company'       => substr(trim((string) ($in['company'] ?? '')), 0, 150),
+            'badge_no'      => $badge,
+            'phone'         => substr(trim((string) ($in['phone'] ?? '')), 0, 40),
+            'staff_id'      => (int) ($in['staff_id'] ?? 0),
+            'project_ids'   => json_encode(array_values(array_filter(array_map('intval', (array) ($in['project_ids'] ?? []))))),
+            'active'        => !empty($in['active']) ? 1 : 0,
+        ];
+        if ($id) {
+            $this->db->where('id', (int) $id)->update(db_prefix() . 'eptw_people', $data);
+
+            return (int) $id;
+        }
+        $data['created_at'] = date('Y-m-d H:i:s');
+        $this->db->insert(db_prefix() . 'eptw_people', $data);
+
+        return (int) $this->db->insert_id();
+    }
+
+    public function delete_person($id)
+    {
+        $this->db->where('id', (int) $id)->delete(db_prefix() . 'eptw_people');
+
+        return true;
+    }
+
+    /* ═══════════════════════════ Approval matrix ═══════════════════ */
+
+    /** permit_type_id => steps for one project (only the overridden types). */
+    public function matrix($project_id)
+    {
+        $out = [];
+        foreach ($this->db->where('project_id', (int) $project_id)->get(db_prefix() . 'eptw_approval_matrix')->result() as $row) {
+            $steps = json_decode((string) $row->steps, true);
+            $out[(int) $row->permit_type_id] = is_array($steps) ? $steps : [];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Save a project's matrix. Types left on "use the permit type default"
+     * have no row; the coordinator always signs last by issuing.
+     */
+    public function save_matrix($project_id, array $in)
+    {
+        $project_id = (int) $project_id;
+        if (!$project_id || !$this->project($project_id)) {
+            return 'Choose a project.';
+        }
+        $table = db_prefix() . 'eptw_approval_matrix';
+        foreach (eptw_permit_types(false) as $type) {
+            $tid = (int) $type->id;
+            $this->db->where('project_id', $project_id)->where('permit_type_id', $tid)->delete($table);
+            if (empty($in['custom'][$tid])) {
+                continue;
+            }
+            $steps = array_values(array_intersect(['area_authority', 'hse', 'manager'], (array) ($in['steps'][$tid] ?? [])));
+            $steps[] = 'coordinator';
+            $this->db->insert($table, ['project_id' => $project_id, 'permit_type_id' => $tid, 'steps' => json_encode($steps)]);
+        }
+
+        return true;
+    }
+
     /* ═══════════════════════════ Settings ═══════════════════════════ */
 
     public function save_settings(array $in)
@@ -534,6 +955,15 @@ class Eptw_model extends App_Model
         update_option('eptw_required_docs', implode(',', $docs));
         update_option('eptw_max_upload_mb', (string) max(1, min(100, (int) ($in['eptw_max_upload_mb'] ?? 15))));
         update_option('eptw_max_extensions', (string) max(0, min(20, (int) ($in['eptw_max_extensions'] ?? 3))));
+        $threshold = (float) str_replace(',', '.', (string) ($in['eptw_wah_threshold_m'] ?? '1.8'));
+        update_option('eptw_wah_threshold_m', (string) ($threshold > 0 && $threshold <= 50 ? $threshold : 1.8));
+        update_option('eptw_shared_areas', !empty($in['eptw_shared_areas']) ? '1' : '0');
+        update_option('eptw_sod_rules', implode(',', array_values(array_intersect((array) ($in['eptw_sod_rules'] ?? []), array_keys(eptw_sod_rule_options())))));
+        update_option('eptw_toolbox_mode', isset(eptw_toolbox_modes()[$in['eptw_toolbox_mode'] ?? '']) ? $in['eptw_toolbox_mode'] : 'both');
+        update_option('eptw_docs_review', !empty($in['eptw_docs_review']) ? '1' : '0');
+        update_option('eptw_escalate_high_risk', !empty($in['eptw_escalate_high_risk']) ? '1' : '0');
+        update_option('eptw_dashboard_refresh', (string) (in_array((int) ($in['eptw_dashboard_refresh'] ?? 120), [0, 60, 120, 300, 600], true) ? (int) $in['eptw_dashboard_refresh'] : 120));
+        update_option('eptw_overdue_hours', (string) max(1, min(720, (int) ($in['eptw_overdue_hours'] ?? 24))));
 
         return true;
     }

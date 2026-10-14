@@ -277,9 +277,91 @@ $CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}eptw_simops_rules` (
     KEY `pair` (`type_a`, `type_b`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 
+// ── 1.2.0: personnel master, approval matrix, import batches ──
+$CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}eptw_people` (
+    `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(150) NOT NULL,
+    `position` VARCHAR(120) NOT NULL DEFAULT '',
+    `contractor_id` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `company` VARCHAR(150) NOT NULL DEFAULT '' COMMENT 'when not a listed contractor',
+    `badge_no` VARCHAR(60) NOT NULL DEFAULT '',
+    `phone` VARCHAR(40) NOT NULL DEFAULT '',
+    `staff_id` INT(11) NOT NULL DEFAULT 0 COMMENT 'linked login, optional',
+    `project_ids` TEXT DEFAULT NULL COMMENT 'JSON list, empty = all projects',
+    `active` TINYINT(1) NOT NULL DEFAULT 1,
+    `created_at` DATETIME DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+$CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}eptw_approval_matrix` (
+    `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `project_id` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `permit_type_id` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `steps` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'JSON list of review steps',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `project_type` (`project_id`, `permit_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+$CI->db->query("CREATE TABLE IF NOT EXISTS `{$p}eptw_imports` (
+    `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `file_name` VARCHAR(191) NOT NULL DEFAULT '',
+    `total_rows` INT(11) NOT NULL DEFAULT 0,
+    `created` INT(11) NOT NULL DEFAULT 0,
+    `skipped` INT(11) NOT NULL DEFAULT 0,
+    `failed` INT(11) NOT NULL DEFAULT 0,
+    `report` MEDIUMTEXT DEFAULT NULL COMMENT 'JSON row-level messages',
+    `created_by` INT(11) NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL,
+    `rolled_back_at` DATETIME DEFAULT NULL,
+    `rolled_back_by` INT(11) NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
 // table_exists() caches the table list on first call in a request; the tables
 // above were created after that, so refresh it before anything depends on it.
 unset($CI->db->data_cache['table_names']);
+
+// ── 1.2.0 columns (field_exists() is not cached, so this is safe to repeat) ──
+$eptw_columns = [
+    'eptw_permits' => [
+        'risk_reasons'         => "TEXT DEFAULT NULL COMMENT 'JSON: why the risk level is what it is'",
+        'isolation_applicable' => "VARCHAR(3) NOT NULL DEFAULT '' COMMENT 'yes | no | na'",
+        'isolation_permit_id'  => "INT(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'linked LOTO / isolation permit'",
+        'expired_at'           => 'DATETIME DEFAULT NULL',
+        'simops_ack_by'        => 'INT(11) NOT NULL DEFAULT 0',
+        'simops_ack_at'        => 'DATETIME DEFAULT NULL',
+        'import_batch'         => 'INT(11) UNSIGNED NOT NULL DEFAULT 0',
+    ],
+    'eptw_permit_types' => [
+        'max_validity_hours'   => "INT(11) NOT NULL DEFAULT 0 COMMENT '0 = no limit'",
+        'expiry_warning_hours' => "INT(11) NOT NULL DEFAULT 0 COMMENT '0 = global setting'",
+        'isolation_rule'       => "VARCHAR(12) NOT NULL DEFAULT 'conditional' COMMENT 'conditional | always | never'",
+    ],
+    'eptw_projects' => [
+        'max_validity_hours'   => "INT(11) NOT NULL DEFAULT 0 COMMENT '0 = permit type limit only'",
+    ],
+    'eptw_extensions' => [
+        'checks'               => "TEXT DEFAULT NULL COMMENT 'JSON revalidation of conditions at approval'",
+    ],
+    'eptw_revalidations' => [
+        'conditions_ok'        => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'gas_test'             => "VARCHAR(12) NOT NULL DEFAULT '' COMMENT 'done | not_required'",
+    ],
+    'eptw_documents' => [
+        'review_status'        => "VARCHAR(10) NOT NULL DEFAULT 'pending' COMMENT 'pending | verified | rejected'",
+        'reviewed_by'          => 'INT(11) NOT NULL DEFAULT 0',
+        'reviewed_at'          => 'DATETIME DEFAULT NULL',
+        'review_note'          => "VARCHAR(255) NOT NULL DEFAULT ''",
+    ],
+];
+foreach ($eptw_columns as $eptw_table => $eptw_fields) {
+    foreach ($eptw_fields as $eptw_field => $eptw_def) {
+        if (!$CI->db->field_exists($eptw_field, $p . $eptw_table)) {
+            $CI->db->query('ALTER TABLE `' . $p . $eptw_table . '` ADD `' . $eptw_field . '` ' . $eptw_def);
+        }
+    }
+}
 
 // ── Seed the 17 permit templates (only the ones not yet present, by code) ──
 require_once __DIR__ . '/data/permit_types_seed.php';
@@ -305,6 +387,7 @@ foreach (eptw_permit_types_seed() as $eptw_type) {
         'gas_test_required'      => (int) $eptw_type['gas_test_required'],
         'isolation_required'     => (int) $eptw_type['isolation_required'],
         'default_validity_hours' => (int) $eptw_type['default_validity_hours'],
+        'isolation_rule'         => $eptw_type['isolation_rule'] ?? 'conditional',
         'hazards'                => json_encode($eptw_type['hazards']),
         'controls'               => json_encode($eptw_type['controls']),
         'extra_fields'           => json_encode($eptw_type['extra_fields']),
@@ -352,4 +435,22 @@ if (!get_option('eptw_menu_permissions_seeded')) {
         eptw_grant_role_permissions($eptw_member->staff_id, $eptw_member->role);
     }
     update_option('eptw_menu_permissions_seeded', '1');
+}
+
+// ── 1.2.0 one-time upgrade of existing data (UAT findings v4) ──
+if (!get_option('eptw_v12_upgraded')) {
+    // Shared areas become opt-in; keep them working where they are already used.
+    if ($CI->db->where('project_id', 0)->count_all_results($p . 'eptw_areas') > 0) {
+        update_option('eptw_shared_areas', '1');
+    }
+    // Isolation is asked per permit, except where the work itself is isolation.
+    $CI->db->where_in('code', ['LOTO', 'EL'])->update($p . 'eptw_permit_types', ['isolation_rule' => 'always']);
+    // Work at height threshold becomes a setting: {HEIGHT} in the description.
+    $CI->db->where('code', 'WAH')->like('description', '1.8 m', 'both')
+        ->set('description', "REPLACE(description, '1.8 m', '{HEIGHT} m')", false)->update($p . 'eptw_permit_types');
+    // Existing permits: the old checkbox becomes the applicability answer.
+    $CI->db->where('isolation_applicable', '')->where('isolation_required', 1)->update($p . 'eptw_permits', ['isolation_applicable' => 'yes']);
+    // "Active" means work is authorized, so it is no longer set by the clock (EPTW-UAT-037).
+    update_option('eptw_auto_activate', '0');
+    update_option('eptw_v12_upgraded', '1');
 }

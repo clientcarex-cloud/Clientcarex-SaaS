@@ -5,6 +5,7 @@ $setup_icons = [
     'eptw_setup_projects'    => 'fa-solid fa-diagram-project',
     'eptw_setup_contractors' => 'fa-solid fa-helmet-safety',
     'eptw_setup_types'       => 'fa-solid fa-file-shield',
+    'eptw_setup_people'      => 'fa-solid fa-id-badge',
     'eptw_setup_team'        => 'fa-solid fa-users-gear',
     'eptw_setup_simops'      => 'fa-solid fa-diagram-project',
     'eptw_setup_import'      => 'fa-solid fa-file-import',
@@ -13,7 +14,11 @@ $setup_icons = [
 $setup_tabs = [];
 foreach (eptw_setup_features() as $eptw_feature) {
     $eptw_menu = eptw_menu_permissions()[$eptw_feature];
-    $setup_tabs[substr($eptw_feature, strlen('eptw_setup_'))] = [$eptw_menu['url'], $setup_icons[$eptw_feature], substr($eptw_menu['name'], strlen('Setup — '))];
+    $setup_tabs[substr($eptw_feature, strlen('eptw_setup_'))] = [$eptw_menu['url'], $setup_icons[$eptw_feature] ?? 'fa-solid fa-gear', substr($eptw_menu['name'], strlen('Setup — '))];
+    // The approval matrix is part of the permit-type configuration.
+    if ($eptw_feature === 'eptw_setup_types') {
+        $setup_tabs['matrix'] = ['eptw/eptw_setup/matrix', 'fa-solid fa-table-cells', 'Approval matrix'];
+    }
 }
 ?>
 <div class="eptw-views" style="margin-bottom:16px">

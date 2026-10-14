@@ -42,8 +42,8 @@
                             <dl class="eptw-dl" style="grid-template-columns:1fr">
                                 <div><dt>Engineer / Performing Authority</dt><dd>Create drafts, request permit numbers, see their own permits, request extensions, upload attachments, record gas tests and toolbox talks.</dd></div>
                                 <div><dt>HSE Officer</dt><dd>Review and sign permits, add safety remarks, suspend unsafe work, see high-risk permits and every permit in their projects.</dd></div>
-                                <div><dt>Area Authority</dt><dd>Review and sign for area safety, start work, suspend, revalidate shifts.</dd></div>
-                                <div><dt>PTW Coordinator</dt><dd>Issue permit numbers, record paper approvals, run the register, extend, hold, resume, close, archive, import the Excel register.</dd></div>
+                                <div><dt>Area Authority</dt><dd>Review and sign for area safety, confirm the start of work, suspend, revalidate shifts.</dd></div>
+                                <div><dt>PTW Coordinator</dt><dd>Issue permit numbers, record paper approvals, run the register, revalidate and approve extensions, hold, resume, close, archive, import the Excel register.</dd></div>
                                 <div><dt>Manager</dt><dd>Dashboard, register and reports for their projects. Signs only where a template asks for manager approval.</dd></div>
                                 <div><dt>ePTW Administrator</dt><dd>Every workflow step. CRM administrators are ePTW administrators automatically.</dd></div>
                             </dl>

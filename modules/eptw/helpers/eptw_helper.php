@@ -26,6 +26,14 @@ function eptw_default_options()
         'eptw_max_upload_mb'       => '15',
         'eptw_max_extensions'      => '3',
         'eptw_simops_enabled'      => '1',
+        'eptw_wah_threshold_m'     => '1.8',
+        'eptw_shared_areas'        => '0',         // 1 = areas may be shared by every project
+        'eptw_sod_rules'           => '',          // comma list, see eptw_sod_rule_options()
+        'eptw_toolbox_mode'        => 'both',      // digital | upload | both
+        'eptw_docs_review'         => '0',         // 1 = required documents count once verified
+        'eptw_escalate_high_risk'  => '0',         // 1 = high-risk permits also need the Manager
+        'eptw_dashboard_refresh'   => '120',       // seconds, 0 = off
+        'eptw_overdue_hours'       => '24',        // expired this long → escalated on the dashboard
         'eptw_last_cron'           => '',
         'eptw_schema_version'      => '',
     ];
@@ -144,6 +152,7 @@ function eptw_menu_permissions()
 
     return [
         'eptw_dashboard'         => ['name' => 'Dashboard',                    'url' => 'eptw',                         'caps' => ['view' => 'View'],                                          'roles' => ['view' => $all]],
+        'eptw_corporate'         => ['name' => 'Corporate dashboard',          'url' => 'eptw/corporate',               'caps' => ['view' => 'View'],                                          'roles' => ['view' => ['manager', 'admin']]],
         'eptw_register'          => ['name' => 'Permit register',              'url' => 'eptw/register',                'caps' => ['view' => 'View', 'export' => 'Export to Excel'],           'roles' => ['view' => $all, 'export' => $all]],
         'eptw_new_permit'        => ['name' => 'New permit',                   'url' => 'eptw/permit',                  'caps' => ['create' => 'Create'],                                      'roles' => ['create' => $authors]],
         'eptw_approvals'         => ['name' => 'Pending approvals',            'url' => 'eptw/register?view=pending',   'caps' => ['view' => 'View'],                                          'roles' => ['view' => ['area_authority', 'hse', 'coordinator', 'admin']]],
@@ -152,6 +161,7 @@ function eptw_menu_permissions()
         'eptw_setup_projects'    => ['name' => 'Setup — Projects & areas',     'url' => 'eptw/eptw_setup/projects',     'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
         'eptw_setup_contractors' => ['name' => 'Setup — Contractors',          'url' => 'eptw/eptw_setup/contractors',  'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
         'eptw_setup_types'       => ['name' => 'Setup — Permit types',         'url' => 'eptw/eptw_setup/types',        'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
+        'eptw_setup_people'      => ['name' => 'Setup — People (site personnel)', 'url' => 'eptw/eptw_setup/people',     'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['coordinator', 'admin'])],
         'eptw_setup_team'        => ['name' => 'Setup — Team & roles',         'url' => 'eptw/eptw_setup/team',         'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
         'eptw_setup_simops'      => ['name' => 'Setup — SIMOPS rules',         'url' => 'eptw/eptw_setup/simops',       'caps' => $crud,                                                       'roles' => array_fill_keys(array_keys($crud), ['admin'])],
         'eptw_setup_import'      => ['name' => 'Setup — Import Excel register', 'url' => 'eptw/eptw_setup/import',      'caps' => ['view' => 'View', 'create' => 'Run import'],                'roles' => ['view' => ['coordinator', 'admin'], 'create' => ['coordinator', 'admin']]],
@@ -327,11 +337,12 @@ function eptw_statuses()
         'issued'              => ['label' => 'Issued',                       'badge' => 'ok',    'icon' => 'fa-solid fa-stamp'],
         'active'              => ['label' => 'Active',                       'badge' => 'live',  'icon' => 'fa-solid fa-circle-play'],
         'active_extended'     => ['label' => 'Active – Extended',            'badge' => 'live',  'icon' => 'fa-solid fa-clock-rotate-left'],
+        'expired'             => ['label' => 'Expired – work not authorized', 'badge' => 'bad',  'icon' => 'fa-solid fa-hourglass-end'],
         'suspended'           => ['label' => 'Suspended',                    'badge' => 'bad',   'icon' => 'fa-solid fa-circle-pause'],
         'on_hold'             => ['label' => 'On hold',                      'badge' => 'warn',  'icon' => 'fa-solid fa-hand'],
         'on_hold_simops'      => ['label' => 'On hold – SIMOPS conflict',    'badge' => 'bad',   'icon' => 'fa-solid fa-triangle-exclamation'],
-        'closed'              => ['label' => 'Closed',                       'badge' => 'muted', 'icon' => 'fa-solid fa-circle-check'],
-        'closed_docs_pending' => ['label' => 'Closed – documents pending',   'badge' => 'warn',  'icon' => 'fa-solid fa-folder-open'],
+        'closed'              => ['label' => 'Closed – complete',            'badge' => 'muted', 'icon' => 'fa-solid fa-circle-check'],
+        'closed_docs_pending' => ['label' => 'Closed – documents pending upload', 'badge' => 'warn', 'icon' => 'fa-solid fa-folder-open'],
         'cancelled'           => ['label' => 'Cancelled',                    'badge' => 'muted', 'icon' => 'fa-solid fa-ban'],
         'archived'            => ['label' => 'Archived',                     'badge' => 'muted', 'icon' => 'fa-solid fa-box-archive'],
     ];
@@ -352,15 +363,79 @@ function eptw_status_badge($status, $extra_class = '')
     return '<span class="eptw-badge ' . $meta['badge'] . ' ' . $extra_class . '"><i class="' . $meta['icon'] . '"></i> ' . html_escape($meta['label']) . '</span>';
 }
 
-/** Statuses that count as "the permit exists on site" for SIMOPS and area load. */
+/**
+ * "Open on site": the permit has a number and is not closed yet — it counts
+ * for SIMOPS, area load and the high-risk panel. Only the working statuses
+ * below authorize work; every other open status means WORK NOT AUTHORIZED.
+ */
 function eptw_live_statuses()
+{
+    return ['issued', 'active', 'active_extended', 'suspended', 'on_hold', 'on_hold_simops', 'expired'];
+}
+
+/** The only statuses under which work is authorized. */
+function eptw_working_statuses()
+{
+    return ['active', 'active_extended'];
+}
+
+/** Open statuses whose validity is swept to "expired" once the end time passes. */
+function eptw_expirable_statuses()
 {
     return ['issued', 'active', 'active_extended', 'suspended', 'on_hold', 'on_hold_simops'];
 }
 
-function eptw_working_statuses()
+/**
+ * SQL condition: end time inside the expiry warning window of the permit's
+ * own type (or the global window). Needs the permits table aliased "x".
+ */
+function eptw_expiring_sql($now = null)
 {
-    return ['active', 'active_extended'];
+    $CI  = &get_instance();
+    $now = $CI->db->escape($now ?: date('Y-m-d H:i:s'));
+    $p   = db_prefix();
+
+    return "x.end_at <= DATE_ADD($now, INTERVAL COALESCE((SELECT NULLIF(tt.expiry_warning_hours, 0) FROM {$p}eptw_permit_types tt WHERE tt.id = x.permit_type_id), "
+        . (int) eptw_opt('eptw_expiring_hours') . ') HOUR)';
+}
+
+function eptw_hold_statuses()
+{
+    return ['on_hold', 'on_hold_simops'];
+}
+
+/**
+ * Work-authorization state, kept apart from the administrative status so the
+ * site never has to infer it: ['ok' => bool, 'title' => …, 'detail' => …].
+ */
+function eptw_work_authorization($permit)
+{
+    $status = (string) $permit->status;
+    $end    = strtotime((string) $permit->end_at);
+
+    if (in_array($status, eptw_working_statuses(), true) && $end && $end > time()) {
+        return ['ok' => true, 'title' => 'Work authorized', 'detail' => 'Valid until ' . eptw_dt($permit->end_at) . ' (' . eptw_time_until($permit->end_at) . ').'];
+    }
+    $reasons = [
+        'draft'            => 'Draft — no permit number yet.',
+        'number_requested' => 'Waiting for reviews and the permit number.',
+        'under_review'     => 'Under review — no permit number yet.',
+        'returned'         => 'Returned for correction — no permit number yet.',
+        'issued'           => 'Permit number issued, but the start of work has not been confirmed.',
+        'suspended'        => 'Suspended' . (!empty($permit->suspend_reason) ? ': ' . $permit->suspend_reason : '') . '. Work must stop until the permit is resumed.',
+        'on_hold'          => 'On hold. Work must stop until the permit is resumed.',
+        'on_hold_simops'   => 'On hold for a SIMOPS conflict. Work must not start until the conflict is resolved.',
+        'expired'          => 'Validity ended ' . eptw_dt($permit->end_at) . '. Work may resume only after an approved extension; otherwise close the permit.',
+        'closed'           => 'Closed.',
+        'closed_docs_pending' => 'Closed — closure documents are still pending upload.',
+        'cancelled'        => 'Cancelled.',
+        'archived'         => 'Archived.',
+    ];
+    if (in_array($status, eptw_working_statuses(), true)) {
+        return ['ok' => false, 'title' => 'Work not authorized', 'detail' => 'Validity ended ' . eptw_dt($permit->end_at) . '.'];
+    }
+
+    return ['ok' => false, 'title' => 'Work not authorized', 'detail' => $reasons[$status] ?? eptw_status_label($status)];
 }
 
 function eptw_pending_statuses()
@@ -417,6 +492,102 @@ function eptw_required_doc_types()
     }));
 }
 
+/**
+ * Segregation-of-duties rules a client may switch on (Setup → General).
+ * Off by default: the guideline defines separate roles but does not forbid
+ * one person holding two of them.
+ */
+function eptw_sod_rule_options()
+{
+    return [
+        'own_permit'      => 'The initiator may not sign a review step on their own permit',
+        'two_steps'       => 'One person may not sign two review steps on the same permit',
+        'issuer_initiator'=> 'The permit issuer may not issue a permit they initiated',
+        'own_extension'   => 'Whoever requests an extension may not approve it',
+        'reval_distinct'  => 'Shift revalidation needs different people as Area Authority, Issuer and HSE',
+    ];
+}
+
+function eptw_sod($rule)
+{
+    return in_array($rule, array_map('trim', explode(',', (string) eptw_opt('eptw_sod_rules'))), true);
+}
+
+function eptw_toolbox_modes()
+{
+    return [
+        'both'    => 'Digital attendance or an uploaded signed sheet — either is accepted',
+        'upload'  => 'Signed paper sheet uploaded after the talk (hybrid site)',
+        'digital' => 'Digital attendance list with badge / ID and acknowledgement',
+    ];
+}
+
+/** Isolation / LOTO applicability rule per permit type. */
+function eptw_isolation_rules()
+{
+    return [
+        'conditional' => 'Ask on each permit (Yes / No / N/A)',
+        'always'      => 'Always required for this permit type',
+        'never'       => 'Not applicable to this permit type',
+    ];
+}
+
+/** Closure checklist items: key => [label, default when not applicable]. */
+function eptw_closure_items()
+{
+    return [
+        'work_completed'      => 'Work completed',
+        'area_clean'          => 'Area clean & housekeeping done',
+        'no_residual_hazards' => 'No residual hazards',
+        'isolation_removed'   => 'Isolation removed / de-isolated',
+        'area_restored'       => 'Area restored / handed back',
+        'inspection_done'     => 'Final inspection done',
+    ];
+}
+
+/** A closure item as yes | no | na | '' — understands the pre-1.2 0/1 format too. */
+function eptw_closure_value($closure, $key)
+{
+    $v = $closure[$key] ?? null;
+    if (is_array($v)) {
+        return (string) ($v['v'] ?? '');
+    }
+    if ($v === null || $v === '') {
+        return '';
+    }
+
+    return (int) $v ? 'yes' : 'no';
+}
+
+/** Type descriptions may carry {HEIGHT} — the configured work-at-height threshold. */
+function eptw_type_text($text)
+{
+    $threshold = rtrim(rtrim(number_format((float) eptw_opt('eptw_wah_threshold_m'), 2, '.', ''), '0'), '.');
+
+    return str_replace('{HEIGHT}', $threshold, (string) $text);
+}
+
+/** Validity limits for a permit type on a project: [default hours, max hours or 0]. */
+function eptw_validity_limits($type, $project = null)
+{
+    $default = max(1, (int) ($type->default_validity_hours ?? 12));
+    $caps    = array_filter([(int) ($type->max_validity_hours ?? 0), (int) ($project->max_validity_hours ?? 0)]);
+    $max     = count($caps) ? min($caps) : 0;
+    if ($max && $default > $max) {
+        $default = $max;
+    }
+
+    return [$default, $max];
+}
+
+/** Expiry warning window for a permit type, in hours (type override, else global). */
+function eptw_expiry_hours($type = null)
+{
+    $own = (int) ($type->expiry_warning_hours ?? 0);
+
+    return $own > 0 ? $own : (int) eptw_opt('eptw_expiring_hours');
+}
+
 function eptw_suspension_reasons()
 {
     return ['Weather conditions', 'Gas detection', 'SIMOPS conflict', 'Unsafe condition', 'Emergency', 'Other'];
@@ -453,7 +624,11 @@ function eptw_areas($project_id = 0, $only_active = true)
         $CI->db->where('active', 1);
     }
     if ((int) $project_id > 0) {
-        $CI->db->group_start()->where('project_id', (int) $project_id)->or_where('project_id', 0)->group_end();
+        if (eptw_opt('eptw_shared_areas') === '1') {
+            $CI->db->group_start()->where('project_id', (int) $project_id)->or_where('project_id', 0)->group_end();
+        } else {
+            $CI->db->where('project_id', (int) $project_id);
+        }
     }
 
     return $CI->db->order_by('name', 'asc')->get(db_prefix() . 'eptw_areas')->result();
@@ -771,28 +946,61 @@ function eptw_suggest($type, $description, $area_name = '')
 }
 
 /**
- * Risk level from the template flag, the hazards ticked and a few modifiers.
+ * Risk level from the template flag, the hazards ticked and a few modifiers,
+ * with the reasons spelt out so the dashboard can say why a permit is high
+ * risk (a Cold Work permit can be, through its assessment).
+ *
+ * @return array{level:string, score:int, high_risk:bool, reasons:string[]}
  */
-function eptw_risk_level($type, array $hazards_yes, $shift = 'day', $workers = 0)
+function eptw_risk_assess($type, array $hazards_yes, $shift = 'day', $workers = 0)
 {
-    $score = !empty($type->high_risk) ? 6 : 2;
-    $score += min(6, count($hazards_yes));
+    $reasons = [];
+    $score   = !empty($type->high_risk) ? 6 : 2;
+    if (!empty($type->high_risk)) {
+        $reasons[] = 'Permit type is classified high-risk';
+    }
+    $hz     = min(6, count($hazards_yes));
+    $score += $hz;
+    if ($hz) {
+        $reasons[] = count($hazards_yes) . ' hazard(s) identified';
+    }
     if ($shift === 'night' || $shift === 'both') {
         $score += 1;
+        $reasons[] = 'Night shift';
     }
     if ((int) $workers >= 10) {
         $score += 1;
+        $reasons[] = (int) $workers . ' workers';
     }
     if (!empty($type->gas_test_required)) {
         $score += 1;
+        $reasons[] = 'Gas testing required';
     }
 
-    if ($score >= 9) {
-        return 'high';
-    }
-    if ($score >= 5) {
-        return 'medium';
+    $level = $score >= 9 ? 'high' : ($score >= 5 ? 'medium' : 'low');
+    $high  = $level === 'high' || !empty($type->high_risk);
+    if ($level === 'high' && empty($type->high_risk)) {
+        array_unshift($reasons, 'Assessed high risk (score ' . $score . ' of 9+)');
     }
 
-    return 'low';
+    return ['level' => $level, 'score' => $score, 'high_risk' => $high, 'reasons' => $reasons];
+}
+
+function eptw_risk_level($type, array $hazards_yes, $shift = 'day', $workers = 0)
+{
+    return eptw_risk_assess($type, $hazards_yes, $shift, $workers)['level'];
+}
+
+/** One line saying why a permit is (not) high risk. */
+function eptw_risk_reason_text($permit)
+{
+    $reasons = json_decode((string) ($permit->risk_reasons ?? ''), true);
+    if (is_array($reasons) && count($reasons)) {
+        return implode(' · ', $reasons);
+    }
+    if (!empty($permit->type_high_risk)) {
+        return 'Permit type is classified high-risk';
+    }
+
+    return $permit->high_risk ? 'Assessed high risk' : '';
 }

@@ -123,7 +123,7 @@ function eptw_permit_types_seed()
         ],
         [
             'code' => 'WAH', 'name' => 'Working at Height Permit', 'icon' => 'fa-solid fa-stairs', 'color' => '#0891b2',
-            'description' => 'Work at 1.8 m or more, on scaffolds, roofs, ladders, MEWPs and open edges.',
+            'description' => 'Work at {HEIGHT} m or more, on scaffolds, roofs, ladders, MEWPs and open edges.',
             'high_risk' => 1, 'gas_test_required' => 0, 'isolation_required' => 0, 'default_validity_hours' => 12,
             'keywords' => ['height', 'scaffold', 'roof', 'ladder', 'edge', 'elevat'],
             'extra_fields' => array_merge([
@@ -141,7 +141,7 @@ function eptw_permit_types_seed()
         [
             'code' => 'EL', 'name' => 'Electrical Work Permit', 'icon' => 'fa-solid fa-bolt', 'color' => '#ca8a04',
             'description' => 'Work on or near electrical equipment, panels, cables and switchgear.',
-            'high_risk' => 1, 'gas_test_required' => 0, 'isolation_required' => 1, 'default_validity_hours' => 12,
+            'high_risk' => 1, 'gas_test_required' => 0, 'isolation_required' => 1, 'default_validity_hours' => 12, 'isolation_rule' => 'always',
             'keywords' => ['electric', 'cable', 'panel', 'switchgear', 'voltage', 'transformer', 'mcc'],
             'extra_fields' => array_merge([
                 ['key' => 'voltage',   'label' => 'Voltage level', 'type' => 'select', 'options' => ['ELV (<50V)', 'LV (<1kV)', 'MV (1–33kV)', 'HV (>33kV)']],
@@ -158,7 +158,7 @@ function eptw_permit_types_seed()
         [
             'code' => 'LOTO', 'name' => 'LOTO / Isolation Permit', 'icon' => 'fa-solid fa-lock', 'color' => '#4f46e5',
             'description' => 'Lock-out / tag-out and isolation of electrical, mechanical, hydraulic, pneumatic, thermal and chemical energy.',
-            'high_risk' => 1, 'gas_test_required' => 0, 'isolation_required' => 1, 'default_validity_hours' => 24,
+            'high_risk' => 1, 'gas_test_required' => 0, 'isolation_required' => 1, 'default_validity_hours' => 24, 'isolation_rule' => 'always',
             'keywords' => ['loto', 'lock', 'tag', 'isolat', 'de-energ', 'blind'],
             'extra_fields' => [
                 ['key' => 'equipment',       'label' => 'Equipment', 'type' => 'text'],
