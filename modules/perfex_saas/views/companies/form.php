@@ -247,6 +247,11 @@ $(document).ready(function() {
                     + 'Create one from the customer\'s primary contact (same email and password): '
                     + '<button type="button" class="btn btn-warning btn-xs tw-ml-1" id="th_repair_admin"><i class="fa fa-user-plus"></i> Create admin</button></div>';
             }
+            if (!r.connected && r.login_readable && r.cpanel && r.user) {
+                h += '<div class="alert alert-warning tw-mt-2 tw-mb-0 small">MySQL rejects the saved login for this tenant (usually the database user\'s password no longer matches). '
+                    + 'Fix it through cPanel: creates the database/user if missing, sets a new password, grants privileges and saves it. Existing data is not touched. '
+                    + '<button type="button" class="btn btn-warning btn-xs tw-ml-1" id="th_fix_login"><i class="fa fa-key"></i> Fix database login</button></div>';
+            }
             $('#th_body').html(h);
 
             // Re-create is offered only when there is nothing to lose
@@ -295,6 +300,22 @@ $(document).ready(function() {
             }).fail(function (xhr) {
                 $('#th_steps').html('<div class="text-danger">' + thEsc(xhr.responseText ? xhr.responseText.substring(0, 300) : 'Request failed') + '</div>');
                 $b.prop('disabled', false).html('<i class="fa fa-user-plus"></i> Create admin');
+            });
+        });
+
+        $(document).on('click', '#th_fix_login', function () {
+            var $b = $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Fixing…');
+            var data = { company_id: perfex_saas_company_id };
+            data[csrfData['token_name']] = csrfData['hash'];
+            $.post(admin_url + 'perfex_saas/companies/tenant_fix_db_login', data, null, 'json').done(function (r) {
+                var steps = (r.steps || []).map(function (s) { return '<div class="text-muted">• ' + thEsc(s) + '</div>'; }).join('');
+                $('#th_steps').html(steps + '<div class="tw-mt-1 ' + (r.success ? 'text-success' : 'text-danger') + '"><b>' + thEsc(r.message) + '</b></div>');
+                alert_float(r.success ? 'success' : 'danger', r.message);
+                if (r.success && r.report) thRender(r.report);
+                else $b.prop('disabled', false).html('<i class="fa fa-key"></i> Fix database login');
+            }).fail(function (xhr) {
+                $('#th_steps').html('<div class="text-danger">' + thEsc(xhr.responseText ? xhr.responseText.substring(0, 300) : 'Request failed') + '</div>');
+                $b.prop('disabled', false).html('<i class="fa fa-key"></i> Fix database login');
             });
         });
 

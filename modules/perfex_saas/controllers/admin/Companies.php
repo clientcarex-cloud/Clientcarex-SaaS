@@ -1479,6 +1479,73 @@ class Companies extends AdminController
         return $this->tenant_json(['success' => true, 'steps' => $steps, 'report' => $this->tenant_db_report($company)]);
     }
 
+    /**
+     * Fix a tenant whose saved database login is rejected by MySQL (error 1045): via cPanel,
+     * create the database/user if missing, set a new password on the user, grant privileges,
+     * and save the new login. Existing data is never touched — only the MySQL password changes.
+     */
+    public function tenant_fix_db_login()
+    {
+        if (!is_admin() || $this->input->method(true) !== 'POST') {
+            return access_denied('perfex_saas_companies');
+        }
+        $company = $this->perfex_saas_model->companies((int) $this->input->post('company_id'));
+        if (empty($company->id)) {
+            return $this->tenant_json(['success' => false, 'message' => 'Tenant not found']);
+        }
+        if (!function_exists('perfex_saas_cpanel_ensure_tenant_db')) {
+            return $this->tenant_json(['success' => false, 'message' => 'The cPanel integration is not enabled (SaaS settings → Integrations)']);
+        }
+        $report = $this->tenant_db_report($company);
+        if ($report['connected']) {
+            return $this->tenant_json(['success' => true, 'message' => 'The database is already reachable', 'report' => $report]);
+        }
+
+        try {
+            $dsn = $this->tenant_dsn($company);
+        } catch (\Throwable $e) {
+            $dsn = [];
+        }
+        $master = perfex_saas_master_dsn();
+        if (!empty($dsn['user']) && $dsn['user'] === $master['user']) {
+            return $this->tenant_json(['success' => false, 'message' => 'This tenant uses the master database login; it is not a cPanel tenant database.']);
+        }
+
+        $this->load->helper('string');
+        $password = random_string('alnum', 20);
+        $db_name = !empty($dsn['dbname']) ? $dsn['dbname'] : $company->slug;
+        $db_user = !empty($dsn['user']) ? $dsn['user'] : $db_name;
+
+        try {
+            $steps = perfex_saas_cpanel_ensure_tenant_db($db_name, $db_user, $password);
+            $cpanel = perfex_saas_get_cpanel();
+            $new_dsn = [
+                'host' => !empty($dsn['host']) ? $dsn['host'] : 'localhost',
+                'dbname' => $cpanel->addPrefix($db_name),
+                'user' => $cpanel->addPrefix($db_user),
+                'password' => $password,
+            ];
+        } catch (\Throwable $e) {
+            log_activity('Tenant DB login fix FAILED for ' . $company->slug . ': ' . $e->getMessage());
+            return $this->tenant_json(['success' => false, 'message' => 'cPanel: ' . $e->getMessage(), 'steps' => $steps ?? []]);
+        }
+
+        $valid = perfex_saas_is_valid_dsn($new_dsn, false);
+        if ($valid !== true) {
+            return $this->tenant_json(['success' => false, 'message' => 'Login updated in cPanel but MySQL still refuses it: ' . $valid . ' (nothing was saved)', 'steps' => $steps]);
+        }
+
+        $this->perfex_saas_model->add_or_update('companies', [
+            'id' => $company->id,
+            'dsn' => $this->encryption->encrypt(perfex_saas_dsn_to_string($new_dsn)),
+        ]);
+        $steps[] = 'New database login saved for the tenant';
+        log_activity('Tenant DB login repaired for ' . $company->slug . ' [' . $company->name . ']');
+
+        $company = $this->perfex_saas_model->companies($company->id);
+        return $this->tenant_json(['success' => true, 'message' => 'Database login fixed', 'steps' => $steps, 'report' => $this->tenant_db_report($company)]);
+    }
+
     /** Connection + contents of a tenant database. Never returns the password. */
     private function tenant_db_report($company)
     {

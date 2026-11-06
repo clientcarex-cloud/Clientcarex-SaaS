@@ -103,23 +103,11 @@ if (!function_exists('perfex_saas_cpanel_setup_tenant_db')) {
         }
         $db_password = random_string('alnum', 16);
 
-
+        // Never throws: a failure here is caught by the DSN validation that follows in the deployer.
         try {
-            $cpanel->createDatabase($db_name);
+            perfex_saas_cpanel_ensure_tenant_db($db_name, $db_user, $db_password);
         } catch (\Throwable $th) {
-            log_message('error', $th->getMessage());
-        }
-
-        try {
-            $cpanel->createDatabaseUser($db_user, $db_password);
-        } catch (\Throwable $th) {
-            log_message('error', $th->getMessage());
-        }
-
-        try {
-            $cpanel->setDatabaseUserPrivileges($db_user, $db_name);
-        } catch (\Throwable $th) {
-            log_message('error', $th->getMessage());
+            log_message('error', 'perfex_saas cpanel tenant db setup for ' . $slug . ': ' . $th->getMessage());
         }
 
         $db = [
@@ -130,6 +118,66 @@ if (!function_exists('perfex_saas_cpanel_setup_tenant_db')) {
         ];
         return $db;
     };
+}
+
+if (!function_exists('perfex_saas_cpanel_ensure_tenant_db')) {
+    /**
+     * Make the tenant database and MySQL user exist, with $db_password as the user's password
+     * and full privileges on the database. Safe on an existing database — it is never dropped.
+     *
+     * The old setup ignored every cPanel error, so when the MySQL user already existed
+     * (re-deploy, earlier failed deploy) create_user failed silently and the tenant was saved
+     * with a fresh random password the user never got → "Access denied (1045)".
+     *
+     * @param string $db_name     full cPanel name (prefix added when missing)
+     * @param string $db_user     full cPanel name (prefix added when missing)
+     * @param string $db_password alphanumeric (sent in the query string)
+     * @return array steps taken, for display
+     * @throws Exception when the user or privileges cannot be set
+     */
+    function perfex_saas_cpanel_ensure_tenant_db($db_name, $db_user, $db_password)
+    {
+        $cpanel = perfex_saas_get_cpanel();
+        $steps = [];
+
+        $existing = [];
+        try {
+            $list = $cpanel->listDatabases();
+            foreach ((array) ($list['data'] ?? []) as $row) {
+                if (!empty($row['database'])) $existing[] = $row['database'];
+            }
+        } catch (\Throwable $th) {
+            log_message('error', 'perfex_saas cpanel list_databases: ' . $th->getMessage());
+        }
+
+        $full_db = $cpanel->addPrefix($db_name);
+        if (in_array($full_db, $existing, true)) {
+            $steps[] = 'Database ' . $full_db . ' exists';
+        } else {
+            try {
+                $cpanel->createDatabase($db_name);
+                $steps[] = 'Database ' . $full_db . ' created';
+            } catch (\Throwable $th) {
+                // Usually "already exists" when the listing above failed; privileges below will tell.
+                $steps[] = 'Database ' . $full_db . ': ' . $th->getMessage();
+            }
+        }
+
+        $full_user = $cpanel->addPrefix($db_user);
+        try {
+            $cpanel->createDatabaseUser($db_user, $db_password);
+            $steps[] = 'MySQL user ' . $full_user . ' created';
+        } catch (\Throwable $th) {
+            // Already exists: align its password with the one we are about to save.
+            $cpanel->setDatabaseUserPassword($db_user, $db_password);
+            $steps[] = 'MySQL user ' . $full_user . ' exists — password reset';
+        }
+
+        $cpanel->setDatabaseUserPrivileges($db_user, $db_name);
+        $steps[] = 'All privileges on ' . $full_db . ' granted to ' . $full_user;
+
+        return $steps;
+    }
 }
 
 if (!function_exists('perfex_saas_cpanel_rollback')) {
