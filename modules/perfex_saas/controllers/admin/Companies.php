@@ -306,6 +306,88 @@ class Companies extends AdminController
     }
 
     /**
+     * Subscription repair: make a chosen invoice the client's live SaaS
+     * subscription and re-activate the company (company edit page).
+     */
+    public function repair_subscription()
+    {
+        if (!staff_can('edit', 'perfex_saas_companies')) {
+            return access_denied('perfex_saas_companies');
+        }
+
+        if (!$this->input->post()) {
+            show_404();
+        }
+
+        $this->load->model('invoices_model');
+
+        $company_id    = (int) $this->input->post('company_id', true);
+        $invoice_id    = (int) $this->input->post('invoice_id', true);
+        $packageid     = (int) $this->input->post('packageid', true);
+        $redirect_back = admin_url(PERFEX_SAAS_ROUTE_NAME . '/companies/edit/' . $company_id);
+
+        try {
+            $company = $this->perfex_saas_model->companies($company_id);
+            if (!$company || empty($company->clientid)) {
+                throw new \Exception(_l('perfex_saas_subscription_change_no_client'), 1);
+            }
+
+            $invoice = $this->perfex_saas_model->force_activate_company_subscription((int) $company->clientid, $invoice_id, $packageid);
+
+            log_activity('SaaS Subscription Repaired [Company: ' . $company->name . ' (#' . $company->id . '), Client ID: ' . $company->clientid
+                . ', Invoice ID: ' . $invoice_id . ', Package: ' . ($invoice->name ?? '-') . ']');
+
+            set_alert('success', _l('perfex_saas_subscription_repaired', format_invoice_number($invoice_id)));
+        } catch (\Throwable $th) {
+            set_alert('danger', $th->getMessage());
+        }
+
+        return redirect($redirect_back);
+    }
+
+    /**
+     * Resume a cancelled subscription from the company edit page.
+     * Setting the company to "active" alone does not stick: the cron flips it
+     * back to inactive while the package invoice is still cancelled.
+     */
+    public function resume_subscription()
+    {
+        if (!staff_can('edit', 'perfex_saas_companies')) {
+            return access_denied('perfex_saas_companies');
+        }
+
+        if (!$this->input->post()) {
+            show_404();
+        }
+
+        $this->load->model('invoices_model');
+
+        $company_id    = (int) $this->input->post('company_id', true);
+        $redirect_back = admin_url(PERFEX_SAAS_ROUTE_NAME . '/companies/edit/' . $company_id);
+
+        try {
+            $company = $this->perfex_saas_model->companies($company_id);
+            if (!$company || empty($company->clientid)) {
+                throw new \Exception(_l('perfex_saas_subscription_change_no_client'), 1);
+            }
+
+            $invoice = $this->perfex_saas_model->resume_company_invoice((int) $company->clientid);
+            if (!$invoice) {
+                throw new \Exception(_l('perfex_saas_no_resumable_invoice'), 1);
+            }
+
+            log_activity('SaaS Subscription Resumed [Company: ' . $company->name . ' (#' . $company->id . '), Client ID: ' . $company->clientid
+                . ', Package: ' . ($invoice->name ?? '-') . ', Invoice ID: ' . ($invoice->id ?? '-') . ']');
+
+            set_alert('success', _l('perfex_saas_subscription_resumed'));
+        } catch (\Throwable $th) {
+            set_alert('danger', $th->getMessage());
+        }
+
+        return redirect($redirect_back);
+    }
+
+    /**
      * Write the subscription change audit trail.
      *
      * 1. Core activity log (tblactivity_log) — system-wide, records acting staff.
@@ -546,19 +628,8 @@ class Companies extends AdminController
                         return redirect($url);
                     }
 
-                    // Escape hatch for the framed portal: ?newtab=1 skips the iframe and
-                    // sends the browser straight to the master portal (fresh auth code,
-                    // top-level navigation). The framer view links here so that when a
-                    // browser/proxy layer refuses the cross-subdomain embed ("This content
-                    // is blocked"), the user can still reach the support portal.
-                    if ($this->input->get('newtab')) {
-                        return redirect($url . '&cross_domain=1');
-                    }
-
                     $data = [
                         'url' => $url,
-                        // Same-page bridge link rebuilt with newtab=1 for the fallback link.
-                        'newtab_url' => admin_url('billing/my_account?redirect=' . urlencode((string) $redirect) . '&newtab=1'),
                         // Support PIN card (pro_support "Tenant Access" gate) — only on
                         // the Pro Tickets / customer-success page (redirect=clients/pro_tickets),
                         // and only when the shared codebase ships the pro_support module.
@@ -1043,363 +1114,6 @@ class Companies extends AdminController
     }
 
     /**
-     * TEMPORARY diagnostics page for the client-portal iframe bridge ("This
-     * content is blocked" on billing/my_account?redirect=clients/pro_tickets).
-     * Open at admin/billing/bridge_debug while logged in as a tenant admin.
-     * Tests every layer at once — deployed-code fingerprints, the outer page's
-     * own headers (PHP-side and as the browser received them), server-side
-     * probes of the master URLs, and two live instrumented iframes — so the
-     * blocking layer identifies itself. Remove once the bridge is verified.
-     *
-     * @return void
-     */
-    public function tenant_bridge_debug()
-    {
-        if (!perfex_saas_is_tenant() || !is_admin()) {
-            echo 'Not a tenant admin context.';
-            return;
-        }
-
-        // Lightweight probe target for the received-headers check below: return
-        // before generating a magic-auth code, so the re-fetch can't invalidate
-        // the code the live iframe test is using. admin_init already emitted the
-        // same security headers a full page gets.
-        if ($this->input->get('hdrs')) {
-            header('Content-Type: text/plain; charset=utf-8');
-            echo 'ok';
-            return;
-        }
-
-        $tenant = perfex_saas_tenant();
-        $master = rtrim(perfex_saas_default_base_url(), '/');
-
-        // ── 1) Deployed-code fingerprints — catches a partial upload ──────────
-        $files = [
-            'ccx_security/ccx_security.php'                   => ['path' => FCPATH . 'modules/ccx_security/ccx_security.php',                   'marker' => 'ccx_security_clients_area_frame_headers'],
-            'perfex_saas/hooks/client_tenant_bridge.php'      => ['path' => FCPATH . 'modules/perfex_saas/hooks/client_tenant_bridge.php',      'marker' => 'bridgeLoaded'],
-            'perfex_saas/views/client_portal_framer.php'      => ['path' => FCPATH . 'modules/perfex_saas/views/client_portal_framer.php',      'marker' => 'psf-blocked'],
-            'perfex_saas/controllers/admin/Companies.php'     => ['path' => FCPATH . 'modules/perfex_saas/controllers/admin/Companies.php',     'marker' => 'newtab'],
-            'ccx_security/views/partials/security_headers.php' => ['path' => FCPATH . 'modules/ccx_security/views/partials/security_headers.php', 'marker' => 'frame-src'],
-        ];
-        $deploy = [];
-        foreach ($files as $label => $f) {
-            if (!is_file($f['path'])) {
-                $deploy[$label] = 'MISSING';
-                continue;
-            }
-            $has = strpos((string) file_get_contents($f['path']), $f['marker']) !== false;
-            $deploy[$label] = ($has ? 'has fix' : 'STALE (marker "' . $f['marker'] . '" absent)')
-                . ' · modified ' . date('Y-m-d H:i', (int) filemtime($f['path']))
-                . ' · md5 ' . substr(md5_file($f['path']), 0, 10);
-        }
-        $deploy['runtime: ccx_security_clients_area_frame_headers()'] = function_exists('ccx_security_clients_area_frame_headers') ? 'loaded' : 'NOT LOADED';
-        $deploy['runtime: ccx_security_frame_ancestors()']            = function_exists('ccx_security_frame_ancestors') ? 'loaded' : 'NOT LOADED';
-        $deploy['modules/pro_support present']                        = is_file(FCPATH . 'modules/pro_support/helpers/pro_support_helper.php') ? 'yes' : 'no';
-
-        // ── 2) Config the bridge depends on ──────────────────────────────────
-        $conf = [
-            'APP_BASE_URL_DEFAULT'         => defined('APP_BASE_URL_DEFAULT') ? APP_BASE_URL_DEFAULT : '(undefined)',
-            'perfex_saas_default_base_url' => perfex_saas_default_base_url(),
-            'saas_default_host'            => (string) perfex_saas_get_saas_default_host(),
-            'frame_ancestors_allowlist'    => function_exists('ccx_security_frame_ancestors') ? ccx_security_frame_ancestors() : '(helper missing)',
-            'tenant_slug'                  => $tenant->slug ?? '(none)',
-            'http_identification_type'     => $tenant->http_identification_type ?? '(none)',
-            'client_bridge enabled'        => perfex_saas_tenant_is_enabled('client_bridge') ? 'yes' : 'no',
-            'instance_switch enabled'      => perfex_saas_tenant_is_enabled('instance_switch') ? 'yes' : 'no',
-            'cross_domain_bridge enabled'  => perfex_saas_tenant_is_enabled('cross_domain_bridge') ? 'yes' : 'no',
-            'ccx_security http_headers'    => function_exists('ccx_security_is_enabled') ? (ccx_security_is_enabled('http_headers_enabled') ? 'on' : 'off') : '(helper missing)',
-            'ccx_security csp_mode'        => (string) (get_option('ccx_security_csp_mode') ?: '(unset → permissive)'),
-            'ccx_security x_frame option'  => (string) (get_option('ccx_security_x_frame_options') ?: '(unset → SAMEORIGIN)'),
-        ];
-
-        // ── 3) Headers THIS page sends, as PHP emitted them ──────────────────
-        // admin_init has already fired, so this shows the exact CSP/XFO the real
-        // billing/my_account page would carry from PHP. (Anything a later layer
-        // — LiteSpeed/Apache/Cloudflare — adds shows up in the JS check below.)
-        $php_headers = headers_list();
-
-        // ── 4) Server-side probes of the master over HTTP ────────────────────
-        $probe = function ($url, $follow = false) {
-            if (!function_exists('curl_init')) {
-                return ['error' => 'php-curl unavailable'];
-            }
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HEADER         => true,
-                CURLOPT_NOBODY         => false,
-                CURLOPT_FOLLOWLOCATION => $follow,
-                CURLOPT_MAXREDIRS      => 5,
-                CURLOPT_TIMEOUT        => 12,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_USERAGENT      => 'CCX-BridgeDebug/1.0',
-            ]);
-            $raw = curl_exec($ch);
-            if ($raw === false) {
-                $out = ['error' => curl_error($ch)];
-                curl_close($ch);
-                return $out;
-            }
-            $status      = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-            $final_url   = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-            $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-            curl_close($ch);
-            $header_blob = substr($raw, 0, $header_size);
-            // Keep only the framing-relevant lines of each hop, plus status lines.
-            $lines = [];
-            foreach (preg_split('/\r?\n/', $header_blob) as $line) {
-                if ($line === '') continue;
-                if (preg_match('~^HTTP/|^(x-frame-options|content-security-policy(-report-only)?|location|cf-mitigated|cf-cache-status|server|set-cookie)\s*:~i', $line)) {
-                    // Truncate cookies — only their presence matters here.
-                    if (stripos($line, 'set-cookie') === 0) $line = substr($line, 0, 60) . '…';
-                    $lines[] = $line;
-                }
-            }
-            return ['status' => $status, 'final_url' => $final_url, 'headers' => $lines];
-        };
-
-        $probes = [
-            'master /authentication/login (no follow)'         => $probe($master . '/authentication/login'),
-            'master magic_auth bad-code (no follow)'           => $probe($master . '/billing/my_account/magic_auth?auth_code=debugprobe&redirect=' . rawurlencode('clients/pro_tickets')),
-            'master /clients/pro_tickets (follow redirects)'   => $probe($master . '/clients/pro_tickets', true),
-        ];
-
-        // ── 4b) AUTHENTICATED chain probe — the decisive server-side test ────
-        // Mint a real magic-auth code and walk the exact chain the iframe walks
-        // (magic_auth → login_as_client → clients/pro_tickets) with a cookie
-        // jar, recording EVERY header of EVERY hop and what page finally came
-        // back. This is the only way to see the authenticated portal response —
-        // the browser can't report it cross-origin. Runs BEFORE the iframe's
-        // code is generated below, because each generation overwrites the
-        // previous stored code.
-        $chain = ['error' => 'not run'];
-        try {
-            $chain_code = perfex_saas_generate_magic_auth_code($tenant->clientid);
-            if (!$chain_code) {
-                $chain = ['error' => 'could not generate magic auth code (clientid=' . (int) $tenant->clientid . ')'];
-            } elseif (!function_exists('curl_init')) {
-                $chain = ['error' => 'php-curl unavailable'];
-            } else {
-                $chain_url = $master . '/billing/my_account/magic_auth?auth_code=' . urlencode($chain_code)
-                    . '&redirect=' . rawurlencode('clients/pro_tickets')
-                    . '&source_url=' . rawurlencode(current_url());
-                $chain_actor = perfex_saas_portal_actor_token();
-                if ($chain_actor !== '') {
-                    $chain_url .= '&actor=' . urlencode($chain_actor);
-                }
-
-                $ch = curl_init($chain_url);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_HEADER         => true,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_MAXREDIRS      => 6,
-                    CURLOPT_TIMEOUT        => 15,
-                    CURLOPT_SSL_VERIFYPEER => true,
-                    CURLOPT_COOKIEFILE     => '', // in-memory cookie jar across the redirect chain
-                    CURLOPT_USERAGENT      => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-                    CURLOPT_HTTPHEADER     => ['Accept: text/html,application/xhtml+xml', 'Accept-Language: en'],
-                ]);
-                $raw = curl_exec($ch);
-                if ($raw === false) {
-                    $chain = ['error' => curl_error($ch)];
-                    curl_close($ch);
-                } else {
-                    $status      = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-                    $final_url   = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-                    $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-                    curl_close($ch);
-
-                    // With FOLLOWLOCATION + HEADER, every hop's header block is
-                    // concatenated ahead of the final body.
-                    $header_blob = substr($raw, 0, $header_size);
-                    $body        = substr($raw, $header_size);
-                    $hops        = array_values(array_filter(preg_split('/\r?\n\r?\n/', trim($header_blob))));
-                    $hop_out     = [];
-                    foreach ($hops as $i => $hop) {
-                        $lines = [];
-                        foreach (preg_split('/\r?\n/', $hop) as $line) {
-                            if ($line === '') continue;
-                            if (stripos($line, 'set-cookie') === 0) $line = substr($line, 0, 60) . '…';
-                            $lines[] = $line;
-                        }
-                        $hop_out['hop ' . ($i + 1)] = $lines;
-                    }
-
-                    $text = html_entity_decode(strip_tags($body), ENT_QUOTES, 'UTF-8');
-                    $text = trim(preg_replace('/\s+/', ' ', $text));
-                    $chain = [
-                        'status'    => $status,
-                        'final_url' => $final_url,
-                        'hops'      => $hop_out,
-                        'body_size' => strlen($body),
-                        'markers'   => [
-                            'bridgeLoaded sender present'   => strpos($body, 'bridgeLoaded') !== false ? 'YES' : 'NO',
-                            'pro-tickets portal markup'     => (strpos($body, 'pro-tickets-portal') !== false || strpos($body, 'pro_tickets') !== false) ? 'YES' : 'NO',
-                            'looks like login page'         => (stripos($body, 'authentication/login') !== false && stripos($text, 'login') !== false && strpos($body, 'pro-tickets-portal') === false) ? 'YES' : 'no',
-                            'looks like auth error page'    => stripos($text, 'Authentication error') !== false ? 'YES' : 'no',
-                            'looks like marketing homepage' => (stripos($body, 'homepage') !== false && stripos($text, 'login') === false) ? 'maybe' : 'no',
-                        ],
-                        'body_text_first_300' => function_exists('mb_substr') ? mb_substr($text, 0, 300) : substr($text, 0, 300),
-                    ];
-                }
-            }
-        } catch (\Throwable $e) {
-            $chain = ['error' => $e->getMessage()];
-        }
-
-        // ── 5) Real bridge URL for the live iframe test ──────────────────────
-        $bridge_url = '';
-        $bridge_err = '';
-        try {
-            $auth_code = perfex_saas_generate_magic_auth_code($tenant->clientid);
-            if ($auth_code) {
-                $bridge_url = perfex_saas_default_base_url(
-                    'billing/my_account/magic_auth?auth_code=' . urlencode($auth_code)
-                    . '&redirect=' . urlencode('clients/pro_tickets')
-                    . '&source_url=' . urlencode(current_url())
-                );
-                $actor_token = perfex_saas_portal_actor_token();
-                if ($actor_token !== '') {
-                    $bridge_url .= '&actor=' . urlencode($actor_token);
-                }
-            } else {
-                $bridge_err = 'perfex_saas_generate_magic_auth_code() returned empty (clientid=' . (int) $tenant->clientid . ')';
-            }
-        } catch (\Throwable $e) {
-            $bridge_err = $e->getMessage();
-        }
-
-        $login_frame_url = $master . '/authentication/login';
-
-        header('Content-Type: text/html; charset=utf-8');
-        echo '<!doctype html><meta charset="utf-8"><title>Bridge debug</title>';
-        echo '<style>body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;max-width:1000px;margin:30px auto;padding:0 16px;color:#0f172a}h1{font-size:20px}h2{font-size:16px;margin-top:28px}table{border-collapse:collapse;width:100%;margin:10px 0}td,th{border:1px solid #e2e8f0;padding:6px 10px;text-align:left;vertical-align:top;font-size:13px}th{background:#f8fafc;width:320px}pre{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto;font-size:12px}.ok{color:#16a34a;font-weight:700}.bad{color:#dc2626;font-weight:700}.warn{color:#d97706;font-weight:700}iframe{width:100%;height:260px;border:2px solid #94a3b8;border-radius:6px;background:#fff}</style>';
-        echo '<h1>Client-portal bridge debug</h1>';
-        echo '<p>Temporary diagnostics for the "This content is blocked" iframe issue. Delete <code>tenant_bridge_debug()</code> + its route once fixed.</p>';
-
-        echo '<h2>1 · Deployed code on this server</h2><table>';
-        foreach ($deploy as $k => $v) {
-            $cls = (strpos($v, 'STALE') !== false || strpos($v, 'MISSING') !== false || strpos($v, 'NOT LOADED') !== false) ? 'bad' : 'ok';
-            echo '<tr><th>' . htmlspecialchars($k) . '</th><td class="' . $cls . '">' . htmlspecialchars($v) . '</td></tr>';
-        }
-        echo '</table>';
-
-        echo '<h2>2 · Bridge configuration</h2><table>';
-        foreach ($conf as $k => $v) {
-            echo '<tr><th>' . htmlspecialchars($k) . '</th><td>' . htmlspecialchars((string) $v) . '</td></tr>';
-        }
-        echo '</table>';
-
-        echo '<h2>3 · Headers this page sends (as emitted by PHP)</h2>';
-        echo '<pre>' . htmlspecialchars(implode("\n", $php_headers)) . '</pre>';
-        echo '<p>Headers the browser ACTUALLY received for this page (includes anything Cloudflare / the web server added after PHP):</p><pre id="ownhdrs">loading…</pre>';
-
-        echo '<h2>4 · Server-side probes of the master</h2>';
-        foreach ($probes as $label => $r) {
-            echo '<h3 style="font-size:14px">' . htmlspecialchars($label) . '</h3>';
-            if (isset($r['error'])) {
-                echo '<pre class="bad">ERROR: ' . htmlspecialchars($r['error']) . '</pre>';
-            } else {
-                echo '<pre>status ' . (int) $r['status'] . '  final: ' . htmlspecialchars($r['final_url']) . "\n" . htmlspecialchars(implode("\n", $r['headers'])) . '</pre>';
-            }
-        }
-
-        echo '<h2>4b · Authenticated chain probe (server-side, full headers)</h2>';
-        echo '<p>Walks the exact iframe chain — magic_auth → signed-in portal → <code>clients/pro_tickets</code> — with cookies, like a browser would. The final hop below is the authenticated portal response the browser sees inside the iframe.</p>';
-        if (isset($chain['error'])) {
-            echo '<pre class="bad">ERROR: ' . htmlspecialchars($chain['error']) . '</pre>';
-        } else {
-            echo '<pre>final status ' . (int) $chain['status'] . '  final url: ' . htmlspecialchars($chain['final_url']) . '  body: ' . (int) $chain['body_size'] . ' bytes</pre>';
-            foreach ($chain['hops'] as $hopName => $lines) {
-                echo '<h3 style="font-size:13px;margin:10px 0 4px">' . htmlspecialchars($hopName) . '</h3>';
-                echo '<pre>' . htmlspecialchars(implode("\n", $lines)) . '</pre>';
-            }
-            echo '<h3 style="font-size:13px;margin:10px 0 4px">What the final page is</h3><table>';
-            foreach ($chain['markers'] as $k => $v) {
-                $cls = '';
-                if ($k === 'bridgeLoaded sender present') $cls = $v === 'YES' ? 'ok' : 'bad';
-                if ($k === 'pro-tickets portal markup')   $cls = $v === 'YES' ? 'ok' : 'bad';
-                echo '<tr><th>' . htmlspecialchars($k) . '</th><td class="' . $cls . '">' . htmlspecialchars($v) . '</td></tr>';
-            }
-            echo '</table>';
-            echo '<pre>' . htmlspecialchars($chain['body_text_first_300']) . '</pre>';
-        }
-
-        echo '<h2>5 · Live iframe tests (this is the decisive part)</h2>';
-        echo '<p>Frame A = plain master login page (no auth). Frame B = the REAL magic-auth bridge to <code>clients/pro_tickets</code>. Compare their verdicts below and screenshot this whole page.</p>';
-        echo '<table><tr><th>Frame A (master login)</th><td id="verdA" class="warn">waiting…</td></tr>'
-            . '<tr><th>Frame B (magic-auth bridge)</th><td id="verdB" class="warn">' . ($bridge_err !== '' ? 'NOT TESTED — auth code error: ' . htmlspecialchars($bridge_err) : 'waiting…') . '</td></tr></table>';
-        echo '<p style="font-size:12px;color:#64748b">Frame A URL: <code>' . htmlspecialchars($login_frame_url) . '</code><br>Frame B URL (open directly in a new tab to compare): <code id="burl">' . htmlspecialchars($bridge_url) . '</code></p>';
-        echo '<div><iframe id="frA" src="' . htmlspecialchars($login_frame_url) . '"></iframe></div>';
-        if ($bridge_url !== '') {
-            echo '<div style="margin-top:10px"><iframe id="frB" src="' . htmlspecialchars($bridge_url) . '"></iframe></div>';
-        }
-
-        echo '<h2>6 · Environment</h2><pre id="envout">…</pre>';
-
-        $own_url = json_encode(admin_url('billing/bridge_debug?hdrs=1'));
-        echo '<script>var OWN_URL = ' . $own_url . ';</script>';
-        echo <<<'JS'
-<script>
-(function () {
-    var st = { A: { load: false }, B: { load: false, bridgeMsg: false } };
-
-    // Headers the browser actually received for THIS page.
-    fetch(OWN_URL, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
-        var keep = ['content-security-policy', 'content-security-policy-report-only', 'x-frame-options', 'cf-mitigated', 'cf-cache-status', 'server'];
-        var out = 'HTTP ' + r.status + '\n';
-        keep.forEach(function (h) { var v = r.headers.get(h); if (v !== null) out += h + ': ' + v + '\n'; });
-        document.getElementById('ownhdrs').textContent = out;
-    }).catch(function (e) { document.getElementById('ownhdrs').textContent = 'fetch failed: ' + e; });
-
-    var frA = document.getElementById('frA');
-    var frB = document.getElementById('frB');
-    if (frA) frA.addEventListener('load', function () { st.A.load = true; });
-    if (frB) frB.addEventListener('load', function () { st.B.load = true; });
-
-    window.addEventListener('message', function (ev) {
-        if (ev.data && ev.data.message === 'bridgeLoaded') { st.B.bridgeMsg = true; }
-    });
-
-    // CSP violations on THIS page (frame-src blocks fire here, with the exact directive).
-    var cspViolations = [];
-    document.addEventListener('securitypolicyviolation', function (e) {
-        cspViolations.push(e.violatedDirective + ' blocked ' + e.blockedURI + ' (policy: ' + (e.originalPolicy || '').substring(0, 120) + '…)');
-    });
-
-    function verdict(loaded, extra) {
-        if (extra) return extra;
-        return loaded
-            ? 'load event fired — if the frame above shows the block message anyway, the RESPONSE was blocked (X-Frame-Options / frame-ancestors on the master reply). If it shows a page, framing works.'
-            : 'NO load event — blocked before any response rendered: parent CSP frame-src, an extension, or network failure. Check the CSP-violation list below.';
-    }
-
-    setTimeout(function () {
-        var a = document.getElementById('verdA');
-        var b = document.getElementById('verdB');
-        a.textContent = verdict(st.A.load);
-        a.className = st.A.load ? 'ok' : 'bad';
-        if (b && frB) {
-            if (st.B.bridgeMsg) {
-                b.textContent = 'bridgeLoaded received — the portal rendered inside the iframe. The bridge WORKS on this browser.';
-                b.className = 'ok';
-            } else {
-                b.textContent = verdict(st.B.load) + ' (no bridgeLoaded message)';
-                b.className = st.B.load ? 'warn' : 'bad';
-            }
-        }
-        document.getElementById('envout').textContent =
-            'userAgent: ' + navigator.userAgent + '\n' +
-            'page origin: ' + location.origin + '\n' +
-            'CSP violations seen on this page: ' + (cspViolations.length ? '\n  ' + cspViolations.join('\n  ') : '(none)');
-    }, 9000);
-})();
-</script>
-JS;
-    }
-
-    /**
      * Get the status of modules in the tenant's database.
      *
      * @param object $company
@@ -1455,165 +1169,13 @@ JS;
         $status = (int) $this->input->post('status'); // 1 for active, 0 for inactive
 
         try {
-            $company = $this->perfex_saas_model->companies($company_id);
-            if (!$company) {
-                throw new \Exception("Company not found");
-            }
-
-            // 1. Update Company Metadata (admin_approved_modules / admin_disabled_modules)
-            $metadata = (object) $company->metadata;
-            $admin_approved_modules = isset($metadata->admin_approved_modules) ? (array) $metadata->admin_approved_modules : [];
-            $admin_disabled_modules = isset($metadata->admin_disabled_modules) ? (array) $metadata->admin_disabled_modules : [];
-            // The customer-facing "disabled modules" list. perfex_saas_tenant_modules()
-            // subtracts it *after* merging the approved list, so a module sitting in here
-            // can never be activated no matter what the admin approves.
-            $disabled_modules = isset($metadata->disabled_modules) ? (array) $metadata->disabled_modules : [];
-
-            if ($status === 1) {
-                // Activate: Add to approved, remove from disabled
-                if (!in_array($module_name, $admin_approved_modules)) {
-                    $admin_approved_modules[] = $module_name;
-                }
-                $admin_disabled_modules = array_diff($admin_disabled_modules, [$module_name]);
-                $disabled_modules = array_diff($disabled_modules, [$module_name]);
-            } else {
-                // Deactivate: Add to disabled, remove from approved
-                if (!in_array($module_name, $admin_disabled_modules)) {
-                    $admin_disabled_modules[] = $module_name;
-                }
-                $admin_approved_modules = array_diff($admin_approved_modules, [$module_name]);
-            }
-
-            // Clean up arrays
-            // array_values: array_diff/array_filter keep the original keys, and a gapped
-            // array json_encodes to an object rather than a list.
-            $metadata->admin_approved_modules = array_values(array_unique(array_filter($admin_approved_modules)));
-            $metadata->admin_disabled_modules = array_values(array_unique(array_filter($admin_disabled_modules)));
-            $metadata->disabled_modules = array_values(array_unique(array_filter($disabled_modules)));
-
-            // Save metadata
-            $update_data = [
-                'id' => $company_id,
-                'metadata' => json_encode($metadata)
-            ];
-            // We use create_or_update_company to save. Note: this might trigger other hooks, but it's the standard way.
-            // However, create_or_update_company requires 'clientid' and other fields if we use it directly as is.
-            // Inspecting create_or_update_company: it seems to handle partial updates if ID is present?
-            // Let's use the model's update method directly if possible to avoid validation overhead of full update, 
-            // OR just use create_or_update_company with minimal data if it supports it.
-            // Looking at the code for create_or_update_company (I assume standard logic), usually it updates. 
-            // BUT, to be safe and avoid "required fields" errors from the model validation if any, 
-            // I will use add_or_update method if available (seen in Cron model usage elsewhere: $this->perfex_saas_model->add_or_update)
-            // or just manual update via DB if strictly metadata. 
-            // Let's check `perfex_saas_model` usage in `Perfex_saas_cron_model.php`...
-            // line 313: $this->perfex_saas_model->add_or_update('companies', ['id' => $company->id, 'metadata' => json_encode($metadata)]);
-            // This suggests `add_or_update` is the correct low-level method.
-
-            $this->perfex_saas_model->add_or_update('companies', $update_data);
-
-            // Reload the company object to ensure we have the FRESH metadata for the impersonation context
-            $company = $this->perfex_saas_model->companies($company_id);
-
-            // Attach package_invoice to the company object so perfex_saas_tenant_modules()
-            // can correctly compute the full list of allowed modules (package + admin approved).
-            // Without this, the impersonation context only sees admin_approved_modules from metadata,
-            // causing all package-assigned modules to be deactivated.
-            $package_invoice = $this->perfex_saas_model->get_company_invoice($company->clientid);
-            if ($package_invoice) {
-                $company->package_invoice = $package_invoice;
-            }
-
-            // 2. Trigger Installation/Activation via Impersonation
-            // This ensures install.php runs and DB is updated correctly.
-            $debug_output = "";
-            $applied = false;
-            perfex_saas_impersonate_instance($company, function () use ($module_name, $status, &$debug_output, &$applied) {
-
-                $CI = &get_instance();
-                $table = db_prefix() . 'modules';
-
-                // Pre-check: App_modules::activate() caches the tblmodules rows of the
-                // instance it was constructed against — the master here — so it skips its
-                // own INSERT and the "active = 1" UPDATE then matches no row in the tenant.
-                // Seed the row ourselves, with the version from the module headers so the
-                // tenant's own cron does not immediately see a database upgrade as due.
-                if ($status === 1) {
-                    $exists = $CI->db->where('module_name', $module_name)->count_all_results($table);
-                    if ($exists == 0) {
-                        $module = $CI->app_modules->get($module_name);
-                        $CI->db->insert($table, [
-                            'module_name' => $module_name,
-                            'installed_version' => $module['headers']['version'] ?? '0.0.0',
-                            'active' => 0
-                        ]);
-                    }
-                }
-
-                // Compile output to debug
-                ob_start();
-                perfex_saas_setup_modules_for_tenant(true);
-                $debug_output = ob_get_clean();
-
-                // perfex_saas_setup_modules_for_tenant() swallows a failing activation hook
-                // (module install.php) per module, so read the result back instead of
-                // reporting a success the tenant database does not agree with.
-                $row = $CI->db->where('module_name', $module_name)->get($table)->row();
-
-                // Recover from the helper's failed-upgrade path: it deletes the module
-                // row and calls activate() again, but App_modules caches tblmodules from
-                // the instance it was constructed against (the master, here), so that
-                // activate() skips its INSERT and its "active = 1" UPDATE matches nothing.
-                // The row is then simply gone.
-                if ($status === 1 && !$row) {
-                    $module = $CI->app_modules->get($module_name);
-                    $CI->db->insert($table, [
-                        'module_name' => $module_name,
-                        'installed_version' => $module['headers']['version'] ?? '0.0.0',
-                        'active' => 1,
-                    ]);
-                    $debug_output .= '<br/>[check] module row had been dropped by the failed-upgrade path — restored it';
-                    $row = $CI->db->where('module_name', $module_name)->get($table)->row();
-                }
-
-                $applied = ((int) ($row->active ?? 0) === 1) === ($status === 1);
-
-                // Distinguish "the installer failed" from "the module was never in the
-                // tenant's allowed list", which are fixed in completely different places.
-                $allowed = perfex_saas_tenant_modules(perfex_saas_tenant(), false, false, false, false, true);
-                $debug_output .= '<br/>[check] allowed for tenant: ' . (in_array($module_name, $allowed) ? 'yes' : 'NO')
-                    . ' | tblmodules row: ' . ($row ? ('active=' . $row->active . ', version=' . $row->installed_version) : 'MISSING')
-                    . '<br/>[check] resolved list: ' . implode(', ', $allowed);
-            });
-
-            if (!$applied) {
-                // Pull the module's own line out of the verbose install log — that is
-                // where the swallowed activation-hook error is reported.
-                $reason = [];
-                foreach (preg_split('/<br\s*\/?>|\r?\n/i', $debug_output) as $line) {
-                    $line = trim(strip_tags($line));
-                    if ($line !== '' && stripos($line, $module_name) !== false && stripos($line, 'error') !== false) {
-                        $reason[] = $line;
-                    }
-                }
-                $reason = implode(' | ', array_slice($reason, 0, 3));
-
-                if ($reason === '' && stripos($debug_output, 'allowed for tenant: NO') !== false) {
-                    $reason = $module_name . ' is not in the list of modules resolved for this tenant (package + approved), so it was never activated.';
-                }
-
-                log_message('error', "Remote Module Activation: $module_name not applied for {$company->slug}. Debug: " . strip_tags($debug_output));
-
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'The tenant database still reports ' . $module_name . ' as ' . ($status === 1 ? 'inactive' : 'active') . '.'
-                        . ($reason !== '' ? ' ' . $reason : ' No error was reported by the installer — see the browser console for the full output.'),
-                    'debug' => $debug_output,
-                ]);
+            $debug_output = $this->apply_tenant_modules_status($company_id, [$module_name], $status);
+            $failures = $this->last_tenant_module_failures;
+            if ($failures) {
+                echo json_encode(['success' => false, 'error' => $module_name . ': ' . reset($failures), 'debug' => $debug_output]);
                 return;
             }
-
             echo json_encode(['success' => true, 'debug' => $debug_output]);
-
         } catch (\Throwable $e) {
             log_message('error', "Remote Module Activation Error: " . $e->getMessage());
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -1621,8 +1183,413 @@ JS;
     }
 
     /**
+     * Ajax endpoint to activate/deactivate several modules in the tenant's database
+     * in one pass (used by "Activate all package modules" on the edit page).
+     */
+    public function bulk_update_tenant_module_status()
+    {
+        $this->load->model('perfex_saas_model');
+
+        if (!staff_can('edit', 'perfex_saas_companies')) {
+            access_denied('perfex_saas_companies');
+        }
+
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        $company_id = $this->input->post('company_id');
+        $module_names = (array) $this->input->post('module_names');
+        $status = (int) $this->input->post('status');
+
+        try {
+            $module_names = array_values(array_unique(array_filter(array_map('strval', $module_names))));
+            if (empty($module_names)) {
+                throw new \Exception('No modules selected');
+            }
+
+            $debug_output = $this->apply_tenant_modules_status($company_id, $module_names, $status);
+
+            // Return the fresh tenant status so the UI reflects what really got activated
+            $company = $this->perfex_saas_model->companies($company_id);
+            echo json_encode([
+                'success' => true,
+                'modules' => $module_names,
+                'tenant_module_status' => $this->get_tenant_modules_status($company),
+                'failures' => (object) $this->last_tenant_module_failures,
+                'debug' => $debug_output,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', "Remote Module Bulk Activation Error: " . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Save the admin approved/disabled module lists in company metadata, then
+     * impersonate the tenant once and run module setup so install.php executes.
+     *
+     * @param int   $company_id
+     * @param array $module_names
+     * @param int   $status 1 activate, 0 deactivate
+     * @return string Captured setup output
+     */
+    private function apply_tenant_modules_status($company_id, array $module_names, $status)
+    {
+        $company = $this->perfex_saas_model->companies($company_id);
+        if (!$company) {
+            throw new \Exception("Company not found");
+        }
+
+        // 1. Update Company Metadata (admin_approved_modules / admin_disabled_modules)
+        $metadata = (object) $company->metadata;
+        $admin_approved_modules = isset($metadata->admin_approved_modules) ? (array) $metadata->admin_approved_modules : [];
+        $admin_disabled_modules = isset($metadata->admin_disabled_modules) ? (array) $metadata->admin_disabled_modules : [];
+
+        if ($status === 1) {
+            // Activate: Add to approved, remove from disabled
+            $admin_approved_modules = array_merge($admin_approved_modules, $module_names);
+            $admin_disabled_modules = array_diff($admin_disabled_modules, $module_names);
+            // A module the tenant switched off on the client portal is filtered out of
+            // perfex_saas_tenant_modules() and would never activate - the admin overrides it.
+            if (isset($metadata->disabled_modules)) {
+                $metadata->disabled_modules = array_values(array_diff((array) $metadata->disabled_modules, $module_names));
+            }
+        } else {
+            // Deactivate: Add to disabled, remove from approved
+            $admin_disabled_modules = array_merge($admin_disabled_modules, $module_names);
+            $admin_approved_modules = array_diff($admin_approved_modules, $module_names);
+        }
+
+        // Clean up arrays
+        $metadata->admin_approved_modules = array_values(array_unique(array_filter($admin_approved_modules)));
+        $metadata->admin_disabled_modules = array_values(array_unique(array_filter($admin_disabled_modules)));
+
+        // add_or_update is the low-level metadata save (same as the cron model) - avoids
+        // create_or_update_company's full-form validation.
+        $this->perfex_saas_model->add_or_update('companies', [
+            'id' => $company_id,
+            'metadata' => json_encode($metadata)
+        ]);
+
+        // Reload the company object to ensure we have the FRESH metadata for the impersonation context
+        $company = $this->perfex_saas_model->companies($company_id);
+
+        // Attach package_invoice to the company object so perfex_saas_tenant_modules()
+        // can correctly compute the full list of allowed modules (package + admin approved).
+        // Without this, the impersonation context only sees admin_approved_modules from metadata,
+        // causing all package-assigned modules to be deactivated.
+        $package_invoice = $this->perfex_saas_model->get_company_invoice($company->clientid);
+        if ($package_invoice) {
+            $company->package_invoice = $package_invoice;
+        }
+
+        // 2. Trigger Installation/Activation via Impersonation
+        // This ensures install.php runs and DB is updated correctly.
+        $debug_output = "";
+        $failures = [];
+        perfex_saas_impersonate_instance($company, function () use ($module_names, $status, &$debug_output, &$failures) {
+            $CI = &get_instance();
+            $table = db_prefix() . 'modules';
+
+            // No row pre-seeding here: activate() inserts a missing row at the files version
+            // and runs install.php through the activation hook. Seeding '0.0.0' made every
+            // module look like it needed a DB upgrade, which failed and dropped the row.
+            if ($status === 1) {
+                // Modules the tenant admin switched off on their own Modules page are hidden at
+                // runtime; an explicit activation from here clears that too.
+                // (Raw tenant query: get_option() would answer from the master's options cache.)
+                $opt = $CI->db->where('name', 'tenant_local_disabled_modules')->get(db_prefix() . 'options')->row();
+                $local_disabled = $opt ? (array) json_decode((string) $opt->value, true) : [];
+                $still_disabled = array_values(array_diff($local_disabled, $module_names));
+                if (count($still_disabled) !== count($local_disabled)) {
+                    $CI->db->where('name', 'tenant_local_disabled_modules')
+                        ->update(db_prefix() . 'options', ['value' => json_encode($still_disabled)]);
+                }
+            }
+
+            // $CI->app_modules was built at boot from the MASTER tblmodules (and caches it), so
+            // during impersonation it answers "is this row installed / which version" for the
+            // master, not the tenant. Run setup against an instance read from the tenant DB.
+            $master_app_modules = $CI->app_modules;
+            $CI->app_modules = new App_modules();
+            ob_start();
+            try {
+                // Activation touches only the requested modules (one-by-one from the UI);
+                // deactivation keeps the full sweep so unassigned modules get switched off.
+                perfex_saas_setup_modules_for_tenant(true, $status === 1 ? $module_names : null);
+            } finally {
+                $debug_output = ob_get_clean();
+                $CI->app_modules = $master_app_modules;
+            }
+
+            if ($status === 1) {
+                // Say why each requested module is still not active instead of a bare list.
+                $assigned = perfex_saas_tenant_modules(perfex_saas_tenant(), false, false, false, false, true);
+                $rows = $CI->db->select('module_name, active')->where_in('module_name', $module_names)->get($table)->result();
+                $active = [];
+                foreach ($rows as $row) {
+                    if ((int) $row->active === 1) $active[$row->module_name] = true;
+                }
+                foreach ($module_names as $module_name) {
+                    if (isset($active[$module_name])) continue;
+                    if (!$master_app_modules->get($module_name)) {
+                        $failures[$module_name] = 'module files not found on server';
+                    } elseif (!in_array($module_name, $assigned)) {
+                        $failures[$module_name] = 'not assigned to tenant (package/approved list)';
+                    } elseif (preg_match('/Error installing module ' . preg_quote($module_name, '/') . ':(.*?)<br/s', $debug_output, $m)) {
+                        $failures[$module_name] = trim(strip_tags($m[1]));
+                    } else {
+                        $failures[$module_name] = 'activation did not persist (see application log)';
+                    }
+                }
+                if ($failures) {
+                    log_message('error', 'Remote Module Activation for ' . PERFEX_SAAS_TENANT_SLUG . ' left inactive: ' . json_encode($failures));
+                }
+            }
+        });
+
+        $this->last_tenant_module_failures = $failures;
+        return $debug_output;
+    }
+
+    /**
+     * Per-module reasons from the last apply_tenant_modules_status() run.
+     * @var array
+     */
+    private $last_tenant_module_failures = [];
+
+    /**
      * Ajax endpoint to get the tenant superadmin credentials (email).
      */
+    /**
+     * sha256 of the verification password used for destructive tenant actions
+     * (same password as the Delete tenant prompt). Checked server-side, so the
+     * action cannot be triggered by calling the endpoint directly.
+     */
+    const TENANT_DANGER_PASSWORD_SHA256 = 'a7526f9534a68fd617ff508b2f5a5de67cc2c0f9f89c78cd87d4b7743be35ab7';
+
+    /**
+     * Health of a tenant's database: saved login, connection, tables and a few key counts.
+     *
+     * @param int $id company id
+     */
+    public function tenant_health($id)
+    {
+        if (!is_admin()) {
+            return access_denied('perfex_saas_companies');
+        }
+        $company = $this->perfex_saas_model->companies((int) $id);
+        if (empty($company->id)) {
+            return $this->tenant_json(['success' => false, 'message' => 'Tenant not found']);
+        }
+        return $this->tenant_json(['success' => true] + $this->tenant_db_report($company));
+    }
+
+    /**
+     * Re-create a tenant whose data cannot be restored (no backup): create its database and
+     * MySQL user if missing, then run the normal deployment (tables, seed, first admin).
+     *
+     * Safety:
+     *  - verification password checked server-side;
+     *  - refused if the tenant's database already contains any of its tables — this never
+     *    overwrites or mixes into existing data (restore a backup instead);
+     *  - deployment runs in silent mode, which also skips the failure rollback that would
+     *    otherwise DELETE the tenant's cPanel database and user.
+     */
+    public function tenant_recreate()
+    {
+        if (!is_admin() || $this->input->method(true) !== 'POST') {
+            return access_denied('perfex_saas_companies');
+        }
+        @set_time_limit(0);
+        $id = (int) $this->input->post('company_id');
+        $password = (string) $this->input->post('verify_password', false);
+        $method = $this->input->post('method') === 'sql' ? 'sql' : 'cpanel';
+
+        if (!hash_equals(self::TENANT_DANGER_PASSWORD_SHA256, hash('sha256', $password))) {
+            log_activity('Tenant re-create refused (wrong verification password) for company #' . $id);
+            return $this->tenant_json(['success' => false, 'message' => 'Incorrect verification password']);
+        }
+
+        $company = $this->perfex_saas_model->companies($id);
+        if (empty($company->id)) {
+            return $this->tenant_json(['success' => false, 'message' => 'Tenant not found']);
+        }
+        $steps = [];
+        $report = $this->tenant_db_report($company);
+
+        // 1. Database + MySQL user
+        if (!$report['connected']) {
+            $restore_lib = APP_MODULES_PATH . 'ccx_db/libraries/Ccx_restore_engine.php';
+            if (!file_exists($restore_lib)) {
+                return $this->tenant_json(['success' => false, 'message' => 'The tenant database is not reachable and the CCX DB module (needed to create it) is not installed', 'steps' => $steps]);
+            }
+            $this->load->library('ccx_db/ccx_restore_engine');
+            try {
+                $r = $this->ccx_restore_engine->repair_tenant_db($company->slug, $method);
+            } catch (\Throwable $e) {
+                return $this->tenant_json(['success' => false, 'message' => 'Creating the database failed: ' . $e->getMessage(), 'steps' => $steps]);
+            }
+            $steps = array_merge($steps, $r['steps']);
+            if (empty($r['ok'])) {
+                return $this->tenant_json(['success' => false, 'message' => $r['message'] ?? 'Database still not reachable', 'steps' => $steps]);
+            }
+            $company = $this->perfex_saas_model->companies($id); // DSN may have been updated
+            $report = $this->tenant_db_report($company);
+            if (!$report['connected']) {
+                return $this->tenant_json(['success' => false, 'message' => 'Database still not reachable: ' . $report['message'], 'steps' => $steps]);
+            }
+        } else {
+            $steps[] = 'Database ' . $report['dbname'] . ' is reachable';
+        }
+
+        // 2. Never deploy into a database that already holds this tenant's tables
+        if ($report['tables'] > 0) {
+            return $this->tenant_json([
+                'success' => false, 'steps' => $steps,
+                'message' => 'Refused: the database already has ' . $report['tables'] . ' tables of this tenant. Re-create only runs on an empty database, so existing data is never touched. Restore its backup instead (CCX DB → Restore Backups).',
+            ]);
+        }
+
+        // 3. Normal deployment, silent (no e-mails, and no rollback that would delete the database)
+        $old_status = $company->status;
+        $this->perfex_saas_model->add_or_update('companies', ['id' => $company->id, 'status' => PERFEX_SAAS_STATUS_DEPLOYING, 'status_note' => 'Re-creating']);
+        $deploy = perfex_saas_deploy_company($company, true);
+        if ($deploy !== true) {
+            $msg = $deploy instanceof \Throwable ? $deploy->getMessage() : (string) $deploy;
+            $this->perfex_saas_model->add_or_update('companies', ['id' => $company->id, 'status' => $old_status, 'status_note' => mb_substr('Re-create failed: ' . $msg, 0, 250)]);
+            log_activity('Tenant re-create FAILED for ' . $company->slug . ': ' . $msg);
+            return $this->tenant_json(['success' => false, 'message' => 'Deployment failed: ' . $msg, 'steps' => $steps]);
+        }
+        $steps[] = 'Tables, default data and first administrator created';
+        $this->perfex_saas_model->add_or_update('companies', ['id' => $company->id, 'status' => PERFEX_SAAS_STATUS_ACTIVE, 'status_note' => '']);
+        $steps[] = 'Tenant status set to active';
+
+        // 4. Modules (same as a normal deployment)
+        try {
+            perfex_saas_trigger_module_install('*', $company->slug);
+            $steps[] = 'Module installation triggered';
+        } catch (\Throwable $e) {
+            $steps[] = 'Module installation could not be triggered: ' . $e->getMessage() . ' (it also runs on the next cron)';
+        }
+
+        log_activity('Tenant re-created (empty, no backup) for ' . $company->slug . ' [' . $company->name . ']');
+        $company = $this->perfex_saas_model->companies($id);
+        return $this->tenant_json(['success' => true, 'steps' => $steps, 'report' => $this->tenant_db_report($company)]);
+    }
+
+    /** Connection + contents of a tenant database. Never returns the password. */
+    private function tenant_db_report($company)
+    {
+        $out = [
+            'slug' => $company->slug, 'status' => $company->status, 'status_note' => $company->status_note ?? '',
+            'host' => '', 'dbname' => '', 'user' => '', 'login_readable' => true,
+            'connected' => false, 'message' => '', 'tables' => 0, 'counts' => [], 'admins' => null, 'last_activity' => null,
+            'cpanel' => get_option('perfex_saas_cpanel_enabled') == '1',
+            'can_create_db' => file_exists(APP_MODULES_PATH . 'ccx_db/libraries/Ccx_restore_engine.php'),
+        ];
+        $raw = $this->db->select('dsn')->where('id', $company->id)->get(perfex_saas_table('companies'))->row();
+        if ($raw && (string) $raw->dsn !== '' && empty($company->dsn)) {
+            $out['login_readable'] = false;
+            $out['message'] = 'The saved database login cannot be decrypted (this server\'s encryption key differs from the old one)';
+            return $out;
+        }
+        try {
+            $dsn = $this->tenant_dsn($company);
+        } catch (\Throwable $e) {
+            $out['message'] = $e->getMessage();
+            return $out;
+        }
+        $out['host'] = $dsn['host'] ?? '';
+        $out['dbname'] = $dsn['dbname'] ?? '';
+        $out['user'] = $dsn['user'] ?? '';
+
+        $valid = perfex_saas_is_valid_dsn($dsn, false);
+        if ($valid !== true) {
+            $out['message'] = (string) $valid;
+            return $out;
+        }
+        $out['connected'] = true;
+        $out['message'] = 'Connected';
+        try {
+            $pdo = perfex_saas_get_pdo_conn($dsn, false);
+            $prefix = perfex_saas_tenant_db_prefix($company->slug);
+            $names = $pdo->query('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()')->fetchAll(PDO::FETCH_COLUMN);
+            $mine = array_values(array_filter($names, function ($t) use ($prefix) {
+                return strpos($t, $prefix) === 0;
+            }));
+            $out['tables'] = count($mine);
+            foreach (['staff' => 'Staff', 'clients' => 'Patients / clients', 'invoices' => 'Invoices', 'options' => 'Settings'] as $t => $label) {
+                if (in_array($prefix . $t, $mine, true)) {
+                    $out['counts'][$label] = (int) $pdo->query('SELECT COUNT(*) FROM `' . $prefix . $t . '`')->fetchColumn();
+                }
+            }
+            if (in_array($prefix . 'staff', $mine, true)) {
+                $out['admins'] = (int) $pdo->query("SELECT COUNT(*) FROM `" . $prefix . "staff` WHERE `admin`='1' AND `active`='1'")->fetchColumn();
+            }
+            if (in_array($prefix . 'activity_log', $mine, true)) {
+                $out['last_activity'] = $pdo->query('SELECT MAX(date) FROM `' . $prefix . 'activity_log`')->fetchColumn() ?: null;
+            }
+        } catch (\Throwable $e) {
+            $out['message'] = 'Connected, but reading tables failed: ' . $e->getMessage();
+        }
+        return $out;
+    }
+
+    /** Resolved DSN of a tenant (a saved DSN without a login uses the master login). */
+    private function tenant_dsn($company)
+    {
+        if (empty($company->dsn)) {
+            return perfex_saas_get_company_dsn($company);
+        }
+        $dsn = perfex_saas_parse_dsn($company->dsn);
+        $master = perfex_saas_master_dsn();
+        if (empty($dsn['user']) && (empty($dsn['host']) || $dsn['host'] === $master['host'])) {
+            $dsn['host'] = $master['host'];
+            $dsn['user'] = $master['user'];
+            $dsn['password'] = $master['password'];
+        }
+        return $dsn;
+    }
+
+    /**
+     * Create the missing first administrator of a tenant (from the customer's primary
+     * contact). Only adds a staff row, and only when the tenant has no active admin.
+     */
+    public function tenant_repair_admin()
+    {
+        if (!is_admin() || $this->input->method(true) !== 'POST') {
+            return access_denied('perfex_saas_companies');
+        }
+        $company = $this->perfex_saas_model->companies((int) $this->input->post('company_id'));
+        if (empty($company->id)) {
+            return $this->tenant_json(['success' => false, 'message' => 'Tenant not found']);
+        }
+        $report = $this->tenant_db_report($company);
+        if (!$report['connected'] || $report['admins'] === null) {
+            return $this->tenant_json(['success' => false, 'message' => 'The tenant database or its staff table is not available: ' . $report['message']]);
+        }
+        if ($report['admins'] > 0) {
+            return $this->tenant_json(['success' => true, 'message' => 'The tenant already has an administrator', 'report' => $report]);
+        }
+        try {
+            perfex_saas_setup_tenant_admin($company, $this->tenant_dsn($company));
+        } catch (\Throwable $e) {
+            log_activity('Tenant admin repair FAILED for ' . $company->slug . ': ' . $e->getMessage());
+            return $this->tenant_json(['success' => false, 'message' => $e->getMessage()]);
+        }
+        log_activity('Tenant first administrator created for ' . $company->slug . ' [' . $company->name . ']');
+        return $this->tenant_json(['success' => true, 'message' => 'Administrator created from the primary contact', 'report' => $this->tenant_db_report($company)]);
+    }
+
+    private function tenant_json($data)
+    {
+        header('Content-Type: application/json');
+        echo json_encode($data);
+        exit;
+    }
+
     public function get_tenant_credentials($company_id)
     {
         if (!staff_can('edit', 'perfex_saas_companies')) {

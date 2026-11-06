@@ -53,51 +53,31 @@ if (!function_exists('perfex_saas_get_cpanel')) {
         // Set appropriately if user have added custom cpanel db_prefix
         $db_prefix = get_option('perfex_saas_cpanel_db_prefix') ?? '';
         $db_prefix = empty($db_prefix) ? $user : $db_prefix;
+        // "healthot_" and "healthot" mean the same cPanel prefix — never build "healthot__ps_".
+        $db_prefix = rtrim((string) $db_prefix, '_');
+
+        // A test server restored from the production master also carries production's cPanel
+        // login — never create, rename or DELETE databases/domains in the production account.
+        if (function_exists('ccx_iso_enabled') && ccx_iso_enabled()
+            && (ccx_iso_is_production_name((string) $user) || ccx_iso_is_production_name($db_prefix . '_'))) {
+            throw new \Exception('CCX DB isolation: the cPanel integration still uses the production account "' . $user . '". Set this server\'s own cPanel login in SaaS settings → Integrations.');
+        }
         $prefix = (empty($db_prefix) ? '' : $db_prefix . '_') . PERFEX_SAAS_MODULE_NAME_SHORT . '_';
 
-        // decrypt() returns FALSE when the stored value was written under a
-        // different application encryption key. Passing that on produces an
-        // empty Basic auth password and cPanel answers with its login page,
-        // which reads as "invalid credentials" rather than "unreadable secret".
-        $stored_password = get_option('perfex_saas_cpanel_password');
-        $password = $CI->encryption->decrypt($stored_password);
-
-        if ($password === false) {
-            log_message('error', 'perfex_saas cpanel: stored password could not be decrypted (' . (empty($stored_password) ? 'no password saved' : 'the application encryption key changed since it was saved') . '). Re-enter and save the cPanel password in SaaS settings > Integrations.');
-            $password = '';
-        }
+        $auth_mode = get_option('perfex_saas_cpanel_auth_mode');
+        $auth_mode = in_array($auth_mode, ['auto', 'password', 'token']) ? $auth_mode : 'auto';
 
         $CI->cpanel_api->init(
             $user,
-            $password,
+            $CI->encryption->decrypt(get_option('perfex_saas_cpanel_password')),
             get_option('perfex_saas_cpanel_login_domain'),
             get_option('perfex_saas_cpanel_port'),
-            $prefix
+            $prefix,
+            true,
+            $auth_mode
         );
         $CI->cpanel_api->mainDomain = get_option('perfex_saas_cpanel_primary_domain');
         return $CI->cpanel_api;
-    }
-}
-
-if (!function_exists('perfex_saas_cpanel_document_root')) {
-    /**
-     * Document root the tenant sub/addon domains must be pointed at.
-     *
-     * cPanel's addsubdomain/addaddondomain treat an EMPTY "dir" as "make one
-     * up", and create the vhost against a brand new, empty
-     * /public_html/<slug> folder. Apache then answers every request on that
-     * subdomain — including /admin/ — with its own plain "Not Found", because
-     * the CRM's index.php and .htaccess are not in that folder at all.
-     * Falling back to FCPATH (this installation's own web root) keeps the
-     * vhost pointed at the CRM when the setting was never filled in.
-     *
-     * @return string
-     */
-    function perfex_saas_cpanel_document_root()
-    {
-        $root_dir = trim((string) get_option('perfex_saas_cpanel_document_root'));
-
-        return $root_dir === '' ? FCPATH : $root_dir;
     }
 }
 
@@ -273,6 +253,7 @@ hooks()->add_filter('perfex_saas_module_tenant_data_payload', function ($payload
     if ($new_domain !== $old_domain) {
 
         $cpanel = perfex_saas_get_cpanel();
+        $root_domain = perfex_saas_get_saas_default_host();
 
         if (!empty($old_domain)) {
             // Remove old custom domain
@@ -287,10 +268,8 @@ hooks()->add_filter('perfex_saas_module_tenant_data_payload', function ($payload
         // Create new addon entry
         if (!empty($new_domain)) {
             try {
-                // createAddonDomain() takes ($domain, $subdomain, $dir) — passing
-                // $root_domain third pointed the vhost at a "clientcarex.com"
-                // folder that does not exist, and the extra argument was dropped.
-                $cpanel->createAddonDomain($new_domain, $slug . 'addon', perfex_saas_cpanel_document_root());
+                $root_dir = get_option('perfex_saas_cpanel_document_root');
+                $cpanel->createAddonDomain($new_domain, $slug . 'addon', $root_domain, $root_dir);
             } catch (\Throwable $th) {
                 $payload['data']['custom_domain'] = '';
                 $payload['error'] = $th->getMessage();
@@ -312,7 +291,7 @@ hooks()->add_action('perfex_saas_module_tenant_deployed', function ($data) {
     if (!perfex_saas_cpanel_allowed_for_tenant($tenant)) return;
 
     $cpanel = perfex_saas_get_cpanel();
-    $root_dir = perfex_saas_cpanel_document_root();
+    $root_dir = get_option('perfex_saas_cpanel_document_root');
     $root_domain = perfex_saas_get_saas_default_host();
 
     $slug = $tenant->slug;
@@ -340,7 +319,7 @@ hooks()->add_action('perfex_saas_module_tenant_deployed', function ($data) {
     // Create custom domain as addon domain
     if (!empty($custom_domain) && $can_use_custom_domain) {
         try {
-            $cpanel->createAddonDomain($custom_domain, $slug . 'addon', $root_dir);
+            $cpanel->createAddonDomain($custom_domain, $slug . 'addon', $root_domain, $root_dir);
         } catch (\Throwable $th) {
             log_message('error', $th->getMessage());
             get_instance()->session->set_flashdata('message-danger', $th->getMessage());

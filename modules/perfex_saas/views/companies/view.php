@@ -131,6 +131,26 @@
                         </div>
                     <?php else : ?>
                         <p class="text-muted"><?= _l('perfex_saas_subscription_none'); ?></p>
+                        <?php
+                        $resumable_invoice = false;
+                        try {
+                            $resumable_invoice = !empty($company->clientid) ? $this->perfex_saas_model->get_company_cancelled_invoice($company->clientid) : false;
+                        } catch (\Throwable $e) {
+                            log_message('error', 'SaaS companies view: could not load resumable invoice: ' . $e->getMessage());
+                        }
+                        ?>
+                        <?php if ($resumable_invoice) : ?>
+                            <div class="alert alert-warning">
+                                <?= _l('perfex_saas_resume_subscription_hint'); ?>
+                                <?php if (!empty($resumable_invoice->id)) : ?>
+                                    <a href="<?= admin_url('invoices/list_invoices/' . $resumable_invoice->id); ?>" target="_blank"><?= format_invoice_number($resumable_invoice->id); ?></a>
+                                <?php endif; ?>
+                            </div>
+                            <?php echo form_open(admin_url(PERFEX_SAAS_ROUTE_NAME . '/companies/resume_subscription'), ['id' => 'subscription_resume_form', 'class' => 'tw-inline-block tw-mr-2', 'onsubmit' => "return confirm('" . perfex_saas_ecape_js_attr(_l('perfex_saas_resume_subscription_confirm')) . "');"]); ?>
+                            <?php echo form_hidden('company_id', $company->id); ?>
+                            <button type="submit" class="btn btn-warning"><?= _l('perfex_saas_resume_subscription'); ?></button>
+                            <?php echo form_close(); ?>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <?php if (!empty($company->clientid)) : ?>
@@ -185,6 +205,98 @@
                     <?php endif; ?>
                 </div>
             </div>
+
+            <?php
+            // Subscription repair: diagnosis + one-click fix
+            $sub_diag = null;
+            if (!empty($company->clientid) && staff_can('edit', 'perfex_saas_companies')) {
+                try {
+                    $sub_diag = $this->perfex_saas_model->diagnose_company_subscription($company->clientid);
+                } catch (\Throwable $e) {
+                    log_message('error', 'SaaS subscription diagnosis failed: ' . $e->getMessage());
+                }
+            }
+            ?>
+            <?php if ($sub_diag) : ?>
+                <div class="panel_s">
+                    <div class="panel-body">
+                        <h4 class="tw-mt-0 tw-font-semibold tw-text-base tw-text-neutral-700"><?= _l('perfex_saas_subscription_repair'); ?></h4>
+
+                        <?php if ($sub_diag['resolved'] && $company->status == PERFEX_SAAS_STATUS_ACTIVE) : ?>
+                            <div class="alert alert-success"><?= _l('perfex_saas_subscription_repair_ok', empty($sub_diag['resolved']->is_mock) ? format_invoice_number($sub_diag['resolved']->id) : _l('perfex_saas_subscription_on_trial')); ?></div>
+                        <?php else : ?>
+                            <div class="alert alert-danger">
+                                <ul class="tw-mb-0 tw-pl-4">
+                                    <?php if ($company->status != PERFEX_SAAS_STATUS_ACTIVE) : ?>
+                                        <li>Company status is <strong><?= html_escape($company->status); ?></strong><?= !empty($company->status_note) ? ' — ' . html_escape($company->status_note) : ''; ?></li>
+                                    <?php endif; ?>
+                                    <?php foreach ($sub_diag['problems'] as $problem) : ?>
+                                        <li><?= html_escape($problem); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        <?php endif; ?>
+
+                        <p class="text-muted"><?= _l('perfex_saas_subscription_repair_hint'); ?></p>
+
+                        <?php if (empty($sub_diag['invoices'])) : ?>
+                            <p class="text-muted"><?= _l('perfex_saas_subscription_none'); ?></p>
+                        <?php else : ?>
+                            <div class="table-responsive">
+                                <table class="table table-condensed tw-text-sm">
+                                    <thead>
+                                        <tr>
+                                            <th><?= _l('invoice'); ?></th>
+                                            <th><?= _l('invoice_dt_table_heading_date'); ?></th>
+                                            <th><?= _l('invoice_dt_table_heading_duedate'); ?></th>
+                                            <th><?= _l('invoice_total'); ?></th>
+                                            <th><?= _l('invoice_dt_table_heading_status'); ?></th>
+                                            <th>Recurring</th>
+                                            <th><?= _l('perfex_saas_package'); ?></th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($sub_diag['invoices'] as $row) :
+                                            $is_live = $sub_diag['resolved'] && empty($sub_diag['resolved']->is_mock) && (int)$sub_diag['resolved']->id === $row->id; ?>
+                                            <tr class="<?= $is_live ? 'success' : ''; ?>">
+                                                <td>
+                                                    <a href="<?= admin_url('invoices/list_invoices/' . $row->id); ?>" target="_blank"><?= html_escape($row->number); ?></a>
+                                                    <?php if (!empty($row->problems)) : ?>
+                                                        <div class="text-danger tw-text-xs"><?= html_escape(implode(', ', $row->problems)); ?></div>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?= _d($row->date); ?></td>
+                                                <td><?= _d($row->duedate); ?></td>
+                                                <td><?= app_format_money((float)$row->total, get_base_currency()); ?></td>
+                                                <td><?= format_invoice_status($row->status); ?></td>
+                                                <td><?= $row->recurring > 0 ? (int)$row->recurring : '-'; ?></td>
+                                                <td colspan="2">
+                                                    <?php if ($is_live) : ?>
+                                                        <strong><?= html_escape($row->package); ?></strong>
+                                                    <?php else : ?>
+                                                        <?php echo form_open(admin_url(PERFEX_SAAS_ROUTE_NAME . '/companies/repair_subscription'), ['class' => 'tw-flex tw-gap-2 tw-items-center', 'onsubmit' => "return confirm('" . perfex_saas_ecape_js_attr(_l('perfex_saas_subscription_repair_confirm')) . "');"]); ?>
+                                                        <?= form_hidden('company_id', $company->id); ?>
+                                                        <?= form_hidden('invoice_id', $row->id); ?>
+                                                        <select name="packageid" class="form-control input-sm" required>
+                                                            <option value=""></option>
+                                                            <?php foreach ($sub_diag['packages'] as $p) : ?>
+                                                                <option value="<?= (int)$p->id; ?>" <?= (int)$p->id === $row->packageid ? 'selected' : ''; ?>><?= html_escape($p->name); ?></option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                        <button type="submit" class="btn btn-success btn-sm tw-whitespace-nowrap"><?= _l('perfex_saas_subscription_repair_use'); ?></button>
+                                                        <?php echo form_close(); ?>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <!-- Change subscription modal -->
             <div class="modal fade" id="subscription_change_modal" tabindex="-1" role="dialog">

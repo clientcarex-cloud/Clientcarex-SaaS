@@ -26,9 +26,6 @@ function perfex_saas_tenant_base_url($tenant, $endpoint = '', $method = 'auto')
     $base_url = (defined('APP_BASE_URL') && APP_BASE_URL !== APP_BASE_URL_DEFAULT)
         ? APP_BASE_URL
         : APP_BASE_URL_DEFAULT;
-    // .env may or may not carry a trailing slash — normalize, or a slashless
-    // APP_BASE_URL glues the host to the path (clientcarex.com<slug>/…).
-    $base_url = rtrim($base_url, '/') . '/';
     $default_url = $base_url . perfex_saas_tenant_url_signature($slug) . '/' . $endpoint;
 
     $subdomain = "";
@@ -892,6 +889,8 @@ function perfex_saas_remove_dir($target)
  */
 function perfex_saas_load_ci_db_from_dsn($dsn, $extra = [])
 {
+    // Staging/test servers must never reach a production database.
+    $dsn = ccx_iso_guard_dsn($dsn, 'ci_db');
 
     $base_config = [
         'dbdriver' => APP_DB_DRIVER,

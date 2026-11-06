@@ -1237,23 +1237,49 @@ function perfex_saas_setup_tenant_admin($tenant, $dsn)
 
     if (!$contact) throw new \Exception(_l('perfex_saas_error_getting_contact_to_be_used_as_administrator_on_the_new_instance'), 1);
 
-    // Insert admin login to the instance
+    if (empty($contact->email)) throw new \Exception(_l('perfex_saas_error_getting_contact_to_be_used_as_administrator_on_the_new_instance'), 1);
+
+    // Insert admin login to the instance. NULLs are replaced because the staff
+    // columns are NOT NULL (a contact created without a password has NULL there).
     $data = [];
-    $data['firstname']   = $contact->firstname;
-    $data['lastname']    = $contact->lastname;
-    $data['email']       = $contact->email;
-    $data['phonenumber'] = $contact->phonenumber;
-    $data['password'] = $contact->password;
+    $data['firstname']   = (string) ($contact->firstname ?? '');
+    $data['lastname']    = (string) ($contact->lastname ?? '');
+    $data['email']       = (string) $contact->email;
+    $data['phonenumber'] = (string) ($contact->phonenumber ?? '');
+    $data['password']    = !empty($contact->password) ? $contact->password : app_hash_password(bin2hex(random_bytes(16)));
     $data['admin']  = 1;
     $data['active'] = 1;
     $data['datecreated'] = date('Y-m-d H:i:s');
 
-    // Set db prefix for insert string generation
-    $db = clone ($CI->db);
-    $db->dbprefix = $tenant_dbprefix;
-    $admin_insert_query = $db->insert_string($table, $data);
+    // Direct PDO so a failure surfaces: perfex_saas_raw_query() swallows SQL
+    // errors in production, which used to leave new tenants with no staff at all
+    // ("Instance does not have any staff" on magic login).
+    $pdo = perfex_saas_get_pdo_conn($dsn, false);
 
-    return perfex_saas_raw_query($admin_insert_query, $dsn);
+    // Modules add columns to tblstaff; fill any NOT NULL one that has no default.
+    $cols = $pdo->prepare("SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND IS_NULLABLE = 'NO' AND COLUMN_DEFAULT IS NULL AND EXTRA NOT LIKE '%auto_increment%'");
+    $cols->execute([$table]);
+    foreach ($cols->fetchAll(PDO::FETCH_ASSOC) as $col) {
+        if (array_key_exists($col['COLUMN_NAME'], $data)) continue;
+        $type = strtolower($col['DATA_TYPE']);
+        if (in_array($type, ['int', 'tinyint', 'smallint', 'mediumint', 'bigint', 'decimal', 'float', 'double', 'bit'], true)) $data[$col['COLUMN_NAME']] = 0;
+        elseif ($type === 'date') $data[$col['COLUMN_NAME']] = date('Y-m-d');
+        elseif (in_array($type, ['datetime', 'timestamp'], true)) $data[$col['COLUMN_NAME']] = date('Y-m-d H:i:s');
+        else $data[$col['COLUMN_NAME']] = '';
+    }
+
+    $names = '`' . implode('`, `', array_keys($data)) . '`';
+    $marks = implode(', ', array_fill(0, count($data), '?'));
+    try {
+        $pdo->prepare("INSERT INTO `$table` ($names) VALUES ($marks)")->execute(array_values($data));
+    } catch (\Throwable $e) {
+        throw new \Exception('Could not create the first administrator in ' . $table . ': ' . $e->getMessage(), 1);
+    }
+
+    if (!isset(perfex_saas_get_super_admin($tenant->slug, $dsn)->email))
+        throw new \Exception('The first administrator was not saved in ' . $table, 1);
+
+    return true;
 }
 
 /**
@@ -1405,9 +1431,13 @@ function perfex_saas_is_tenant_installation_secured($slug, $dsn_array, $drop_opt
  * Simulate modules installation for tenants. 
  * This is neccessary so that module installation data is seed properly into each tenants.
  *
+ * @param bool       $verbose
+ * @param array|null $only_modules When given, only these (assigned) modules are activated/upgraded;
+ *                                 the core-module bootstrap and the deactivation sweep are skipped.
+ *                                 Used by the admin's one-by-one Remote Module Activation.
  * @return void
  */
-function perfex_saas_setup_modules_for_tenant($verbose = true)
+function perfex_saas_setup_modules_for_tenant($verbose = true, $only_modules = null)
 {
     $CI = &get_instance();
     if (!perfex_saas_is_tenant()) throw new \Exception("Error Processing Request: Invalid context for perfex_saas_setup_modules_for_tenant", 1);
@@ -1417,8 +1447,18 @@ function perfex_saas_setup_modules_for_tenant($verbose = true)
     if ($verbose)
         echo "Setting up modules for $tenant->slug<br/>";
 
+    $full_run = $only_modules === null;
+    if (!$full_run) {
+        $not_assigned = array_diff((array) $only_modules, $modules);
+        foreach ($not_assigned as $name) {
+            if ($verbose)
+                echo "Skipping $name - not assigned to this tenant (package / approved list)<br/>";
+        }
+        $modules = array_values(array_intersect($modules, (array) $only_modules));
+    }
+
     // Handle core module requiring DB changes
-    $core_required_default_modules = ['surveys', 'goals'];
+    $core_required_default_modules = $full_run ? ['surveys', 'goals'] : [];
     foreach ($core_required_default_modules as $module) {
 
         if (in_array($module, $modules)) continue;
@@ -1448,7 +1488,9 @@ function perfex_saas_setup_modules_for_tenant($verbose = true)
                 echo "Start Running for: $name <br/>";
                 echo "activating<br/>";
             }
-            $CI->app_modules->activate($name);
+            if ($CI->app_modules->activate($name) === false && $verbose) {
+                echo "activate() returned false - module files not found on this server<br/>";
+            }
 
             if ($CI->app_modules->new_version_available($name)) {
                 if ($verbose)
@@ -1459,15 +1501,26 @@ function perfex_saas_setup_modules_for_tenant($verbose = true)
             if ($CI->app_modules->is_database_upgrade_required($name)) {
                 if ($verbose)
                     echo "upgrading db <br/>";
-                if ($CI->app_modules->upgrade_database($name) !== true) {
-                    if ($verbose)
+                $upgrade_result = $CI->app_modules->upgrade_database($name);
+                if ($upgrade_result !== true) {
+                    if ($verbose) {
                         echo "error updating the database - triggering reinstall for $name <br/>";
+                        echo "upgrade error: " . strip_tags((string) $upgrade_result) . "<br/>";
+                    }
 
-                    // Remove from db
+                    // Remove from db and re-add at the files version. Not via activate():
+                    // App_modules still has the deleted row cached, so it would skip the
+                    // insert and the module would be left with no row at all. The activation
+                    // hook (install.php) already ran in the activate() call above.
                     $CI->db->where('module_name', $name);
                     $CI->db->delete(db_prefix() . 'modules');
 
-                    $CI->app_modules->activate($name);
+                    $module_info = $CI->app_modules->get($name);
+                    $CI->db->insert(db_prefix() . 'modules', [
+                        'module_name' => $name,
+                        'installed_version' => $module_info['headers']['version'] ?? '1.0.0',
+                        'active' => 1,
+                    ]);
                 }
             }
 
@@ -1481,6 +1534,8 @@ function perfex_saas_setup_modules_for_tenant($verbose = true)
             log_message('error', "Error installing module $name:" . $th->getMessage() . "\n" . $th->getTraceAsString());
         }
     }
+
+    if (!$full_run) return;
 
     // Deactive disabled modules and active modules not assigned to the tenant
     $all_active_modules = array_keys($CI->app_modules->get_activated());

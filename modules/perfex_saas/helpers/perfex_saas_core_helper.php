@@ -11,6 +11,7 @@ require(__DIR__ . '/../config/constants.php');
 require(__DIR__ . '/../vendor/autoload.php');
 require(__DIR__ . '/perfex_saas_php8_polyfill_helper.php');
 require(__DIR__ . '/perfex_saas_storage_helper.php');
+require_once(__DIR__ . '/perfex_saas_isolation_helper.php');
 
 use PHPSQLParser\PHPSQLParser;
 
@@ -95,15 +96,12 @@ function perfex_saas_init()
                     $tenant_base_url .= "$tenant_path_id/";
                 }
 
-                if (!$tenant_id) {
-                    perfex_saas_redirect_unknown_tenant_host($tenancy_access_mode);
+                if (!$tenant_id)
                     perfex_saas_show_tenant_error("Invalid Tenant", "We could not find the requested instance.", 404);
-                }
 
                 // Check if tenant exists
                 $tenant = perfex_saas_search_tenant_by_field($field, $tenant_id);
                 if (!$tenant) {
-                    perfex_saas_redirect_unknown_tenant_host($tenancy_access_mode);
                     perfex_saas_show_tenant_error("Invalid Tenant", "The requested tenant does not exist.", 404);
                 }
 
@@ -558,22 +556,13 @@ function perfex_saas_default_base_url($path = '')
     // This function must always return the MASTER (super) base URL.
     // On production master: APP_BASE_URL_DEFAULT is correct.
     // On staging/dev master: APP_BASE_URL may differ (dynamically resolved to current host).
-    // On tenants: APP_BASE_URL is the TENANT URL (e.g., celabs.clientcarex.com),
+    // On tenants: APP_BASE_URL is the TENANT URL (e.g., celabs.healtho.pro),
     //   so we must NOT use it here — always use APP_BASE_URL_DEFAULT for the master URL.
     $base = APP_BASE_URL_DEFAULT;
     if (!perfex_saas_is_tenant() && defined('APP_BASE_URL') && APP_BASE_URL !== APP_BASE_URL_DEFAULT) {
         $base = APP_BASE_URL;
     }
-
-    // Never trust the .env value to carry a trailing slash. With
-    // APP_BASE_URL=https://clientcarex.com (no slash), raw concatenation turned
-    // every master link built here into a dead host — e.g. the client-portal
-    // bridge iframe pointed at https://clientcarex.combilling/my_account/…,
-    // which the browser renders as a blocked/failed frame ("This content is
-    // blocked") on every tenant.
-    $base = rtrim($base, '/') . '/';
-
-    return $base . ltrim((string) $path, '/');
+    return $base . $path;
 }
 
 /**
@@ -1715,6 +1704,9 @@ function perfex_saas_get_pdo_conn($dsn, $use_cache = true)
         $dsn['driver'] = 'mysql';
     }
 
+    // Staging/test servers must never reach a production database.
+    $dsn = ccx_iso_guard_dsn($dsn, 'pdo');
+
     $dsn_string = perfex_saas_dsn_to_string($dsn, false);
 
     $pdo = SaaSPDOConnectionManager::getConnection(
@@ -1738,67 +1730,6 @@ function perfex_saas_get_pdo_conn($dsn, $use_cache = true)
  *                                                    UI and Http helpers                                               *
  *                                                                                                                      *
  ***##################################################################################################################**/
-
-/**
- * Send a request for an unresolvable tenant subdomain back to the marketing site.
- *
- * Wildcard DNS points every *.clientcarex.com name at this document root, so a
- * subdomain that matches no tenant — a typo, a decommissioned instance, or a
- * name that was never provisioned (e.g. shra.clientcarex.com) — reaches
- * CodeIgniter and dies on a bare "Invalid Tenant" 404. Bounce those visitors to
- * the master site instead. Only subdomain requests qualify: path mode and
- * custom-domain mode are already on a host that serves a usable page, so their
- * 404 is the correct answer.
- *
- * The 302 is deliberate. The slug may be provisioned as a real tenant later, and
- * a 301 would stay cached in browsers and at Cloudflare long after that.
- *
- * @param string $tenancy_access_mode How the tenant was recognized in the request.
- * @return void Redirects and exits when it applies; returns otherwise.
- */
-function perfex_saas_redirect_unknown_tenant_host($tenancy_access_mode)
-{
-    if ($tenancy_access_mode !== PERFEX_SAAS_TENANT_MODE_SUBDOMAIN) {
-        return;
-    }
-
-    perfex_saas_redirect_to_master_site();
-}
-
-/**
- * Send the visitor to the master (marketing) site.
- *
- * Used wherever a tenant host would otherwise answer with a dead end: an
- * unresolvable subdomain, or a tenant root URL that maps to no controller.
- *
- * The 302 is deliberate. What lives at these URLs can change - a slug may be
- * provisioned as a real tenant, a root route may gain a real destination - and a
- * 301 would stay cached in browsers and at Cloudflare long after that.
- *
- * @return bool False when the redirect was skipped; otherwise it exits.
- */
-function perfex_saas_redirect_to_master_site()
-{
-    $target      = rtrim((string) perfex_saas_default_base_url(), '/') . '/';
-    $target_host = strtolower((string) parse_url($target, PHP_URL_HOST));
-    $target_path = (string) parse_url($target, PHP_URL_PATH);
-    $target_path = $target_path === '' ? '/' : $target_path;
-
-    $current_host = strtolower(explode(':', (string) ($_SERVER['HTTP_HOST'] ?? ''), 2)[0]);
-    $current_path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
-    $current_path = $current_path === '' ? '/' : $current_path;
-
-    // Never bounce a URL onto itself - that is an infinite redirect loop. Host
-    // alone is not enough to decide: a path-mode tenant shares the master host,
-    // and /slug/ps/ -> / is a legitimate redirect on that same host.
-    if ($target_host === '' || ($target_host === $current_host && $target_path === $current_path)) {
-        return false;
-    }
-
-    header('Cache-Control: no-store');
-    header('Location: ' . $target, true, 302);
-    exit();
-}
 
 /**
  * Show a custom error page for the tenant (middleware).
@@ -2300,12 +2231,13 @@ function perfex_saas_get_or_save_client_metadata($clientid, $update_data = [])
     $where = !empty($id) ? "WHERE `id`='$id' AND `clientid`='$clientid'" : '';
     $metadata = array_merge($metadata, $update_data);
     $metadata_json = json_encode($metadata);
+    // Bind the JSON: an apostrophe in any value used to break this query silently
     if (!empty($id))
-        $query = "UPDATE $table SET `metadata`='$metadata_json', `clientid` = '$clientid' $where";
+        $query = "UPDATE $table SET `metadata`=:metadata_json, `clientid` = '$clientid' $where";
     else
-        $query = "INSERT INTO `$table` (`id`, `metadata`, `clientid`) VALUES (NULL, '$metadata_json', '$clientid')";
+        $query = "INSERT INTO `$table` (`id`, `metadata`, `clientid`) VALUES (NULL, :metadata_json, '$clientid')";
 
-    $updated = perfex_saas_raw_query($query);
+    $updated = perfex_saas_raw_query($query, [], false, true, null, false, true, [':metadata_json' => $metadata_json]);
     if ($updated)
         return $metadata;
 

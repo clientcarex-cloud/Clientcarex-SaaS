@@ -22,6 +22,10 @@ try {
      * Init perfex saas and detect the active tenant if any
      * This method call with set $GLOBALS[PERFEX_SAAS_MODULE_NAME . '_tenant'] and can be used henceforth as session is not ready for use here.
      */
+    // Staging/test isolation: stop before any DB read if this server's master
+    // DB is the production one (see perfex_saas_isolation_helper.php).
+    ccx_iso_enforce_master();
+
     perfex_saas_init();
 
 

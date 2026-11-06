@@ -512,8 +512,9 @@ CREATE TABLE `tblcurrencies` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `tblcurrencies` (`id`, `symbol`, `name`, `decimal_separator`, `thousand_separator`, `placement`, `isdefault`) VALUES
-(1, '$', 'USD', '.', ',', 'before', 1),
-(2, '€', 'EUR', ',', '.', 'before', 0);
+(1, '₹', 'INR', '.', ',', 'before', 1),
+(2, '$', 'USD', '.', ',', 'before', 0),
+(3, '€', 'EUR', ',', '.', 'before', 0);
 
 CREATE TABLE `tblcustomers_groups` (
   `id` int NOT NULL,
@@ -1274,7 +1275,7 @@ INSERT INTO `tbloptions` (`id`, `name`, `value`, `autoload`) VALUES
 (11, 'smtp_port', '', 1),
 (12, 'smtp_host', '', 1),
 (13, 'smtp_email_charset', 'utf-8', 1),
-(14, 'default_timezone', 'Europe/Berlin', 1),
+(14, 'default_timezone', 'Asia/Kolkata', 1),
 (15, 'clients_default_theme', 'perfex', 1),
 (16, 'company_logo', '', 1),
 (17, 'tables_pagination_limit', '25', 1),
@@ -2730,7 +2731,7 @@ ALTER TABLE `tblcredits`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `tblcurrencies`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 ALTER TABLE `tblcustomers_groups`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;

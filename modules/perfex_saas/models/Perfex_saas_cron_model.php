@@ -233,6 +233,11 @@ class Perfex_saas_cron_model extends App_model
                             continue;
                         }
 
+                        // Subscription is back (resumed/renewed): undo our own auto-deactivation
+                        if ($company->status == PERFEX_SAAS_STATUS_INACTIVE) {
+                            $this->perfex_saas_model->reactivate_companies_after_resume($company->clientid);
+                        }
+
                         $company->package_invoice = $package_invoice;
                         $metadata = $company->metadata;
 

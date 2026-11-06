@@ -665,8 +665,11 @@ trait Perfex_saas_subscription_trait
         }
 
         $last_cancelled_invoice_id = $client_metadata->last_cancelled_invoice ?? '';
-        if (empty($last_cancelled_invoice_id))
-            return false;
+        if (empty($last_cancelled_invoice_id)) {
+            // The cancel metadata can be missing (e.g. the metadata save failed),
+            // so fall back to the latest detached package invoice when resuming.
+            return $resumable ? $this->find_detached_package_invoice($clientid) : false;
+        }
 
         // Check if the client has a subscription i.e invoice
         $invoice = $this->invoices_model->get($last_cancelled_invoice_id);
@@ -674,6 +677,215 @@ trait Perfex_saas_subscription_trait
             return false;
 
         return $invoice;
+    }
+
+    /**
+     * Find the latest non-Stripe package invoice that was cancelled or made
+     * non-recurring (what "cancel immediately" leaves behind). Only used when
+     * the client has no live package invoice at all.
+     *
+     * @param int $clientid
+     * @return false|object
+     */
+    public function find_detached_package_invoice($clientid)
+    {
+        if ($this->get_company_invoice($clientid)) return false;
+
+        $package_column = perfex_saas_column('packageid');
+        $row = $this->db->query(
+            "SELECT `id` FROM `" . perfex_saas_master_db_prefix() . "invoices`
+             WHERE `clientid` = ? AND `$package_column` > 0 AND `is_recurring_from` IS NULL
+               AND (`subscription_id` IS NULL OR `subscription_id` <= 0)
+               AND (`status` = ? OR `recurring` = 0)
+             ORDER BY `datecreated` DESC, `id` DESC LIMIT 1",
+            [(int)$clientid, Invoices_model::STATUS_CANCELLED]
+        )->row();
+
+        if (!$row) return false;
+
+        $invoice = $this->invoices_model->get($row->id);
+        return $invoice ?: false;
+    }
+
+    /**
+     * Re-activate the client's companies that the cron deactivated only
+     * because the subscription invoice was missing.
+     *
+     * @param int $clientid
+     * @return void
+     */
+    public function reactivate_companies_after_resume($clientid)
+    {
+        $auto_notes = array_unique([_l('perfex_saas_no_invoice_client'), 'Client subscription/trial is missing! . You can add the customer to a package from the invoices page', 'perfex_saas_no_invoice_client']);
+        $this->db->where('clientid', (int)$clientid);
+        $companies = $this->companies();
+        foreach ((array)$companies as $company) {
+            if ($company->status != PERFEX_SAAS_STATUS_INACTIVE) continue;
+            if (!in_array(trim((string)$company->status_note), $auto_notes)) continue;
+            $this->add_or_update('companies', ['id' => $company->id, 'status' => PERFEX_SAAS_STATUS_ACTIVE, 'status_note' => '']);
+        }
+    }
+
+    /**
+     * Explain why a client's tenants are (not) seeing a subscription.
+     * Mirrors the rules of perfex_saas_get_client_package_invoice().
+     *
+     * @param int $clientid
+     * @return array
+     */
+    public function diagnose_company_subscription($clientid)
+    {
+        $clientid   = (int)$clientid;
+        $pkg_col    = perfex_saas_column('packageid');
+        $inv_table  = perfex_saas_master_db_prefix() . 'invoices';
+        $metadata   = (object)perfex_saas_get_or_save_client_metadata($clientid);
+        $resolved   = null;
+        try {
+            $resolved = perfex_saas_get_client_package_invoice($clientid, ['skip_children' => true]);
+        } catch (\Throwable $th) {
+        }
+
+        $problems = [];
+        if (!empty($metadata->subscription_id) && !empty($metadata->subscription_package_id)) {
+            $problems[] = 'Client is linked to a Stripe subscription (#' . $metadata->subscription_id . '). Normal invoices are ignored while this link exists.';
+        }
+        if (!empty($metadata->trial_period_ends) && !empty($metadata->trial_package_id) && empty($metadata->trial_cancelled)) {
+            $problems[] = 'Client is on a trial (ends ' . $metadata->trial_period_ends . '). Normal invoices are ignored while the trial is set.';
+        }
+        if (!empty($metadata->last_cancelled_invoice)) {
+            $problems[] = 'Cancel record points to invoice #' . $metadata->last_cancelled_invoice . '.';
+        }
+        if (!empty($metadata->will_cancel_invoice_at_period_end)) {
+            $problems[] = 'Invoice #' . $metadata->will_cancel_invoice_at_period_end . ' is set to cancel at period end.';
+        }
+
+        $packages = [];
+        foreach ((array)$this->packages() as $p) $packages[$p->id] = $p;
+
+        $rows = $this->db->query(
+            "SELECT * FROM `$inv_table` WHERE `clientid` = ? AND `is_recurring_from` IS NULL ORDER BY `datecreated` DESC, `id` DESC LIMIT 30",
+            [$clientid]
+        )->result();
+
+        $invoices = [];
+        foreach ($rows as $row) {
+            $why = [];
+            $pid = (int)($row->{$pkg_col} ?? 0);
+            if ($pid <= 0) $why[] = 'not linked to a SaaS package';
+            elseif (!isset($packages[$pid])) $why[] = 'package #' . $pid . ' no longer exists';
+            if ((int)$row->status === Invoices_model::STATUS_CANCELLED) $why[] = 'cancelled';
+            if ((int)$row->recurring <= 0 && (int)$row->status !== Invoices_model::STATUS_CANCELLED) $why[] = 'not recurring';
+            if (empty($row->duedate)) $why[] = 'no due date';
+            if (!empty($row->subscription_id) && (int)$row->subscription_id > 0) $why[] = 'Stripe subscription invoice';
+
+            $invoices[] = (object)[
+                'id'        => (int)$row->id,
+                'number'    => format_invoice_number($row->id),
+                'date'      => $row->date,
+                'duedate'   => $row->duedate,
+                'total'     => $row->total,
+                'status'    => (int)$row->status,
+                'recurring' => (int)$row->recurring,
+                'packageid' => $pid,
+                'package'   => isset($packages[$pid]) ? $packages[$pid]->name : '',
+                'problems'  => $why,
+            ];
+        }
+
+        if (!$resolved) {
+            $problems[] = 'No invoice qualifies as the subscription, so tenants show "Subscription is missing" and the cron sets the company inactive.';
+        }
+
+        return [
+            'resolved' => $resolved,
+            'problems' => $problems,
+            'invoices' => $invoices,
+            'packages' => $packages,
+        ];
+    }
+
+    /**
+     * Admin repair: make one invoice the client's live SaaS subscription.
+     * Links the package, makes it recurring, un-cancels it, clears metadata
+     * that overrides normal invoices (Stripe link, trial, cancel records)
+     * and activates the client's inactive companies.
+     *
+     * @param int $clientid
+     * @param int $invoice_id
+     * @param int $packageid Package to link (0 = keep the invoice's package)
+     * @return object The resolved package invoice
+     * @throws Exception
+     */
+    public function force_activate_company_subscription($clientid, $invoice_id, $packageid = 0)
+    {
+        $clientid  = (int)$clientid;
+        $pkg_col   = perfex_saas_column('packageid');
+        $inv_table = perfex_saas_master_db_prefix() . 'invoices';
+
+        $invoice = $this->db->where('id', (int)$invoice_id)->get($inv_table)->row();
+        if (!$invoice || (int)$invoice->clientid !== $clientid) {
+            throw new \Exception('Invoice not found for this customer.', 1);
+        }
+        if (!empty($invoice->is_recurring_from)) {
+            throw new \Exception('Pick the original (parent) invoice, not a renewal invoice.', 1);
+        }
+        if (!empty($invoice->subscription_id) && (int)$invoice->subscription_id > 0) {
+            throw new \Exception('This invoice is billed by a Stripe subscription; manage it from Stripe.', 1);
+        }
+
+        $packageid = (int)$packageid > 0 ? (int)$packageid : (int)($invoice->{$pkg_col} ?? 0);
+        $package   = $packageid > 0 ? $this->packages($packageid) : null;
+        if (!$package) {
+            throw new \Exception('Select the SaaS package for this invoice.', 1);
+        }
+
+        $recurring = (int)$invoice->recurring;
+        if ($recurring <= 0) $recurring = (int)($package->metadata->invoice->recurring ?? 0);
+        if ($recurring <= 0) $recurring = 1;
+
+        $update = [$pkg_col => $packageid, 'recurring' => $recurring];
+        if (empty($invoice->duedate)) $update['duedate'] = $invoice->date ?: date('Y-m-d');
+        $this->db->where('id', (int)$invoice->id)->update($inv_table, $update);
+
+        if ((int)$invoice->status === Invoices_model::STATUS_CANCELLED) {
+            $this->db->where('id', (int)$invoice->id)->update($inv_table, ['status' => Invoices_model::STATUS_UNPAID]);
+            if (!function_exists('update_invoice_status')) $this->load->helper('invoices');
+            update_invoice_status((int)$invoice->id, true);
+        }
+
+        // Stop other live package invoices from shadowing the chosen one
+        $this->db->query(
+            "UPDATE `$inv_table` SET `recurring` = 0 WHERE `clientid` = ? AND `id` != ? AND `is_recurring_from` IS NULL
+               AND `$pkg_col` > 0 AND `recurring` > 0 AND (`subscription_id` IS NULL OR `subscription_id` <= 0)",
+            [$clientid, (int)$invoice->id]
+        );
+
+        $metadata = (object)perfex_saas_get_or_save_client_metadata($clientid);
+        $clear = [
+            'last_cancelled_invoice' => '',
+            'last_cancelled_invoice_recurring' => '',
+            'will_cancel_invoice_at_period_end' => '',
+            'subscription_id' => '',
+            'subscription_package_id' => '',
+        ];
+        if (!empty($metadata->trial_package_id)) $clear['trial_cancelled'] = 'true';
+        if (perfex_saas_get_or_save_client_metadata($clientid, $clear) === null) {
+            throw new \Exception('Invoice fixed, but saving the customer subscription settings failed. Check the error log.', 1);
+        }
+
+        // Activate the client's inactive companies (banned/disabled are left alone)
+        $this->db->where('clientid', $clientid);
+        foreach ((array)$this->companies() as $company) {
+            if ($company->status == PERFEX_SAAS_STATUS_INACTIVE) {
+                $this->add_or_update('companies', ['id' => $company->id, 'status' => PERFEX_SAAS_STATUS_ACTIVE, 'status_note' => '']);
+            }
+        }
+
+        $resolved = perfex_saas_get_client_package_invoice($clientid, ['skip_children' => true]);
+        if (!$resolved) {
+            throw new \Exception('Changes saved, but the subscription still does not resolve. See the diagnosis on this page.', 1);
+        }
+        return $resolved;
     }
 
     /**
@@ -712,13 +924,36 @@ trait Perfex_saas_subscription_trait
                 $resumed_invoice = $this->perfex_saas_stripe_model->resume_subscription($invoice->subscription_id);
             } else {
 
-                // Resume recurring
+                // Resume recurring. The lookup ignores a non-recurring package invoice,
+                // so the recurring value must be > 0. The saved value can be ''/0
+                // (e.g. a renewal child was cancelled), so fall back to the package.
                 $metadata = $package->metadata;
-                $update_data = [
-                    "recurring" => $client_metadata->last_cancelled_invoice_recurring ?? $metadata->invoice->recurring ?? "1",
-                    'status' => $invoice->status == Invoices_model::STATUS_CANCELLED ? Invoices_model::STATUS_UNPAID : $invoice->status,
-                ];
-                $this->invoices_model->db->update(perfex_saas_master_db_prefix() . 'invoices', $update_data, ['id' => $invoice->id]);
+                $invoices_table = perfex_saas_master_db_prefix() . 'invoices';
+                $recurring = (int)($client_metadata->last_cancelled_invoice_recurring ?? 0);
+                if ($recurring <= 0) $recurring = (int)($metadata->invoice->recurring ?? 0);
+                if ($recurring <= 0) $recurring = 1;
+
+                // A renewal (child) invoice must stay non-recurring: restore its parent instead.
+                $parent = $invoice;
+                if (!empty($invoice->is_recurring_from)) {
+                    $parent = $this->invoices_model->get($invoice->is_recurring_from) ?: $invoice;
+                }
+                if ((int)$parent->recurring <= 0) {
+                    $this->invoices_model->db->update($invoices_table, ['recurring' => $recurring], ['id' => $parent->id]);
+                }
+
+                // Un-cancel, then let core recompute the real status (paid/unpaid/overdue).
+                foreach (array_unique([(int)$parent->id, (int)$invoice->id]) as $_id) {
+                    $this->invoices_model->db->update(
+                        $invoices_table,
+                        ['status' => Invoices_model::STATUS_UNPAID],
+                        ['id' => $_id, 'status' => Invoices_model::STATUS_CANCELLED]
+                    );
+                    if ($this->invoices_model->db->affected_rows() > 0) {
+                        if (!function_exists('update_invoice_status')) $this->load->helper('invoices');
+                        update_invoice_status($_id, true);
+                    }
+                }
                 $resumed_invoice = $this->get_company_invoice($clientid);
             }
             if ($resumed_invoice) {
@@ -727,6 +962,7 @@ trait Perfex_saas_subscription_trait
                     'last_cancelled_invoice_recurring' => '',
                     'will_cancel_invoice_at_period_end' => ''
                 ]);
+                $this->reactivate_companies_after_resume($clientid);
                 return $resumed_invoice;
             }
         }

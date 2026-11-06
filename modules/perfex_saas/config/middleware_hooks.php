@@ -96,6 +96,24 @@ function _ccx_middleware_is_staging_host(): bool
     return $result;
 }
 
+// Staging/test isolation: remap (or refuse) a tenant DSN that still points
+// at a production database.
+if (!empty($dsn['dbname'])) {
+    try {
+        $dsn = ccx_iso_guard_dsn($dsn, 'tenant_request');
+    } catch (\Throwable $iso_error) {
+        log_message('error', $iso_error->getMessage());
+        perfex_saas_show_tenant_error(
+            'Service Temporarily Unavailable',
+            'This test instance is not allowed to connect to the production database.',
+            503,
+            '404',
+            'dsn_error'
+        );
+        $dsn = ['host' => '', 'user' => '', 'password' => '', 'dbname' => ''];
+    }
+}
+
 // Define database credentials (fall back to _DEFAULT constants when DSN is empty)
 defined('APP_DB_HOSTNAME') or define('APP_DB_HOSTNAME', empty($dsn['host']) ? APP_DB_HOSTNAME_DEFAULT : $dsn['host']);
 defined('APP_DB_USERNAME') or define('APP_DB_USERNAME', empty($dsn['user']) ? APP_DB_USERNAME_DEFAULT : $dsn['user']);
