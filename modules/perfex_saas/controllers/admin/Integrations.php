@@ -45,7 +45,7 @@ class Integrations extends AdminController
                 $auth_mode
             );
 
-            $root_dir = get_option('perfex_saas_cpanel_document_root');
+            $root_dir = function_exists('perfex_saas_cpanel_document_root') ? perfex_saas_cpanel_document_root() : get_option('perfex_saas_cpanel_document_root');
             $primarydomain = $config['perfex_saas_cpanel_primary_domain'];
 
             //test creating subdomain and database and its removal

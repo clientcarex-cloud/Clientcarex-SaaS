@@ -67,9 +67,18 @@ if (!function_exists('perfex_saas_get_cpanel')) {
         $auth_mode = get_option('perfex_saas_cpanel_auth_mode');
         $auth_mode = in_array($auth_mode, ['auto', 'password', 'token']) ? $auth_mode : 'auto';
 
+        // decrypt() is FALSE when the password was saved under another encryption key; cPanel
+        // then answers with its login page, which reads like "wrong password".
+        $stored_password = get_option('perfex_saas_cpanel_password');
+        $password = $CI->encryption->decrypt($stored_password);
+        if ($password === false) {
+            log_message('error', 'perfex_saas cpanel: stored password could not be decrypted (' . (empty($stored_password) ? 'no password saved' : 'encryption key changed since it was saved') . '). Re-enter it in SaaS settings > Integrations.');
+            $password = '';
+        }
+
         $CI->cpanel_api->init(
             $user,
-            $CI->encryption->decrypt(get_option('perfex_saas_cpanel_password')),
+            $password,
             get_option('perfex_saas_cpanel_login_domain'),
             get_option('perfex_saas_cpanel_port'),
             $prefix,
@@ -78,6 +87,28 @@ if (!function_exists('perfex_saas_get_cpanel')) {
         );
         $CI->cpanel_api->mainDomain = get_option('perfex_saas_cpanel_primary_domain');
         return $CI->cpanel_api;
+    }
+}
+
+if (!function_exists('perfex_saas_cpanel_document_root')) {
+    /**
+     * Document root the tenant sub/addon domains must point at.
+     *
+     * With an EMPTY "dir", cPanel invents a new, empty /public_html/<slug> folder for the
+     * vhost, and Apache answers every request on that subdomain (including /admin) with a
+     * plain "Not Found" because the CRM is not in that folder. Fall back to this
+     * installation's own web root, relative to the account's home as cPanel expects.
+     *
+     * @return string
+     */
+    function perfex_saas_cpanel_document_root()
+    {
+        $root_dir = trim((string) get_option('perfex_saas_cpanel_document_root'));
+        if ($root_dir !== '') return $root_dir;
+
+        // /home/<user>/public_html/ → public_html/
+        $root = preg_replace('#^/home\d*/[^/]+/#', '', rtrim(FCPATH, '/') . '/');
+        return $root === '' ? 'public_html/' : $root;
     }
 }
 
@@ -316,8 +347,8 @@ hooks()->add_filter('perfex_saas_module_tenant_data_payload', function ($payload
         // Create new addon entry
         if (!empty($new_domain)) {
             try {
-                $root_dir = get_option('perfex_saas_cpanel_document_root');
-                $cpanel->createAddonDomain($new_domain, $slug . 'addon', $root_domain, $root_dir);
+                // createAddonDomain() takes ($domain, $subdomain, $dir).
+                $cpanel->createAddonDomain($new_domain, $slug . 'addon', perfex_saas_cpanel_document_root());
             } catch (\Throwable $th) {
                 $payload['data']['custom_domain'] = '';
                 $payload['error'] = $th->getMessage();
@@ -339,7 +370,7 @@ hooks()->add_action('perfex_saas_module_tenant_deployed', function ($data) {
     if (!perfex_saas_cpanel_allowed_for_tenant($tenant)) return;
 
     $cpanel = perfex_saas_get_cpanel();
-    $root_dir = get_option('perfex_saas_cpanel_document_root');
+    $root_dir = perfex_saas_cpanel_document_root();
     $root_domain = perfex_saas_get_saas_default_host();
 
     $slug = $tenant->slug;
@@ -367,7 +398,7 @@ hooks()->add_action('perfex_saas_module_tenant_deployed', function ($data) {
     // Create custom domain as addon domain
     if (!empty($custom_domain) && $can_use_custom_domain) {
         try {
-            $cpanel->createAddonDomain($custom_domain, $slug . 'addon', $root_domain, $root_dir);
+            $cpanel->createAddonDomain($custom_domain, $slug . 'addon', $root_dir);
         } catch (\Throwable $th) {
             log_message('error', $th->getMessage());
             get_instance()->session->set_flashdata('message-danger', $th->getMessage());
