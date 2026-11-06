@@ -130,7 +130,8 @@ if (!function_exists('app_env_bool')) {
 * environments.
 *
 */
-define('APP_BASE_URL_DEFAULT', app_env_value('APP_BASE_URL_DEFAULT', app_env_value('APP_BASE_URL', 'https://clientcarex.com/')));
+// Always end with "/": the SaaS module appends paths directly and needs a path component.
+define('APP_BASE_URL_DEFAULT', rtrim((string) app_env_value('APP_BASE_URL_DEFAULT', app_env_value('APP_BASE_URL', 'https://clientcarex.com/')), '/') . '/');
 
 /*
 * --------------------------------------------------------------------------
